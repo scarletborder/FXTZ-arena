@@ -1,5 +1,5 @@
 {
-  "name": "kitchen-sink",
+  "name": "fxtz-arena",
   "private": true,
   "scripts": {
     "build": "turbo run build",
@@ -11,6 +11,8 @@
     "check-types": "turbo run check-types"
   },
   "devDependencies": {
+    "typescript": "5.9.3",
+    "vitest": "^3.2.4",
     "prettier": "^3.6.0",
     "turbo": "^2.9.14"
   },

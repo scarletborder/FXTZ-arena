@@ -1,0 +1,25 @@
+{
+  "name": "dedicated-server",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsc --outDir dist --noEmit false --allowImportingTsExtensions false",
+    "dev": "tsx watch src/index.ts",
+    "lint": "eslint src/",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@repo/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^22.15.3",
+    "eslint": "^9.39.0",
+    "tsx": "^4.20.5",
+    "typescript": "5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
