@@ -2,6 +2,7 @@ import Phaser from "phaser";
 
 import { FIXED_STEP_MS } from "./battle/constants";
 import { createBattleInput, type BattleKeyMap } from "./battle/input";
+import type { BattleSceneData } from "./battle/loadout";
 import { BattleModel } from "./battle/model";
 import type { BattleModelSnapshot } from "./battle/model/snapshot";
 import { BattleView } from "./battle/view";
@@ -25,6 +26,8 @@ export class BattleScene extends Phaser.Scene {
   private view!: BattleView;
   private debugInputLocked = false;
   private debugLiveHashEnabled = false;
+  private resultScheduled = false;
+  private sceneData: BattleSceneData = {};
   private readonly debugHistory = new Map<number, DebugFrameRecord>();
   private lastInput!: BattleInputState & {
     readonly pointerX: number;
@@ -35,7 +38,10 @@ export class BattleScene extends Phaser.Scene {
     super("battle");
   }
 
-  create(): void {
+  create(data: BattleSceneData = {}): void {
+    this.sceneData = data;
+    this.resultScheduled = false;
+    this.accumulator = 0;
     this.input.setDefaultCursor("none");
     this.input.mouse?.disableContextMenu();
     this.keys = this.input.keyboard!.addKeys({
@@ -49,7 +55,7 @@ export class BattleScene extends Phaser.Scene {
       enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
       e: "E",
     }) as BattleKeyMap;
-    this.model = new BattleModel();
+    this.model = new BattleModel(data.loadouts, { endOnTargetDefeat: data.mode === "ai" });
     this.view = new BattleView(this);
     this.lastInput = createBattleInput(this, this.keys);
     this.recordDebugFrame();
@@ -66,9 +72,7 @@ export class BattleScene extends Phaser.Scene {
           readonly pointerY: number;
         };
         if (this.model.gameOver && Phaser.Input.Keyboard.JustDown(this.keys.enter)) {
-          this.model.reset();
-          this.debugHistory.clear();
-          this.recordDebugFrame();
+          this.goToResult();
         } else {
           this.stepModelWithDebugInput(this.lastInput);
         }
@@ -83,6 +87,10 @@ export class BattleScene extends Phaser.Scene {
       pointerY: this.input.activePointer.y,
     };
     this.view.render(this.model, this.lastInput, this.accumulator / FIXED_STEP_MS);
+    if (this.model.gameOver && !this.resultScheduled) {
+      this.time.delayedCall(900, () => this.goToResult());
+      this.resultScheduled = true;
+    }
   }
 
   getDebugFrame(): number {
@@ -179,6 +187,21 @@ export class BattleScene extends Phaser.Scene {
         this.debugHistory.delete(key);
       }
     }
+  }
+
+  private goToResult(): void {
+    if (!this.model.gameOver) {
+      return;
+    }
+    this.scene.start("result", {
+      winnerName: this.model.target.lives <= 0 ? (this.sceneData.playerName ?? "Player") : (this.sceneData.opponentName ?? "CPU"),
+      durationSeconds: this.model.stats.elapsedTicks / 60,
+      shots: this.model.stats.shots,
+      hits: this.model.stats.hits,
+      bombUses: this.model.stats.bombUses,
+      deaths: this.model.player.deaths + this.model.target.deaths,
+      returnScene: this.sceneData.returnScene ?? "battle-start",
+    });
   }
 }
 

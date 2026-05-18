@@ -18,7 +18,8 @@
 export type RoleClass = "assault" | "suppress" | "scout" | "sniper";
 export type SpeedRank = "low" | "medium" | "high";
 export type AbilityCardKind = "active" | "passive";
-export type AmmoPolicy = "reset_to_zero_commit_full" | "keep_partial" | "keep_until_full";
+export type ReloadStartPolicy = "reset_to_zero" | "keep_current";
+export type ReloadCommitPolicy = "commit_on_finish" | "commit_per_ammo";
 ```
 
 ## 角色数据
@@ -32,6 +33,8 @@ export interface CharacterDefinition {
   moveSpeed: SpeedRank;
   ammoCapacity: number;
   reloadTicksPerAmmo: number;
+  reloadStartPolicy: ReloadStartPolicy;
+  reloadCommitPolicy: ReloadCommitPolicy;
   fireRate: SpeedRank;
   bulletSpeed: SpeedRank;
   description: string;
@@ -46,17 +49,23 @@ export interface CharacterDefinition {
 
 首批角色：
 
-| id | 名字 | cost | 职业 | 移速 | 弹容 | 单发装填 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `reimu` | 博丽灵梦 | 4 | 压制 | 中 | 5 | 48 tick |
-| `marisa` | 魔理沙 | 5 | 狙击 | 高 | 2 | 90 tick |
-| `sakuya` | 咲夜 | 4 | 突击 | 中 | 3 | 60 tick |
+| id | 名字 | cost | 职业 | 移速 | 弹容 | 单发装填 | 起始 | 生效 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `reimu` | 博丽灵梦 | 4 | 压制 | 中 | 5 | 48 tick | 当前数目 | 一发一发 |
+| `marisa` | 魔理沙 | 5 | 狙击 | 高 | 2 | 90 tick | 归零 | 全部完成后 |
+| `sakuya` | 咲夜 | 4 | 突击 | 中 | 3 | 60 tick | 当前数目 | 全部完成后 |
 
 装填策略：
 
-- `reimu`：`keep_partial`。
-- `marisa`：`reset_to_zero_commit_full`。
-- `sakuya`：`keep_until_full`。
+- 起始装填数目：
+  - `reset_to_zero`：舍弃全部子弹，从 0 开始装填。
+  - `keep_current`：从当前数目子弹开始装填。
+- 装填行为：
+  - `commit_on_finish`：全部装填好后才全部生效。
+  - `commit_per_ammo`：装填一发是一发。
+- `reimu`：`keep_current` + `commit_per_ammo`。
+- `marisa`：`reset_to_zero` + `commit_on_finish`。
+- `sakuya`：`keep_current` + `commit_on_finish`。
 
 ## 能力卡数据
 

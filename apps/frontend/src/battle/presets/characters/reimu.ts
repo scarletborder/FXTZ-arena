@@ -14,7 +14,6 @@ export class ReimuBattleCharacter extends BattleCharacter {
   readonly fireRate = this.definition.fireRate;
   readonly ammoCapacity = this.definition.ammoCapacity;
   readonly reloadTicksPerAmmo = this.definition.reloadTicksPerAmmo;
-  override readonly reloadPolicy = "keep_partial";
 
   shoot(ctx: CharacterActionContext, fighter: FighterState, aimX: number, aimY: number): void {
     const angle = this.aimAngle(fighter, aimX, aimY);

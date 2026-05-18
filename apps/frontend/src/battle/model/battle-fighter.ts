@@ -49,7 +49,9 @@ export class BattleFighter {
     if (this.state.activeCharacter.id !== activeCharacter.id && this.state.reloadRemaining > 0) {
       this.interruptReload();
     }
-    this.applyActiveCharacter(activeCharacter);
+    if (this.state.activeCharacter.id !== activeCharacter.id) {
+      this.applyActiveCharacter(activeCharacter);
+    }
   }
 
   moveBy(input: Pick<BattleInputState, "moveX" | "moveY">): void {
@@ -65,30 +67,33 @@ export class BattleFighter {
     if (this.state.actionLockedUntil > 0 || this.state.nonFireActionLockedUntil > 0) {
       return;
     }
+    let startedReload = false;
     if (reloadPressed && this.state.reloadRemaining === 0 && this.state.ammo < this.state.ammoCapacity) {
-      const reloadTotal = this.reloadTicksForMissingAmmo();
-      this.state.reloadTotal = reloadTotal;
-      this.state.reloadRemaining = reloadTotal;
+      if (this.activeCharacter.reloadStartPolicy === "keep_current") {
+        setCharacterAmmo(this.state, this.state.activeCharacter, this.state.ammo);
+      }
+      this.state.reloadStartedAmmo = this.reloadStartAmmo();
+      this.state.reloadTotal = this.reloadTicksForMissingAmmo();
+      this.state.reloadRemaining = this.state.reloadTotal;
       this.state.reloadCharacterId = this.state.activeCharacter.id;
-      this.state.reloadStartedAmmo = this.state.ammo;
-      if (this.activeCharacter.reloadPolicy === "reset_to_zero_commit_full") {
+      if (this.activeCharacter.reloadStartPolicy === "reset_to_zero") {
         this.state.ammo = 0;
         setCharacterAmmo(this.state, this.state.activeCharacter, 0);
       }
       this.state.ammoDisplay = this.state.ammo;
+      startedReload = true;
     }
 
-    if (this.state.reloadRemaining <= 0) {
+    if (startedReload || this.state.reloadRemaining <= 0) {
       this.state.ammoDisplay = this.state.ammo;
       return;
     }
 
     this.state.reloadRemaining -= 1;
     const reloadRatio = 1 - this.state.reloadRemaining / Math.max(1, this.state.reloadTotal);
-    const reloadedDisplayAmmo = this.reloadDisplayAmmo(reloadRatio);
-    const reloadedAmmo = Math.min(this.state.ammoCapacity, Math.floor(reloadedDisplayAmmo));
-    this.state.ammoDisplay = Math.min(this.state.ammoCapacity, reloadedDisplayAmmo);
-    if (this.activeCharacter.reloadPolicy === "keep_partial") {
+    this.state.ammoDisplay = Math.min(this.state.ammoCapacity, this.reloadDisplayAmmo(reloadRatio));
+    if (this.activeCharacter.reloadCommitPolicy === "commit_per_ammo") {
+      const reloadedAmmo = this.reloadCommittedAmmo();
       this.state.ammo = reloadedAmmo;
       setCharacterAmmo(this.state, this.state.activeCharacter, reloadedAmmo);
     }
@@ -101,7 +106,7 @@ export class BattleFighter {
   }
 
   fire(ctx: CharacterActionContext, aimX: number, aimY: number): void {
-    if (this.state.actionLockedUntil > 0 || this.state.ammo <= 0 || this.state.fireCooldownUntil > 0 || this.state.deadUntil > 0) {
+    if (this.state.actionLockedUntil > 0 || this.state.reloadRemaining > 0 || this.state.ammo <= 0 || this.state.fireCooldownUntil > 0 || this.state.deadUntil > 0) {
       return;
     }
 
@@ -172,31 +177,34 @@ export class BattleFighter {
   }
 
   private interruptReload(): void {
-    if (this.activeCharacter.reloadPolicy === "keep_partial") {
-      const reloadedAmmo = Math.min(this.state.ammoCapacity, Math.floor(this.state.ammoDisplay));
-      this.state.ammo = reloadedAmmo;
-      setCharacterAmmo(this.state, this.state.activeCharacter, reloadedAmmo);
-    } else if (this.activeCharacter.reloadPolicy === "keep_until_full") {
-      this.state.ammo = this.state.reloadStartedAmmo;
-      setCharacterAmmo(this.state, this.state.activeCharacter, this.state.reloadStartedAmmo);
-    }
+    const committedAmmo = this.reloadCommittedAmmo();
+    this.state.ammo = committedAmmo;
+    setCharacterAmmo(this.state, this.state.activeCharacter, committedAmmo);
     this.state.reloadRemaining = 0;
     this.state.reloadCharacterId = undefined;
     this.state.ammoDisplay = this.state.ammo;
   }
 
   private reloadDisplayAmmo(reloadRatio: number): number {
-    if (this.activeCharacter.reloadPolicy === "reset_to_zero_commit_full") {
-      return this.state.ammoCapacity * reloadRatio;
-    }
     return this.state.reloadStartedAmmo + (this.state.ammoCapacity - this.state.reloadStartedAmmo) * reloadRatio;
   }
 
   private reloadTicksForMissingAmmo(): number {
-    const missingAmmo = this.activeCharacter.reloadPolicy === "reset_to_zero_commit_full"
-      ? this.state.ammoCapacity
-      : this.state.ammoCapacity - this.state.ammo;
+    const missingAmmo = this.state.ammoCapacity - this.state.reloadStartedAmmo;
     return Math.max(1, missingAmmo) * this.activeCharacter.reloadTicksPerAmmo;
+  }
+
+  private reloadStartAmmo(): number {
+    return this.activeCharacter.reloadStartPolicy === "reset_to_zero" ? 0 : this.state.ammo;
+  }
+
+  private reloadCommittedAmmo(): number {
+    if (this.activeCharacter.reloadCommitPolicy === "commit_per_ammo") {
+      const elapsedTicks = this.state.reloadTotal - this.state.reloadRemaining;
+      const committedAmmo = this.state.reloadStartedAmmo + Math.floor(elapsedTicks / this.activeCharacter.reloadTicksPerAmmo);
+      return Math.min(this.state.ammoCapacity, committedAmmo);
+    }
+    return this.state.reloadStartedAmmo;
   }
 }
 

@@ -18,8 +18,6 @@ export interface CharacterActionContext {
   readonly effectSystem: EffectSystem;
 }
 
-export type ReloadPolicy = "reset_to_zero_commit_full" | "keep_partial" | "keep_until_full";
-
 export abstract class BattleCharacter {
   protected constructor(readonly definition: CharacterDefinition) {}
 
@@ -27,7 +25,13 @@ export abstract class BattleCharacter {
   abstract readonly fireRate: CharacterDefinition["fireRate"];
   abstract readonly ammoCapacity: number;
   abstract readonly reloadTicksPerAmmo: number;
-  readonly reloadPolicy: ReloadPolicy = "reset_to_zero_commit_full";
+  get reloadStartPolicy(): CharacterDefinition["reloadStartPolicy"] {
+    return this.definition.reloadStartPolicy;
+  }
+
+  get reloadCommitPolicy(): CharacterDefinition["reloadCommitPolicy"] {
+    return this.definition.reloadCommitPolicy;
+  }
 
   abstract shoot(ctx: CharacterActionContext, fighter: FighterState, aimX: number, aimY: number): void;
   abstract useBomb(ctx: CharacterActionContext, fighter: FighterState): void;

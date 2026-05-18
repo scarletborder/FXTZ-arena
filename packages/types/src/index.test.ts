@@ -27,6 +27,8 @@ describe("@repo/types static content", () => {
         cost: 4,
         ammoCapacity: 5,
         reloadTicksPerAmmo: 48,
+        reloadStartPolicy: "keep_current",
+        reloadCommitPolicy: "commit_per_ammo",
       },
       {
         id: "marisa",
@@ -34,6 +36,8 @@ describe("@repo/types static content", () => {
         cost: 5,
         ammoCapacity: 2,
         reloadTicksPerAmmo: 90,
+        reloadStartPolicy: "reset_to_zero",
+        reloadCommitPolicy: "commit_on_finish",
       },
       {
         id: "sakuya",
@@ -41,6 +45,8 @@ describe("@repo/types static content", () => {
         cost: 4,
         ammoCapacity: 3,
         reloadTicksPerAmmo: 60,
+        reloadStartPolicy: "keep_current",
+        reloadCommitPolicy: "commit_on_finish",
       },
     ]);
   });

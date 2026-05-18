@@ -19,7 +19,7 @@ export function createBattleInput(scene: Phaser.Scene, keys: BattleKeyMap): Batt
     shootPressed: pointer.leftButtonDown() && !pointer.rightButtonDown(),
     bombPressed: pointer.rightButtonDown(),
     activeCardPressed: Phaser.Input.Keyboard.JustDown(keys.e),
-    reloadPressed: Phaser.Input.Keyboard.JustDown(keys.r),
+    reloadPressed: keys.r.isDown,
     alternateHeld: keys.shift.isDown,
     infoHeld: keys.tab.isDown,
     pointerX: pointer.x,

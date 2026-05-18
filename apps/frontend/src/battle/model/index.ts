@@ -1,5 +1,6 @@
 import { getAbilityCard, getCharacter } from "../content";
 import { PLAYER_SPAWN, RESPAWN_DELAY_TICKS, TARGET_SPAWN } from "../constants";
+import type { BattleLoadouts } from "../loadout";
 import type { BattleInputState, EffectState, FighterState, ProjectileState, TrainingStats } from "../types";
 import { BattleFighter } from "./battle-fighter";
 import { EffectSystem } from "./effects";
@@ -20,28 +21,32 @@ export class BattleModel {
   readonly stats: TrainingStats = { shots: 0, hits: 0, bombUses: 0, damage: 0, elapsedTicks: 0 };
   frame = 0;
   gameOver = false;
+  private readonly loadouts: BattleLoadouts;
+  private readonly endOnTargetDefeat: boolean;
   private readonly projectileSystem = new ProjectileSystem();
   private readonly effectSystem = new EffectSystem();
-  private readonly playerFighter = new BattleFighter(
-    "player",
-    getCharacter("reimu"),
-    getCharacter("marisa"),
-    PLAYER_SPAWN.x,
-    PLAYER_SPAWN.y,
-    getAbilityCard("spirit_strike_card"),
-  );
-  private readonly targetFighter = new BattleFighter(
-    "target",
-    getCharacter("sakuya"),
-    getCharacter("reimu"),
-    TARGET_SPAWN.x,
-    TARGET_SPAWN.y,
-    undefined,
-  );
+  private readonly playerFighter: BattleFighter;
+  private readonly targetFighter: BattleFighter;
 
-  constructor() {
-    this.target.activeCard = getAbilityCard("spirit_strike_card");
-    this.target.activeCardUses = 3;
+  constructor(loadouts: BattleLoadouts = DEFAULT_BATTLE_LOADOUTS, params: { readonly endOnTargetDefeat?: boolean } = {}) {
+    this.loadouts = loadouts;
+    this.endOnTargetDefeat = params.endOnTargetDefeat ?? false;
+    this.playerFighter = new BattleFighter(
+      "player",
+      getCharacter(loadouts.player.primaryCharacterId),
+      getCharacter(loadouts.player.alternateCharacterId),
+      PLAYER_SPAWN.x,
+      PLAYER_SPAWN.y,
+      loadouts.player.activeCardId ? getAbilityCard(loadouts.player.activeCardId) : undefined,
+    );
+    this.targetFighter = new BattleFighter(
+      "target",
+      getCharacter(loadouts.target.primaryCharacterId),
+      getCharacter(loadouts.target.alternateCharacterId),
+      TARGET_SPAWN.x,
+      TARGET_SPAWN.y,
+      loadouts.target.activeCardId ? getAbilityCard(loadouts.target.activeCardId) : undefined,
+    );
   }
 
   get player(): FighterState {
@@ -64,10 +69,20 @@ export class BattleModel {
     this.stats.elapsedTicks = 0;
     this.frame = 0;
     this.gameOver = false;
-    this.playerFighter.reset(getCharacter("reimu"), getCharacter("marisa"), PLAYER_SPAWN.x, PLAYER_SPAWN.y, getAbilityCard("spirit_strike_card"));
-    this.targetFighter.reset(getCharacter("sakuya"), getCharacter("reimu"), TARGET_SPAWN.x, TARGET_SPAWN.y, undefined);
-    this.target.activeCard = getAbilityCard("spirit_strike_card");
-    this.target.activeCardUses = 3;
+    this.playerFighter.reset(
+      getCharacter(this.loadouts.player.primaryCharacterId),
+      getCharacter(this.loadouts.player.alternateCharacterId),
+      PLAYER_SPAWN.x,
+      PLAYER_SPAWN.y,
+      this.loadouts.player.activeCardId ? getAbilityCard(this.loadouts.player.activeCardId) : undefined,
+    );
+    this.targetFighter.reset(
+      getCharacter(this.loadouts.target.primaryCharacterId),
+      getCharacter(this.loadouts.target.alternateCharacterId),
+      TARGET_SPAWN.x,
+      TARGET_SPAWN.y,
+      this.loadouts.target.activeCardId ? getAbilityCard(this.loadouts.target.activeCardId) : undefined,
+    );
   }
 
   step(input: BattleInputState): void {
@@ -189,15 +204,23 @@ export class BattleModel {
       return true;
     }
     if (victim.key === "target" && victim.lives <= 0) {
+      if (this.endOnTargetDefeat) {
+        this.gameOver = true;
+        return true;
+      }
       victim.deadUntil = RESPAWN_DELAY_TICKS;
     }
     return true;
   }
 
   private respawnTarget(): void {
-    this.targetFighter.reset(getCharacter("sakuya"), getCharacter("reimu"), TARGET_SPAWN.x, TARGET_SPAWN.y, undefined);
-    this.target.activeCard = getAbilityCard("spirit_strike_card");
-    this.target.activeCardUses = 3;
+    this.targetFighter.reset(
+      getCharacter(this.loadouts.target.primaryCharacterId),
+      getCharacter(this.loadouts.target.alternateCharacterId),
+      TARGET_SPAWN.x,
+      TARGET_SPAWN.y,
+      this.loadouts.target.activeCardId ? getAbilityCard(this.loadouts.target.activeCardId) : undefined,
+    );
   }
 
   private cancelTimeStop(caster: FighterState): void {
@@ -253,6 +276,19 @@ export class BattleModel {
     );
   }
 }
+
+const DEFAULT_BATTLE_LOADOUTS: BattleLoadouts = {
+  player: {
+    primaryCharacterId: "reimu",
+    alternateCharacterId: "marisa",
+    activeCardId: "spirit_strike_card",
+  },
+  target: {
+    primaryCharacterId: "sakuya",
+    alternateCharacterId: "reimu",
+    activeCardId: "spirit_strike_card",
+  },
+};
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { BattleInputState } from "../types";
+import type { BattleLoadouts } from "../loadout";
 import { BattleModel } from ".";
 
 describe("BattleModel rollback snapshots", () => {
@@ -35,42 +36,120 @@ describe("BattleModel rollback snapshots", () => {
 });
 
 describe("BattleModel reload timing", () => {
-  it("scales non-reset reloads by missing ammo", () => {
-    const sakuyaModel = new BattleModel();
-    sakuyaModel.step(input({ shootPressed: true }));
-    sakuyaModel.step(input({ reloadPressed: true }));
-    expect(sakuyaModel.player.reloadTotal).toBe(60);
-
-    const reimuModel = new BattleModel();
-    reimuModel.reset();
-    reimuModel.step(input({ shootPressed: true }));
-    reimuModel.step(input({ reloadPressed: true }));
-    expect(reimuModel.player.reloadTotal).toBe(48);
-  });
-
-  it("keeps Sakuya's current ammo when reloading from one ammo", () => {
-    const model = new BattleModel();
+  it("reimu reloads from current ammo one round at a time", () => {
+    const model = createBattleModel("reimu", "marisa");
     model.step(input({ shootPressed: true }));
     for (let index = 0; index < 10; index += 1) {
       model.step(input());
     }
     model.step(input({ shootPressed: true }));
+    expect(model.player.ammo).toBe(3);
+
+    model.step(input({ reloadPressed: true }));
+
+    expect(model.player.reloadStartedAmmo).toBe(3);
+    expect(model.player.reloadTotal).toBe(96);
+    expect(model.player.reloadRemaining).toBe(96);
+    expect(model.player.ammo).toBe(3);
+
+    for (let index = 0; index < 500 && model.player.reloadRemaining > 0; index += 1) {
+      model.step(input());
+    }
+
+    expect(model.player.ammo).toBe(5);
+  });
+
+  it("marisa discards current ammo and only restores at the end", () => {
+    const model = createBattleModel("marisa", "reimu");
+    model.step(input({ shootPressed: true }));
     expect(model.player.ammo).toBe(1);
 
     model.step(input({ reloadPressed: true }));
 
-    expect(model.player.ammo).toBe(1);
-    expect(model.player.reloadStartedAmmo).toBe(1);
-    expect(model.player.reloadTotal).toBe(120);
+    expect(model.player.reloadStartedAmmo).toBe(0);
+    expect(model.player.reloadTotal).toBe(180);
+    expect(model.player.reloadRemaining).toBe(180);
+    expect(model.player.ammo).toBe(0);
+
+    for (let index = 0; index < 500 && model.player.reloadRemaining > 0; index += 1) {
+      model.step(input());
+    }
+
+    expect(model.player.ammo).toBe(2);
   });
 
-  it("uses full reload time for reset-to-zero characters", () => {
-    const model = new BattleModel();
-    model.reset();
-    model.step(input({ alternateHeld: true, shootPressed: true }));
-    model.step(input({ alternateHeld: true, reloadPressed: true }));
+  it("sakuya keeps current ammo and only restores at the end", () => {
+    const model = createBattleModel("sakuya", "reimu");
+    model.step(input({ shootPressed: true }));
+    expect(model.player.ammo).toBe(2);
 
+    model.step(input({ reloadPressed: true }));
+
+    expect(model.player.reloadStartedAmmo).toBe(2);
+    expect(model.player.reloadTotal).toBe(60);
+    expect(model.player.reloadRemaining).toBe(60);
+    expect(model.player.ammo).toBe(2);
+
+    for (let index = 0; index < 500 && model.player.reloadRemaining > 0; index += 1) {
+      model.step(input());
+    }
+
+    expect(model.player.ammo).toBe(3);
+  });
+
+  it("sakuya starts reload from 1/3 without consuming an immediate tick", () => {
+    const model = createBattleModel("sakuya", "reimu");
+    model.step(input({ shootPressed: true }));
+    for (let index = 0; index < 20; index += 1) {
+      model.step(input());
+    }
+    model.step(input({ shootPressed: true }));
+
+    expect(model.player.ammo).toBe(1);
+
+    model.step(input({ reloadPressed: true }));
+
+    expect(model.player.reloadStartedAmmo).toBe(1);
+    expect(model.player.reloadTotal).toBe(120);
+    expect(model.player.reloadRemaining).toBe(120);
+    expect(model.player.ammo).toBe(1);
+  });
+
+  it("sakuya starts reload from 0/3 without consuming an immediate tick", () => {
+    const model = createBattleModel("sakuya", "reimu");
+    model.step(input({ shootPressed: true }));
+    for (let index = 0; index < 20; index += 1) {
+      model.step(input());
+    }
+    model.step(input({ shootPressed: true }));
+    for (let index = 0; index < 20; index += 1) {
+      model.step(input());
+    }
+    model.step(input({ shootPressed: true }));
+
+    expect(model.player.ammo).toBe(0);
+
+    model.step(input({ reloadPressed: true }));
+
+    expect(model.player.reloadStartedAmmo).toBe(0);
     expect(model.player.reloadTotal).toBe(180);
+    expect(model.player.reloadRemaining).toBe(180);
+    expect(model.player.ammo).toBe(0);
+  });
+
+  it("blocks shooting while a reload is active", () => {
+    const model = createBattleModel("reimu", "marisa");
+    model.step(input({ shootPressed: true }));
+    for (let index = 0; index < 10; index += 1) {
+      model.step(input());
+    }
+    model.step(input({ shootPressed: true }));
+
+    const shotsBeforeReload = model.player.shotsFired;
+    model.step(input({ reloadPressed: true }));
+    model.step(input({ shootPressed: true }));
+
+    expect(model.player.shotsFired).toBe(shotsBeforeReload);
   });
 });
 
@@ -103,4 +182,20 @@ function input(overrides: Partial<BattleInputState> = {}): BattleInputState {
     infoHeld: false,
     ...overrides,
   };
+}
+
+function createBattleModel(
+  primaryCharacterId: BattleLoadouts["player"]["primaryCharacterId"],
+  alternateCharacterId: BattleLoadouts["player"]["alternateCharacterId"],
+): BattleModel {
+  return new BattleModel({
+    player: {
+      primaryCharacterId,
+      alternateCharacterId,
+    },
+    target: {
+      primaryCharacterId: "reimu",
+      alternateCharacterId: "marisa",
+    },
+  });
 }

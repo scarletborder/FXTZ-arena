@@ -92,18 +92,110 @@ describe("@repo/raid-logic", () => {
     expect(adapter.hash()).toBe(hash);
   });
 
-  it("does not reset Sakuya ammo to zero when reloading", () => {
-    const battle = createRaidBattle(createDefaultBattleConfig("sakuya-reload", PLAYERS));
+  it("reimu reloads from current ammo one round at a time", () => {
+    const battle = createReloadBattle("reimu", "marisa");
+    battle.tick([createInput(0, "player-1", { shootPressed: true })]);
+    for (let frame = 1; frame <= 10; frame += 1) {
+      battle.tick([createInput(frame, "player-1")]);
+    }
+    battle.tick([createInput(11, "player-1", { shootPressed: true })]);
 
-    battle.tick([createInput(0, "player-2", { shootPressed: true })]);
-    battle.tick([createInput(1, "player-2", { shootPressed: true })]);
-    expect(battle.state.fighters.get("player-2")?.ammo).toBe(1);
+    const beforeReload = battle.state.fighters.get("player-1");
+    expect(beforeReload?.ammo).toBe(3);
 
-    battle.tick([createInput(2, "player-2", { reloadPressed: true })]);
+    battle.tick([createInput(12, "player-1", { reloadPressed: true })]);
 
-    const sakuya = battle.state.fighters.get("player-2");
-    expect(sakuya?.ammo).toBe(1);
+    const reimu = battle.state.fighters.get("player-1");
+    expect(reimu?.reloadStartedAmmo).toBe(3);
+    expect(reimu?.reloadTotalTicks).toBe(96);
+    expect(reimu?.reloadRemainingTicks).toBe(96);
+    expect(reimu?.ammo).toBe(3);
+
+    for (let frame = 13; (battle.state.fighters.get("player-1")?.reloadRemainingTicks ?? 0) > 0; frame += 1) {
+      battle.tick([createInput(frame, "player-1")]);
+    }
+
+    expect(battle.state.fighters.get("player-1")?.ammo).toBe(5);
+  });
+
+  it("marisa discards current ammo and only restores at the end", () => {
+    const battle = createReloadBattle("marisa", "reimu");
+    battle.tick([createInput(0, "player-1", { shootPressed: true })]);
+
+    battle.tick([createInput(1, "player-1", { reloadPressed: true })]);
+
+    const marisa = battle.state.fighters.get("player-1");
+    expect(marisa?.reloadStartedAmmo).toBe(0);
+    expect(marisa?.reloadTotalTicks).toBe(180);
+    expect(marisa?.reloadRemainingTicks).toBe(180);
+    expect(marisa?.ammo).toBe(0);
+
+    for (let frame = 2; (battle.state.fighters.get("player-1")?.reloadRemainingTicks ?? 0) > 0; frame += 1) {
+      battle.tick([createInput(frame, "player-1")]);
+    }
+
+    expect(battle.state.fighters.get("player-1")?.ammo).toBe(2);
+  });
+
+  it("sakuya keeps current ammo and only restores at the end", () => {
+    const battle = createReloadBattle("sakuya", "reimu");
+    battle.tick([createInput(0, "player-1", { shootPressed: true })]);
+
+    battle.tick([createInput(1, "player-1", { reloadPressed: true })]);
+
+    const sakuya = battle.state.fighters.get("player-1");
+    expect(sakuya?.reloadStartedAmmo).toBe(2);
+    expect(sakuya?.reloadTotalTicks).toBe(60);
+    expect(sakuya?.reloadRemainingTicks).toBe(60);
+    expect(sakuya?.ammo).toBe(2);
+
+    for (let frame = 2; (battle.state.fighters.get("player-1")?.reloadRemainingTicks ?? 0) > 0; frame += 1) {
+      battle.tick([createInput(frame, "player-1")]);
+    }
+
+    expect(battle.state.fighters.get("player-1")?.ammo).toBe(3);
+  });
+
+  it("sakuya starts reload from 1/3 without consuming an immediate tick", () => {
+    const battle = createReloadBattle("sakuya", "reimu");
+    battle.tick([createInput(0, "player-1", { shootPressed: true })]);
+    for (let frame = 1; frame <= 20; frame += 1) {
+      battle.tick([createInput(frame, "player-1")]);
+    }
+    battle.tick([createInput(21, "player-1", { shootPressed: true })]);
+
+    expect(battle.state.fighters.get("player-1")?.ammo).toBe(1);
+
+    battle.tick([createInput(22, "player-1", { reloadPressed: true })]);
+
+    const sakuya = battle.state.fighters.get("player-1");
+    expect(sakuya?.reloadStartedAmmo).toBe(1);
     expect(sakuya?.reloadTotalTicks).toBe(120);
+    expect(sakuya?.reloadRemainingTicks).toBe(120);
+    expect(sakuya?.ammo).toBe(1);
+  });
+
+  it("sakuya starts reload from 0/3 without consuming an immediate tick", () => {
+    const battle = createReloadBattle("sakuya", "reimu");
+    battle.tick([createInput(0, "player-1", { shootPressed: true })]);
+    for (let frame = 1; frame <= 20; frame += 1) {
+      battle.tick([createInput(frame, "player-1")]);
+    }
+    battle.tick([createInput(21, "player-1", { shootPressed: true })]);
+    for (let frame = 22; frame <= 42; frame += 1) {
+      battle.tick([createInput(frame, "player-1")]);
+    }
+    battle.tick([createInput(43, "player-1", { shootPressed: true })]);
+
+    expect(battle.state.fighters.get("player-1")?.ammo).toBe(0);
+
+    battle.tick([createInput(44, "player-1", { reloadPressed: true })]);
+
+    const sakuya = battle.state.fighters.get("player-1");
+    expect(sakuya?.reloadStartedAmmo).toBe(0);
+    expect(sakuya?.reloadTotalTicks).toBe(180);
+    expect(sakuya?.reloadRemainingTicks).toBe(180);
+    expect(sakuya?.ammo).toBe(0);
   });
 });
 
@@ -156,4 +248,34 @@ function createInput(
     infoHeld: false,
     ...overrides,
   };
+}
+
+function createReloadBattle(
+  primaryCharacterId: BattlePlayerConfig["loadout"]["primaryCharacterId"],
+  alternateCharacterId: BattlePlayerConfig["loadout"]["alternateCharacterId"],
+): ReturnType<typeof createRaidBattle> {
+  return createRaidBattle(
+    createDefaultBattleConfig("reload", [
+      {
+        playerId: "player-1",
+        username: "Player 1",
+        spawnPointId: "left",
+        loadout: {
+          primaryCharacterId,
+          alternateCharacterId,
+          abilityCardIds: [],
+        },
+      },
+      {
+        playerId: "player-2",
+        username: "Player 2",
+        spawnPointId: "right",
+        loadout: {
+          primaryCharacterId: "reimu",
+          alternateCharacterId: "marisa",
+          abilityCardIds: [],
+        },
+      },
+    ]),
+  );
 }

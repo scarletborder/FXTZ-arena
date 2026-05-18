@@ -40,6 +40,8 @@ export interface FighterSerialized extends SerializedEntity {
     readonly ammoCapacity: number;
     readonly reloadRemainingTicks: number;
     readonly reloadTotalTicks: number;
+    readonly reloadStartedAmmo: number;
+    readonly reloadCharacterId: CharacterId | "";
     readonly invulnerableRemainingTicks: number;
     readonly actionLockRemainingTicks: number;
     readonly infoHeld: number;
@@ -47,8 +49,7 @@ export interface FighterSerialized extends SerializedEntity {
 }
 
 export class FighterEntity
-  implements SerializableEntity<FighterSerialized>
-{
+  implements SerializableEntity<FighterSerialized> {
   playerId: PlayerId;
   x: number;
   y: number;
@@ -64,6 +65,9 @@ export class FighterEntity
   ammoCapacity: number;
   reloadRemainingTicks = 0;
   reloadTotalTicks = 0;
+  reloadStartedAmmo = 0;
+  reloadCharacterId: CharacterId | undefined = undefined;
+  private reloadJustStarted = false;
   invulnerableRemainingTicks = 0;
   actionLockRemainingTicks = 0;
   infoHeld = false;
@@ -91,6 +95,7 @@ export class FighterEntity
     this.ammoCapacity = definition.ammoCapacity;
     this.ammo = definition.ammoCapacity;
     this.reloadTotalTicks = definition.reloadTicksPerAmmo;
+    this.reloadStartedAmmo = definition.ammoCapacity;
   }
 
   static fromPlayerConfig(
@@ -113,9 +118,13 @@ export class FighterEntity
     this.facingAngleTicks = input.aimAngleTicks;
     this.infoHeld = input.infoHeld;
 
-    this.activeCharacterId = input.alternateHeld
+    const nextActiveCharacterId = input.alternateHeld
       ? this.alternateCharacterId
       : this.primaryCharacterId;
+    if (this.reloadRemainingTicks > 0 && this.reloadCharacterId !== undefined && this.reloadCharacterId !== nextActiveCharacterId) {
+      this.interruptReload();
+    }
+    this.activeCharacterId = nextActiveCharacterId;
 
     const definition = getCharacterDefinitionOrThrow(this.activeCharacterId);
     this.ammoCapacity = definition.ammoCapacity;
@@ -124,18 +133,23 @@ export class FighterEntity
       this.ammo = this.ammoCapacity;
     }
 
+    let startedReload = false;
     if (input.reloadPressed && this.reloadRemainingTicks === 0 && this.ammo < this.ammoCapacity) {
-      const missingAmmo = definition.ammoPolicy === "reset_to_zero_commit_full"
-        ? this.ammoCapacity
-        : this.ammoCapacity - this.ammo;
-      if (definition.ammoPolicy === "reset_to_zero_commit_full") {
+      this.reloadCharacterId = this.activeCharacterId;
+      this.reloadStartedAmmo = definition.reloadStartPolicy === "reset_to_zero"
+        ? 0
+        : this.ammo;
+      if (definition.reloadStartPolicy === "reset_to_zero") {
         this.ammo = 0;
       }
+      const missingAmmo = this.ammoCapacity - this.reloadStartedAmmo;
       this.reloadTotalTicks = definition.reloadTicksPerAmmo * Math.max(1, missingAmmo);
       this.reloadRemainingTicks = this.reloadTotalTicks;
+      startedReload = true;
+      this.reloadJustStarted = true;
     }
 
-    if (input.shootPressed && this.reloadRemainingTicks === 0 && this.ammo > 0) {
+    if (!startedReload && input.shootPressed && this.reloadRemainingTicks === 0 && this.ammo > 0) {
       this.ammo -= 1;
     }
 
@@ -146,10 +160,19 @@ export class FighterEntity
   }
 
   tickTimers(): void {
-    if (this.reloadRemainingTicks > 0) {
+    if (this.reloadJustStarted) {
+      this.reloadJustStarted = false;
+    } else if (this.reloadRemainingTicks > 0) {
       this.reloadRemainingTicks -= 1;
+      const definition = getCharacterDefinitionOrThrow(this.reloadCharacterId ?? this.activeCharacterId);
+      if (definition.reloadCommitPolicy === "commit_per_ammo") {
+        const elapsedTicks = this.reloadTotalTicks - this.reloadRemainingTicks;
+        const committedAmmo = this.reloadStartedAmmo + Math.floor(elapsedTicks / definition.reloadTicksPerAmmo);
+        this.ammo = Math.min(this.ammoCapacity, committedAmmo);
+      }
       if (this.reloadRemainingTicks === 0) {
         this.ammo = this.ammoCapacity;
+        this.reloadCharacterId = undefined;
       }
     }
 
@@ -181,6 +204,8 @@ export class FighterEntity
         ammoCapacity: this.ammoCapacity,
         reloadRemainingTicks: this.reloadRemainingTicks,
         reloadTotalTicks: this.reloadTotalTicks,
+        reloadStartedAmmo: this.reloadStartedAmmo,
+        reloadCharacterId: this.reloadCharacterId ?? "",
         invulnerableRemainingTicks: this.invulnerableRemainingTicks,
         actionLockRemainingTicks: this.actionLockRemainingTicks,
         infoHeld: this.infoHeld ? 1 : 0,
@@ -205,6 +230,8 @@ export class FighterEntity
     this.ammoCapacity = data.ammoCapacity;
     this.reloadRemainingTicks = data.reloadRemainingTicks;
     this.reloadTotalTicks = data.reloadTotalTicks;
+    this.reloadStartedAmmo = data.reloadStartedAmmo;
+    this.reloadCharacterId = data.reloadCharacterId === "" ? undefined : (data.reloadCharacterId as CharacterId);
     this.invulnerableRemainingTicks = data.invulnerableRemainingTicks;
     this.actionLockRemainingTicks = data.actionLockRemainingTicks;
     this.infoHeld = data.infoHeld === 1;
@@ -227,9 +254,27 @@ export class FighterEntity
     hasher.writeNumber(data.ammoCapacity);
     hasher.writeNumber(data.reloadRemainingTicks);
     hasher.writeNumber(data.reloadTotalTicks);
+    hasher.writeNumber(data.reloadStartedAmmo);
+    hasher.writeString(data.reloadCharacterId ?? "");
     hasher.writeNumber(data.invulnerableRemainingTicks);
     hasher.writeNumber(data.actionLockRemainingTicks);
     hasher.writeNumber(data.infoHeld);
+  }
+
+  private interruptReload(): void {
+    const definition = getCharacterDefinitionOrThrow(this.reloadCharacterId ?? this.activeCharacterId);
+    if (definition.reloadCommitPolicy === "commit_per_ammo") {
+      const elapsedTicks = this.reloadTotalTicks - this.reloadRemainingTicks;
+      const committedAmmo = this.reloadStartedAmmo + Math.floor(elapsedTicks / definition.reloadTicksPerAmmo);
+      this.ammo = Math.min(this.ammoCapacity, committedAmmo);
+    } else {
+      this.ammo = this.reloadStartedAmmo;
+    }
+
+    this.reloadRemainingTicks = 0;
+    this.reloadTotalTicks = 0;
+    this.reloadStartedAmmo = this.ammo;
+    this.reloadCharacterId = undefined;
   }
 }
 
@@ -250,8 +295,7 @@ export interface ProjectileSerialized extends SerializedEntity {
 }
 
 export class ProjectileEntity
-  implements SerializableEntity<ProjectileSerialized>
-{
+  implements SerializableEntity<ProjectileSerialized> {
   id: string;
   ownerId: PlayerId;
   x: number;
@@ -331,8 +375,7 @@ export interface AbilityCardSerialized extends SerializedEntity {
 }
 
 export class AbilityCardEntity
-  implements SerializableEntity<AbilityCardSerialized>
-{
+  implements SerializableEntity<AbilityCardSerialized> {
   id: string;
   ownerId: PlayerId;
   abilityCardId: AbilityCardId;

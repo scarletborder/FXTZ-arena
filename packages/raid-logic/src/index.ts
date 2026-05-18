@@ -87,6 +87,8 @@ export function advanceFixedTick(
         ammoCapacity: 5,
         reloadRemainingTicks: 0,
         reloadTotalTicks: 240,
+        reloadStartedAmmo: 5,
+        reloadCharacterId: "",
         invulnerableRemainingTicks: 0,
         actionLockRemainingTicks: 0,
         infoHeld: 0,

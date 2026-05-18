@@ -1,5 +1,6 @@
 import type {
-  AmmoPolicy,
+  ReloadCommitPolicy,
+  ReloadStartPolicy,
   RoleClass,
   SpeedRank,
 } from "../taxonomy";
@@ -18,9 +19,10 @@ export interface CharacterDefinition {
   readonly moveSpeed: SpeedRank;
   readonly ammoCapacity: number;
   readonly reloadTicksPerAmmo: number;
+  readonly reloadStartPolicy: ReloadStartPolicy;
+  readonly reloadCommitPolicy: ReloadCommitPolicy;
   readonly fireRate: SpeedRank;
   readonly bulletSpeed: SpeedRank;
-  readonly ammoPolicy: AmmoPolicy;
   readonly description: string;
   readonly normalAttackId: string;
   readonly bombId: string;
