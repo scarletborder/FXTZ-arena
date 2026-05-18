@@ -118,6 +118,52 @@ importers:
 
   packages/config-typescript: {}
 
+  packages/constants:
+    devDependencies:
+      '@repo/eslint-config':
+        specifier: workspace:*
+        version: link:../config-eslint
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../config-typescript
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.15.3
+      bunchee:
+        specifier: ^6.4.0
+        version: 6.4.0(typescript@5.9.3)
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.0
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
+  packages/content:
+    dependencies:
+      '@repo/constants':
+        specifier: workspace:*
+        version: link:../constants
+    devDependencies:
+      '@repo/eslint-config':
+        specifier: workspace:*
+        version: link:../config-eslint
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../config-typescript
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.15.3
+      bunchee:
+        specifier: ^6.4.0
+        version: 6.4.0(typescript@5.9.3)
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.0
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
   packages/raid-logic:
     dependencies:
       '@repo/types':
@@ -147,6 +193,13 @@ importers:
         version: 3.2.4(@types/node@22.15.3)
 
   packages/types:
+    dependencies:
+      '@repo/constants':
+        specifier: workspace:*
+        version: link:../constants
+      '@repo/content':
+        specifier: workspace:*
+        version: link:../content
     devDependencies:
       '@repo/eslint-config':
         specifier: workspace:*
@@ -1858,7 +1911,7 @@ packages:
       fast-glob: 3.3.3
       magic-string: 0.30.17
       ora: 8.2.0
-      picomatch: 4.0.2
+      picomatch: 4.0.4
       pretty-bytes: 5.6.0
       rollup: 4.38.0
       rollup-plugin-dts: 6.2.1(rollup@4.38.0)(typescript@5.9.3)

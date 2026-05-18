@@ -1,5 +1,5 @@
 {
-  "name": "@repo/types",
+  "name": "@repo/constants",
   "version": "0.0.0",
   "type": "module",
   "private": true,
@@ -21,16 +21,11 @@
       }
     }
   },
-  "dependencies": {
-    "@repo/constants": "workspace:*",
-    "@repo/content": "workspace:*"
-  },
   "scripts": {
     "build": "bunchee",
     "dev": "bunchee --watch",
     "lint": "eslint src/",
-    "check-types": "tsc --noEmit",
-    "test": "vitest run"
+    "check-types": "tsc --noEmit"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
@@ -38,7 +33,6 @@
     "@types/node": "^22.15.3",
     "bunchee": "^6.4.0",
     "eslint": "^9.39.0",
-    "typescript": "5.9.3",
-    "vitest": "^3.2.4"
+    "typescript": "5.9.3"
   }
 }
