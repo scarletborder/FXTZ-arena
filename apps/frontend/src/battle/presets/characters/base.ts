@@ -5,6 +5,8 @@ import type { EffectState, FighterState, ProjectileState, TrainingStats } from "
 import type { EffectSystem } from "../../model/effects";
 import { clearProjectilesAround, type ProjectileSystem } from "../../model/projectile";
 
+const STATUS_VISIBLE_TICKS = secondsToTicks(1.5);
+
 export interface CharacterActionContext {
   readonly frame: number;
   readonly self: FighterState;
@@ -42,7 +44,7 @@ export abstract class BattleCharacter {
   protected startBomb(ctx: CharacterActionContext, fighter: FighterState, cooldownTicks = 60): void {
     fighter.bombs -= 1;
     fighter.bombUses += 1;
-    fighter.statusVisibleUntil = ctx.frame + 90;
+    fighter.statusVisibleUntil = ctx.frame + STATUS_VISIBLE_TICKS;
     fighter.bombCooldownUntil = cooldownTicks;
     ctx.stats.bombUses += 1;
   }

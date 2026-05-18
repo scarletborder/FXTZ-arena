@@ -2,6 +2,8 @@ import { secondsToTicks } from "@repo/types";
 
 import type { FighterKey, FighterState, TrainingStats } from "../types";
 
+const STATUS_VISIBLE_TICKS = secondsToTicks(1.5);
+
 export function applyHit(params: {
   readonly owner: FighterKey;
   readonly victim: FighterState;
@@ -18,7 +20,7 @@ export function applyHit(params: {
   params.victim.lives -= 1;
   params.victim.damageTaken += params.damage;
   params.victim.flashUntil = params.frame + secondsToTicks(3);
-  params.victim.statusVisibleUntil = params.frame + 90;
+  params.victim.statusVisibleUntil = params.frame + STATUS_VISIBLE_TICKS;
   params.stats.hits += 1;
   params.stats.damage += params.damage;
 

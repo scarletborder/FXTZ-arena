@@ -3,6 +3,8 @@ import type { CharacterDefinition } from "@repo/content";
 import type { FighterState } from "../../types";
 import { BattleCharacter, hitCircleUnits, secondsToTicks, type CharacterActionContext } from "./base";
 
+const CLEAR_RING_TICKS = secondsToTicks(2 / 3);
+
 export class ReimuBattleCharacter extends BattleCharacter {
   constructor(definition: CharacterDefinition) {
     super(definition);
@@ -25,7 +27,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
     this.startBomb(ctx, fighter);
     this.setInvulnerable(fighter, secondsToTicks(2));
     const radius = this.clearProjectiles(ctx, fighter, 6);
-    this.spawnClearRing(ctx, fighter, radius, 0xaec7ff, 40);
+    this.spawnClearRing(ctx, fighter, radius, 0xaec7ff, CLEAR_RING_TICKS);
 
     for (let index = 0; index < 12; index += 1) {
       const spawnAngle = (index / 12) * Math.PI * 2;

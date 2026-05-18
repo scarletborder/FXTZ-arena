@@ -3,7 +3,15 @@ import { PLAYER_SPAWN, RESPAWN_DELAY_TICKS, TARGET_SPAWN } from "../constants";
 import type { BattleInputState, EffectState, FighterState, ProjectileState, TrainingStats } from "../types";
 import { BattleFighter } from "./battle-fighter";
 import { EffectSystem } from "./effects";
+import { hashBattleModel, hashToHex } from "./hash";
 import { ProjectileSystem } from "./projectile";
+import {
+  createBattleModelSnapshot,
+  restoreEffectSnapshot,
+  restoreFighterSnapshot,
+  restoreProjectileSnapshot,
+  type BattleModelSnapshot,
+} from "./snapshot";
 import type { CharacterActionContext } from "../presets/characters";
 
 export class BattleModel {
@@ -77,6 +85,42 @@ export class BattleModel {
       onHit: (owner, victim, damage) => this.onProjectileHit(owner, victim, damage),
     });
     this.effectSystem.stepEffects(this.effects, this.frame);
+    console.log(`${this.frame} - ${this.hashHex()}`);
+  }
+
+  hash(): number {
+    return hashBattleModel(this);
+  }
+
+  hashHex(): string {
+    return hashToHex(this.hash());
+  }
+
+  serialize(): BattleModelSnapshot {
+    return createBattleModelSnapshot({
+      frame: this.frame,
+      gameOver: this.gameOver,
+      player: this.player,
+      target: this.target,
+      projectiles: this.projectiles,
+      effects: this.effects,
+      stats: this.stats,
+    });
+  }
+
+  deserialize(snapshot: BattleModelSnapshot): void {
+    if (snapshot.version !== 1) {
+      throw new Error(`Unsupported battle model snapshot version: ${snapshot.version}`);
+    }
+    this.frame = snapshot.frame;
+    this.gameOver = snapshot.gameOver;
+    restoreFighterSnapshot(this.player, snapshot.player, this.frame);
+    restoreFighterSnapshot(this.target, snapshot.target, this.frame);
+    this.projectiles.splice(0, this.projectiles.length, ...snapshot.projectiles.map((projectile) => restoreProjectileSnapshot(projectile, this.frame)));
+    this.effects.splice(0, this.effects.length, ...snapshot.effects.map((effect) => restoreEffectSnapshot(effect, this.frame)));
+    Object.assign(this.stats, snapshot.stats);
+    this.projectileSystem.restoreNextId(this.projectiles);
+    this.effectSystem.restoreNextId(this.effects);
   }
 
   private stepPlayer(input: BattleInputState): void {

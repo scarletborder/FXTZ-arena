@@ -14,6 +14,10 @@ export class ProjectileSystem {
     this.nextProjectileId = 1;
   }
 
+  restoreNextId(projectiles: readonly ProjectileState[]): void {
+    this.nextProjectileId = Math.max(0, ...projectiles.map((projectile) => projectile.id)) + 1;
+  }
+
   spawnBullet(
     projectiles: ProjectileState[],
     params: BulletProjectileParams,
