@@ -13,6 +13,7 @@ export interface DebugConsoleCommands {
 export interface DebugHashRow {
   readonly frame: number;
   readonly hash: string;
+  readonly action?: string;
 }
 
 type ConsoleWindow = Window & typeof globalThis & {
@@ -137,7 +138,7 @@ function help(): void {
     console.log("FXTZ.hashes(count = 50)   打印过去若干帧 hash");
     console.log("FXTZ.hash(frame)          打印某帧 hash");
     console.log("FXTZ.live(enabled?)       切换实时 frame-hash 打印，默认关闭");
-    console.log("FXTZ.script()             回滚到 frame=30 并执行固定输入脚本，打印期间每帧 hash");
+    console.log("FXTZ.script()             回滚到 frame=30 并执行边界输入脚本，打印期间每帧 hash");
 }
 
 function getScene(): BattleScene | null {

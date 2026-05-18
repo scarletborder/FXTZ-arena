@@ -17,7 +17,7 @@ export interface CharacterDefinition {
   readonly roleClass: RoleClass;
   readonly moveSpeed: SpeedRank;
   readonly ammoCapacity: number;
-  readonly reloadTicks: number;
+  readonly reloadTicksPerAmmo: number;
   readonly fireRate: SpeedRank;
   readonly bulletSpeed: SpeedRank;
   readonly ammoPolicy: AmmoPolicy;

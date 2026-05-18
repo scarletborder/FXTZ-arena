@@ -16,7 +16,7 @@ interface DebugFrameRecord {
 
 const DEBUG_HISTORY_LIMIT = 3600;
 const PRESET_SCRIPT_ROLLBACK_FRAME = 30;
-const PRESET_SCRIPT_FRAMES = 150;
+const PRESET_SCRIPT_FRAMES = 420;
 
 export class BattleScene extends Phaser.Scene {
   private accumulator = 0;
@@ -136,7 +136,7 @@ export class BattleScene extends Phaser.Scene {
         this.stepModelWithDebugInput(input);
         const row = this.getDebugHash(this.model.frame);
         if (row) {
-          rows.push(row);
+          rows.push({ ...row, action: describePresetScriptAction(offset) });
         }
       }
     } finally {
@@ -190,17 +190,114 @@ function toHashRow(record: DebugFrameRecord): DebugHashRow {
 }
 
 function createPresetScriptInput(offset: number): BattleInputState {
-  const aimAngle = -0.35 + offset * 0.022;
+  const aimAngle = -0.5 + offset * 0.018;
   return {
-    moveX: offset < 24 ? 1 : offset < 48 ? -1 : offset % 40 < 20 ? 1 : 0,
-    moveY: offset < 20 ? -1 : offset < 42 ? 1 : offset % 36 < 18 ? -1 : 0,
-    aimX: 640 + Math.cos(aimAngle) * 360,
-    aimY: 338 + Math.sin(aimAngle) * 230,
-    shootPressed: offset === 4 || offset === 12 || offset === 28 || offset === 66 || offset === 92,
-    bombPressed: offset === 18,
-    activeCardPressed: offset === 112,
-    reloadPressed: offset === 50 || offset === 126,
-    alternateHeld: offset >= 76 && offset < 104,
+    moveX: presetMoveX(offset),
+    moveY: presetMoveY(offset),
+    aimX: 640 + Math.cos(aimAngle) * 390,
+    aimY: 338 + Math.sin(aimAngle) * 250,
+    shootPressed: isPresetShootFrame(offset),
+    bombPressed: isPresetBombFrame(offset),
+    activeCardPressed: offset === 320,
+    reloadPressed: isPresetReloadFrame(offset),
+    alternateHeld: isPresetAlternateHeld(offset),
     infoHeld: false,
   };
+}
+
+function presetMoveX(offset: number): -1 | 0 | 1 {
+  if (offset < 36) {
+    return 1;
+  }
+  if (offset < 72) {
+    return -1;
+  }
+  if (offset >= 155 && offset < 260) {
+    return offset % 32 < 16 ? 1 : -1;
+  }
+  if (offset >= 260 && offset < 330) {
+    return 1;
+  }
+  return offset % 48 < 16 ? -1 : offset % 48 < 32 ? 1 : 0;
+}
+
+function presetMoveY(offset: number): -1 | 0 | 1 {
+  if (offset < 28) {
+    return -1;
+  }
+  if (offset < 64) {
+    return 1;
+  }
+  if (offset >= 155 && offset < 260) {
+    return offset % 28 < 14 ? -1 : 1;
+  }
+  return offset % 42 < 14 ? 1 : offset % 42 < 28 ? -1 : 0;
+}
+
+function isPresetShootFrame(offset: number): boolean {
+  return [
+    4,
+    10,
+    18,
+    35,
+    78,
+    90,
+    118,
+    146,
+    166,
+    174,
+    182,
+    205,
+    238,
+    274,
+    330,
+    360,
+    390,
+  ].includes(offset);
+}
+
+function isPresetReloadFrame(offset: number): boolean {
+  return [22, 52, 104, 132, 176, 215, 285, 345].includes(offset);
+}
+
+function isPresetBombFrame(offset: number): boolean {
+  return [64, 150, 188, 250, 404].includes(offset);
+}
+
+function isPresetAlternateHeld(offset: number): boolean {
+  return (
+    (offset >= 72 && offset < 122) ||
+    (offset >= 144 && offset < 248) ||
+    (offset >= 255 && offset < 305) ||
+    (offset >= 350 && offset < 382)
+  );
+}
+
+function describePresetScriptAction(offset: number): string {
+  const actions: string[] = [];
+  if (isPresetAlternateHeld(offset)) {
+    actions.push("alternateHeld");
+  }
+  if (isPresetShootFrame(offset)) {
+    actions.push("shoot");
+  }
+  if (isPresetReloadFrame(offset)) {
+    actions.push("reload");
+  }
+  if (isPresetBombFrame(offset)) {
+    actions.push("bomb");
+  }
+  if (offset === 150) {
+    actions.push("marisaBombStart");
+  }
+  if (offset > 150 && offset < 390 && (isPresetAlternateHeld(offset) || isPresetShootFrame(offset) || isPresetReloadFrame(offset) || isPresetBombFrame(offset))) {
+    actions.push("duringMarisaBombLock");
+  }
+  if (offset === 320) {
+    actions.push("activeCard");
+  }
+  if (actions.length === 0) {
+    return "move+aim";
+  }
+  return actions.join("+");
 }

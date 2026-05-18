@@ -24,7 +24,7 @@ export function createFighter(
     ammoDisplay: primaryCharacter.ammoCapacity,
     ammoCapacity: primaryCharacter.ammoCapacity,
     reloadRemaining: 0,
-    reloadTotal: primaryCharacter.reloadTicks,
+    reloadTotal: primaryCharacter.reloadTicksPerAmmo,
     reloadStartedAmmo: primaryCharacter.ammoCapacity,
     reloadCharacterId: undefined,
     invulnerableUntil: 0,

@@ -90,7 +90,7 @@ export class FighterEntity
     this.bombs = config.bombs;
     this.ammoCapacity = definition.ammoCapacity;
     this.ammo = definition.ammoCapacity;
-    this.reloadTotalTicks = definition.reloadTicks;
+    this.reloadTotalTicks = definition.reloadTicksPerAmmo;
   }
 
   static fromPlayerConfig(
@@ -125,9 +125,14 @@ export class FighterEntity
     }
 
     if (input.reloadPressed && this.reloadRemainingTicks === 0 && this.ammo < this.ammoCapacity) {
-      this.ammo = 0;
-      this.reloadTotalTicks = definition.reloadTicks;
-      this.reloadRemainingTicks = definition.reloadTicks;
+      const missingAmmo = definition.ammoPolicy === "reset_to_zero_commit_full"
+        ? this.ammoCapacity
+        : this.ammoCapacity - this.ammo;
+      if (definition.ammoPolicy === "reset_to_zero_commit_full") {
+        this.ammo = 0;
+      }
+      this.reloadTotalTicks = definition.reloadTicksPerAmmo * Math.max(1, missingAmmo);
+      this.reloadRemainingTicks = this.reloadTotalTicks;
     }
 
     if (input.shootPressed && this.reloadRemainingTicks === 0 && this.ammo > 0) {

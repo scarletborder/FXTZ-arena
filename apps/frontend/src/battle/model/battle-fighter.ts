@@ -66,7 +66,9 @@ export class BattleFighter {
       return;
     }
     if (reloadPressed && this.state.reloadRemaining === 0 && this.state.ammo < this.state.ammoCapacity) {
-      this.state.reloadRemaining = this.state.reloadTotal;
+      const reloadTotal = this.reloadTicksForMissingAmmo();
+      this.state.reloadTotal = reloadTotal;
+      this.state.reloadRemaining = reloadTotal;
       this.state.reloadCharacterId = this.state.activeCharacter.id;
       this.state.reloadStartedAmmo = this.state.ammo;
       if (this.activeCharacter.reloadPolicy === "reset_to_zero_commit_full") {
@@ -81,6 +83,7 @@ export class BattleFighter {
       return;
     }
 
+    this.state.reloadRemaining -= 1;
     const reloadRatio = 1 - this.state.reloadRemaining / Math.max(1, this.state.reloadTotal);
     const reloadedDisplayAmmo = this.reloadDisplayAmmo(reloadRatio);
     const reloadedAmmo = Math.min(this.state.ammoCapacity, Math.floor(reloadedDisplayAmmo));
@@ -89,7 +92,6 @@ export class BattleFighter {
       this.state.ammo = reloadedAmmo;
       setCharacterAmmo(this.state, this.state.activeCharacter, reloadedAmmo);
     }
-    this.state.reloadRemaining -= 1;
     if (this.state.reloadRemaining === 0) {
       this.state.ammo = this.state.ammoCapacity;
       this.state.ammoDisplay = this.state.ammoCapacity;
@@ -151,7 +153,7 @@ export class BattleFighter {
     this.state.ammoCapacity = battleCharacter.ammoCapacity;
     this.state.ammo = getCharacterAmmo(this.state, character);
     this.state.ammoDisplay = this.state.ammo;
-    this.state.reloadTotal = battleCharacter.reloadTicks;
+    this.state.reloadTotal = battleCharacter.reloadTicksPerAmmo;
   }
 
   private characterFor(character: CharacterDefinition): BattleCharacter {
@@ -188,6 +190,13 @@ export class BattleFighter {
       return this.state.ammoCapacity * reloadRatio;
     }
     return this.state.reloadStartedAmmo + (this.state.ammoCapacity - this.state.reloadStartedAmmo) * reloadRatio;
+  }
+
+  private reloadTicksForMissingAmmo(): number {
+    const missingAmmo = this.activeCharacter.reloadPolicy === "reset_to_zero_commit_full"
+      ? this.state.ammoCapacity
+      : this.state.ammoCapacity - this.state.ammo;
+    return Math.max(1, missingAmmo) * this.activeCharacter.reloadTicksPerAmmo;
   }
 }
 

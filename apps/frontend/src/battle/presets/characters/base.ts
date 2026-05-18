@@ -26,7 +26,7 @@ export abstract class BattleCharacter {
   abstract readonly moveSpeed: CharacterDefinition["moveSpeed"];
   abstract readonly fireRate: CharacterDefinition["fireRate"];
   abstract readonly ammoCapacity: number;
-  abstract readonly reloadTicks: number;
+  abstract readonly reloadTicksPerAmmo: number;
   readonly reloadPolicy: ReloadPolicy = "reset_to_zero_commit_full";
 
   abstract shoot(ctx: CharacterActionContext, fighter: FighterState, aimX: number, aimY: number): void;

@@ -91,6 +91,20 @@ describe("@repo/raid-logic", () => {
 
     expect(adapter.hash()).toBe(hash);
   });
+
+  it("does not reset Sakuya ammo to zero when reloading", () => {
+    const battle = createRaidBattle(createDefaultBattleConfig("sakuya-reload", PLAYERS));
+
+    battle.tick([createInput(0, "player-2", { shootPressed: true })]);
+    battle.tick([createInput(1, "player-2", { shootPressed: true })]);
+    expect(battle.state.fighters.get("player-2")?.ammo).toBe(1);
+
+    battle.tick([createInput(2, "player-2", { reloadPressed: true })]);
+
+    const sakuya = battle.state.fighters.get("player-2");
+    expect(sakuya?.ammo).toBe(1);
+    expect(sakuya?.reloadTotalTicks).toBe(120);
+  });
 });
 
 function runHashSequence(): readonly number[] {

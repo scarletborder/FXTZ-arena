@@ -1,5 +1,4 @@
-import { HIT_CIRCLE_DIAMETER } from "@repo/types";
-
+import { PLAYER_CORE_RADIUS } from "../../constants";
 import type { FighterKey, FighterState, ProjectileState } from "../../types";
 import { createBulletProjectile, isProjectileOutOfWorld, stepBulletProjectile } from "./bullet";
 import { createLaserProjectile, stepLaserProjectile } from "./laser";
@@ -88,15 +87,32 @@ export function clearProjectilesAround(
 
 function hitTest(projectile: ProjectileState, victim: FighterState): boolean {
   if (projectile.kind === "laser" || projectile.kind === "spark") {
-    const dx = victim.x - projectile.x;
-    const dy = victim.y - projectile.y;
-    const forward = dx * Math.cos(projectile.angle) + dy * Math.sin(projectile.angle);
-    const side = Math.abs(-dx * Math.sin(projectile.angle) + dy * Math.cos(projectile.angle));
     if (!Number.isFinite(projectile.width)) {
-      return forward >= 0 && side <= projectile.height / 2 + HIT_CIRCLE_DIAMETER;
+      const dx = victim.x - projectile.x;
+      const dy = victim.y - projectile.y;
+      const forward = dx * Math.cos(projectile.angle) + dy * Math.sin(projectile.angle);
+      const side = Math.abs(-dx * Math.sin(projectile.angle) + dy * Math.cos(projectile.angle));
+      return forward >= -PLAYER_CORE_RADIUS && side <= projectile.height / 2 + PLAYER_CORE_RADIUS;
     }
-    return Math.abs(forward) <= projectile.width / 2 && side <= projectile.height / 2 + HIT_CIRCLE_DIAMETER;
   }
-  const hitRadius = HIT_CIRCLE_DIAMETER * 6;
-  return Math.hypot(projectile.x - victim.x, projectile.y - victim.y) <= hitRadius;
+  return rotatedRectIntersectsCircle(projectile, victim.x, victim.y, PLAYER_CORE_RADIUS);
+}
+
+function rotatedRectIntersectsCircle(
+  projectile: ProjectileState,
+  circleX: number,
+  circleY: number,
+  circleRadius: number,
+): boolean {
+  const dx = circleX - projectile.x;
+  const dy = circleY - projectile.y;
+  const localX = dx * Math.cos(projectile.angle) + dy * Math.sin(projectile.angle);
+  const localY = -dx * Math.sin(projectile.angle) + dy * Math.cos(projectile.angle);
+  const closestX = clamp(localX, -projectile.width / 2, projectile.width / 2);
+  const closestY = clamp(localY, -projectile.height / 2, projectile.height / 2);
+  return Math.hypot(localX - closestX, localY - closestY) <= circleRadius;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }

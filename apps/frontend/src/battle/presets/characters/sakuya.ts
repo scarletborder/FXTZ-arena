@@ -11,7 +11,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
   readonly moveSpeed = this.definition.moveSpeed;
   readonly fireRate = this.definition.fireRate;
   readonly ammoCapacity = this.definition.ammoCapacity;
-  readonly reloadTicks = this.definition.reloadTicks;
+  readonly reloadTicksPerAmmo = this.definition.reloadTicksPerAmmo;
   override readonly reloadPolicy = "keep_until_full";
 
   shoot(ctx: CharacterActionContext, fighter: FighterState, aimX: number, aimY: number): void {

@@ -24,7 +24,7 @@ export class BattleModel {
   private readonly effectSystem = new EffectSystem();
   private readonly playerFighter = new BattleFighter(
     "player",
-    getCharacter("sakuya"),
+    getCharacter("reimu"),
     getCharacter("marisa"),
     PLAYER_SPAWN.x,
     PLAYER_SPAWN.y,

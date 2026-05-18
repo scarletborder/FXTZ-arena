@@ -18,7 +18,7 @@
 export type RoleClass = "assault" | "suppress" | "scout" | "sniper";
 export type SpeedRank = "low" | "medium" | "high";
 export type AbilityCardKind = "active" | "passive";
-export type AmmoPolicy = "reset_to_zero_then_fill" | "custom";
+export type AmmoPolicy = "reset_to_zero_commit_full" | "keep_partial" | "keep_until_full";
 ```
 
 ## 角色数据
@@ -31,7 +31,7 @@ export interface CharacterDefinition {
   roleClass: RoleClass;
   moveSpeed: SpeedRank;
   ammoCapacity: number;
-  reloadTicks: number;
+  reloadTicksPerAmmo: number;
   fireRate: SpeedRank;
   bulletSpeed: SpeedRank;
   description: string;
@@ -46,11 +46,17 @@ export interface CharacterDefinition {
 
 首批角色：
 
-| id | 名字 | cost | 职业 | 移速 | 弹容 | 装弹 |
+| id | 名字 | cost | 职业 | 移速 | 弹容 | 单发装填 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `reimu` | 博丽灵梦 | 4 | 压制 | 中 | 5 | 240 tick |
-| `marisa` | 魔理沙 | 5 | 狙击 | 高 | 2 | 180 tick |
-| `sakuya` | 咲夜 | 4 | 突击 | 中 | 3 | 180 tick |
+| `reimu` | 博丽灵梦 | 4 | 压制 | 中 | 5 | 48 tick |
+| `marisa` | 魔理沙 | 5 | 狙击 | 高 | 2 | 90 tick |
+| `sakuya` | 咲夜 | 4 | 突击 | 中 | 3 | 60 tick |
+
+装填策略：
+
+- `reimu`：`keep_partial`。
+- `marisa`：`reset_to_zero_commit_full`。
+- `sakuya`：`keep_until_full`。
 
 ## 能力卡数据
 

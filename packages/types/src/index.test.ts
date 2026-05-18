@@ -26,21 +26,21 @@ describe("@repo/types static content", () => {
         name: "博丽灵梦",
         cost: 4,
         ammoCapacity: 5,
-        reloadTicks: 240,
+        reloadTicksPerAmmo: 48,
       },
       {
         id: "marisa",
         name: "魔理沙",
         cost: 5,
         ammoCapacity: 2,
-        reloadTicks: 180,
+        reloadTicksPerAmmo: 90,
       },
       {
         id: "sakuya",
         name: "咲夜",
         cost: 4,
         ammoCapacity: 3,
-        reloadTicks: 180,
+        reloadTicksPerAmmo: 60,
       },
     ]);
   });
