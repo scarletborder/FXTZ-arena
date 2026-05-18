@@ -1,5 +1,5 @@
+import { DEFAULT_MAPS } from "@repo/content";
 import {
-  DEFAULT_MAPS,
   type BattleConfig,
   type BattleSnapshot,
   type BattleStats,

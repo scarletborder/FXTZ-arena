@@ -51,6 +51,9 @@ importers:
 
   apps/frontend:
     dependencies:
+      '@repo/content':
+        specifier: workspace:*
+        version: link:../../packages/content
       '@repo/raid-logic':
         specifier: workspace:*
         version: link:../../packages/raid-logic
@@ -166,6 +169,9 @@ importers:
 
   packages/raid-logic:
     dependencies:
+      '@repo/content':
+        specifier: workspace:*
+        version: link:../content
       '@repo/types':
         specifier: workspace:*
         version: link:../types

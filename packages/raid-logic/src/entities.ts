@@ -1,5 +1,5 @@
+import { DEFAULT_CHARACTERS } from "@repo/content";
 import {
-  DEFAULT_CHARACTERS,
   getDefaultBombs,
   getInitialLives,
   type AbilityCardId,

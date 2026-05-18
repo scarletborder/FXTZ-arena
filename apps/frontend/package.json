@@ -11,6 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@repo/content": "workspace:*",
     "@repo/raid-logic": "workspace:*",
     "@repo/types": "workspace:*",
     "phaser": "^3.90.0"

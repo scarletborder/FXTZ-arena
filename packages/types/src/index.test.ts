@@ -2,9 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ARENA_WIDTH,
-  DEFAULT_ABILITY_CARDS,
   DEFAULT_BOMBS,
-  DEFAULT_CHARACTERS,
   DEFAULT_COST_LIMIT,
   DEFAULT_LIVES,
   HIT_CIRCLE_DIAMETER,
@@ -18,6 +16,7 @@ import {
   validateLoadout,
   type PlayerLoadout,
 } from "./index";
+import { DEFAULT_ABILITY_CARDS, DEFAULT_CHARACTERS } from "@repo/content";
 
 describe("@repo/types static content", () => {
   it("exports the baseline characters", () => {

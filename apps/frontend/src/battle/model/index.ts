@@ -1,0 +1,227 @@
+import { getAbilityCard, getCharacter } from "../content";
+import { PLAYER_SPAWN, RESPAWN_DELAY_TICKS, TARGET_SPAWN } from "../constants";
+import type { BattleInputState, EffectState, FighterState, ProjectileState, TrainingStats } from "../types";
+import { BattleFighter } from "./battle-fighter";
+import { EffectSystem } from "./effects";
+import { ProjectileSystem } from "./projectile";
+import type { CharacterActionContext } from "../presets/characters";
+
+export class BattleModel {
+  readonly projectiles: ProjectileState[] = [];
+  readonly effects: EffectState[] = [];
+  readonly stats: TrainingStats = { shots: 0, hits: 0, bombUses: 0, damage: 0, elapsedTicks: 0 };
+  frame = 0;
+  gameOver = false;
+  private readonly projectileSystem = new ProjectileSystem();
+  private readonly effectSystem = new EffectSystem();
+  private readonly playerFighter = new BattleFighter(
+    "player",
+    getCharacter("sakuya"),
+    getCharacter("marisa"),
+    PLAYER_SPAWN.x,
+    PLAYER_SPAWN.y,
+    getAbilityCard("spirit_strike_card"),
+  );
+  private readonly targetFighter = new BattleFighter(
+    "target",
+    getCharacter("sakuya"),
+    getCharacter("reimu"),
+    TARGET_SPAWN.x,
+    TARGET_SPAWN.y,
+    undefined,
+  );
+
+  constructor() {
+    this.target.activeCard = getAbilityCard("spirit_strike_card");
+    this.target.activeCardUses = 3;
+  }
+
+  get player(): FighterState {
+    return this.playerFighter.state;
+  }
+
+  get target(): FighterState {
+    return this.targetFighter.state;
+  }
+
+  reset(): void {
+    this.projectileSystem.reset();
+    this.effectSystem.reset();
+    this.projectiles.length = 0;
+    this.effects.length = 0;
+    this.stats.shots = 0;
+    this.stats.hits = 0;
+    this.stats.bombUses = 0;
+    this.stats.damage = 0;
+    this.stats.elapsedTicks = 0;
+    this.frame = 0;
+    this.gameOver = false;
+    this.playerFighter.reset(getCharacter("reimu"), getCharacter("marisa"), PLAYER_SPAWN.x, PLAYER_SPAWN.y, getAbilityCard("spirit_strike_card"));
+    this.targetFighter.reset(getCharacter("sakuya"), getCharacter("reimu"), TARGET_SPAWN.x, TARGET_SPAWN.y, undefined);
+    this.target.activeCard = getAbilityCard("spirit_strike_card");
+    this.target.activeCardUses = 3;
+  }
+
+  step(input: BattleInputState): void {
+    this.capturePreviousFighterState();
+    this.frame += 1;
+    this.stats.elapsedTicks += 1;
+    this.stepPlayer(input);
+    this.stepTarget();
+    this.resolveProjectileClashes();
+    this.projectileSystem.stepProjectiles({
+      frame: this.frame,
+      projectiles: this.projectiles,
+      player: this.player,
+      target: this.target,
+      onHit: (owner, victim, damage) => this.onProjectileHit(owner, victim, damage),
+    });
+    this.effectSystem.stepEffects(this.effects, this.frame);
+  }
+
+  private stepPlayer(input: BattleInputState): void {
+    const fighter = this.player;
+    if (this.gameOver) {
+      return;
+    }
+
+    this.playerFighter.tickTimers();
+    this.playerFighter.selectActiveCharacter(input.alternateHeld);
+    fighter.facing = Math.atan2(input.aimY - fighter.y, input.aimX - fighter.x);
+    this.playerFighter.moveBy(input);
+    this.playerFighter.handleReload(input.reloadPressed);
+
+    const ctx = this.fighterActionContext(fighter);
+    if (input.activeCardPressed) {
+      this.playerFighter.useActiveCard(ctx);
+    }
+    if (input.bombPressed) {
+      this.playerFighter.useBomb(ctx);
+    }
+    if (input.shootPressed) {
+      this.playerFighter.fire(ctx, input.aimX, input.aimY);
+    }
+  }
+
+  private stepTarget(): void {
+    const fighter = this.target;
+    this.targetFighter.tickTimers();
+    if (fighter.deadUntil > 0) {
+      fighter.deadUntil -= 1;
+      if (fighter.deadUntil === 0) {
+        this.respawnTarget();
+      }
+      return;
+    }
+
+    if (fighter.movementLockedUntil === 0) {
+      fighter.x = clamp(fighter.x + Math.sin(this.frame / 36) * 1.6, 780, 1150);
+      fighter.y = clamp(fighter.y + Math.cos(this.frame / 50) * 1.2, 72, 600);
+    }
+    fighter.facing = Math.atan2(this.player.y - fighter.y, this.player.x - fighter.x);
+    if (this.frame % 72 === 0) {
+      this.targetFighter.fire(this.fighterActionContext(fighter), this.player.x, this.player.y);
+    }
+  }
+
+  private onProjectileHit(owner: "player" | "target", victim: FighterState, damage: number): boolean {
+    const victimFighter = victim.key === "player" ? this.playerFighter : this.targetFighter;
+    const result = victimFighter.onProjectileHit({
+      owner,
+      victim,
+      player: this.player,
+      target: this.target,
+      stats: this.stats,
+      frame: this.frame,
+      damage,
+    });
+    if (result === "ignored") {
+      return false;
+    }
+    if (victim.timeStopUntil > 0) {
+      this.cancelTimeStop(victim);
+    }
+    if (result === "game-over") {
+      this.gameOver = true;
+      return true;
+    }
+    if (victim.key === "target" && victim.lives <= 0) {
+      victim.deadUntil = RESPAWN_DELAY_TICKS;
+    }
+    return true;
+  }
+
+  private respawnTarget(): void {
+    this.targetFighter.reset(getCharacter("sakuya"), getCharacter("reimu"), TARGET_SPAWN.x, TARGET_SPAWN.y, undefined);
+    this.target.activeCard = getAbilityCard("spirit_strike_card");
+    this.target.activeCardUses = 3;
+  }
+
+  private cancelTimeStop(caster: FighterState): void {
+    const opponent = caster.key === "player" ? this.target : this.player;
+    caster.timeStopUntil = 0;
+    caster.projectilePauseUntil = 0;
+    caster.nonFireActionLockedUntil = 0;
+    opponent.actionLockedUntil = 0;
+    opponent.movementLockedUntil = 0;
+    for (const projectile of this.projectiles) {
+      if (this.frame < projectile.pausedUntil) {
+        projectile.pausedUntil = this.frame;
+      }
+    }
+  }
+
+  private fighterActionContext(self: FighterState): CharacterActionContext {
+    return {
+      frame: this.frame,
+      self,
+      opponent: self.key === "player" ? this.target : this.player,
+      projectiles: this.projectiles,
+      effects: this.effects,
+      stats: this.stats,
+      projectileSystem: this.projectileSystem,
+      effectSystem: this.effectSystem,
+    };
+  }
+
+  private capturePreviousFighterState(): void {
+    for (const fighter of [this.player, this.target]) {
+      fighter.previousX = fighter.x;
+      fighter.previousY = fighter.y;
+      fighter.previousFacing = fighter.facing;
+    }
+  }
+
+  private resolveProjectileClashes(): void {
+    const masters = this.projectiles.filter((projectile) => projectile.kind === "spark" && projectile.height >= 36 && projectile.damage > 0 && this.frame >= projectile.pausedUntil);
+    if (masters.length === 0) {
+      return;
+    }
+
+    this.projectiles.splice(
+      0,
+      this.projectiles.length,
+      ...this.projectiles.filter((projectile) => {
+        if (projectile.kind === "laser") {
+          return true;
+        }
+        return !masters.some((master) => master.owner !== projectile.owner && hitsBeam(master, projectile.x, projectile.y));
+      }),
+    );
+  }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function hitsBeam(beam: ProjectileState, x: number, y: number): boolean {
+  const dx = x - beam.x;
+  const dy = y - beam.y;
+  const forward = dx * Math.cos(beam.angle) + dy * Math.sin(beam.angle);
+  const side = Math.abs(-dx * Math.sin(beam.angle) + dy * Math.cos(beam.angle));
+  if (!Number.isFinite(beam.width)) {
+    return forward >= 0 && side <= beam.height / 2;
+  }
+  return Math.abs(forward) <= beam.width / 2 && side <= beam.height / 2;
+}

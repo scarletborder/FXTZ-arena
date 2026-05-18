@@ -29,6 +29,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@repo/content": "workspace:*",
     "@repo/types": "workspace:*"
   },
   "devDependencies": {
