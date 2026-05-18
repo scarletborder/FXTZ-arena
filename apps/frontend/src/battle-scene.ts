@@ -3,14 +3,29 @@ import Phaser from "phaser";
 import { FIXED_STEP_MS } from "./battle/constants";
 import { createBattleInput, type BattleKeyMap } from "./battle/input";
 import { BattleModel } from "./battle/model";
+import type { BattleModelSnapshot } from "./battle/model/snapshot";
 import { BattleView } from "./battle/view";
 import type { BattleInputState } from "./battle/types";
+import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
+
+interface DebugFrameRecord {
+  readonly frame: number;
+  readonly hash: string;
+  readonly snapshot: BattleModelSnapshot;
+}
+
+const DEBUG_HISTORY_LIMIT = 3600;
+const PRESET_SCRIPT_ROLLBACK_FRAME = 30;
+const PRESET_SCRIPT_FRAMES = 150;
 
 export class BattleScene extends Phaser.Scene {
   private accumulator = 0;
   private keys!: BattleKeyMap;
   private model!: BattleModel;
   private view!: BattleView;
+  private debugInputLocked = false;
+  private debugLiveHashEnabled = false;
+  private readonly debugHistory = new Map<number, DebugFrameRecord>();
   private lastInput!: BattleInputState & {
     readonly pointerX: number;
     readonly pointerY: number;
@@ -37,19 +52,26 @@ export class BattleScene extends Phaser.Scene {
     this.model = new BattleModel();
     this.view = new BattleView(this);
     this.lastInput = createBattleInput(this, this.keys);
+    this.recordDebugFrame();
+    ConsoleCmd.install(this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => ConsoleCmd.uninstall(this));
   }
 
   update(_: number, delta: number): void {
     this.accumulator += delta;
     while (this.accumulator >= FIXED_STEP_MS) {
-      this.lastInput = createBattleInput(this, this.keys) satisfies BattleInputState & {
-        readonly pointerX: number;
-        readonly pointerY: number;
-      };
-      if (this.model.gameOver && Phaser.Input.Keyboard.JustDown(this.keys.enter)) {
-        this.model.reset();
-      } else {
-        this.model.step(this.lastInput);
+      if (!this.debugInputLocked) {
+        this.lastInput = createBattleInput(this, this.keys) satisfies BattleInputState & {
+          readonly pointerX: number;
+          readonly pointerY: number;
+        };
+        if (this.model.gameOver && Phaser.Input.Keyboard.JustDown(this.keys.enter)) {
+          this.model.reset();
+          this.debugHistory.clear();
+          this.recordDebugFrame();
+        } else {
+          this.stepModelWithDebugInput(this.lastInput);
+        }
       }
       this.accumulator -= FIXED_STEP_MS;
     }
@@ -62,4 +84,123 @@ export class BattleScene extends Phaser.Scene {
     };
     this.view.render(this.model, this.lastInput, this.accumulator / FIXED_STEP_MS);
   }
+
+  getDebugFrame(): number {
+    return this.model.frame;
+  }
+
+  getRecentDebugHashes(count = 50): DebugHashRow[] {
+    const startFrame = Math.max(0, this.model.frame - count + 1);
+    return Array.from(this.debugHistory.values())
+      .filter((record) => record.frame >= startFrame && record.frame <= this.model.frame)
+      .sort((left, right) => left.frame - right.frame)
+      .map(toHashRow);
+  }
+
+  getDebugHash(frame: number): DebugHashRow | null {
+    const record = this.debugHistory.get(frame);
+    return record ? toHashRow(record) : null;
+  }
+
+  getDebugLiveHashEnabled(): boolean {
+    return this.debugLiveHashEnabled;
+  }
+
+  setDebugLiveHashEnabled(enabled: boolean): void {
+    this.debugLiveHashEnabled = enabled;
+  }
+
+  rollbackDebugToFrame(frame: number): boolean {
+    const record = this.debugHistory.get(frame);
+    if (!record) {
+      return false;
+    }
+    this.model.deserialize(record.snapshot);
+    this.accumulator = 0;
+    this.pruneDebugHistoryAfter(frame);
+    this.recordDebugFrame();
+    return true;
+  }
+
+  runDebugPresetScript(): DebugHashRow[] | null {
+    if (!this.rollbackDebugToFrame(PRESET_SCRIPT_ROLLBACK_FRAME)) {
+      return null;
+    }
+
+    const rows: DebugHashRow[] = [];
+    this.debugInputLocked = true;
+    try {
+      for (let offset = 0; offset < PRESET_SCRIPT_FRAMES; offset += 1) {
+        const input = createPresetScriptInput(offset);
+        this.lastInput = { ...input, pointerX: input.aimX, pointerY: input.aimY };
+        this.stepModelWithDebugInput(input);
+        const row = this.getDebugHash(this.model.frame);
+        if (row) {
+          rows.push(row);
+        }
+      }
+    } finally {
+      this.debugInputLocked = false;
+    }
+    return rows;
+  }
+
+  private stepModelWithDebugInput(input: BattleInputState): void {
+    this.model.step(input);
+    this.recordDebugFrame();
+  }
+
+  private recordDebugFrame(): void {
+    const frame = this.model.frame;
+    const hash = this.model.hashHex();
+    this.debugHistory.set(frame, {
+      frame,
+      hash,
+      snapshot: this.model.serialize(),
+    });
+    if (this.debugLiveHashEnabled) {
+      console.log(`${frame} - ${hash}`);
+    }
+    this.pruneOldDebugHistory();
+  }
+
+  private pruneDebugHistoryAfter(frame: number): void {
+    for (const key of this.debugHistory.keys()) {
+      if (key > frame) {
+        this.debugHistory.delete(key);
+      }
+    }
+  }
+
+  private pruneOldDebugHistory(): void {
+    const minFrame = this.model.frame - DEBUG_HISTORY_LIMIT;
+    for (const key of this.debugHistory.keys()) {
+      if (key < minFrame) {
+        this.debugHistory.delete(key);
+      }
+    }
+  }
+}
+
+function toHashRow(record: DebugFrameRecord): DebugHashRow {
+  return {
+    frame: record.frame,
+    hash: record.hash,
+  };
+}
+
+function createPresetScriptInput(offset: number): BattleInputState {
+  const aimAngle = -0.35 + offset * 0.022;
+  return {
+    moveX: offset < 24 ? 1 : offset < 48 ? -1 : offset % 40 < 20 ? 1 : 0,
+    moveY: offset < 20 ? -1 : offset < 42 ? 1 : offset % 36 < 18 ? -1 : 0,
+    aimX: 640 + Math.cos(aimAngle) * 360,
+    aimY: 338 + Math.sin(aimAngle) * 230,
+    shootPressed: offset === 4 || offset === 12 || offset === 28 || offset === 66 || offset === 92,
+    bombPressed: offset === 18,
+    activeCardPressed: offset === 112,
+    reloadPressed: offset === 50 || offset === 126,
+    alternateHeld: offset >= 76 && offset < 104,
+    infoHeld: false,
+  };
 }

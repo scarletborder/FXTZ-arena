@@ -85,7 +85,6 @@ export class BattleModel {
       onHit: (owner, victim, damage) => this.onProjectileHit(owner, victim, damage),
     });
     this.effectSystem.stepEffects(this.effects, this.frame);
-    console.log(`${this.frame} - ${this.hashHex()}`);
   }
 
   hash(): number {
