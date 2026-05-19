@@ -1,6 +1,43 @@
 import { secondsToTicks } from "../seconds-to-ticks";
 import type { CharacterDefinition } from "./types";
 
+const DEMO_GALLERY = {
+  portraitAsset: "assets/characters/reimu/portrait.png",
+  attackPreviewAsset: "assets/characters/reimu/attack-preview.png",
+};
+
+function buildDemoCharacters(
+  role: CharacterDefinition["roleClass"],
+  namePrefix: string,
+  count: number,
+  cost: number,
+): CharacterDefinition[] {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `demo_${role}_${index + 1}` as CharacterDefinition["id"],
+    name: `${namePrefix}${index + 1}`,
+    cost,
+    roleClass: role,
+    moveSpeed: role === "assault" ? "high" : role === "sniper" ? "low" : "medium",
+    ammoCapacity: role === "sniper" ? 2 : 4,
+    reloadTicksPerAmmo: secondsToTicks(1),
+    reloadStartPolicy: "keep_current",
+    reloadCommitPolicy: "commit_per_ammo",
+    fireRate: role === "sniper" ? "low" : "medium",
+    bulletSpeed: role === "sniper" ? "high" : "medium",
+    description: "占位角色，用于滚动列表展示。",
+    normalAttackId: "reimu_homing_shot",
+    bombId: "reimu_clear_bomb",
+    gallery: DEMO_GALLERY,
+  }));
+}
+
+const DEMO_CHARACTERS: CharacterDefinition[] = [
+  ...buildDemoCharacters("assault", "demoAssault", 6, 3),
+  ...buildDemoCharacters("suppress", "demoSupress", 6, 4),
+  ...buildDemoCharacters("scout", "demoScout", 6, 2),
+  ...buildDemoCharacters("sniper", "demoSniper", 6, 5),
+];
+
 export const DEFAULT_CHARACTERS: readonly CharacterDefinition[] = [
   {
     id: "reimu",
@@ -62,4 +99,5 @@ export const DEFAULT_CHARACTERS: readonly CharacterDefinition[] = [
       attackPreviewAsset: "assets/characters/sakuya/attack-preview.png",
     },
   },
+  ...DEMO_CHARACTERS,
 ];

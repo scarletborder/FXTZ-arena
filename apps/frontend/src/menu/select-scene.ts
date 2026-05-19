@@ -8,10 +8,11 @@ import {
   createCardTile,
   createCharacterTile,
   createFightButton,
+  createSmallTab,
   drawFightingBackdrop,
+  drawAngledPanel,
   drawPanelToLayer,
   bodyStyle,
-  headingStyle,
 } from "./ui";
 import { getCardById, getCharacterById, uiSettings, type SceneKey, type SelectionData } from "./shared";
 
@@ -21,11 +22,29 @@ export class SelectScene extends Phaser.Scene {
   private mode: SelectionData["mode"] = "ai";
   private primaryId: CharacterDefinition["id"] | undefined;
   private alternateId: CharacterDefinition["id"] | undefined;
+  private roleFilter: CharacterDefinition["roleClass"] | "all" = "all";
+  private cardFilter: AbilityCardDefinition["kind"] | "all" = "all";
   private readonly selectedCards = new Set<AbilityCardDefinition["id"]>();
   private hoverCost = 0;
   private layer!: Phaser.GameObjects.Container;
   private costLayer!: Phaser.GameObjects.Container;
   private confirmButton!: { setEnabled(enabled: boolean): void };
+  private characterScrollOffset = 0;
+  private cardScrollOffset = 0;
+  private scrollAreas: Array<{ bounds: Phaser.Geom.Rectangle; scroll: (deltaY: number) => void }> = [];
+  private readonly onWheel = (
+    pointer: Phaser.Input.Pointer,
+    _gameObjects: unknown,
+    _deltaX: number,
+    deltaY: number,
+  ): void => {
+    for (const area of this.scrollAreas) {
+      if (Phaser.Geom.Rectangle.Contains(area.bounds, pointer.x, pointer.y)) {
+        area.scroll(deltaY);
+        break;
+      }
+    }
+  };
 
   constructor() {
     super("select" satisfies SceneKey);
@@ -40,20 +59,30 @@ export class SelectScene extends Phaser.Scene {
     createBackButton(this, "battle-start");
     this.layer = this.add.container(0, 0);
     this.costLayer = this.add.container(0, 0);
+    this.input.on("wheel", this.onWheel);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.off("wheel", this.onWheel);
+    });
     this.render();
   }
 
   private render(): void {
     this.layer.removeAll(true);
     this.costLayer.removeAll(true);
+    this.scrollAreas = [];
     this.hoverCost = 0;
-    this.addHeader();
-    this.addDropBox(706, 184, "常驻模式", this.primaryId);
-    this.addDropBox(986, 184, "特殊模式", this.alternateId);
+    this.addDropBox(1020, 170, "常驻模式", this.primaryId, () => {
+      this.primaryId = undefined;
+      this.render();
+    });
+    this.addDropBox(1020, 330, "特殊模式", this.alternateId, () => {
+      this.alternateId = undefined;
+      this.render();
+    });
     this.addCharacterRoster();
     this.addCardRoster();
     this.addCostDisplay();
-    const confirmButton = createFightButton(this, 1036, 632, 250, 58, "确认出战", () => this.confirm(), {
+    const confirmButton = createFightButton(this, 1036, 680, 250, 58, "确认出战", () => this.confirm(), {
       enabled: this.isValid(),
       accent: 0xe33d44,
     });
@@ -61,34 +90,90 @@ export class SelectScene extends Phaser.Scene {
     this.layer.add(confirmButton.container);
   }
 
-  private addHeader(): void {
-    this.layer.add(this.add.text(78, 58, this.mode === "training" ? "靶场配装" : "人机对战配装", headingStyle(38)));
-    this.layer.add(this.add.text(82, 108, "左键点击角色和能力卡切换选择。主动能力卡最多 1 张。", bodyStyle("#b7c7d8", 17)));
-  }
-
-  private addDropBox(x: number, y: number, label: string, characterId: CharacterDefinition["id"] | undefined): void {
-    const box = this.add.container(x, y);
+  private addDropBox(
+    x: number,
+    y: number,
+    label: string,
+    characterId: CharacterDefinition["id"] | undefined,
+    onClear: () => void,
+  ): void {
+    const width = 224;
+    const height = 140;
+    const box = this.add.container(x - width / 2, y - height / 2);
     const graphics = this.add.graphics();
-    graphics.fillStyle(0x141923, 0.92);
-    graphics.fillTriangle(-110 + 22, -68, 110, -68, 110 - 22, 68);
-    graphics.fillTriangle(-110, -68, 110 - 22, 68, -110, 68);
-    graphics.lineStyle(2, 0x5c7185, 0.92);
-    graphics.strokeTriangle(-110 + 22, -68, 110, -68, 110 - 22, 68);
-    graphics.strokeTriangle(-110, -68, 110 - 22, 68, -110, 68);
+    drawAngledPanel(graphics, 0, 0, width, height, 0x111821, 0x5c7185, 0.95);
+    graphics.lineStyle(1, 0x273548, 0.6);
+    graphics.lineBetween(18, 46, width - 18, 46);
     box.add(graphics);
-    box.add(this.add.text(0, -48, label, bodyStyle("#ffcf6e", 17)).setOrigin(0.5));
+    box.add(this.add.text(width / 2, 22, label, bodyStyle("#ffcf6e", 16)).setOrigin(0.5));
     if (characterId) {
       const character = getCharacterById(characterId);
-      box.add(this.add.text(0, 48, character.name, bodyStyle("#f6f1e6", 17)).setOrigin(0.5));
+      box.add(this.add.text(width / 2, 84, character.name, bodyStyle("#f6f1e6", 19)).setOrigin(0.5));
     } else {
-      box.add(this.add.text(0, 8, "未选择", bodyStyle("#6e8496", 18)).setOrigin(0.5));
+      box.add(this.add.text(width / 2, 84, "未选择", bodyStyle("#6e8496", 18)).setOrigin(0.5));
     }
+    const hitArea = this.add.rectangle(0, 0, width, height, 0xffffff, 0.001)
+      .setOrigin(0, 0)
+      .setInteractive({ useHandCursor: !!characterId });
+    hitArea.on("pointerup", () => {
+      if (characterId) {
+        onClear();
+      }
+    });
+    box.add(hitArea);
+    this.layer.add(box);
   }
 
   private addCharacterRoster(): void {
-    drawPanelToLayer(this, this.layer, 66, 150, 482, 286, "角色");
-    DEFAULT_CHARACTERS.forEach((character, index) => {
-      const tile = createCharacterTile(this, 142 + index * 148, 282, character, this.isCharacterSelected(character.id), () => {
+    const panel = { x: 66, y: 40, width: 612, height: 392 };
+    drawPanelToLayer(this, this.layer, panel.x, panel.y, panel.width, panel.height, "角色");
+    const roleFilters = [
+      ["all", "全部"],
+      ["assault", "突击"],
+      ["suppress", "压制"],
+      ["scout", "侦察"],
+      ["sniper", "狙击"],
+    ] as const;
+    const roleFilterStartX = panel.x + panel.width - 346;
+    roleFilters.forEach((filter, index) => {
+      this.layer.add(createSmallTab(
+        this,
+        roleFilterStartX + index * 74,
+        panel.y + 30,
+        filter[1],
+        this.roleFilter === filter[0],
+        () => {
+          this.roleFilter = filter[0];
+          this.render();
+        },
+        64,
+      ).container);
+    });
+
+    const characters = DEFAULT_CHARACTERS.filter((character) => this.roleFilter === "all" || character.roleClass === this.roleFilter);
+    const listBounds = new Phaser.Geom.Rectangle(
+      panel.x + 18,
+      panel.y + 72,
+      panel.width - 36,
+      panel.height - 92,
+    );
+    const listContainer = this.add.container(0, 0);
+    const columns = 4;
+    const tileWidth = 112;
+    const tileHeight = 152;
+    const gapX = 18;
+    const gapY = 18;
+    const rows = Math.ceil(characters.length / columns) || 1;
+    const gridWidth = columns * tileWidth + (columns - 1) * gapX;
+    const startX = listBounds.x + (listBounds.width - gridWidth) / 2 + tileWidth / 2;
+    const startY = listBounds.y + tileHeight / 2;
+
+    characters.forEach((character, index) => {
+      const col = index % columns;
+      const row = Math.floor(index / columns);
+      const x = startX + col * (tileWidth + gapX);
+      const y = startY + row * (tileHeight + gapY);
+      const tile = createCharacterTile(this, x, y, character, this.isCharacterSelected(character.id), () => {
         this.pickCharacter(character.id);
       });
       tile.hitArea.on("pointerover", () => {
@@ -101,15 +186,71 @@ export class SelectScene extends Phaser.Scene {
         this.updateCostOnly();
         tile.setHovered(false);
       });
-      this.layer.add(tile.container);
+      listContainer.add(tile.container);
     });
+
+    const mask = this.make.graphics({ x: 0, y: 0, add: false });
+    mask.fillStyle(0xffffff, 1);
+    mask.fillRect(listBounds.x, listBounds.y, listBounds.width, listBounds.height);
+    listContainer.setMask(mask.createGeometryMask());
+    this.layer.add(listContainer);
+    this.registerScrollArea(
+      "characters",
+      listBounds,
+      listContainer,
+      rows * tileHeight + (rows - 1) * gapY,
+      listBounds.height,
+    );
   }
 
   private addCardRoster(): void {
-    drawPanelToLayer(this, this.layer, 66, 470, 872, 172, "能力卡");
-    DEFAULT_ABILITY_CARDS.forEach((card, index) => {
-      const x = 142 + index * 152;
-      const tile = createCardTile(this, x, 566, card, this.selectedCards.has(card.id), () => {
+    const panel = { x: 66, y: 440, width: 820, height: 272 };
+    drawPanelToLayer(this, this.layer, panel.x, panel.y, panel.width, panel.height, "能力卡");
+    const cardFilters = [
+      ["all", "全部"],
+      ["active", "主动"],
+      ["passive", "被动"],
+    ] as const;
+    const filterStartX = panel.x + panel.width - 240;
+    cardFilters.forEach((filter, index) => {
+      this.layer.add(createSmallTab(
+        this,
+        filterStartX + index * 76,
+        panel.y + 30,
+        filter[1],
+        this.cardFilter === filter[0],
+        () => {
+          this.cardFilter = filter[0];
+          this.render();
+        },
+        70,
+      ).container);
+    });
+
+    const cards = DEFAULT_ABILITY_CARDS.filter((card) => this.cardFilter === "all" || card.kind === this.cardFilter);
+    const listBounds = new Phaser.Geom.Rectangle(
+      panel.x + 18,
+      panel.y + 72,
+      panel.width - 36,
+      panel.height - 92,
+    );
+    const listContainer = this.add.container(0, 0);
+    const columns = 6;
+    const tileWidth = 116;
+    const tileHeight = 104;
+    const gapX = 16;
+    const gapY = 16;
+    const rows = Math.ceil(cards.length / columns) || 1;
+    const gridWidth = columns * tileWidth + (columns - 1) * gapX;
+    const startX = listBounds.x + (listBounds.width - gridWidth) / 2 + tileWidth / 2;
+    const startY = listBounds.y + tileHeight / 2;
+
+    cards.forEach((card, index) => {
+      const col = index % columns;
+      const row = Math.floor(index / columns);
+      const x = startX + col * (tileWidth + gapX);
+      const y = startY + row * (tileHeight + gapY);
+      const tile = createCardTile(this, x, y, card, this.selectedCards.has(card.id), () => {
         this.toggleCard(card);
       });
       tile.hitArea.on("pointerover", () => {
@@ -122,27 +263,71 @@ export class SelectScene extends Phaser.Scene {
         this.updateCostOnly();
         tile.setHovered(false);
       });
-      this.layer.add(tile.container);
+      listContainer.add(tile.container);
     });
+
+    const mask = this.make.graphics({ x: 0, y: 0, add: false });
+    mask.fillStyle(0xffffff, 1);
+    mask.fillRect(listBounds.x, listBounds.y, listBounds.width, listBounds.height);
+    listContainer.setMask(mask.createGeometryMask());
+    this.layer.add(listContainer);
+    this.registerScrollArea(
+      "cards",
+      listBounds,
+      listContainer,
+      rows * tileHeight + (rows - 1) * gapY,
+      listBounds.height,
+    );
   }
 
   private addCostDisplay(): void {
-    drawPanelToLayer(this, this.costLayer, 630, 292, 500, 150, "cost 槽");
     const total = this.totalCost();
     const projected = Math.max(0, total + this.hoverCost);
-    const limitText = this.mode === "training" ? "无限制" : `${COST_LIMIT}`;
-    const overLimit = this.mode !== "training" && projected >= COST_LIMIT;
-    this.costLayer.add(this.add.text(670, 358, `当前 ${total} / 上限 ${limitText}`, bodyStyle("#f6f1e6", 20)));
+    const limit = this.mode === "training" ? Math.max(COST_LIMIT, projected, 1) : COST_LIMIT;
+    const delta = this.hoverCost;
+    const label = `${total}(${delta >= 0 ? "+" : ""}${delta})/${limit}`;
+    this.costLayer.add(this.add.text(1036, 624, label, bodyStyle("#e6eef7", 18)).setOrigin(0.5));
     this.drawCostPreviewBar({
       total,
       projected,
-      delta: this.hoverCost,
-      overLimit,
-      x: 670,
-      y: 396,
-      width: 270,
-      height: 22,
+      delta,
+      overLimit: this.mode !== "training" && projected >= COST_LIMIT,
+      x: 916,
+      y: 640,
+      width: 240,
+      height: 14,
     });
+  }
+
+  private registerScrollArea(
+    kind: "characters" | "cards",
+    bounds: Phaser.Geom.Rectangle,
+    container: Phaser.GameObjects.Container,
+    contentHeight: number,
+    viewHeight: number,
+  ): void {
+    const maxOffset = Math.max(0, contentHeight - viewHeight);
+    let offset = kind === "characters" ? this.characterScrollOffset : this.cardScrollOffset;
+    offset = Phaser.Math.Clamp(offset, 0, maxOffset);
+    container.y = -offset;
+    const scroll = (deltaY: number) => {
+      if (maxOffset <= 0) {
+        return;
+      }
+      offset = Phaser.Math.Clamp(offset + deltaY, 0, maxOffset);
+      container.y = -offset;
+      if (kind === "characters") {
+        this.characterScrollOffset = offset;
+      } else {
+        this.cardScrollOffset = offset;
+      }
+    };
+    if (kind === "characters") {
+      this.characterScrollOffset = offset;
+    } else {
+      this.cardScrollOffset = offset;
+    }
+    this.scrollAreas.push({ bounds, scroll });
   }
 
   private drawCostPreviewBar(params: {
@@ -162,8 +347,7 @@ export class SelectScene extends Phaser.Scene {
     const currentWidth = params.width * currentRatio;
     const projectedWidth = params.width * projectedRatio;
 
-    bar.fillStyle(0x273548, 1).fillRect(params.x, params.y, params.width, params.height);
-    bar.lineStyle(2, 0x5c7185, 0.9).strokeRect(params.x, params.y, params.width, params.height);
+    bar.fillStyle(0x223042, 0.95).fillRect(params.x, params.y, params.width, params.height);
     bar.fillStyle(0x34d399, 1).fillRect(params.x, params.y, currentWidth, params.height);
 
     if (params.delta > 0) {
@@ -175,11 +359,6 @@ export class SelectScene extends Phaser.Scene {
     }
 
     this.costLayer.add(bar);
-    this.costLayer.add(this.add.text(params.x + params.width + 18, params.y - 5, `${params.total}`, bodyStyle("#7cff8a", 24)));
-    if (params.delta !== 0) {
-      const sign = params.delta > 0 ? "+" : "";
-      this.costLayer.add(this.add.text(params.x + params.width + 56, params.y - 1, `(${sign}${params.delta})`, bodyStyle(params.overLimit && params.delta > 0 ? "#ff5c66" : "#7cff8a", 20)));
-    }
   }
 
   private updateCostOnly(): void {

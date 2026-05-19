@@ -1,6 +1,35 @@
 import { secondsToTicks } from "../seconds-to-ticks";
 import type { AbilityCardDefinition } from "./types";
 
+const DEMO_GALLERY = {
+  iconAsset: "assets/ability-cards/extra-life/icon.png",
+  previewAsset: "assets/ability-cards/extra-life/preview.png",
+};
+
+function buildDemoCards(
+  kind: AbilityCardDefinition["kind"],
+  namePrefix: string,
+  count: number,
+  cost: number,
+): AbilityCardDefinition[] {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `demo_${kind}_${index + 1}` as AbilityCardDefinition["id"],
+    name: `${namePrefix}${index + 1}`,
+    cost,
+    kind,
+    useLimit: kind === "active" ? 2 : "infinite",
+    cooldownTicks: kind === "active" ? secondsToTicks(8) : 0,
+    description: "占位能力卡，用于列表滚动展示。",
+    gallery: DEMO_GALLERY,
+    effectIds: [],
+  }));
+}
+
+const DEMO_CARDS: AbilityCardDefinition[] = [
+  ...buildDemoCards("passive", "demoPassive", 6, 1),
+  ...buildDemoCards("active", "demoActive", 6, 1),
+];
+
 export const DEFAULT_ABILITY_CARDS: readonly AbilityCardDefinition[] = [
   {
     id: "extra_life",
@@ -72,4 +101,5 @@ export const DEFAULT_ABILITY_CARDS: readonly AbilityCardDefinition[] = [
     },
     effectIds: ["clear_projectiles_radius_4"],
   },
+  ...DEMO_CARDS,
 ];

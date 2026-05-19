@@ -23,6 +23,21 @@ export class CodexScene extends Phaser.Scene {
   private selectedCard = DEFAULT_ABILITY_CARDS[0]!;
   private listLayer!: Phaser.GameObjects.Container;
   private detailLayer!: Phaser.GameObjects.Container;
+  private listScrollOffset = 0;
+  private scrollAreas: Array<{ bounds: Phaser.Geom.Rectangle; scroll: (deltaY: number) => void }> = [];
+  private readonly onWheel = (
+    pointer: Phaser.Input.Pointer,
+    _gameObjects: unknown,
+    _deltaX: number,
+    deltaY: number,
+  ): void => {
+    for (const area of this.scrollAreas) {
+      if (Phaser.Geom.Rectangle.Contains(area.bounds, pointer.x, pointer.y)) {
+        area.scroll(deltaY);
+        break;
+      }
+    }
+  };
 
   constructor() {
     super("codex" satisfies SceneKey);
@@ -33,16 +48,21 @@ export class CodexScene extends Phaser.Scene {
     createBackButton(this);
     this.add.text(90, 74, "图鉴", headingStyle(42));
 
-    drawPanel(this, 58, 136, 492, 526, "");
-    drawPanel(this, 590, 136, 632, 526, "");
+    drawPanel(this, LIST_PANEL.x, LIST_PANEL.y, LIST_PANEL.width, LIST_PANEL.height, "");
+    drawPanel(this, DETAIL_PANEL.x, DETAIL_PANEL.y, DETAIL_PANEL.width, DETAIL_PANEL.height, "");
     this.listLayer = this.add.container(0, 0);
     this.detailLayer = this.add.container(0, 0);
+    this.input.on("wheel", this.onWheel);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.off("wheel", this.onWheel);
+    });
     this.render();
   }
 
   private render(): void {
     this.listLayer.removeAll(true);
     this.detailLayer.removeAll(true);
+    this.scrollAreas = [];
     this.renderTabs();
     if (this.tab === "characters") {
       this.renderCharacterList();
@@ -54,12 +74,15 @@ export class CodexScene extends Phaser.Scene {
   }
 
   private renderTabs(): void {
-    this.listLayer.add(createSmallTab(this, 98, 170, "角色", this.tab === "characters", () => {
+    const mainTabX = LIST_PANEL.x + 72;
+    this.listLayer.add(createSmallTab(this, mainTabX, 170, "角色", this.tab === "characters", () => {
       this.tab = "characters";
+      this.listScrollOffset = 0;
       this.render();
     }).container);
-    this.listLayer.add(createSmallTab(this, 206, 170, "能力卡", this.tab === "cards", () => {
+    this.listLayer.add(createSmallTab(this, mainTabX + 92, 170, "能力卡", this.tab === "cards", () => {
       this.tab = "cards";
+      this.listScrollOffset = 0;
       this.render();
     }).container);
 
@@ -73,19 +96,23 @@ export class CodexScene extends Phaser.Scene {
       ] as const
       : [
         ["all", "全部"],
-        ["active", "主动使用"],
+        ["active", "主动"],
         ["passive", "被动"],
       ] as const;
 
+    const filterGap = 4;
+    const filterWidth = this.tab === "characters" ? 64 : 72;
+    const filtersWidth = filters.length * filterWidth + (filters.length - 1) * filterGap;
+    const filterStartX = LIST_PANEL.x + LIST_PANEL.width - filtersWidth - 8;
     filters.forEach((filter, index) => {
-      this.listLayer.add(createSmallTab(this, 330 + index * 74, 170, filter[1], this.activeFilter() === filter[0], () => {
+      this.listLayer.add(createSmallTab(this, filterStartX + index * (filterWidth + filterGap), 170, filter[1], this.activeFilter() === filter[0], () => {
         if (this.tab === "characters") {
           this.roleFilter = filter[0] as CharacterDefinition["roleClass"] | "all";
         } else {
           this.cardFilter = filter[0] as AbilityCardDefinition["kind"] | "all";
         }
         this.render();
-      }, 64).container);
+      }, filterWidth).container);
     });
   }
 
@@ -94,36 +121,106 @@ export class CodexScene extends Phaser.Scene {
   }
 
   private renderCharacterList(): void {
-    DEFAULT_CHARACTERS
+    const baseTileWidth = 164;
+    const baseTileHeight = 142;
+    const tileScale = 0.8;
+    const tileWidth = baseTileWidth * tileScale;
+    const tileHeight = baseTileHeight * tileScale;
+    const columns = 4;
+    const gapX = 11;
+    const gapY = 16;
+    const gridWidth = columns * tileWidth + (columns - 1) * gapX;
+    const startX = LIST_PANEL.x + (LIST_PANEL.width - gridWidth) / 2 + tileWidth / 2;
+    const startY = LIST_PANEL.y + 118 + tileHeight / 2;
+    const listContainer = this.add.container(0, 0);
+    const characters = DEFAULT_CHARACTERS
       .filter((character) => this.roleFilter === "all" || character.roleClass === this.roleFilter)
-      .forEach((character, index) => {
-        const item = createCodexTile(this, 114 + (index % 2) * 206, 234 + Math.floor(index / 2) * 184, character.name, character.cost, roleLabel(character.roleClass), character.id === this.selectedCharacter.id, (target) => {
-          drawCharacterIcon(this, target, 82, 48, 1.0);
-        }, () => {
-          this.selectedCharacter = character;
-          this.render();
-        });
-        this.listLayer.add(item.container);
+    characters.forEach((character, index) => {
+      const col = index % columns;
+      const row = Math.floor(index / columns);
+      const x = startX + col * (tileWidth + gapX);
+      const y = startY + row * (tileHeight + gapY);
+      const item = createCodexTile(this, x, y, character.name, character.cost, roleLabel(character.roleClass), character.id === this.selectedCharacter.id, (target) => {
+        drawCharacterIcon(this, target, 82, 48, 1.0);
+      }, () => {
+        this.selectedCharacter = character;
+        this.render();
       });
+      item.container.setScale(tileScale);
+      item.container.x += (baseTileWidth * (1 - tileScale)) / 2;
+      item.container.y += (baseTileHeight * (1 - tileScale)) / 2;
+      listContainer.add(item.container);
+    });
+
+    const listBounds = new Phaser.Geom.Rectangle(
+      LIST_PANEL.x + 18,
+      LIST_PANEL.y + 100,
+      LIST_PANEL.width - 36,
+      LIST_PANEL.height - 118,
+    );
+    const mask = this.make.graphics({ x: 0, y: 0, add: false });
+    mask.fillStyle(0xffffff, 1);
+    mask.fillRect(listBounds.x, listBounds.y, listBounds.width, listBounds.height);
+    listContainer.setMask(mask.createGeometryMask());
+    this.listLayer.add(listContainer);
+    const rows = Math.ceil(characters.length / columns) || 1;
+    const topPadding = startY - listBounds.y;
+    const contentHeight = topPadding + rows * tileHeight + (rows - 1) * gapY + 6;
+    this.registerScrollArea(listBounds, listContainer, contentHeight, listBounds.height);
   }
 
   private renderCardList(): void {
-    DEFAULT_ABILITY_CARDS
+    const tileWidth = 164;
+    const tileHeight = 142;
+    const tileScale = 0.75;
+    const columns = 5;
+    const gapX = 8;
+    const gapY = 16;
+    const scaledWidth = tileWidth * tileScale;
+    const scaledHeight = tileHeight * tileScale;
+    const gridWidth = columns * scaledWidth + (columns - 1) * gapX;
+    const startX = LIST_PANEL.x + (LIST_PANEL.width - gridWidth) / 2 + scaledWidth / 2;
+    const startY = LIST_PANEL.y + 122 + scaledHeight / 2;
+    const listContainer = this.add.container(0, 0);
+    const cards = DEFAULT_ABILITY_CARDS
       .filter((card) => this.cardFilter === "all" || card.kind === this.cardFilter)
-      .forEach((card, index) => {
-        const item = createCodexTile(this, 114 + (index % 2) * 206, 234 + Math.floor(index / 2) * 184, card.name, card.cost, card.kind === "active" ? "主动使用" : "被动", card.id === this.selectedCard.id, (target) => {
-          drawCardIcon(this, target, 82, 48, card.kind, 1.0);
-        }, () => {
-          this.selectedCard = card;
-          this.render();
-        });
-        this.listLayer.add(item.container);
+    cards.forEach((card, index) => {
+      const col = index % columns;
+      const row = Math.floor(index / columns);
+      const x = startX + col * (scaledWidth + gapX);
+      const y = startY + row * (scaledHeight + gapY);
+      const item = createCodexTile(this, x, y, card.name, card.cost, card.kind === "active" ? "主动使用" : "被动", card.id === this.selectedCard.id, (target) => {
+        drawCardIcon(this, target, 82, 48, card.kind, 1.0);
+      }, () => {
+        this.selectedCard = card;
+        this.render();
       });
+      item.container.setScale(tileScale);
+      item.container.x += (tileWidth * (1 - tileScale)) / 2;
+      item.container.y += (tileHeight * (1 - tileScale)) / 2;
+      listContainer.add(item.container);
+    });
+
+    const listBounds = new Phaser.Geom.Rectangle(
+      LIST_PANEL.x + 18,
+      LIST_PANEL.y + 100,
+      LIST_PANEL.width - 36,
+      LIST_PANEL.height - 118,
+    );
+    const mask = this.make.graphics({ x: 0, y: 0, add: false });
+    mask.fillStyle(0xffffff, 1);
+    mask.fillRect(listBounds.x, listBounds.y, listBounds.width, listBounds.height);
+    listContainer.setMask(mask.createGeometryMask());
+    this.listLayer.add(listContainer);
+    const rows = Math.ceil(cards.length / columns) || 1;
+    const topPadding = startY - listBounds.y;
+    const contentHeight = topPadding + rows * scaledHeight + (rows - 1) * gapY + 6;
+    this.registerScrollArea(listBounds, listContainer, contentHeight, listBounds.height);
   }
 
   private renderCharacterDetail(): void {
     const character = this.selectedCharacter;
-    const preview = createPreviewArena(this, 652, 174, character.name, (target) => {
+    const preview = createPreviewArena(this, DETAIL_PANEL.x + 24, 174, character.name, (target) => {
       drawCharacterIcon(this, target, 254, 110, 2.15);
     });
     this.detailLayer.add(preview);
@@ -136,12 +233,12 @@ export class CodexScene extends Phaser.Scene {
       `弹速：${speedLabel(character.bulletSpeed)}`,
       `描述：${character.description}`,
     ];
-    this.detailLayer.add(this.add.text(640, 442, lines.join("\n"), bodyStyle("#d7e3ef", 18)).setLineSpacing(10).setWordWrapWidth(520));
+    this.detailLayer.add(this.add.text(DETAIL_PANEL.x + 18, 442, lines.join("\n"), bodyStyle("#d7e3ef", 18)).setLineSpacing(10).setWordWrapWidth(DETAIL_PANEL.width - 36));
   }
 
   private renderCardDetail(): void {
     const card = this.selectedCard;
-    const preview = createPreviewArena(this, 652, 174, card.name, (target) => {
+    const preview = createPreviewArena(this, DETAIL_PANEL.x + 24, 174, card.name, (target) => {
       drawCardIcon(this, target, 254, 110, card.kind, 2.5);
     });
     this.detailLayer.add(preview);
@@ -153,9 +250,44 @@ export class CodexScene extends Phaser.Scene {
       `冷却时间：${cooldown}`,
       `描述：${card.description}`,
     ];
-    this.detailLayer.add(this.add.text(640, 442, lines.join("\n"), bodyStyle("#d7e3ef", 18)).setLineSpacing(10).setWordWrapWidth(520));
+    this.detailLayer.add(this.add.text(DETAIL_PANEL.x + 18, 442, lines.join("\n"), bodyStyle("#d7e3ef", 18)).setLineSpacing(10).setWordWrapWidth(DETAIL_PANEL.width - 36));
+  }
+
+  private registerScrollArea(
+    bounds: Phaser.Geom.Rectangle,
+    container: Phaser.GameObjects.Container,
+    contentHeight: number,
+    viewHeight: number,
+  ): void {
+    const maxOffset = Math.max(0, contentHeight - viewHeight);
+    let offset = Phaser.Math.Clamp(this.listScrollOffset, 0, maxOffset);
+    container.y = -offset;
+    const scroll = (deltaY: number) => {
+      if (maxOffset <= 0) {
+        return;
+      }
+      offset = Phaser.Math.Clamp(offset + deltaY, 0, maxOffset);
+      container.y = -offset;
+      this.listScrollOffset = offset;
+    };
+    this.listScrollOffset = offset;
+    this.scrollAreas.push({ bounds, scroll });
   }
 }
+
+const LIST_PANEL = {
+  x: 24,
+  y: 116,
+  width: 696,
+  height: 526,
+};
+
+const DETAIL_PANEL = {
+  x: 736,
+  y: 116,
+  width: 520,
+  height: 526,
+};
 
 function roleLabel(role: CharacterDefinition["roleClass"]): string {
   return {
