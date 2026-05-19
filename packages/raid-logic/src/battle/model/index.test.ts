@@ -256,7 +256,7 @@ async function createBattleModel(
 
 function hitPlayer(model: BattleModel): void {
   const hit = model as unknown as {
-    onProjectileHit(owner: "player" | "target", victim: BattleModel["player"], damage: number): boolean;
+    onProjectileHit(ctx: { readonly owner: "player" | "target"; readonly victim: BattleModel["player"]; readonly damage: number }): boolean;
   };
-  hit.onProjectileHit("target", model.player, 1);
+  hit.onProjectileHit({ owner: "target", victim: model.player, damage: 1 });
 }

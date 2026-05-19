@@ -5,7 +5,7 @@ import { MarisaBattleCharacter } from "./marisa";
 import { SakuyaBattleCharacter } from "./sakuya";
 import type { BattleCharacter } from "./base";
 
-export type { BattleCharacter, CharacterActionContext } from "./base";
+export type { BattleBulletSpawnParams, BattleCharacter, BattleLaserSpawnParams, CharacterActionContext } from "./base";
 
 export function createBattleCharacter(definition: CharacterDefinition): BattleCharacter {
   if (definition.id === "reimu") {

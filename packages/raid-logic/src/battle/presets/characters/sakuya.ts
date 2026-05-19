@@ -73,7 +73,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
       readonly height: number;
     },
   ): void {
-    ctx.projectileSystem.spawnBullet(ctx.projectiles, {
+    ctx.spawnBullet({
       owner: fighter.key,
       kind: "knife",
       x,
@@ -82,7 +82,6 @@ export class SakuyaBattleCharacter extends BattleCharacter {
       speedRank,
       width: size.width,
       height: size.height,
-      frame: ctx.frame,
       homingTicks: 0,
       spawnOffset: 0,
     });

@@ -61,7 +61,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
     angle: number,
     homingTicks: number,
   ): void {
-    ctx.projectileSystem.spawnBullet(ctx.projectiles, {
+    ctx.spawnBullet({
       owner: fighter.key,
       kind: "orb",
       x,
@@ -70,7 +70,6 @@ export class ReimuBattleCharacter extends BattleCharacter {
       speedRank: "low",
       width: hitCircleUnits(2),
       height: hitCircleUnits(1),
-      frame: ctx.frame,
       homingTicks,
       spawnOffset: 0,
     });

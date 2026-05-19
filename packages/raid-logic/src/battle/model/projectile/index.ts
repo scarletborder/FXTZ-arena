@@ -1,11 +1,13 @@
+import type { ProjectileCollisionContext } from "@repo/types";
+
 import { PLAYER_CORE_RADIUS } from "../../constants";
 import type { FighterKey, FighterState, ProjectileState } from "../../types";
 import type { CollisionResult } from "../physics-adapter";
 import { createBulletProjectile, isProjectileOutOfWorld, stepBulletProjectile } from "./bullet";
 import { createLaserProjectile, stepLaserProjectile } from "./laser";
 
-type BulletProjectileParams = Omit<Parameters<typeof createBulletProjectile>[0], "id">;
-type LaserProjectileParams = Omit<Parameters<typeof createLaserProjectile>[0], "id">;
+export type BulletProjectileParams = Omit<Parameters<typeof createBulletProjectile>[0], "id">;
+export type LaserProjectileParams = Omit<Parameters<typeof createLaserProjectile>[0], "id">;
 
 export class ProjectileSystem {
   private nextProjectileId = 1;
@@ -37,7 +39,7 @@ export class ProjectileSystem {
     readonly projectiles: ProjectileState[];
     readonly player: FighterState;
     readonly target: FighterState;
-    readonly onHit: (owner: FighterKey, victim: FighterState, damage: number) => boolean;
+    readonly onHit: (ctx: ProjectileCollisionContext<ProjectileState, FighterState, FighterKey>) => boolean;
     /**
      * Optional callback invoked AFTER projectile positions have been updated
      * but BEFORE hit-testing. Receives the projectiles with their new
@@ -82,7 +84,12 @@ export class ProjectileSystem {
           : hitTest(projectile, victim);
 
         if (isHit) {
-          const accepted = params.onHit(projectile.owner, victim, projectile.damage);
+          const accepted = params.onHit({
+            projectile,
+            owner: projectile.owner,
+            victim,
+            damage: projectile.damage,
+          });
           if (accepted && !projectile.pierce) {
             continue;
           }
@@ -104,12 +111,14 @@ export function clearProjectilesAround(
   x: number,
   y: number,
   radius: number,
-): void {
+): number {
+  const before = projectiles.length;
   projectiles.splice(
     0,
     projectiles.length,
     ...projectiles.filter((projectile) => Math.hypot(projectile.x - x, projectile.y - y) > radius),
   );
+  return before - projectiles.length;
 }
 
 function hitTest(projectile: ProjectileState, victim: FighterState): boolean {

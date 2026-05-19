@@ -1,3 +1,5 @@
+import type { ProjectileCollisionContext } from "@repo/types";
+
 import { getAbilityCard, getCharacter } from "../content";
 import { PLAYER_SPAWN, RESPAWN_DELAY_TICKS, TARGET_SPAWN } from "../constants";
 import type { BattleLoadouts, FighterLoadout } from "../loadout";
@@ -7,7 +9,7 @@ import { CpuPlayer } from "../aicpu";
 import { EffectSystem } from "./effects";
 import { hashBattleModel, hashToHex } from "./hash";
 import { BattlePhysics } from "./physics-adapter";
-import { ProjectileSystem } from "./projectile";
+import { clearProjectilesAround, ProjectileSystem } from "./projectile";
 import {
   createBattleModelSnapshot,
   restoreEffectSnapshot,
@@ -120,7 +122,7 @@ export class BattleModel {
       projectiles: this.projectiles,
       player: this.player,
       target: this.target,
-      onHit: (owner, victim, damage) => this.onProjectileHit(owner, victim, damage),
+      onHit: (ctx) => this.onProjectileHit(ctx),
       computeRapierHits: (projectiles) => this.physics!.computeCollisions(projectiles, this.player, this.target),
     });
     this.effectSystem.stepEffects(this.effects, this.frame);
@@ -281,7 +283,8 @@ export class BattleModel {
     }
   }
 
-  private onProjectileHit(owner: "player" | "target", victim: FighterState, damage: number): boolean {
+  private onProjectileHit(ctx: ProjectileCollisionContext<ProjectileState, FighterState, "player" | "target">): boolean {
+    const { owner, victim, damage } = ctx;
     const victimFighter = victim.key === "player" ? this.playerFighter : this.targetFighter;
     const attackerFighter = owner === "player" ? this.playerFighter : this.targetFighter;
     const result = victimFighter.onProjectileHit({
@@ -348,8 +351,19 @@ export class BattleModel {
       projectiles: this.projectiles,
       effects: this.effects,
       stats: this.stats,
-      projectileSystem: this.projectileSystem,
-      effectSystem: this.effectSystem,
+      spawnBullet: (params) => {
+        this.projectileSystem.spawnBullet(this.projectiles, { ...params, frame: params.frame ?? this.frame });
+      },
+      spawnLaser: (params) => {
+        this.projectileSystem.spawnLaser(this.projectiles, { ...params, frame: params.frame ?? this.frame });
+      },
+      clearProjectilesAround: (params) => clearProjectilesAround(this.projectiles, params.x, params.y, params.radius),
+      spawnEffectRing: (params) => {
+        this.effectSystem.spawnRing(this.effects, this.frame, params.x, params.y, params.tint, params.scale, params.duration);
+      },
+      spawnClearRing: (params) => {
+        this.effectSystem.spawnRing(this.effects, this.frame, params.x, params.y, params.tint, params.radius / 100, params.duration);
+      },
     };
   }
 

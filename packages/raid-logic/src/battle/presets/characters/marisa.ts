@@ -15,12 +15,11 @@ export class MarisaBattleCharacter extends BattleCharacter {
   readonly reloadTicksPerAmmo = this.definition.reloadTicksPerAmmo;
 
   shoot(ctx: CharacterActionContext, fighter: FighterState, aimX: number, aimY: number): void {
-    ctx.projectileSystem.spawnLaser(ctx.projectiles, {
+    ctx.spawnLaser({
       owner: fighter.key,
       x: fighter.x,
       y: fighter.y,
       angle: this.aimAngle(fighter, aimX, aimY),
-      frame: ctx.frame,
       height: hitCircleUnits(3),
       initialLength: hitCircleUnits(3),
       maxLength: hitCircleUnits(16),
@@ -43,12 +42,11 @@ export class MarisaBattleCharacter extends BattleCharacter {
     fighter.pendingMoveSpeedOverride = "low";
     fighter.pendingMoveSpeedOverrideDuration = durationTicks;
 
-    ctx.projectileSystem.spawnLaser(ctx.projectiles, {
+    ctx.spawnLaser({
       owner: fighter.key,
       x: fighter.x,
       y: fighter.y,
       angle,
-      frame: ctx.frame,
       height: hitCircleUnits(1.5),
       initialLength: Number.POSITIVE_INFINITY,
       maxLength: Number.POSITIVE_INFINITY,
@@ -62,13 +60,12 @@ export class MarisaBattleCharacter extends BattleCharacter {
       rayLike: true,
     });
 
-    ctx.projectileSystem.spawnLaser(ctx.projectiles, {
+    ctx.spawnLaser({
       owner: fighter.key,
       kind: "spark",
       x: fighter.x,
       y: fighter.y,
       angle,
-      frame: ctx.frame,
       height: hitCircleUnits(36),
       initialLength: Number.POSITIVE_INFINITY,
       maxLength: Number.POSITIVE_INFINITY,

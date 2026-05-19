@@ -1,40 +1,38 @@
 import type { AbilityCardDefinition } from "@repo/content";
-import { DEFAULT_BOMBS, hitCircleUnits } from "@repo/types";
+import {
+  DEFAULT_BOMBS,
+  hitCircleUnits,
+  type BattleActionContext as StandardBattleActionContext,
+  type BattleHitContext as StandardBattleHitContext,
+  type HitResolutionContext,
+} from "@repo/types";
 
 import type { EffectState, FighterKey, FighterState, ProjectileState, TrainingStats } from "../types";
-import type { EffectSystem } from "../model/effects";
-import { clearProjectilesAround, type ProjectileSystem } from "../model/projectile";
+import type { BattleBulletSpawnParams, BattleLaserSpawnParams } from "./characters";
 
-export interface BattleCardContext {
-  readonly frame: number;
-  readonly self: FighterState;
-  readonly opponent: FighterState;
-  readonly projectiles: ProjectileState[];
-  readonly effects: EffectState[];
-  readonly stats: TrainingStats;
-  readonly projectileSystem: ProjectileSystem;
-  readonly effectSystem: EffectSystem;
-}
+export interface BattleCardContext
+  extends StandardBattleActionContext<
+    FighterState,
+    ProjectileState,
+    EffectState,
+    TrainingStats,
+    BattleBulletSpawnParams,
+    BattleLaserSpawnParams
+  > {}
 
-export interface HitResolution {
-  defaultBombs: number;
-}
+export interface HitResolution extends HitResolutionContext {}
 
-export interface BattleHitContext extends BattleCardContext {
-  readonly owner: FighterKey;
-  readonly victim: FighterState;
-  readonly attacker: FighterState;
-  readonly damage: number;
-  readonly before: {
-    readonly victim: FighterState;
-    readonly attacker: FighterState;
-  };
-  readonly cards: {
-    readonly victim: readonly AbilityCardDefinition[];
-    readonly attacker: readonly AbilityCardDefinition[];
-  };
-  readonly resolution: HitResolution;
-}
+export interface BattleHitContext
+  extends StandardBattleHitContext<
+    FighterState,
+    ProjectileState,
+    EffectState,
+    TrainingStats,
+    BattleBulletSpawnParams,
+    BattleLaserSpawnParams,
+    AbilityCardDefinition,
+    FighterKey
+  > {}
 
 export interface BattleAbilityCard {
   readonly definition: AbilityCardDefinition;
@@ -66,8 +64,8 @@ class DefaultBattleAbilityCard implements BattleAbilityCard {
       return;
     }
     const radius = hitCircleUnits(4);
-    clearProjectilesAround(ctx.projectiles, ctx.self.x, ctx.self.y, radius);
-    ctx.effectSystem.spawnRing(ctx.effects, ctx.frame, ctx.self.x, ctx.self.y, 0x7ee39d, radius / 100, 28);
+    ctx.clearProjectilesAround({ x: ctx.self.x, y: ctx.self.y, radius });
+    ctx.spawnClearRing({ x: ctx.self.x, y: ctx.self.y, radius, tint: 0x7ee39d, duration: 28 });
   }
 }
 
