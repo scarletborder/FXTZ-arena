@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 
 import { PLAYER_CORE_RADIUS } from "../constants";
-import type { FighterState } from "../types";
+import type { FighterState } from "@repo/raid-logic";
 
 interface FighterVisual {
   readonly body: Phaser.GameObjects.Image;

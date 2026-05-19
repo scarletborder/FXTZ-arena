@@ -15,8 +15,15 @@ export * from "./input";
 export * from "./physics-world";
 export * from "./rollback";
 export * from "./state";
+export * from "./battle/loadout";
+export * from "./battle/model";
+export * from "./battle/model/physics-adapter";
+export * from "./battle/model/snapshot";
+export * from "./battle/output";
+export * from "./battle/runtime";
+export * from "./battle/types";
 
-export interface FighterState {
+export interface LegacyFighterState {
   readonly playerId: string;
   readonly x: number;
   readonly y: number;
@@ -24,7 +31,7 @@ export interface FighterState {
 
 export interface RaidState {
   readonly frame: number;
-  readonly fighters: readonly [FighterState, FighterState];
+  readonly fighters: readonly [LegacyFighterState, LegacyFighterState];
 }
 
 export function createDefaultRaidBattleConfig(): BattleConfig {

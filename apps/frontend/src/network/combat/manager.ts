@@ -1,7 +1,6 @@
 import type { PlayerId, ServerMessage } from "@repo/types";
+import type { BattleInputState, RaidLogicRuntime } from "@repo/raid-logic";
 
-import type { BattleModel } from "../../battle/model";
-import type { BattleInputState } from "../../battle/types";
 import type { ConnectionManager } from "../client";
 import { CombatInputQueues } from "./queues";
 import type { CanonicalFighterKey, CombatSyncManagerOptions } from "./types";
@@ -24,7 +23,7 @@ export class CombatSyncManager {
   private paused = false;
 
   constructor(
-    private readonly model: BattleModel,
+    private readonly runtime: RaidLogicRuntime,
     private readonly connectionManager: ConnectionManager,
     private readonly options: CombatSyncManagerOptions,
   ) {
@@ -49,22 +48,23 @@ export class CombatSyncManager {
       return;
     }
 
-    if (this.model.gameOver) {
+    if (this.runtime.gameOver) {
       this.trySendGameOverVerdict();
       return;
     }
 
-    const frame = this.model.frame + 1;
+    const frame = this.runtime.frame + 1;
     this.queues.enqueuePending({
       frame,
       input: cloneInput(localInput),
     });
     this.consumeSendSceneQueue();
 
-    this.model.stepVersus(
-      this.getInputForFrame("player-1", frame),
-      this.getInputForFrame("player-2", frame),
-    );
+    this.runtime.step({
+      mode: "online",
+      player: this.getInputForFrame("player-1", frame),
+      target: this.getInputForFrame("player-2", frame),
+    });
     this.options.callbacks.recordFrame();
     this.pruneOnlineHistory();
     this.trySendGameOverVerdict();
@@ -142,9 +142,9 @@ export class CombatSyncManager {
       this.lastKnownInputs.set(playerId, input);
     }
 
-    if (frame <= this.model.frame && !existing && predicted && !sameInput(predicted, input)) {
+    if (frame <= this.runtime.frame && !existing && predicted && !sameInput(predicted, input)) {
       this.rollbackTo(frame);
-      if (!this.model.gameOver && !this.paused) {
+      if (!this.runtime.gameOver && !this.paused) {
         this.options.callbacks.hideStatusText();
       }
     }
@@ -156,17 +156,18 @@ export class CombatSyncManager {
     const record = this.options.callbacks.getRollbackRecord(restoreFrame);
     if (!record) return;
 
-    const currentFrame = this.model.frame;
-    this.model.deserialize(record.snapshot);
+    const currentFrame = this.runtime.frame;
+    this.runtime.deserialize(record.snapshot);
     this.options.callbacks.onRollback();
     this.options.callbacks.pruneRollbackHistoryAfter(restoreFrame);
     this.options.callbacks.recordFrame();
 
     for (let frame = restoreFrame + 1; frame <= currentFrame; frame += 1) {
-      this.model.stepVersus(
-        this.getInputForFrame("player-1", frame),
-        this.getInputForFrame("player-2", frame),
-      );
+      this.runtime.step({
+        mode: "online",
+        player: this.getInputForFrame("player-1", frame),
+        target: this.getInputForFrame("player-2", frame),
+      });
       this.options.callbacks.recordFrame();
     }
   }
@@ -177,10 +178,10 @@ export class CombatSyncManager {
   }
 
   private trySendGameOverVerdict(): void {
-    if (this.gameOverVerdictSent || !this.model.gameOver) {
+    if (this.gameOverVerdictSent || !this.runtime.gameOver) {
       return;
     }
-    if (this.lastReceivedRemoteFrame < this.model.frame) {
+    if (this.lastReceivedRemoteFrame < this.runtime.frame) {
       this.options.callbacks.setStatusText("等待对手输入确认终局…");
       return;
     }
@@ -191,14 +192,14 @@ export class CombatSyncManager {
     this.options.callbacks.setStatusText("已提交终局裁决，等待对手确认…");
     this.connectionManager.send({
       type: "game_over",
-      frame: this.model.frame,
+      frame: this.runtime.frame,
       ackFrame: this.lastReceivedRemoteFrame,
       winnerPlayerId,
     });
   }
 
   private winnerPlayerId(): PlayerId {
-    return this.model.target.lives <= 0 ? "player-1" : "player-2";
+    return this.runtime.state.target.lives <= 0 ? "player-1" : "player-2";
   }
 
   private storeInput(playerId: PlayerId, frame: number, input: BattleInputState): void {

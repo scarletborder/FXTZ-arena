@@ -41,6 +41,7 @@ export class CpuPlayer {
 
     // 3. 进攻策略
     const strategy = this.strategy.getActions(
+      frame,
       self,
       opponent,
       dodgeResult.threatCount,

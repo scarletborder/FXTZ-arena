@@ -1,4 +1,4 @@
-import { PhysicsWorld, ensureRapierInit, type BodyDebugData } from "@repo/raid-logic";
+import { PhysicsWorld, ensureRapierInit, type BodyDebugData } from "../../physics-world";
 
 import { PLAYER_CORE_RADIUS } from "../constants";
 import type { FighterState, ProjectileState } from "../types";
@@ -13,7 +13,7 @@ export interface CollisionResult {
 }
 
 /**
- * Optional Rapier-based collision detection layer for BattleModel.
+ * Rapier-based collision detection layer for BattleModel.
  *
  * When enabled, this adapter replaces the manual rotated-rect/circle
  * hit-testing in the projectile system with Rapier 2D sensor-collider
@@ -68,7 +68,7 @@ export class BattlePhysics {
     this.syncFighter("target", target);
 
     // -- 2. Remove previous frame's projectile bodies ----------------------
-    for (const id of this.projBodyIds) {
+    for (const id of Array.from(this.projBodyIds)) {
       this.world.removeBody(id);
     }
     this.projBodyIds.clear();

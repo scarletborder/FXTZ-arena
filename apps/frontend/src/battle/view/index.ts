@@ -1,8 +1,6 @@
 import Phaser from "phaser";
 
-import type { BattleInputState } from "../types";
-import type { BattleModel } from "../model";
-import type { BodyDebugData } from "@repo/raid-logic";
+import type { BattleInputState, BattleOutputState, BodyDebugData } from "@repo/raid-logic";
 import { CrosshairView } from "./crosshair";
 import { EffectsView } from "./effects";
 import { FighterView } from "./fighter";
@@ -34,12 +32,12 @@ export class BattleView {
     this.debugGraphics.setDepth(999);
   }
 
-  render(model: BattleModel, input: BattleInputState, localFighterKey: "player" | "target" = "player", alpha = 1): void {
-    const localFighter = localFighterKey === "player" ? model.player : model.target;
-    this.fighters.render(model.player, model.target, model.frame, model.gameOver, input.infoHeld, localFighterKey, alpha);
-    this.projectiles.render(model.projectiles, model.frame, alpha);
-    this.effects.render(model.effects);
-    this.infoDisplay.render(model);
+  render(state: BattleOutputState, input: BattleInputState, localFighterKey: "player" | "target" = "player", alpha = 1): void {
+    const localFighter = localFighterKey === "player" ? state.player : state.target;
+    this.fighters.render(state.player, state.target, state.frame, state.gameOver, input.infoHeld, localFighterKey, alpha);
+    this.projectiles.render(state.projectiles, state.frame, alpha);
+    this.effects.render(state.effects);
+    this.infoDisplay.render(state);
     this.crosshair.render({
       pointerX: input.aimX,
       pointerY: input.aimY,

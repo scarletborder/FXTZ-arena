@@ -306,7 +306,7 @@ export class SelectScene extends Phaser.Scene {
       listContainer.add(tile.container);
     });
 
-    const mask = this.make.graphics({ x: 0, y: 0, add: false });
+    const mask = this.make.graphics({ x: 0, y: 0 });
     mask.fillStyle(0xffffff, 1);
     mask.fillRect(listBounds.x, listBounds.y, listBounds.width, listBounds.height);
     listContainer.setMask(mask.createGeometryMask());
@@ -385,7 +385,7 @@ export class SelectScene extends Phaser.Scene {
       listContainer.add(tile.container);
     });
 
-    const mask = this.make.graphics({ x: 0, y: 0, add: false });
+    const mask = this.make.graphics({ x: 0, y: 0 });
     mask.fillStyle(0xffffff, 1);
     mask.fillRect(listBounds.x, listBounds.y, listBounds.width, listBounds.height);
     listContainer.setMask(mask.createGeometryMask());

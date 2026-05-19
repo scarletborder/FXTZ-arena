@@ -77,7 +77,7 @@ export class ProjectileSystem {
       if (visible && projectile.damage > 0) {
         // Use Rapier hit results if available; fall back to manual hitTest.
         const rapierVictim = rapierHitMap?.get(projectile.id);
-        const isHit = rapierVictim !== undefined
+        const isHit = rapierHitMap !== undefined && canUseRapierHitTest(projectile)
           ? rapierVictim === victim.key
           : hitTest(projectile, victim);
 
@@ -123,6 +123,10 @@ function hitTest(projectile: ProjectileState, victim: FighterState): boolean {
     }
   }
   return rotatedRectIntersectsCircle(projectile, victim.x, victim.y, PLAYER_CORE_RADIUS);
+}
+
+function canUseRapierHitTest(projectile: ProjectileState): boolean {
+  return Number.isFinite(projectile.width) && projectile.width > 0 && projectile.height > 0;
 }
 
 function rotatedRectIntersectsCircle(

@@ -142,7 +142,7 @@ export function setCharacterAmmo(
 function createAmmoState(
   primaryCharacter: CharacterDefinition,
   alternateCharacter: CharacterDefinition,
-): Record<CharacterDefinition["id"], number> {
+): Record<string, number> {
   return {
     reimu: 0,
     marisa: 0,

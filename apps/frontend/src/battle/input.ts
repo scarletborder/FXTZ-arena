@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-import type { BattleInputState } from "./types";
+import type { BattleInputState } from "@repo/raid-logic";
 
 export interface BattleInputBundle extends BattleInputState {
   readonly pointerX: number;

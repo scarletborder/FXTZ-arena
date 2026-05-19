@@ -117,11 +117,11 @@ aicpu/
   strategy.ts       -- StrategyManager：进攻决策（射击、bomb、装弹、切换）
 ```
 
-## BattleModel 集成
+## raid-logic 集成
 
-`BattleModel` 在人机对战模式 (`endOnTargetDefeat === true`) 下创建 `CpuPlayer` 实例，
+`packages/raid-logic` 内的 `BattleModel` 在人机对战模式 (`endOnTargetDefeat === true`) 下创建 `CpuPlayer` 实例，
 在 `stepTarget()` 中调用 `cpuPlayer.getAction()` 获取 CPU 的移动和攻击指令，
-替代现有的正弦波简单移动逻辑。
+替代靶场模式的正弦波简单移动逻辑。前端只创建 `RaidLogicRuntime`，不再保留人机逻辑副本。
 
 ```typescript
 // stepTarget 中：

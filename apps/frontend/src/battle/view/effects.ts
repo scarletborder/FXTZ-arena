@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-import type { EffectState } from "../types";
+import type { EffectState } from "@repo/raid-logic";
 
 export class EffectsView {
   private readonly sprites = new Map<number, Phaser.GameObjects.Image>();

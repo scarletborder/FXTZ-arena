@@ -60,12 +60,13 @@ apps/dedicated-server
 
 ### 输入消费者
 
-- `raid-logic` 每 tick 消费当前 tick 的两名玩家输入。
+- `raid-logic` 暴露统一的 `RaidLogicRuntime` 接口，靶场、人机对战、联机游戏分别持有 runtime 并提交对应模式的输入。
+- `RaidLogicRuntime.step()` 每 tick 消费当前 tick 的输入；联机模式消费两名玩家输入，人机与靶场由 runtime 内部生成或推进对手侧行为。
 - 缺失输入时按 netcode 策略预测或等待。
 
 ### 输出生产者
 
-- `raid-logic` 生成状态和事件。
+- `raid-logic` 生成状态、快照、hash 和事件，并写入 `BattleOutputQueue`。
 
 ### 输出消费者
 
@@ -73,6 +74,7 @@ apps/dedicated-server
 - 音效层。
 - debug 面板。
 - 回放或测试记录器。
+- 前端只 drain 输出队列并渲染 `BattleOutputState`，不直接持有另一份战斗模拟实现。
 
 ## 模式差异
 
@@ -87,14 +89,20 @@ apps/dedicated-server
 
 - 前端内部运行 mock server。
 - mock server 为 CPU 生成输入帧。
-- 战局逻辑和联机模式完全一致。
+- 战局逻辑和联机模式使用同一个 `RaidLogicRuntime` 接口。
 
 ### 靶场
 
 - 前端内部运行 mock server。
 - 对手为固定靶子或靶场控制器。
+- 战局推进仍通过 `RaidLogicRuntime`，只替换输入生产者。
 - 无视 cost 上限，允许任意两名角色和无限能力卡。
 - 右侧显示训练数据。
+
+## 物理引擎约束
+
+- 战斗碰撞必须通过 `raid-logic` 内的 Rapier 2D 适配层初始化后才能推进。
+- `BattleModel.step()` 在 Rapier 未就绪时直接报错，避免前端或测试落回手写碰撞路径。
 
 ## Rollback 设计
 

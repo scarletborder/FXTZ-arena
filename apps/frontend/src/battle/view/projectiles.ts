@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-import type { ProjectileState } from "../types";
+import type { ProjectileState } from "@repo/raid-logic";
 
 export class ProjectileView {
   private readonly sprites = new Map<number, Phaser.GameObjects.Image>();

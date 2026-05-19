@@ -1,7 +1,7 @@
 import { getAbilityCard, getCharacter } from "../content";
 import { PLAYER_SPAWN, RESPAWN_DELAY_TICKS, TARGET_SPAWN } from "../constants";
 import type { BattleLoadouts } from "../loadout";
-import type { BattleInputState, EffectState, FighterState, ProjectileState, TrainingStats } from "../types";
+import type { BattleInputState, BattleOutputState, EffectState, FighterState, ProjectileState, TrainingStats } from "../types";
 import { BattleFighter } from "./battle-fighter";
 import { CpuPlayer } from "../aicpu";
 import { EffectSystem } from "./effects";
@@ -30,7 +30,7 @@ export class BattleModel {
   private readonly playerFighter: BattleFighter;
   private readonly targetFighter: BattleFighter;
   private readonly cpuPlayer: CpuPlayer | undefined;
-  /** Optional Rapier-backed collision provider. */
+  /** Rapier-backed collision provider. */
   private physics: BattlePhysics | undefined;
 
   constructor(loadouts: BattleLoadouts = DEFAULT_BATTLE_LOADOUTS, params: { readonly endOnTargetDefeat?: boolean } = {}) {
@@ -101,6 +101,10 @@ export class BattleModel {
   }
 
   private stepFrame(playerInput: BattleInputState, targetInput: BattleInputState | undefined): void {
+    if (!this.physics?.isReady()) {
+      throw new Error("BattleModel requires Rapier physics before stepping");
+    }
+
     this.capturePreviousFighterState();
     this.frame += 1;
     this.stats.elapsedTicks += 1;
@@ -113,9 +117,7 @@ export class BattleModel {
       player: this.player,
       target: this.target,
       onHit: (owner, victim, damage) => this.onProjectileHit(owner, victim, damage),
-      computeRapierHits: this.physics?.isReady()
-        ? (projectiles) => this.physics!.computeCollisions(projectiles, this.player, this.target)
-        : undefined,
+      computeRapierHits: (projectiles) => this.physics!.computeCollisions(projectiles, this.player, this.target),
     });
     this.effectSystem.stepEffects(this.effects, this.frame);
   }
@@ -126,6 +128,18 @@ export class BattleModel {
 
   hashHex(): string {
     return hashToHex(this.hash());
+  }
+
+  toOutputState(): BattleOutputState {
+    return {
+      frame: this.frame,
+      gameOver: this.gameOver,
+      player: this.player,
+      target: this.target,
+      projectiles: this.projectiles,
+      effects: this.effects,
+      stats: this.stats,
+    };
   }
 
   serialize(): BattleModelSnapshot {
@@ -155,9 +169,13 @@ export class BattleModel {
     this.effectSystem.restoreNextId(this.effects);
   }
 
-  /** Inject an optional Rapier-backed physics provider. */
+  /** Inject the Rapier-backed physics provider. */
   setPhysics(physics: BattlePhysics): void {
     this.physics = physics;
+  }
+
+  isPhysicsReady(): boolean {
+    return this.physics?.isReady() ?? false;
   }
 
   private stepPlayer(input: BattleInputState): void {

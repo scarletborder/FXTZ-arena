@@ -3,11 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 import type { BattleInputState } from "../types";
 import type { BattleLoadouts } from "../loadout";
 import { BattleModel } from ".";
+import { BattlePhysics } from "./physics-adapter";
 
 describe("BattleModel rollback snapshots", () => {
-  it("restores frame-relative timers without changing replay results", () => {
+  it("restores frame-relative timers without changing replay results", async () => {
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
-    const model = new BattleModel();
+    const model = await createBattleModel();
     const inputs = createInputs(100);
 
     for (let index = 0; index < 12; index += 1) {
@@ -36,8 +37,8 @@ describe("BattleModel rollback snapshots", () => {
 });
 
 describe("BattleModel reload timing", () => {
-  it("reimu reloads from current ammo one round at a time", () => {
-    const model = createBattleModel("reimu", "marisa");
+  it("reimu reloads from current ammo one round at a time", async () => {
+    const model = await createBattleModel("reimu", "marisa");
     model.step(input({ shootPressed: true }));
     for (let index = 0; index < 10; index += 1) {
       model.step(input());
@@ -59,8 +60,8 @@ describe("BattleModel reload timing", () => {
     expect(model.player.ammo).toBe(5);
   });
 
-  it("marisa discards current ammo and only restores at the end", () => {
-    const model = createBattleModel("marisa", "reimu");
+  it("marisa discards current ammo and only restores at the end", async () => {
+    const model = await createBattleModel("marisa", "reimu");
     model.step(input({ shootPressed: true }));
     expect(model.player.ammo).toBe(1);
 
@@ -78,8 +79,8 @@ describe("BattleModel reload timing", () => {
     expect(model.player.ammo).toBe(2);
   });
 
-  it("sakuya keeps current ammo and only restores at the end", () => {
-    const model = createBattleModel("sakuya", "reimu");
+  it("sakuya keeps current ammo and only restores at the end", async () => {
+    const model = await createBattleModel("sakuya", "reimu");
     model.step(input({ shootPressed: true }));
     expect(model.player.ammo).toBe(2);
 
@@ -97,8 +98,8 @@ describe("BattleModel reload timing", () => {
     expect(model.player.ammo).toBe(3);
   });
 
-  it("sakuya starts reload from 1/3 without consuming an immediate tick", () => {
-    const model = createBattleModel("sakuya", "reimu");
+  it("sakuya starts reload from 1/3 without consuming an immediate tick", async () => {
+    const model = await createBattleModel("sakuya", "reimu");
     model.step(input({ shootPressed: true }));
     for (let index = 0; index < 20; index += 1) {
       model.step(input());
@@ -115,8 +116,8 @@ describe("BattleModel reload timing", () => {
     expect(model.player.ammo).toBe(1);
   });
 
-  it("sakuya starts reload from 0/3 without consuming an immediate tick", () => {
-    const model = createBattleModel("sakuya", "reimu");
+  it("sakuya starts reload from 0/3 without consuming an immediate tick", async () => {
+    const model = await createBattleModel("sakuya", "reimu");
     model.step(input({ shootPressed: true }));
     for (let index = 0; index < 20; index += 1) {
       model.step(input());
@@ -137,8 +138,8 @@ describe("BattleModel reload timing", () => {
     expect(model.player.ammo).toBe(0);
   });
 
-  it("blocks shooting while a reload is active", () => {
-    const model = createBattleModel("reimu", "marisa");
+  it("blocks shooting while a reload is active", async () => {
+    const model = await createBattleModel("reimu", "marisa");
     model.step(input({ shootPressed: true }));
     for (let index = 0; index < 10; index += 1) {
       model.step(input());
@@ -184,11 +185,16 @@ function input(overrides: Partial<BattleInputState> = {}): BattleInputState {
   };
 }
 
-function createBattleModel(
+async function createBattleModel(
   primaryCharacterId: BattleLoadouts["player"]["primaryCharacterId"],
   alternateCharacterId: BattleLoadouts["player"]["alternateCharacterId"],
-): BattleModel {
-  return new BattleModel({
+): Promise<BattleModel>;
+async function createBattleModel(): Promise<BattleModel>;
+async function createBattleModel(
+  primaryCharacterId: BattleLoadouts["player"]["primaryCharacterId"] = "reimu",
+  alternateCharacterId: BattleLoadouts["player"]["alternateCharacterId"] = "marisa",
+): Promise<BattleModel> {
+  const model = new BattleModel({
     player: {
       primaryCharacterId,
       alternateCharacterId,
@@ -198,4 +204,8 @@ function createBattleModel(
       alternateCharacterId: "marisa",
     },
   });
+  const physics = new BattlePhysics();
+  await physics.init();
+  model.setPhysics(physics);
+  return model;
 }

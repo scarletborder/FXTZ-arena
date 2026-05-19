@@ -1,14 +1,17 @@
 import Phaser from "phaser";
 import type { PlayerId } from "@repo/types";
+import {
+  createRaidLogicRuntime,
+  type BattleInputState,
+  type BattleOutputFrame,
+  type BattleModelSnapshot,
+  type RaidLogicRuntime,
+} from "@repo/raid-logic";
 
 import { FIXED_STEP_MS } from "./battle/constants";
 import { createBattleInput, type BattleKeyMap } from "./battle/input";
 import type { BattleSceneData } from "./battle/loadout";
-import { BattleModel } from "./battle/model";
-import { BattlePhysics } from "./battle/model/physics-adapter";
-import type { BattleModelSnapshot } from "./battle/model/snapshot";
 import { BattleView } from "./battle/view";
-import type { BattleInputState } from "./battle/types";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
 import { uiSettings } from "./menu/shared";
 import { connectionManager } from "./menu/shared";
@@ -27,7 +30,9 @@ const PRESET_SCRIPT_FRAMES = 420;
 export class BattleScene extends Phaser.Scene {
   private accumulator = 0;
   private keys!: BattleKeyMap;
-  private model!: BattleModel;
+  private runtime!: RaidLogicRuntime;
+  private currentOutput!: BattleOutputFrame;
+  private logicReady = false;
   private view!: BattleView;
   private debugInputLocked = false;
   private debugLiveHashEnabled = false;
@@ -41,8 +46,6 @@ export class BattleScene extends Phaser.Scene {
   };
   private combatSync: CombatSyncManager | undefined;
   private onlineStatusText: Phaser.GameObjects.Text | undefined;
-  /** Reference kept for debug rendering access. */
-  private battlePhysics: BattlePhysics | undefined;
 
   constructor() {
     super("battle");
@@ -65,12 +68,15 @@ export class BattleScene extends Phaser.Scene {
       enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
       e: "E",
     }) as BattleKeyMap;
-    this.model = new BattleModel(data.loadouts, { endOnTargetDefeat: data.mode === "ai" });
-    if (data.mode === "online") {
-      this.model = new BattleModel(data.loadouts, { endOnTargetDefeat: true });
-    }
-    // Start Rapier physics initialisation (fire-and-forget; used once ready).
-    this.initBattlePhysics();
+    this.runtime = createRaidLogicRuntime({
+      mode: data.mode ?? "training",
+      loadouts: data.loadouts,
+    });
+    this.logicReady = false;
+    this.runtime.initialize().then(() => {
+      if (!this.scene.isActive()) return;
+      this.logicReady = true;
+    });
     this.view = new BattleView(this);
     this.lastInput = createBattleInput(this, this.keys);
     this.recordDebugFrame();
@@ -96,12 +102,12 @@ export class BattleScene extends Phaser.Scene {
           readonly pointerX: number;
           readonly pointerY: number;
         };
-        if (this.sceneData.mode === "online") {
+        if (this.sceneData.mode === "online" && this.logicReady) {
           this.combatSync?.step(this.lastInput);
-        } else if (this.model.gameOver && Phaser.Input.Keyboard.JustDown(this.keys.enter)) {
+        } else if (this.runtime.gameOver && Phaser.Input.Keyboard.JustDown(this.keys.enter)) {
           this.goToResult();
-        } else {
-          this.stepModelWithDebugInput(this.lastInput);
+        } else if (this.logicReady) {
+          this.stepRuntimeWithDebugInput(this.lastInput);
         }
       }
       this.accumulator -= FIXED_STEP_MS;
@@ -113,24 +119,24 @@ export class BattleScene extends Phaser.Scene {
       pointerX: this.input.activePointer.x,
       pointerY: this.input.activePointer.y,
     };
-    this.view.render(this.model, this.lastInput, this.combatSync?.localFighterKey() ?? "player", this.accumulator / FIXED_STEP_MS);
+    this.view.render(this.currentOutput.state, this.lastInput, this.combatSync?.localFighterKey() ?? "player", this.accumulator / FIXED_STEP_MS);
     if (this.debugPhysicsEnabled) {
       this.renderDebugPhysics();
     }
-    if (this.sceneData.mode !== "online" && this.model.gameOver && !this.resultScheduled) {
+    if (this.sceneData.mode !== "online" && this.runtime.gameOver && !this.resultScheduled) {
       this.time.delayedCall(900, () => this.goToResult());
       this.resultScheduled = true;
     }
   }
 
   getDebugFrame(): number {
-    return this.model.frame;
+    return this.runtime.frame;
   }
 
   getRecentDebugHashes(count = 50): DebugHashRow[] {
-    const startFrame = Math.max(0, this.model.frame - count + 1);
+    const startFrame = Math.max(0, this.runtime.frame - count + 1);
     return Array.from(this.debugHistory.values())
-      .filter((record) => record.frame >= startFrame && record.frame <= this.model.frame)
+      .filter((record) => record.frame >= startFrame && record.frame <= this.runtime.frame)
       .sort((left, right) => left.frame - right.frame)
       .map(toHashRow);
   }
@@ -153,7 +159,7 @@ export class BattleScene extends Phaser.Scene {
     if (!record) {
       return false;
     }
-    this.model.deserialize(record.snapshot);
+    this.runtime.deserialize(record.snapshot);
     this.accumulator = 0;
     this.pruneDebugHistoryAfter(frame);
     this.recordDebugFrame();
@@ -171,8 +177,8 @@ export class BattleScene extends Phaser.Scene {
       for (let offset = 0; offset < PRESET_SCRIPT_FRAMES; offset += 1) {
         const input = createPresetScriptInput(offset);
         this.lastInput = { ...input, pointerX: input.aimX, pointerY: input.aimY };
-        this.stepModelWithDebugInput(input);
-        const row = this.getDebugHash(this.model.frame);
+        this.stepRuntimeWithDebugInput(input);
+        const row = this.getDebugHash(this.runtime.frame);
         if (row) {
           rows.push({ ...row, action: describePresetScriptAction(offset) });
         }
@@ -183,8 +189,8 @@ export class BattleScene extends Phaser.Scene {
     return rows;
   }
 
-  private stepModelWithDebugInput(input: BattleInputState): void {
-    this.model.step(input);
+  private stepRuntimeWithDebugInput(input: BattleInputState): void {
+    this.runtime.step({ mode: this.sceneData.mode === "ai" ? "ai" : "training", player: input });
     this.recordDebugFrame();
   }
 
@@ -198,7 +204,7 @@ export class BattleScene extends Phaser.Scene {
       padding: { x: 10, y: 6 },
     }).setDepth(100).setVisible(false);
 
-    this.combatSync = new CombatSyncManager(this.model, connectionManager, {
+    this.combatSync = new CombatSyncManager(this.runtime, connectionManager, {
       sceneData: data,
       callbacks: {
         recordFrame: () => this.recordDebugFrame(),
@@ -228,25 +234,27 @@ export class BattleScene extends Phaser.Scene {
       winnerName: winnerPlayerId === this.combatSync?.localPlayerId
         ? (this.sceneData.playerName ?? "Player")
         : (this.sceneData.opponentName ?? "Opponent"),
-      durationSeconds: this.model.stats.elapsedTicks / 60,
-      shots: this.model.stats.shots,
-      hits: this.model.stats.hits,
-      bombUses: this.model.stats.bombUses,
-      deaths: this.model.player.deaths + this.model.target.deaths,
+      durationSeconds: this.currentOutput.state.stats.elapsedTicks / 60,
+      shots: this.currentOutput.state.stats.shots,
+      hits: this.currentOutput.state.stats.hits,
+      bombUses: this.currentOutput.state.stats.bombUses,
+      deaths: this.currentOutput.state.player.deaths + this.currentOutput.state.target.deaths,
       returnScene: this.sceneData.returnScene ?? "battle-start",
     });
   }
 
   private recordDebugFrame(): void {
-    const frame = this.model.frame;
-    const hash = this.model.hashHex();
-    this.debugHistory.set(frame, {
-      frame,
-      hash,
-      snapshot: this.model.serialize(),
-    });
-    if (this.debugLiveHashEnabled) {
-      console.log(`${frame} - ${hash}`);
+    const outputs = this.runtime.outputQueue.drainAll();
+    for (const output of outputs) {
+      this.currentOutput = output;
+      this.debugHistory.set(output.frame, {
+        frame: output.frame,
+        hash: output.hashHex,
+        snapshot: output.snapshot,
+      });
+      if (this.debugLiveHashEnabled) {
+        console.log(`${output.frame} - ${output.hashHex}`);
+      }
     }
     this.pruneOldDebugHistory();
   }
@@ -268,7 +276,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private pruneOldDebugHistory(): void {
-    const minFrame = this.model.frame - DEBUG_HISTORY_LIMIT;
+    const minFrame = this.runtime.frame - DEBUG_HISTORY_LIMIT;
     for (const key of this.debugHistory.keys()) {
       if (key < minFrame) {
         this.debugHistory.delete(key);
@@ -277,30 +285,20 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private goToResult(): void {
-    if (!this.model.gameOver) {
+    if (!this.runtime.gameOver) {
       return;
     }
     if (uiSettings.debug) {
       this.printDebugHashBundle(null);
     }
     this.scene.start("result", {
-      winnerName: this.model.target.lives <= 0 ? (this.sceneData.playerName ?? "Player") : (this.sceneData.opponentName ?? "CPU"),
-      durationSeconds: this.model.stats.elapsedTicks / 60,
-      shots: this.model.stats.shots,
-      hits: this.model.stats.hits,
-      bombUses: this.model.stats.bombUses,
-      deaths: this.model.player.deaths + this.model.target.deaths,
+      winnerName: this.currentOutput.state.target.lives <= 0 ? (this.sceneData.playerName ?? "Player") : (this.sceneData.opponentName ?? "CPU"),
+      durationSeconds: this.currentOutput.state.stats.elapsedTicks / 60,
+      shots: this.currentOutput.state.stats.shots,
+      hits: this.currentOutput.state.stats.hits,
+      bombUses: this.currentOutput.state.stats.bombUses,
+      deaths: this.currentOutput.state.player.deaths + this.currentOutput.state.target.deaths,
       returnScene: this.sceneData.returnScene ?? "battle-start",
-    });
-  }
-
-  /** Start Rapier physics initialisation (non-blocking). */
-  private initBattlePhysics(): void {
-    this.battlePhysics = new BattlePhysics();
-    const physics = this.battlePhysics;
-    physics.init().then(() => {
-      if (!this.scene.isActive()) return; // scene was destroyed in the meantime
-      this.model.setPhysics(physics);
     });
   }
 
@@ -308,7 +306,7 @@ export class BattleScene extends Phaser.Scene {
   setDebugPhysicsEnabled(enabled: boolean): void {
     this.debugPhysicsEnabled = enabled;
     this.view.setDebugPhysics(enabled);
-    if (enabled && this.battlePhysics) {
+    if (enabled && this.runtime.physicsReady) {
       this.renderDebugPhysics();
     }
   }
@@ -318,12 +316,12 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private renderDebugPhysics(): void {
-    if (!this.battlePhysics?.isReady()) return;
-    this.view.renderDebug(this.battlePhysics.readAllBodies());
+    if (!this.runtime.physicsReady) return;
+    this.view.renderDebug(this.runtime.readDebugBodies());
   }
 
   private printDebugHashBundle(winnerPlayerId: PlayerId | null): void {
-    const confirmedFrame = this.combatSync?.getConfirmedFrame() ?? this.model.frame;
+    const confirmedFrame = this.combatSync?.getConfirmedFrame() ?? this.runtime.frame;
 
     const rows: DebugHashRow[] = [];
     for (const record of this.debugHistory.values()) {

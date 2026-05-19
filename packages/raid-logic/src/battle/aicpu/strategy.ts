@@ -30,6 +30,7 @@ export class StrategyManager {
   private shotsSinceSwitch = 0;
 
   getActions(
+    frame: number,
     self: FighterState,
     opponent: FighterState,
     threatCount: number,
@@ -42,7 +43,7 @@ export class StrategyManager {
     this.switchTimer += 1;
 
     const alternateHeld = this.decideCharacter(self);
-    const shootPressed = this.shouldShoot(self, intel);
+    const shootPressed = this.shouldShoot(frame, self, intel);
     const reloadPressed = this.shouldReload(self, threatCount, intel);
     const bombPressed = this.shouldBomb(self, threatCount, emergencyBomb);
 
@@ -136,7 +137,7 @@ export class StrategyManager {
 
   // ── 攻击决策 ──────────────────────────────────────────
 
-  private shouldShoot(self: FighterState, intel: IntelligenceResult): boolean {
+  private shouldShoot(frame: number, self: FighterState, intel: IntelligenceResult): boolean {
     if (self.reloadRemaining > 0) return false;
     if (self.ammo <= 0) return false;
     if (self.fireCooldownUntil > 0) return false;
@@ -144,7 +145,7 @@ export class StrategyManager {
     if (self.deadUntil > 0) return false;
 
     // 钝化阶段后期随机跳过射击
-    if (intel.dullingProgress > 0.5 && Math.random() < intel.dullingProgress * 0.3) {
+    if (intel.dullingProgress > 0.5 && deterministicUnit(frame, this.switchTimer, self.shotsFired) < intel.dullingProgress * 0.3) {
       return false;
     }
 
@@ -180,4 +181,15 @@ export class StrategyManager {
 
     return false;
   }
+}
+
+function deterministicUnit(...values: readonly number[]): number {
+  let hash = 0x811c9dc5;
+  for (const value of values) {
+    hash ^= Math.trunc(value) & 0xff;
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+    hash ^= (Math.trunc(value) >>> 8) & 0xff;
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash / 0x100000000;
 }

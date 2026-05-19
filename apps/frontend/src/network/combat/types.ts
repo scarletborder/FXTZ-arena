@@ -1,8 +1,7 @@
 import type { PlayerId } from "@repo/types";
+import type { BattleInputState, BattleModelSnapshot } from "@repo/raid-logic";
 
 import type { BattleSceneData } from "../../battle/loadout";
-import type { BattleModelSnapshot } from "../../battle/model/snapshot";
-import type { BattleInputState } from "../../battle/types";
 
 export type CanonicalFighterKey = "player" | "target";
 

@@ -1,1 +1,1 @@
-export { BattleModel } from "./model/index";
+export { BattleModel } from "@repo/raid-logic";

@@ -1,16 +1,7 @@
-import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
 import type { BattleConfig, PlayerId } from "@repo/types";
+import type { BattleLoadouts } from "@repo/raid-logic";
 
-export interface FighterLoadout {
-  readonly primaryCharacterId: CharacterDefinition["id"];
-  readonly alternateCharacterId: CharacterDefinition["id"];
-  readonly activeCardId?: AbilityCardDefinition["id"];
-}
-
-export interface BattleLoadouts {
-  readonly player: FighterLoadout;
-  readonly target: FighterLoadout;
-}
+export type { BattleLoadouts, FighterLoadout } from "@repo/raid-logic";
 
 export interface BattleSceneData {
   readonly mode?: "ai" | "training" | "online";

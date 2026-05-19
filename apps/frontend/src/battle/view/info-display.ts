@@ -1,7 +1,7 @@
 import Phaser from "phaser";
+import type { BattleOutputState } from "@repo/raid-logic";
 
 import { END_OVERLAY_HEIGHT, END_OVERLAY_WIDTH, GAME_HEIGHT, GAME_WIDTH, HUD_TOP, SIDEBAR_LEFT } from "../constants";
-import type { BattleModel } from "../model";
 
 export class InfoDisplayView {
   private readonly sidebarBody: Phaser.GameObjects.Text;
@@ -45,13 +45,13 @@ export class InfoDisplayView {
     this.endOverlay.setVisible(false);
   }
 
-  render(model: BattleModel): void {
+  render(model: BattleOutputState): void {
     this.renderSidebar(model);
     this.renderBottomHud(model);
     this.renderGameOver(model);
   }
 
-  private renderSidebar(model: BattleModel): void {
+  private renderSidebar(model: BattleOutputState): void {
     const player = model.player;
     const target = model.target;
     const lines = [
@@ -69,11 +69,11 @@ export class InfoDisplayView {
     this.sidebarBody.setText(lines.join("\n"));
   }
 
-  private renderBottomHud(model: BattleModel): void {
+  private renderBottomHud(model: BattleOutputState): void {
     this.bottomHud.setText(`我方 ${model.player.lives} 命 / ${model.player.bombs} bomb / ${Math.floor(model.player.ammo)}/${model.player.ammoCapacity} 弹夹    靶子 ${model.target.lives} 命 ${model.target.bombs} bomb`);
   }
 
-  private renderGameOver(model: BattleModel): void {
+  private renderGameOver(model: BattleOutputState): void {
     this.endOverlay.setVisible(model.gameOver);
     this.endTitle.setText("结算");
     this.endBody.setText(`射击 ${model.stats.shots}  命中 ${model.stats.hits}\nbomb ${model.stats.bombUses}  伤害 ${model.stats.damage}`);

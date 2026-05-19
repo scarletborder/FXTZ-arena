@@ -89,7 +89,7 @@ export class IntelligenceManager {
     let crashIntoBullet = false;
     if (this.dumbTicks > 0 && this.dumbTicks % DUMB_CRASH_INTERVAL === 0) {
       this.crashAccumulator += 0.08; // 每次未触发累加 8%
-      if (Math.random() < this.crashAccumulator) {
+      if (deterministicUnit(this.phaseTicks, this.dumbTicks) < this.crashAccumulator) {
         crashIntoBullet = true;
         this.crashAccumulator = 0; // 触发后重置
       }
@@ -115,4 +115,15 @@ export class IntelligenceManager {
     this.dumbTicks = 0;
     this.crashAccumulator = 0;
   }
+}
+
+function deterministicUnit(...values: readonly number[]): number {
+  let hash = 0x811c9dc5;
+  for (const value of values) {
+    hash ^= Math.trunc(value) & 0xff;
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+    hash ^= (Math.trunc(value) >>> 8) & 0xff;
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash / 0x100000000;
 }
