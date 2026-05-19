@@ -1,6 +1,6 @@
 {
   "name": "dedicated-server",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "private": true,
   "scripts": {
@@ -8,15 +8,17 @@
     "dev": "tsx watch src/index.ts",
     "lint": "eslint src/",
     "check-types": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
   },
   "dependencies": {
-    "@repo/types": "workspace:*"
+    "@repo/types": "workspace:*",
+    "ws": "^8.18.2"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/node": "^22.15.3",
+    "@types/ws": "^8.18.1",
     "eslint": "^9.39.0",
     "tsx": "^4.20.5",
     "typescript": "5.9.3",

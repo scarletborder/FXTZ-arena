@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(find \"d:\\\\code\\\\js\\\\mvz443\" -type f \\\\\\( -name \"*.ts\" -o -name \"*.js\" -o -name \"*.json\" \\\\\\) | grep -v node_modules | head -60)",
-      "Read(//d/code/js/mvz443/**)"
+      "Read(//d/code/js/mvz443/**)",
+      "Bash(pnpm --filter dedicated-server run test)"
     ]
   }
 }
