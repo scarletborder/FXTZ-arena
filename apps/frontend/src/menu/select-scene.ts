@@ -493,8 +493,8 @@ function clamp(value: number, min: number, max: number): number {
 
 function cpuLoadout(): FighterLoadout {
   return {
-    primaryCharacterId: "sakuya",
-    alternateCharacterId: "reimu",
+    primaryCharacterId: "reimu",
+    alternateCharacterId: "marisa",
     activeCardId: "spirit_strike_card",
   };
 }

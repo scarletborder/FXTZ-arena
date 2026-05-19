@@ -3,6 +3,7 @@ import { PLAYER_SPAWN, RESPAWN_DELAY_TICKS, TARGET_SPAWN } from "../constants";
 import type { BattleLoadouts } from "../loadout";
 import type { BattleInputState, EffectState, FighterState, ProjectileState, TrainingStats } from "../types";
 import { BattleFighter } from "./battle-fighter";
+import { CpuPlayer } from "../aicpu";
 import { EffectSystem } from "./effects";
 import { hashBattleModel, hashToHex } from "./hash";
 import { ProjectileSystem } from "./projectile";
@@ -27,6 +28,7 @@ export class BattleModel {
   private readonly effectSystem = new EffectSystem();
   private readonly playerFighter: BattleFighter;
   private readonly targetFighter: BattleFighter;
+  private readonly cpuPlayer: CpuPlayer | undefined;
 
   constructor(loadouts: BattleLoadouts = DEFAULT_BATTLE_LOADOUTS, params: { readonly endOnTargetDefeat?: boolean } = {}) {
     this.loadouts = loadouts;
@@ -47,6 +49,7 @@ export class BattleModel {
       TARGET_SPAWN.y,
       loadouts.target.activeCardId ? getAbilityCard(loadouts.target.activeCardId) : undefined,
     );
+    this.cpuPlayer = this.endOnTargetDefeat ? new CpuPlayer() : undefined;
   }
 
   get player(): FighterState {
@@ -69,6 +72,7 @@ export class BattleModel {
     this.stats.elapsedTicks = 0;
     this.frame = 0;
     this.gameOver = false;
+    this.cpuPlayer?.reset();
     this.playerFighter.reset(
       getCharacter(this.loadouts.player.primaryCharacterId),
       getCharacter(this.loadouts.player.alternateCharacterId),
@@ -172,6 +176,36 @@ export class BattleModel {
       return;
     }
 
+    if (this.cpuPlayer) {
+      this.stepTargetAi(fighter);
+    } else {
+      this.stepTargetSimple(fighter);
+    }
+  }
+
+  private stepTargetAi(fighter: FighterState): void {
+    const aiInput = this.cpuPlayer!.getAction({
+      frame: this.frame,
+      self: fighter,
+      opponent: this.player,
+      projectiles: this.projectiles,
+    });
+
+    this.targetFighter.selectActiveCharacter(aiInput.alternateHeld);
+    fighter.facing = Math.atan2(aiInput.aimY - fighter.y, aiInput.aimX - fighter.x);
+    this.targetFighter.moveBy(aiInput);
+    this.targetFighter.handleReload(aiInput.reloadPressed);
+
+    const ctx = this.fighterActionContext(fighter);
+    if (aiInput.bombPressed) {
+      this.targetFighter.useBomb(ctx);
+    }
+    if (aiInput.shootPressed) {
+      this.targetFighter.fire(ctx, aiInput.aimX, aiInput.aimY);
+    }
+  }
+
+  private stepTargetSimple(fighter: FighterState): void {
     if (fighter.movementLockedUntil === 0) {
       fighter.x = clamp(fighter.x + Math.sin(this.frame / 36) * 1.6, 780, 1150);
       fighter.y = clamp(fighter.y + Math.cos(this.frame / 50) * 1.2, 72, 600);
