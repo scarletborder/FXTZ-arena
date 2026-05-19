@@ -1,11 +1,12 @@
 import { createDefaultBattleConfig, type BattlePlayerConfig } from "@repo/types";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import {
   createDefaultRaidBattleConfig,
   createInitialState,
   createRaidBattle,
   encodeInput,
+  ensureRapierInit,
   runFixedTickExample,
   type RaidFrameInput,
 } from "./index";
@@ -33,6 +34,10 @@ const PLAYERS: readonly [BattlePlayerConfig, BattlePlayerConfig] = [
     },
   },
 ];
+
+beforeAll(async () => {
+  await ensureRapierInit();
+});
 
 describe("@repo/raid-logic", () => {
   it("runs a deterministic fixed tick example", () => {

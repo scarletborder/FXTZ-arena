@@ -1,5 +1,8 @@
 import { DEFAULT_MAPS } from "@repo/content";
 import {
+  ARENA_HEIGHT,
+  ARENA_WIDTH,
+  speedRankToPixelsPerTick,
   type BattleConfig,
   type BattleSnapshot,
   type BattleStats,
@@ -10,6 +13,13 @@ import {
 } from "@repo/types";
 
 import { PLAYER_RADIUS_UNITS } from "./constants";
+
+/** Mutable stats used internally; converted to readonly BattleStats on output. */
+interface MutableStats {
+  damageByPlayerId: Record<string, number>;
+  bombsUsedByPlayerId: Record<string, number>;
+  shotsFiredByPlayerId: Record<string, number>;
+}
 import {
   AbilityCardEntity,
   FighterEntity,
@@ -22,8 +32,21 @@ import { DeterministicHasher, stableHash } from "./hash";
 import { createEmptyInput, type RaidFrameInput } from "./input";
 import { PhysicsWorld, type PhysicsWorldSerialized } from "./physics-world";
 
+// ---------------------------------------------------------------------------
+// Arena boundaries (shared between entity movement & physics clamping)
+// ---------------------------------------------------------------------------
+
+const ARENA_MIN_X = -ARENA_WIDTH / 2;
+const ARENA_MAX_X = ARENA_WIDTH / 2;
+const ARENA_MIN_Y = -ARENA_HEIGHT / 2;
+const ARENA_MAX_Y = ARENA_HEIGHT / 2;
+
+// ---------------------------------------------------------------------------
+// Serialised state shape
+// ---------------------------------------------------------------------------
+
 export interface RaidStateSerialized {
-  readonly version: 1;
+  readonly version: 2; // bumped — new Rapier-backed physics layout
   readonly frame: number;
   readonly rngState: number;
   readonly nextEntityId: number;
@@ -34,6 +57,10 @@ export interface RaidStateSerialized {
   readonly stats: BattleStats;
 }
 
+// ---------------------------------------------------------------------------
+// RaidState — deterministic simulation state
+// ---------------------------------------------------------------------------
+
 export class RaidState {
   frame = 0;
   rngState: number;
@@ -42,7 +69,9 @@ export class RaidState {
   readonly projectiles = new Map<string, ProjectileEntity>();
   readonly abilityCards = new Map<string, AbilityCardEntity>();
   readonly physics = new PhysicsWorld();
-  stats: BattleStats;
+  private physicsSynced = false;
+  /** Mutable internal stats; exposed as readonly BattleStats via toBattleSnapshot. */
+  stats: MutableStats;
 
   constructor(config: BattleConfig) {
     this.rngState = config.seed >>> 0;
@@ -63,44 +92,89 @@ export class RaidState {
 
       const fighter = FighterEntity.fromPlayerConfig(player, spawn);
       this.fighters.set(player.playerId, fighter);
-      this.physics.syncFighter(fighter, PLAYER_RADIUS_UNITS);
-
-      for (const abilityCardId of player.loadout.abilityCardIds) {
-        const id = `${player.playerId}:card:${abilityCardId}`;
-        this.abilityCards.set(
-          id,
-          new AbilityCardEntity({
-            id,
-            ownerId: player.playerId,
-            abilityCardId,
-            remainingUses: abilityCardId === "spirit_strike_card" ? 3 : -1,
-            cooldownRemainingTicks: 0,
-          }),
-        );
-      }
     }
+
+    // Physics bodies are created lazily on first step() call so that
+    // Rapier initialisation can happen asynchronously at the call site.
+  }
+
+  // ------------------------------------------------------------------
+  // Main tick
+  // ------------------------------------------------------------------
+
+  /** Lazily initialise physics bodies before first step. */
+  private ensurePhysicsSync(): void {
+    if (this.physicsSynced) return;
+    this.physicsSynced = true;
+    this.syncAllPhysicsBodies();
   }
 
   step(inputs: readonly RaidFrameInput[]): void {
+    this.ensurePhysicsSync();
     const inputsByPlayer = new Map(inputs.map((input) => [input.playerId, input]));
 
+    // ---- Phase 1: Apply fighter inputs & update positions -----------
     for (const fighter of sortedValues(this.fighters)) {
       const input =
         inputsByPlayer.get(fighter.playerId) ??
         createEmptyInput(this.frame, fighter.playerId);
+
+      // Update facing, ammo, reload-start, etc.
       fighter.applyInput(input);
-      this.physics.applyFighterInput(fighter, input);
+
+      // Compute movement from input and apply to entity + physics body.
+      this.moveFighter(fighter, input);
+
+      // Tick per-frame cooldowns.
       fighter.tickTimers();
-      this.physics.syncFighter(fighter, PLAYER_RADIUS_UNITS);
+
+      // Update the physics body position after movement.
+      this.syncFighterPhysics(fighter);
     }
 
+    // ---- Phase 2: Tick card timers ---------------------------------
     for (const card of sortedValues(this.abilityCards)) {
       card.tickTimers();
     }
 
+    // ---- Phase 3: Step projectiles & sync physics bodies -----------
     for (const projectile of sortedValues(this.projectiles)) {
+      // Clear per-frame collision flag
+      projectile.hitTarget = false;
+
       projectile.step();
-      if (projectile.remainingTicks <= 0) {
+
+      // Update or create physics body
+      if (this.physics.hasBody(projectile.id)) {
+        this.physics.setTranslation(projectile.id, projectile.x, projectile.y);
+      } else {
+        this.addProjectileBody(projectile);
+      }
+    }
+
+    // ---- Phase 4: Step Rapier world (collision detection) ----------
+    const collisions = this.physics.step();
+
+    // ---- Phase 5: Dispatch collision events ------------------------
+    for (const collision of collisions) {
+      if (!collision.started) continue;
+
+      const idA = this.physics.getIdByHandle(collision.sourceHandle);
+      const idB = this.physics.getIdByHandle(collision.targetHandle);
+      if (!idA || !idB) continue;
+
+      const entityA: unknown = this.fighters.get(idA as PlayerId) ?? this.projectiles.get(idA);
+      const entityB: unknown = this.fighters.get(idB as PlayerId) ?? this.projectiles.get(idB);
+
+      // Projectile vs Fighter
+      this.handleProjectileFighterCollision(entityA, entityB);
+      this.handleProjectileFighterCollision(entityB, entityA);
+    }
+
+    // ---- Phase 6: Remove expired / hit projectiles ------------------
+    for (const projectile of sortedValues(this.projectiles)) {
+      if (projectile.remainingTicks <= 0 || projectile.hitTarget) {
+        this.physics.removeBody(projectile.id);
         this.projectiles.delete(projectile.id);
       }
     }
@@ -108,9 +182,121 @@ export class RaidState {
     this.frame += 1;
   }
 
+  // ------------------------------------------------------------------
+  // Fighter movement (deterministic integer math)
+  // ------------------------------------------------------------------
+
+  private moveFighter(fighter: FighterEntity, input: RaidFrameInput): void {
+    const speed = speedRankToPixelsPerTick(
+      fighter.activeCharacterId === "marisa" ? "high" : "medium",
+    );
+    const diagonal = input.moveX !== 0 && input.moveY !== 0;
+    const vx = input.moveX * (diagonal ? Math.trunc(speed * 707 / 1000) : speed);
+    const vy = input.moveY * (diagonal ? Math.trunc(speed * 707 / 1000) : speed);
+
+    fighter.vx = vx;
+    fighter.vy = vy;
+    fighter.x = clamp(fighter.x + vx, ARENA_MIN_X, ARENA_MAX_X);
+    fighter.y = clamp(fighter.y + vy, ARENA_MIN_Y, ARENA_MAX_Y);
+
+    // Recompute actual velocity after clamping (for external consumers)
+    fighter.vx = fighter.x - (fighter.x - vx);
+    fighter.vy = fighter.y - (fighter.y - vy);
+  }
+
+  // ------------------------------------------------------------------
+  // Physics body management
+  // ------------------------------------------------------------------
+
+  /** Rebuild all physics bodies from logical entity state. */
+  private syncAllPhysicsBodies(): void {
+    this.physics.clear();
+
+    for (const fighter of sortedValues(this.fighters)) {
+      this.addFighterBody(fighter);
+    }
+
+    for (const projectile of sortedValues(this.projectiles)) {
+      this.addProjectileBody(projectile);
+    }
+  }
+
+  private addFighterBody(fighter: FighterEntity): void {
+    // Fighter hitbox: small circle represented as a square cuboid sensor.
+    // Using cuboid since Rapier ball colliders may have compatibility quirks
+    // across platforms; a square of side 2*RADIUS gives a tight enough AABB.
+    const r = PLAYER_RADIUS_UNITS;
+    this.physics.addBody({
+      id: fighter.playerId,
+      kind: "fighter",
+      x: fighter.x,
+      y: fighter.y,
+      vx: 0,
+      vy: 0,
+      halfWidth: r,
+      halfHeight: r,
+    });
+  }
+
+  private syncFighterPhysics(fighter: FighterEntity): void {
+    if (this.physics.hasBody(fighter.playerId)) {
+      this.physics.setTranslation(fighter.playerId, fighter.x, fighter.y);
+    } else {
+      this.addFighterBody(fighter);
+    }
+  }
+
+  private addProjectileBody(projectile: ProjectileEntity): void {
+    const halfW = Math.max(1, Math.round(projectile.width / 2));
+    const halfH = Math.max(1, Math.round(projectile.height / 2));
+    this.physics.addBody({
+      id: projectile.id,
+      kind: "projectile",
+      x: projectile.x,
+      y: projectile.y,
+      vx: projectile.vx,
+      vy: projectile.vy,
+      halfWidth: halfW,
+      halfHeight: halfH,
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // Collision dispatch
+  // ------------------------------------------------------------------
+
+  private handleProjectileFighterCollision(
+    a: unknown,
+    b: unknown,
+  ): void {
+    const projectile = a instanceof ProjectileEntity ? a : null;
+    const fighter = b instanceof FighterEntity ? b : null;
+    if (!projectile || !fighter) return;
+    if (projectile.hitTarget) return; // already resolved this frame
+
+    // Cannot self-harm
+    if (projectile.ownerId === fighter.playerId) return;
+
+    // Invulnerable fighters ignore hits
+    if (fighter.invulnerableRemainingTicks > 0) return;
+
+    // Apply hit
+    projectile.hitTarget = true;
+    fighter.lives -= 1;
+    fighter.invulnerableRemainingTicks = 3 * 60; // 3 seconds of invulnerability
+    this.stats.damageByPlayerId[projectile.ownerId] =
+      (this.stats.damageByPlayerId[projectile.ownerId] ?? 0) + 1;
+    this.stats.shotsFiredByPlayerId[projectile.ownerId] =
+      (this.stats.shotsFiredByPlayerId[projectile.ownerId] ?? 0) + 1;
+  }
+
+  // ------------------------------------------------------------------
+  // Serialisation
+  // ------------------------------------------------------------------
+
   serialize(): RaidStateSerialized {
     return {
-      version: 1,
+      version: 2,
       frame: this.frame,
       rngState: this.rngState,
       nextEntityId: this.nextEntityId,
@@ -120,7 +306,7 @@ export class RaidState {
       ),
       abilityCards: sortedValues(this.abilityCards).map((card) => card.serialize()),
       physics: this.physics.serialize(),
-      stats: cloneStats(this.stats),
+      stats: cloneStats(this.stats) as unknown as BattleStats,
     };
   }
 
@@ -157,8 +343,13 @@ export class RaidState {
       this.abilityCards.set(card.data.id, new AbilityCardEntity(card.data));
     }
 
-    this.physics.deserialize(serialized.physics);
+    // Physics bodies will be rebuilt lazily on the next step() call.
+    this.physicsSynced = false;
   }
+
+  // ------------------------------------------------------------------
+  // Hashing
+  // ------------------------------------------------------------------
 
   hash(): number {
     return stableHash((hasher) => {
@@ -185,6 +376,10 @@ export class RaidState {
     });
   }
 
+  // ------------------------------------------------------------------
+  // Battle snapshot (for external consumers — frontend rendering etc.)
+  // ------------------------------------------------------------------
+
   toBattleSnapshot(): BattleSnapshot {
     return {
       frame: this.frame,
@@ -193,10 +388,14 @@ export class RaidState {
       projectiles: sortedValues(this.projectiles).map(projectileToSnapshot),
       effects: [],
       timers: abilityCardsToTimers(sortedValues(this.abilityCards)),
-      stats: cloneStats(this.stats),
+      stats: cloneStats(this.stats) as unknown as BattleStats,
     };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Public helpers
+// ---------------------------------------------------------------------------
 
 export function serializeStateToBytes(state: RaidStateSerialized): Uint8Array {
   return new TextEncoder().encode(JSON.stringify(state));
@@ -204,6 +403,14 @@ export function serializeStateToBytes(state: RaidStateSerialized): Uint8Array {
 
 export function deserializeStateFromBytes(data: Uint8Array): RaidStateSerialized {
   return JSON.parse(new TextDecoder().decode(data)) as RaidStateSerialized;
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
 function sortedValues<T extends { readonly id?: string; readonly playerId?: PlayerId }>(
@@ -216,21 +423,21 @@ function sortedValues<T extends { readonly id?: string; readonly playerId?: Play
   });
 }
 
-function createEmptyStats(playerIds: readonly PlayerId[]): BattleStats {
+function createEmptyStats(playerIds: readonly PlayerId[]): MutableStats {
   return {
     damageByPlayerId: Object.fromEntries(
       playerIds.map((playerId) => [playerId, 0]),
-    ) as Record<PlayerId, number>,
+    ),
     bombsUsedByPlayerId: Object.fromEntries(
       playerIds.map((playerId) => [playerId, 0]),
-    ) as Record<PlayerId, number>,
+    ),
     shotsFiredByPlayerId: Object.fromEntries(
       playerIds.map((playerId) => [playerId, 0]),
-    ) as Record<PlayerId, number>,
+    ),
   };
 }
 
-function cloneStats(stats: BattleStats): BattleStats {
+function cloneStats(stats: MutableStats): MutableStats {
   return {
     damageByPlayerId: { ...stats.damageByPlayerId },
     bombsUsedByPlayerId: { ...stats.bombsUsedByPlayerId },
@@ -238,7 +445,9 @@ function cloneStats(stats: BattleStats): BattleStats {
   };
 }
 
-function writeStatsHash(hasher: DeterministicHasher, stats: BattleStats): void {
+
+
+function writeStatsHash(hasher: DeterministicHasher, stats: MutableStats): void {
   writeRecord(hasher, stats.damageByPlayerId);
   writeRecord(hasher, stats.bombsUsedByPlayerId);
   writeRecord(hasher, stats.shotsFiredByPlayerId);

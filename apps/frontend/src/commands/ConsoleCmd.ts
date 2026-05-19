@@ -7,6 +7,7 @@ export interface DebugConsoleCommands {
   hash: (frame: number) => DebugHashRow | null;
   live: (enabled?: boolean) => boolean | null;
   script: () => DebugHashRow[] | null;
+  physics: (enabled?: boolean) => boolean | null;
   help: () => void;
 }
 
@@ -47,6 +48,7 @@ function createCommands(): DebugConsoleCommands {
       hash,
       live,
       script,
+      physics,
       help,
     };
 }
@@ -131,6 +133,17 @@ function script(): DebugHashRow[] | null {
     return rows;
 }
 
+function physics(enabled?: boolean): boolean | null {
+    const scene = getScene();
+    if (!scene) {
+      return null;
+    }
+    const nextEnabled = enabled === undefined ? !scene.isDebugPhysicsEnabled() : Boolean(enabled);
+    scene.setDebugPhysicsEnabled(nextEnabled);
+    printOk(`Physics debug overlay ${nextEnabled ? "enabled" : "disabled"}.`);
+    return nextEnabled;
+}
+
 function help(): void {
     console.log(`[${BADGE}] Commands`);
     console.log("FXTZ.frame()              当前帧号");
@@ -139,6 +152,7 @@ function help(): void {
     console.log("FXTZ.hash(frame)          打印某帧 hash");
     console.log("FXTZ.live(enabled?)       切换实时 frame-hash 打印，默认关闭");
     console.log("FXTZ.script()             回滚到 frame=30 并执行边界输入脚本，打印期间每帧 hash");
+    console.log("FXTZ.physics(enabled?)    切换碰撞体可视化");
 }
 
 function getScene(): BattleScene | null {

@@ -4,6 +4,7 @@ import { FIXED_STEP_MS } from "./battle/constants";
 import { createBattleInput, type BattleKeyMap } from "./battle/input";
 import type { BattleSceneData } from "./battle/loadout";
 import { BattleModel } from "./battle/model";
+import { BattlePhysics } from "./battle/model/physics-adapter";
 import type { BattleModelSnapshot } from "./battle/model/snapshot";
 import { BattleView } from "./battle/view";
 import type { BattleInputState } from "./battle/types";
@@ -26,6 +27,7 @@ export class BattleScene extends Phaser.Scene {
   private view!: BattleView;
   private debugInputLocked = false;
   private debugLiveHashEnabled = false;
+  private debugPhysicsEnabled = false;
   private resultScheduled = false;
   private sceneData: BattleSceneData = {};
   private readonly debugHistory = new Map<number, DebugFrameRecord>();
@@ -33,6 +35,8 @@ export class BattleScene extends Phaser.Scene {
     readonly pointerX: number;
     readonly pointerY: number;
   };
+  /** Reference kept for debug rendering access. */
+  private battlePhysics: BattlePhysics | undefined;
 
   constructor() {
     super("battle");
@@ -56,10 +60,15 @@ export class BattleScene extends Phaser.Scene {
       e: "E",
     }) as BattleKeyMap;
     this.model = new BattleModel(data.loadouts, { endOnTargetDefeat: data.mode === "ai" });
+    // Start Rapier physics initialisation (fire-and-forget; used once ready).
+    this.initBattlePhysics();
     this.view = new BattleView(this);
     this.lastInput = createBattleInput(this, this.keys);
     this.recordDebugFrame();
     ConsoleCmd.install(this);
+    if (data.debug) {
+      this.setDebugPhysicsEnabled(true);
+    }
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.setDefaultCursor("auto");
       ConsoleCmd.uninstall(this);
@@ -90,6 +99,9 @@ export class BattleScene extends Phaser.Scene {
       pointerY: this.input.activePointer.y,
     };
     this.view.render(this.model, this.lastInput, this.accumulator / FIXED_STEP_MS);
+    if (this.debugPhysicsEnabled) {
+      this.renderDebugPhysics();
+    }
     if (this.model.gameOver && !this.resultScheduled) {
       this.time.delayedCall(900, () => this.goToResult());
       this.resultScheduled = true;
@@ -205,6 +217,34 @@ export class BattleScene extends Phaser.Scene {
       deaths: this.model.player.deaths + this.model.target.deaths,
       returnScene: this.sceneData.returnScene ?? "battle-start",
     });
+  }
+
+  /** Start Rapier physics initialisation (non-blocking). */
+  private initBattlePhysics(): void {
+    this.battlePhysics = new BattlePhysics();
+    const physics = this.battlePhysics;
+    physics.init().then(() => {
+      if (!this.scene.isActive()) return; // scene was destroyed in the meantime
+      this.model.setPhysics(physics);
+    });
+  }
+
+  /** Toggle debug overlay that visualises Rapier collision bodies. */
+  setDebugPhysicsEnabled(enabled: boolean): void {
+    this.debugPhysicsEnabled = enabled;
+    this.view.setDebugPhysics(enabled);
+    if (enabled && this.battlePhysics) {
+      this.renderDebugPhysics();
+    }
+  }
+
+  isDebugPhysicsEnabled(): boolean {
+    return this.debugPhysicsEnabled;
+  }
+
+  private renderDebugPhysics(): void {
+    if (!this.battlePhysics?.isReady()) return;
+    this.view.renderDebug(this.battlePhysics.readAllBodies());
   }
 }
 

@@ -1,5 +1,6 @@
 import { PLAYER_CORE_RADIUS } from "../../constants";
 import type { FighterKey, FighterState, ProjectileState } from "../../types";
+import type { CollisionResult } from "../physics-adapter";
 import { createBulletProjectile, isProjectileOutOfWorld, stepBulletProjectile } from "./bullet";
 import { createLaserProjectile, stepLaserProjectile } from "./laser";
 
@@ -37,6 +38,13 @@ export class ProjectileSystem {
     readonly player: FighterState;
     readonly target: FighterState;
     readonly onHit: (owner: FighterKey, victim: FighterState, damage: number) => boolean;
+    /**
+     * Optional callback invoked AFTER projectile positions have been updated
+     * but BEFORE hit-testing. Receives the projectiles with their new
+     * positions and should return any Rapier-driven collision results.
+     * Return `undefined` to use the built-in manual hitTest for all projectiles.
+     */
+    readonly computeRapierHits?: (projectiles: readonly ProjectileState[]) => readonly CollisionResult[] | undefined;
   }): void {
     const remaining: ProjectileState[] = [];
     for (const projectile of params.projectiles) {
@@ -52,13 +60,32 @@ export class ProjectileSystem {
           stepBulletProjectile(projectile, params.frame, target);
         }
       }
+    }
 
+    // Compute Rapier hit results after position updates, if callback provided.
+    let rapierHitMap: Map<number, FighterKey> | undefined;
+    if (params.computeRapierHits) {
+      const results = params.computeRapierHits(params.projectiles);
+      if (results) {
+        rapierHitMap = new Map(results.map((r) => [r.projectileId, r.victimKey]));
+      }
+    }
+
+    for (const projectile of params.projectiles) {
       const victim = projectile.owner === "player" ? params.target : params.player;
       const visible = params.frame >= projectile.visibleFrom;
-      if (visible && projectile.damage > 0 && hitTest(projectile, victim)) {
-        const accepted = params.onHit(projectile.owner, victim, projectile.damage);
-        if (accepted && !projectile.pierce) {
-          continue;
+      if (visible && projectile.damage > 0) {
+        // Use Rapier hit results if available; fall back to manual hitTest.
+        const rapierVictim = rapierHitMap?.get(projectile.id);
+        const isHit = rapierVictim !== undefined
+          ? rapierVictim === victim.key
+          : hitTest(projectile, victim);
+
+        if (isHit) {
+          const accepted = params.onHit(projectile.owner, victim, projectile.damage);
+          if (accepted && !projectile.pierce) {
+            continue;
+          }
         }
       }
 

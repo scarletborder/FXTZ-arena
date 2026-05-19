@@ -29,6 +29,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@dimforge/rapier2d-deterministic-compat": "^0.19.3",
     "@repo/content": "workspace:*",
     "@repo/types": "workspace:*"
   },

@@ -6,6 +6,7 @@ import { BattleFighter } from "./battle-fighter";
 import { CpuPlayer } from "../aicpu";
 import { EffectSystem } from "./effects";
 import { hashBattleModel, hashToHex } from "./hash";
+import { BattlePhysics } from "./physics-adapter";
 import { ProjectileSystem } from "./projectile";
 import {
   createBattleModelSnapshot,
@@ -29,6 +30,8 @@ export class BattleModel {
   private readonly playerFighter: BattleFighter;
   private readonly targetFighter: BattleFighter;
   private readonly cpuPlayer: CpuPlayer | undefined;
+  /** Optional Rapier-backed collision provider. */
+  private physics: BattlePhysics | undefined;
 
   constructor(loadouts: BattleLoadouts = DEFAULT_BATTLE_LOADOUTS, params: { readonly endOnTargetDefeat?: boolean } = {}) {
     this.loadouts = loadouts;
@@ -102,6 +105,9 @@ export class BattleModel {
       player: this.player,
       target: this.target,
       onHit: (owner, victim, damage) => this.onProjectileHit(owner, victim, damage),
+      computeRapierHits: this.physics?.isReady()
+        ? (projectiles) => this.physics!.computeCollisions(projectiles, this.player, this.target)
+        : undefined,
     });
     this.effectSystem.stepEffects(this.effects, this.frame);
   }
@@ -139,6 +145,11 @@ export class BattleModel {
     Object.assign(this.stats, snapshot.stats);
     this.projectileSystem.restoreNextId(this.projectiles);
     this.effectSystem.restoreNextId(this.effects);
+  }
+
+  /** Inject an optional Rapier-backed physics provider. */
+  setPhysics(physics: BattlePhysics): void {
+    this.physics = physics;
   }
 
   private stepPlayer(input: BattleInputState): void {

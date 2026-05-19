@@ -483,6 +483,7 @@ export class SelectScene extends Phaser.Scene {
       opponentName: this.mode === "training" ? "靶子" : "CPU",
       returnScene: "battle-start",
       loadouts,
+      debug: uiSettings.debug,
     });
   }
 }

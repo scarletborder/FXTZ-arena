@@ -10,6 +10,23 @@ import {
 
 import { DeterministicHasher } from "./hash";
 import type { RaidFrameInput } from "./input";
+import type { CollisionEvent } from "./physics-world";
+
+// ---------------------------------------------------------------------------
+// Collision context (dispatched by RaidState after physics step)
+// ---------------------------------------------------------------------------
+
+export interface CollisionContext {
+  readonly event: CollisionEvent;
+  readonly otherId: string;
+  readonly colliderHandle: number;
+  readonly otherColliderHandle: number;
+  readonly started: boolean;
+}
+
+export interface CollisionHandler {
+  onCollision(ctx: CollisionContext): void;
+}
 
 export interface SerializedEntity {
   readonly kind: string;
@@ -49,7 +66,7 @@ export interface FighterSerialized extends SerializedEntity {
 }
 
 export class FighterEntity
-  implements SerializableEntity<FighterSerialized> {
+  implements SerializableEntity<FighterSerialized>, CollisionHandler {
   playerId: PlayerId;
   x: number;
   y: number;
@@ -261,6 +278,15 @@ export class FighterEntity
     hasher.writeNumber(data.infoHeld);
   }
 
+  /** Called when a physics collider overlaps this fighter's body. */
+  onCollision(ctx: CollisionContext): void {
+    if (!ctx.started) return;
+    // Collision logic is owned by RaidState.step() — the entity just
+    // exposes a hook so the step loop can query whether the fighter is
+    // currently in a hittable state.  Subclasses / callers inspect the
+    // other side of the collision via the context.
+  }
+
   private interruptReload(): void {
     const definition = getCharacterDefinitionOrThrow(this.reloadCharacterId ?? this.activeCharacterId);
     if (definition.reloadCommitPolicy === "commit_per_ammo") {
@@ -295,7 +321,7 @@ export interface ProjectileSerialized extends SerializedEntity {
 }
 
 export class ProjectileEntity
-  implements SerializableEntity<ProjectileSerialized> {
+  implements SerializableEntity<ProjectileSerialized>, CollisionHandler {
   id: string;
   ownerId: PlayerId;
   x: number;
@@ -306,6 +332,8 @@ export class ProjectileEntity
   remainingTicks: number;
   width: number;
   height: number;
+  /** Set to true when this projectile hits a fighter (used by step loop). */
+  hitTarget = false;
 
   constructor(serialized: ProjectileSerialized["data"]) {
     this.id = serialized.id;
@@ -324,6 +352,14 @@ export class ProjectileEntity
     this.x += this.vx;
     this.y += this.vy;
     this.remainingTicks -= 1;
+  }
+
+  /** Called when the projectile's collider overlaps another entity. */
+  onCollision(ctx: CollisionContext): void {
+    if (!ctx.started) return;
+    // Mark for removal.  The step() loop in RaidState checks this flag
+    // and deletes the projectile after applying the effect.
+    this.hitTarget = true;
   }
 
   serialize(): ProjectileSerialized {

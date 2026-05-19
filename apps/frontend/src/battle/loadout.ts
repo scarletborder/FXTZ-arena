@@ -17,5 +17,6 @@ export interface BattleSceneData {
   readonly opponentName?: string;
   readonly returnScene?: string;
   readonly loadouts?: BattleLoadouts;
+  readonly debug?: boolean;
 }
 
