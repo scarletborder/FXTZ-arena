@@ -60,7 +60,10 @@ export class BattleScene extends Phaser.Scene {
     this.lastInput = createBattleInput(this, this.keys);
     this.recordDebugFrame();
     ConsoleCmd.install(this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => ConsoleCmd.uninstall(this));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.setDefaultCursor("auto");
+      ConsoleCmd.uninstall(this);
+    });
   }
 
   update(_: number, delta: number): void {
