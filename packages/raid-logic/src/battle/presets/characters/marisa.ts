@@ -1,6 +1,7 @@
 import type { CharacterDefinition } from "@repo/content";
 
 import type { FighterState } from "../../types";
+import type { BattleHitContext } from "../ability-cards";
 import { BattleCharacter, hitCircleUnits, secondsToTicks, type CharacterActionContext } from "./base";
 
 export class MarisaBattleCharacter extends BattleCharacter {
@@ -89,7 +90,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
     fighter.invulnerableDelayDuration = durationTicks;
   }
 
-  useActiveCard(ctx: CharacterActionContext, fighter: FighterState): void {
-    this.useSpiritStrike(ctx, fighter, 0xfff0a6);
+  onHit(_ctx: BattleHitContext): void {
+    // Marisa has no hit-time modifier by default.
   }
 }

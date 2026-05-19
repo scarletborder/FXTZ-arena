@@ -133,11 +133,13 @@ export class SelectScene extends Phaser.Scene {
             player: {
               primaryCharacterId: config.players[0].loadout.primaryCharacterId,
               alternateCharacterId: config.players[0].loadout.alternateCharacterId,
+              cardIds: config.players[0].loadout.abilityCardIds,
               activeCardId: config.players[0].loadout.activeAbilityCardId ?? undefined,
             },
             target: {
               primaryCharacterId: config.players[1].loadout.primaryCharacterId,
               alternateCharacterId: config.players[1].loadout.alternateCharacterId,
+              cardIds: config.players[1].loadout.abilityCardIds,
               activeCardId: config.players[1].loadout.activeAbilityCardId ?? undefined,
             },
           },
@@ -595,6 +597,7 @@ export class SelectScene extends Phaser.Scene {
     const player: FighterLoadout = {
       primaryCharacterId: this.primaryId,
       alternateCharacterId: this.alternateId,
+      cardIds: [...this.selectedCards],
       activeCardId,
     };
     const loadouts: BattleLoadouts = {
@@ -640,6 +643,7 @@ function cpuLoadout(): FighterLoadout {
   return {
     primaryCharacterId: "reimu",
     alternateCharacterId: "marisa",
+    cardIds: ["spirit_strike_card"],
     activeCardId: "spirit_strike_card",
   };
 }

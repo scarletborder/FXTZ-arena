@@ -4,6 +4,7 @@ import { hitCircleUnits, secondsToTicks } from "@repo/types";
 import type { EffectState, FighterState, ProjectileState, TrainingStats } from "../../types";
 import type { EffectSystem } from "../../model/effects";
 import { clearProjectilesAround, type ProjectileSystem } from "../../model/projectile";
+import type { BattleHitContext } from "../ability-cards";
 
 const STATUS_VISIBLE_TICKS = secondsToTicks(1.5);
 
@@ -35,7 +36,7 @@ export abstract class BattleCharacter {
 
   abstract shoot(ctx: CharacterActionContext, fighter: FighterState, aimX: number, aimY: number): void;
   abstract useBomb(ctx: CharacterActionContext, fighter: FighterState): void;
-  abstract useActiveCard(ctx: CharacterActionContext, fighter: FighterState): void;
+  abstract onHit(ctx: BattleHitContext): void;
 
   protected aimAngle(fighter: FighterState, aimX: number, aimY: number): number {
     return Math.atan2(aimY - fighter.y, aimX - fighter.x);

@@ -1,6 +1,7 @@
 import type { CharacterDefinition } from "@repo/content";
 
 import type { FighterState } from "../../types";
+import type { BattleHitContext } from "../ability-cards";
 import { BattleCharacter, hitCircleUnits, secondsToTicks, type CharacterActionContext } from "./base";
 
 const CLEAR_RING_TICKS = secondsToTicks(2 / 3);
@@ -44,8 +45,8 @@ export class ReimuBattleCharacter extends BattleCharacter {
     }
   }
 
-  useActiveCard(ctx: CharacterActionContext, fighter: FighterState): void {
-    this.useSpiritStrike(ctx, fighter, 0x7ee39d);
+  onHit(_ctx: BattleHitContext): void {
+    // Reimu has no hit-time modifier by default.
   }
 
   private spawnHomingOrb(ctx: CharacterActionContext, fighter: FighterState, angle: number, homingTicks: number): void {

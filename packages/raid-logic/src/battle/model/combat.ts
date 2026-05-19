@@ -1,7 +1,6 @@
 import { secondsToTicks } from "@repo/types";
 
 import type { FighterKey, FighterState, TrainingStats } from "../types";
-import { getDefaultBombs } from "./fighter";
 
 const STATUS_VISIBLE_TICKS = secondsToTicks(1.5);
 
@@ -13,6 +12,7 @@ export function applyHit(params: {
   readonly stats: TrainingStats;
   readonly frame: number;
   readonly damage: number;
+  readonly defaultBombs: number;
 }): "ignored" | "accepted" | "game-over" {
   if (params.victim.invulnerableUntil > 0 || params.victim.deadUntil > 0) {
     return "ignored";
@@ -38,7 +38,7 @@ export function applyHit(params: {
   }
 
   params.victim.lives -= 1;
-  params.victim.bombs = getDefaultBombs(params.victim.activeCard);
+  params.victim.bombs = params.defaultBombs;
   params.victim.invulnerableUntil = secondsToTicks(3);
   return "accepted";
 }

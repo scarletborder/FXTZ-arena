@@ -1,6 +1,6 @@
 import { getAbilityCard, getCharacter } from "../content";
 import { PLAYER_SPAWN, RESPAWN_DELAY_TICKS, TARGET_SPAWN } from "../constants";
-import type { BattleLoadouts } from "../loadout";
+import type { BattleLoadouts, FighterLoadout } from "../loadout";
 import type { BattleInputState, BattleOutputState, EffectState, FighterState, ProjectileState, TrainingStats } from "../types";
 import { BattleFighter } from "./battle-fighter";
 import { CpuPlayer } from "../aicpu";
@@ -43,6 +43,7 @@ export class BattleModel {
       PLAYER_SPAWN.x,
       PLAYER_SPAWN.y,
       loadouts.player.activeCardId ? getAbilityCard(loadouts.player.activeCardId) : undefined,
+      loadoutCards(loadouts.player),
     );
     this.targetFighter = new BattleFighter(
       "target",
@@ -51,6 +52,7 @@ export class BattleModel {
       TARGET_SPAWN.x,
       TARGET_SPAWN.y,
       loadouts.target.activeCardId ? getAbilityCard(loadouts.target.activeCardId) : undefined,
+      loadoutCards(loadouts.target),
     );
     this.cpuPlayer = this.endOnTargetDefeat ? new CpuPlayer() : undefined;
   }
@@ -82,6 +84,7 @@ export class BattleModel {
       PLAYER_SPAWN.x,
       PLAYER_SPAWN.y,
       this.loadouts.player.activeCardId ? getAbilityCard(this.loadouts.player.activeCardId) : undefined,
+      loadoutCards(this.loadouts.player),
     );
     this.targetFighter.reset(
       getCharacter(this.loadouts.target.primaryCharacterId),
@@ -89,6 +92,7 @@ export class BattleModel {
       TARGET_SPAWN.x,
       TARGET_SPAWN.y,
       this.loadouts.target.activeCardId ? getAbilityCard(this.loadouts.target.activeCardId) : undefined,
+      loadoutCards(this.loadouts.target),
     );
   }
 
@@ -279,6 +283,7 @@ export class BattleModel {
 
   private onProjectileHit(owner: "player" | "target", victim: FighterState, damage: number): boolean {
     const victimFighter = victim.key === "player" ? this.playerFighter : this.targetFighter;
+    const attackerFighter = owner === "player" ? this.playerFighter : this.targetFighter;
     const result = victimFighter.onProjectileHit({
       owner,
       victim,
@@ -287,6 +292,8 @@ export class BattleModel {
       stats: this.stats,
       frame: this.frame,
       damage,
+      actionContext: this.fighterActionContext(victim),
+      attackerCards: attackerFighter.cardDefinitions(),
     });
     if (result === "ignored") {
       return false;
@@ -315,6 +322,7 @@ export class BattleModel {
       TARGET_SPAWN.x,
       TARGET_SPAWN.y,
       this.loadouts.target.activeCardId ? getAbilityCard(this.loadouts.target.activeCardId) : undefined,
+      loadoutCards(this.loadouts.target),
     );
   }
 
@@ -376,11 +384,13 @@ const DEFAULT_BATTLE_LOADOUTS: BattleLoadouts = {
   player: {
     primaryCharacterId: "reimu",
     alternateCharacterId: "marisa",
+    cardIds: ["spirit_strike_card"],
     activeCardId: "spirit_strike_card",
   },
   target: {
     primaryCharacterId: "sakuya",
     alternateCharacterId: "reimu",
+    cardIds: ["spirit_strike_card"],
     activeCardId: "spirit_strike_card",
   },
 };
@@ -398,4 +408,12 @@ function hitsBeam(beam: ProjectileState, x: number, y: number): boolean {
     return forward >= 0 && side <= beam.height / 2;
   }
   return Math.abs(forward) <= beam.width / 2 && side <= beam.height / 2;
+}
+
+function loadoutCards(loadout: FighterLoadout) {
+  const ids = new Set(loadout.cardIds ?? []);
+  if (loadout.activeCardId) {
+    ids.add(loadout.activeCardId);
+  }
+  return Array.from(ids).map((id) => getAbilityCard(id));
 }

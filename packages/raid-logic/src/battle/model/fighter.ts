@@ -1,7 +1,7 @@
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
-import { DEFAULT_BOMBS } from "@repo/types";
 
 import type { FighterKey, FighterState } from "../types";
+import { getInitialBombs } from "../presets/ability-cards";
 
 export function createFighter(
   key: FighterKey,
@@ -10,6 +10,7 @@ export function createFighter(
   x: number,
   y: number,
   activeCard: AbilityCardDefinition | undefined,
+  cards: readonly AbilityCardDefinition[] = activeCard ? [activeCard] : [],
 ): FighterState {
   return {
     key,
@@ -20,7 +21,7 @@ export function createFighter(
     previousY: y,
     previousFacing: 0,
     lives: 2,
-    bombs: getDefaultBombs(activeCard),
+    bombs: getInitialBombs(cards),
     ammo: primaryCharacter.ammoCapacity,
     ammoDisplay: primaryCharacter.ammoCapacity,
     ammoCapacity: primaryCharacter.ammoCapacity,
@@ -61,10 +62,6 @@ export function createFighter(
   };
 }
 
-export function getDefaultBombs(activeCard: AbilityCardDefinition | undefined): number {
-  return activeCard?.effectIds.includes("set_default_bombs_4") ? 4 : DEFAULT_BOMBS;
-}
-
 export function resetFighter(
   fighter: FighterState,
   primaryCharacter: CharacterDefinition,
@@ -72,8 +69,9 @@ export function resetFighter(
   x: number,
   y: number,
   activeCard: AbilityCardDefinition | undefined,
+  cards: readonly AbilityCardDefinition[] = activeCard ? [activeCard] : [],
 ): void {
-  const reset = createFighter(fighter.key, primaryCharacter, alternateCharacter, x, y, activeCard);
+  const reset = createFighter(fighter.key, primaryCharacter, alternateCharacter, x, y, activeCard, cards);
   Object.assign(fighter, reset);
 }
 

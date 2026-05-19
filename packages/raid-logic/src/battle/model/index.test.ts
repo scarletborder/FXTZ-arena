@@ -240,6 +240,7 @@ async function createBattleModel(
     player: {
       primaryCharacterId,
       alternateCharacterId,
+      cardIds: activeCardId ? [activeCardId] : undefined,
       activeCardId,
     },
     target: {

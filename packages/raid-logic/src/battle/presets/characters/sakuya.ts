@@ -1,6 +1,7 @@
 import type { CharacterDefinition } from "@repo/content";
 
 import type { FighterState } from "../../types";
+import type { BattleHitContext } from "../ability-cards";
 import { BattleCharacter, hitCircleUnits, secondsToTicks, type CharacterActionContext } from "./base";
 
 export class SakuyaBattleCharacter extends BattleCharacter {
@@ -55,8 +56,8 @@ export class SakuyaBattleCharacter extends BattleCharacter {
     }
   }
 
-  useActiveCard(ctx: CharacterActionContext, fighter: FighterState): void {
-    this.useSpiritStrike(ctx, fighter, 0xb8c9ff);
+  onHit(_ctx: BattleHitContext): void {
+    // Sakuya has no hit-time modifier by default.
   }
 
   private spawnKnife(

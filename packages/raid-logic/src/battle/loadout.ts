@@ -4,6 +4,7 @@ import type { BattleConfig, PlayerId } from "@repo/types";
 export interface FighterLoadout {
   readonly primaryCharacterId: CharacterDefinition["id"];
   readonly alternateCharacterId: CharacterDefinition["id"];
+  readonly cardIds?: readonly AbilityCardDefinition["id"][];
   readonly activeCardId?: AbilityCardDefinition["id"];
 }
 

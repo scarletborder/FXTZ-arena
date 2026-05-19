@@ -1,14 +1,17 @@
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
-import { ARENA_WIDTH, speedRankToPixelsPerTick } from "@repo/types";
+import { ARENA_WIDTH, DEFAULT_BOMBS, speedRankToPixelsPerTick } from "@repo/types";
 
 import type { BattleInputState, FighterKey, FighterState, TrainingStats } from "../types";
 import { applyHit, getFireCooldown } from "./combat";
 import { createFighter, getCharacterAmmo, resetFighter, setCharacterAmmo, tickFighterTimers } from "./fighter";
+import { createBattleAbilityCard, type BattleAbilityCard, type BattleHitContext } from "../presets/ability-cards";
 import { createBattleCharacter, type BattleCharacter, type CharacterActionContext } from "../presets/characters";
 
 export class BattleFighter {
   readonly state: FighterState;
   private readonly characters = new Map<CharacterDefinition["id"], BattleCharacter>();
+  private activeBattleCard: BattleAbilityCard | undefined;
+  private battleCards: BattleAbilityCard[] = [];
 
   constructor(
     key: FighterKey,
@@ -17,8 +20,11 @@ export class BattleFighter {
     x: number,
     y: number,
     activeCard: AbilityCardDefinition | undefined,
+    cards: readonly AbilityCardDefinition[] = activeCard ? [activeCard] : [],
   ) {
-    this.state = createFighter(key, primaryCharacter, alternateCharacter, x, y, activeCard);
+    this.state = createFighter(key, primaryCharacter, alternateCharacter, x, y, activeCard, cards);
+    this.activeBattleCard = activeCard ? createBattleAbilityCard(activeCard) : undefined;
+    this.battleCards = cards.map((card) => createBattleAbilityCard(card));
     this.registerCharacter(primaryCharacter);
     this.registerCharacter(alternateCharacter);
     this.applyActiveCharacter(primaryCharacter);
@@ -30,8 +36,11 @@ export class BattleFighter {
     x: number,
     y: number,
     activeCard: AbilityCardDefinition | undefined,
+    cards: readonly AbilityCardDefinition[] = activeCard ? [activeCard] : [],
   ): void {
-    resetFighter(this.state, primaryCharacter, alternateCharacter, x, y, activeCard);
+    resetFighter(this.state, primaryCharacter, alternateCharacter, x, y, activeCard, cards);
+    this.activeBattleCard = activeCard ? createBattleAbilityCard(activeCard) : undefined;
+    this.battleCards = cards.map((card) => createBattleAbilityCard(card));
     this.registerCharacter(primaryCharacter);
     this.registerCharacter(alternateCharacter);
     this.applyActiveCharacter(primaryCharacter);
@@ -39,6 +48,10 @@ export class BattleFighter {
 
   tickTimers(): void {
     tickFighterTimers(this.state);
+  }
+
+  cardDefinitions(): readonly AbilityCardDefinition[] {
+    return this.battleCards.map((card) => card.definition);
   }
 
   selectActiveCharacter(alternateHeld: boolean): void {
@@ -128,7 +141,7 @@ export class BattleFighter {
 
     this.state.activeCardUses -= 1;
     this.state.activeCardCooldownUntil = this.state.activeCard.cooldownTicks;
-    this.activeCharacter.useActiveCard(ctx, this.state);
+    this.activeBattleCard?.onUse(ctx);
   }
 
   onProjectileHit(params: {
@@ -139,8 +152,19 @@ export class BattleFighter {
     readonly stats: TrainingStats;
     readonly frame: number;
     readonly damage: number;
+    readonly actionContext: CharacterActionContext;
+    readonly attackerCards: readonly AbilityCardDefinition[];
   }): "ignored" | "accepted" | "game-over" {
-    return applyHit(params);
+    const hitContext = this.createHitContext(params);
+    this.characterFor(params.victim.primaryCharacter).onHit(hitContext);
+    this.characterFor(params.victim.alternateCharacter).onHit(hitContext);
+    for (const card of this.battleCards) {
+      card.onHit(hitContext);
+    }
+    return applyHit({
+      ...params,
+      defaultBombs: hitContext.resolution.defaultBombs,
+    });
   }
 
   private get activeCharacter(): BattleCharacter {
@@ -169,6 +193,38 @@ export class BattleFighter {
     if (!this.characters.has(character.id)) {
       this.characters.set(character.id, createBattleCharacter(character));
     }
+  }
+
+  private createHitContext(params: {
+    readonly owner: FighterKey;
+    readonly victim: FighterState;
+    readonly player: FighterState;
+    readonly target: FighterState;
+    readonly stats: TrainingStats;
+    readonly frame: number;
+    readonly damage: number;
+    readonly actionContext: CharacterActionContext;
+    readonly attackerCards: readonly AbilityCardDefinition[];
+  }): BattleHitContext {
+    const attacker = params.owner === "player" ? params.player : params.target;
+    return {
+      ...params.actionContext,
+      owner: params.owner,
+      victim: params.victim,
+      attacker,
+      damage: params.damage,
+      before: {
+        victim: structuredClone(params.victim),
+        attacker: structuredClone(attacker),
+      },
+      cards: {
+        victim: this.cardDefinitions(),
+        attacker: params.attackerCards,
+      },
+      resolution: {
+        defaultBombs: DEFAULT_BOMBS,
+      },
+    };
   }
 
   private interruptReload(): void {
