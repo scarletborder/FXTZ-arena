@@ -1,4 +1,4 @@
-import { validateLoadout, type BattleConfig } from "@repo/types";
+import { validateLoadout, type BattleConfig, type PlayerId } from "@repo/types";
 
 import type { ServerConfig } from "../config";
 import { findQuickMatchRoom } from "../matchmaking";
@@ -11,6 +11,7 @@ import type {
   ClientMessage,
   CreateRoomMessage,
   HelloMessage,
+  GameOverMessage,
   InputFrameMessage,
   JoinRoomMessage,
   LobbyReadyMessage,
@@ -30,7 +31,10 @@ export const ErrorCodes = {
   INVALID_LOADOUT: "invalid_loadout",
   INVALID_STATE: "invalid_state",
   INVALID_MESSAGE: "invalid_message",
+  RECONNECT_FAILED: "reconnect_failed",
 } as const;
+
+const DISCONNECT_GRACE_MS = 1_000;
 
 /**
  * Routes and processes all client → server protocol messages.
@@ -108,6 +112,8 @@ export class MessageHandler {
         return this.handleLoadingDone(connection);
       case "input_frame":
         return this.handleInputFrame(connection, raw as InputFrameMessage);
+      case "game_over":
+        return this.handleGameOver(connection, raw as GameOverMessage);
       case "ping":
         return this.handlePing(connection, raw as PingMessage);
       default:
@@ -131,18 +137,49 @@ export class MessageHandler {
     if (session.roomId) {
       const room = this.roomManager.get(session.roomId);
       if (room) {
-        // Notify the other player
-        const otherIdx = room.connectionIds.findIndex(
-          (c) => c && c !== connectionId,
-        );
-        if (otherIdx !== -1 && session.playerId) {
-          this.sendToSlot(room, otherIdx, {
-            type: "peer_status",
-            playerId: session.playerId,
-            status: "disconnected",
-          });
+        const slotIdx = room.connectionIds.indexOf(connectionId);
+        if (slotIdx !== -1 && session.playerId && (room.status === "loading" || room.status === "fighting")) {
+          room.connectionIds[slotIdx] = null;
+          room.disconnectedAt[slotIdx] = Date.now();
+          this.notifyPeerStatus(room, slotIdx, session.playerId, "disconnected");
 
-          const remainingSession = this.sessionStore.get(room.connectionIds[otherIdx]!);
+          room.disconnectTimers[slotIdx] = setTimeout(() => {
+            if (room.connectionIds[slotIdx] !== null || room.disconnectedAt[slotIdx] === null) {
+              return;
+            }
+            const playerId = room.playerSlots[slotIdx];
+            this.roomManager.removeSlot(room, slotIdx);
+            if (playerId) {
+              this.notifyAllConnected(room, {
+                type: "peer_status",
+                playerId,
+                status: "disconnected",
+              });
+            }
+            this.notifyAllConnected(room, {
+              type: "room_state",
+              roomId: room.id,
+              playerCount: room.connectionIds.filter(Boolean).length,
+              status: room.status,
+              roomName: room.name,
+              hostName: this.hostName(room),
+              lifeCount: room.lifeCount,
+              costLimit: room.costLimit,
+            });
+            if (room.connectionIds.every((c) => c === null)) {
+              this.roomManager.delete(room.id);
+            }
+            this.sessionStore.remove(connectionId);
+          }, DISCONNECT_GRACE_MS);
+          return;
+        }
+
+        if (slotIdx !== -1 && session.playerId) {
+          this.notifyPeerStatus(room, slotIdx, session.playerId, "disconnected");
+          const otherIdx = slotIdx === 0 ? 1 : 0;
+          const remainingSession = room.connectionIds[otherIdx]
+            ? this.sessionStore.get(room.connectionIds[otherIdx]!)
+            : undefined;
           this.sendToSlot(room, otherIdx, {
             type: "room_state",
             roomId: room.id,
@@ -174,6 +211,10 @@ export class MessageHandler {
 
     this.helloReceived.add(connection.id);
 
+    if (msg.reconnect && this.tryReconnect(connection, msg)) {
+      return;
+    }
+
     this.sessionStore.create(
       connection.id,
       msg.username,
@@ -185,6 +226,77 @@ export class MessageHandler {
       type: "server_hello",
       serverVersion: this.config.serverVersion,
     });
+  }
+
+  private tryReconnect(connection: TransportConnection, msg: HelloMessage): boolean {
+    const reconnect = msg.reconnect;
+    if (!reconnect) return false;
+
+    const room = this.roomManager.get(reconnect.roomId);
+    const slotIndex = room?.playerSlots.indexOf(reconnect.playerId) ?? -1;
+    const battleMatches = !reconnect.battleId || room?.battleId === reconnect.battleId;
+    const canReconnect = !!room
+      && slotIndex !== -1
+      && room.connectionIds[slotIndex] === null
+      && room.disconnectedAt[slotIndex] !== null
+      && (room.status === "loading" || room.status === "fighting")
+      && battleMatches;
+
+    if (!room || !canReconnect) {
+      this.sessionStore.create(connection.id, msg.username, msg.clientVersion, msg.debug);
+      this.send(connection, {
+        type: "server_hello",
+        serverVersion: this.config.serverVersion,
+      });
+      this.send(connection, {
+        type: "error",
+        code: ErrorCodes.RECONNECT_FAILED,
+        message: "Reconnect window expired",
+      });
+      return true;
+    }
+
+    const oldSession = this.sessionStore.findByRoomAndPlayer(room.id, reconnect.playerId);
+    if (oldSession && oldSession.connectionId !== connection.id) {
+      this.sessionStore.remove(oldSession.connectionId);
+    }
+
+    this.sessionStore.create(connection.id, msg.username, msg.clientVersion, msg.debug);
+    this.sessionStore.setRoomId(connection.id, room.id);
+    this.sessionStore.setPlayerId(connection.id, reconnect.playerId);
+    this.roomManager.reconnectSlot(room, slotIndex, connection.id);
+
+    this.send(connection, {
+      type: "server_hello",
+      serverVersion: this.config.serverVersion,
+    });
+    this.send(connection, {
+      type: "room_joined",
+      roomId: room.id,
+      playerId: reconnect.playerId,
+    });
+
+    const config = this.buildBattleConfig(room);
+    if (config) {
+      this.send(connection, {
+        type: "battle_start",
+        config,
+      });
+    }
+
+    this.send(connection, {
+      type: "room_state",
+      roomId: room.id,
+      playerCount: room.connectionIds.filter(Boolean).length,
+      status: room.status,
+      opponentUsername: this.opponentName(room, slotIndex),
+      roomName: room.name,
+      hostName: this.hostName(room),
+      lifeCount: room.lifeCount,
+      costLimit: room.costLimit,
+    });
+    this.notifyPeerStatus(room, slotIndex, reconnect.playerId, "reconnected");
+    return true;
   }
 
   // ─── Create Room ──────────────────────────────────
@@ -456,6 +568,11 @@ export class MessageHandler {
     const room = this.roomManager.get(session.roomId);
     if (!room) return;
 
+    const exitsActiveBattle = room.status === "loading" || room.status === "fighting";
+    if (exitsActiveBattle) {
+      room.status = "finished";
+    }
+
     // Notify other player
     const otherConnId = room.connectionIds.find(
       (c) => c && c !== connection.id,
@@ -472,7 +589,7 @@ export class MessageHandler {
         type: "room_state",
         roomId: room.id,
         playerCount: 1,
-        status: "waiting",
+        status: room.status,
         roomName: room.name,
         hostName: remainingSession?.username ?? "",
         lifeCount: room.lifeCount,
@@ -675,19 +792,7 @@ export class MessageHandler {
 
     if (result.bothReady) {
       // Both players ready — send battle_start to both
-      const configWithUsernames: BattleConfig = {
-        ...result.battleConfig,
-        players: [
-          {
-            ...result.battleConfig.players[0],
-            username: this.sessionStore.get(room.connectionIds[0]!)?.username ?? "",
-          },
-          {
-            ...result.battleConfig.players[1],
-            username: this.sessionStore.get(room.connectionIds[1]!)?.username ?? "",
-          },
-        ],
-      };
+      const configWithUsernames = this.withUsernames(room, result.battleConfig);
 
       for (const connId of room.connectionIds) {
         if (connId) {
@@ -756,6 +861,11 @@ export class MessageHandler {
     const room = this.roomManager.get(session.roomId);
     if (!room || room.status !== "fighting") return;
 
+    const ownIdx = room.playerSlots.indexOf(session.playerId);
+    if (ownIdx !== -1) {
+      room.lastAckFrameIds[ownIdx] = Math.max(room.lastAckFrameIds[ownIdx] ?? 0, msg.ackFrame ?? 0);
+    }
+
     // Relay to the other player
     const otherIdx = room.playerSlots.indexOf(
       session.playerId === "player-1" ? "player-2" : "player-1",
@@ -769,6 +879,7 @@ export class MessageHandler {
       type: "input_frame",
       playerId: session.playerId,
       frame: msg.frame,
+      ackFrame: msg.ackFrame ?? 0,
       moveX: msg.moveX,
       moveY: msg.moveY,
       aimX: msg.aimX,
@@ -779,6 +890,56 @@ export class MessageHandler {
       reloadPressed: msg.reloadPressed,
       alternateHeld: msg.alternateHeld,
       infoHeld: msg.infoHeld,
+    });
+  }
+
+  // ─── Game Over Verdict ────────────────────────────
+
+  private handleGameOver(
+    connection: TransportConnection,
+    msg: GameOverMessage,
+  ): void {
+    const session = this.sessionStore.get(connection.id);
+    if (!session || !session.roomId || !session.playerId) return;
+
+    const room = this.roomManager.get(session.roomId);
+    if (!room || room.status !== "fighting" || !room.battleId) return;
+
+    const ownIdx = room.playerSlots.indexOf(session.playerId);
+    if (ownIdx === -1) return;
+
+    room.lastAckFrameIds[ownIdx] = Math.max(room.lastAckFrameIds[ownIdx] ?? 0, msg.ackFrame);
+    room.gameOverVerdicts[ownIdx] = {
+      frame: msg.frame,
+      winnerPlayerId: msg.winnerPlayerId,
+    };
+
+    const [left, right] = room.gameOverVerdicts;
+    if (!left || !right) return;
+
+    if (left.winnerPlayerId !== right.winnerPlayerId) {
+      room.gameOverVerdicts = [null, null];
+      return;
+    }
+
+    room.status = "finished";
+    const finishedFrame = Math.max(left.frame, right.frame);
+    this.notifyAllConnected(room, {
+      type: "battle_finished",
+      roomId: room.id,
+      battleId: room.battleId,
+      frame: finishedFrame,
+      winnerPlayerId: left.winnerPlayerId,
+    });
+    this.notifyAllConnected(room, {
+      type: "room_state",
+      roomId: room.id,
+      playerCount: room.connectionIds.filter(Boolean).length,
+      status: room.status,
+      roomName: room.name,
+      hostName: this.hostName(room),
+      lifeCount: room.lifeCount,
+      costLimit: room.costLimit,
     });
   }
 
@@ -809,5 +970,95 @@ export class MessageHandler {
     if (connId) {
       this.sendToConnection(connId, message);
     }
+  }
+
+  private notifyPeerStatus(
+    room: { connectionIds: (string | null)[] },
+    disconnectedSlotIndex: number,
+    playerId: PlayerId,
+    status: "connected" | "disconnected" | "reconnected",
+  ): void {
+    const otherIdx = disconnectedSlotIndex === 0 ? 1 : 0;
+    this.sendToSlot(room, otherIdx, {
+      type: "peer_status",
+      playerId,
+      status,
+    });
+  }
+
+  private notifyAllConnected(room: { connectionIds: (string | null)[] }, message: ServerMessage): void {
+    for (const connId of room.connectionIds) {
+      if (connId) {
+        this.sendToConnection(connId, message);
+      }
+    }
+  }
+
+  private buildBattleConfig(room: import("../room/types").InternalRoom): BattleConfig | null {
+    if (!room.battleId || room.seed === null || !room.loadouts[0] || !room.loadouts[1] || !room.playerSlots[0] || !room.playerSlots[1]) {
+      return null;
+    }
+    return this.withUsernames(room, {
+      battleId: room.battleId,
+      mapId: room.mapId,
+      seed: room.seed,
+      fps: 60,
+      lifeCount: room.lifeCount,
+      defaultBombCount: 3,
+      costLimit: room.costLimit,
+      players: [
+        {
+          playerId: room.playerSlots[0],
+          username: "",
+          loadout: room.loadouts[0],
+          spawnPointId: "spawn-1",
+        },
+        {
+          playerId: room.playerSlots[1],
+          username: "",
+          loadout: room.loadouts[1],
+          spawnPointId: "spawn-2",
+        },
+      ],
+    });
+  }
+
+  private withUsernames(room: import("../room/types").InternalRoom, config: BattleConfig): BattleConfig {
+    const firstSession = room.connectionIds[0]
+      ? this.sessionStore.get(room.connectionIds[0]!)
+      : this.sessionStore.findByRoomAndPlayer(room.id, "player-1");
+    const secondSession = room.connectionIds[1]
+      ? this.sessionStore.get(room.connectionIds[1]!)
+      : this.sessionStore.findByRoomAndPlayer(room.id, "player-2");
+    return {
+      ...config,
+      players: [
+        {
+          ...config.players[0],
+          username: firstSession?.username ?? "",
+        },
+        {
+          ...config.players[1],
+          username: secondSession?.username ?? "",
+        },
+      ],
+    };
+  }
+
+  private hostName(room: import("../room/types").InternalRoom): string {
+    const hostConnectionId = room.connectionIds[0];
+    return hostConnectionId
+      ? this.sessionStore.get(hostConnectionId)?.username ?? ""
+      : this.sessionStore.findByRoomAndPlayer(room.id, "player-1")?.username ?? "";
+  }
+
+  private opponentName(room: import("../room/types").InternalRoom, ownSlotIndex: number): string {
+    const otherIdx = ownSlotIndex === 0 ? 1 : 0;
+    const otherConnectionId = room.connectionIds[otherIdx];
+    const playerId = room.playerSlots[otherIdx];
+    if (otherConnectionId) {
+      return this.sessionStore.get(otherConnectionId)?.username ?? "";
+    }
+    return playerId ? this.sessionStore.findByRoomAndPlayer(room.id, playerId)?.username ?? "" : "";
   }
 }

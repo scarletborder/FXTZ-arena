@@ -11,6 +11,7 @@ export class LoadingScene extends Phaser.Scene {
   private label!: Phaser.GameObjects.Text;
   private onlineReady = false;
   private transitioning = false;
+  private loadingDoneSent = false;
 
   constructor() {
     super("loading" satisfies SceneKey);
@@ -21,6 +22,7 @@ export class LoadingScene extends Phaser.Scene {
     this.progress = 0;
     this.onlineReady = false;
     this.transitioning = false;
+    this.loadingDoneSent = false;
 
     drawFightingBackdrop(this, "LOADING", "READY");
     this.add.text(434, 278, "加载战局资源", headingStyle(34));
@@ -32,6 +34,13 @@ export class LoadingScene extends Phaser.Scene {
       connectionManager.setMessageHandler((msg: ServerMessage) => {
         if (msg.type === "room_state" && msg.status === "fighting") {
           this.onlineReady = true;
+        } else if (msg.type === "room_state" && msg.status === "finished") {
+          this.label.setText("对手已退出，战斗结束");
+          this.time.delayedCall(900, () => this.scene.start("home"));
+        } else if (msg.type === "peer_status" && msg.status === "disconnected") {
+          this.label.setText("对手断线，等待重连…");
+        } else if (msg.type === "peer_status" && msg.status === "reconnected") {
+          this.label.setText("对手已重连，等待加载完成…");
         }
       });
     }
@@ -60,40 +69,21 @@ export class LoadingScene extends Phaser.Scene {
     if (this.progress >= 1 && !this.transitioning) {
       if (this.loadingData.mode === "online") {
         // Send loading_done, then wait for fighting state
-        connectionManager.send({ type: "loading_done" });
+        if (!this.loadingDoneSent) {
+          connectionManager.send({ type: "loading_done" });
+          this.loadingDoneSent = true;
+        }
 
         // If we already got the fighting signal, go immediately
         if (this.onlineReady) {
           this.goToBattle();
         } else {
-          // Wait — the update loop will check onlineReady each frame
           this.label.setText("等待对手加载完成…");
-          this.waitAndGo();
         }
       } else {
         this.goToBattle();
       }
     }
-  }
-
-  private waitAndGo(): void {
-    // Poll onlineReady every frame until true or timeout
-    const checkInterval = setInterval(() => {
-      if (this.onlineReady || this.transitioning) {
-        clearInterval(checkInterval);
-        if (this.onlineReady) {
-          this.goToBattle();
-        }
-      }
-    }, 100);
-
-    // Safety timeout: proceed after 10s even if server doesn't confirm
-    setTimeout(() => {
-      clearInterval(checkInterval);
-      if (!this.transitioning) {
-        this.goToBattle();
-      }
-    }, 10_000);
   }
 
   private goToBattle(): void {

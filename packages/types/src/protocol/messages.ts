@@ -16,6 +16,11 @@ export interface HelloMessage {
   username: string;
   clientVersion: string;
   debug: boolean;
+  reconnect?: {
+    roomId: string;
+    playerId: PlayerId;
+    battleId?: string;
+  };
 }
 
 export interface CreateRoomMessage {
@@ -62,6 +67,7 @@ export interface LoadingDoneMessage {
 export interface InputFrameMessage {
   type: "input_frame";
   frame: number;
+  ackFrame: number;
   moveX: -1 | 0 | 1;
   moveY: -1 | 0 | 1;
   aimX: number;
@@ -72,6 +78,13 @@ export interface InputFrameMessage {
   reloadPressed: boolean;
   alternateHeld: boolean;
   infoHeld: boolean;
+}
+
+export interface GameOverMessage {
+  type: "game_over";
+  frame: number;
+  ackFrame: number;
+  winnerPlayerId: PlayerId;
 }
 
 export interface PingMessage {
@@ -90,6 +103,7 @@ export type ClientMessage =
   | ReadyMessage
   | LoadingDoneMessage
   | InputFrameMessage
+  | GameOverMessage
   | PingMessage;
 
 // ──────────────────────────────────────────
@@ -147,6 +161,7 @@ export interface InputFrameRelayMessage {
   type: "input_frame";
   playerId: PlayerId;
   frame: number;
+  ackFrame: number;
   moveX: -1 | 0 | 1;
   moveY: -1 | 0 | 1;
   aimX: number;
@@ -163,6 +178,14 @@ export interface PeerStatusMessage {
   type: "peer_status";
   playerId: PlayerId;
   status: "connected" | "disconnected" | "reconnected";
+}
+
+export interface BattleFinishedMessage {
+  type: "battle_finished";
+  roomId: string;
+  battleId: string;
+  frame: number;
+  winnerPlayerId: PlayerId;
 }
 
 export interface ErrorMessage {
@@ -187,5 +210,6 @@ export type ServerMessage =
   | GameStartingMessage
   | InputFrameRelayMessage
   | PeerStatusMessage
+  | BattleFinishedMessage
   | ErrorMessage
   | PongMessage;

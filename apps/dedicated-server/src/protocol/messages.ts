@@ -6,10 +6,12 @@
  */
 export type {
   BattleStartMessage,
+  BattleFinishedMessage,
   ClientMessage,
   CreateRoomMessage,
   ErrorMessage,
   GameStartingMessage,
+  GameOverMessage,
   HelloMessage,
   InputFrameMessage,
   InputFrameRelayMessage,

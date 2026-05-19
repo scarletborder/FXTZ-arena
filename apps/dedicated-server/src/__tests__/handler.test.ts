@@ -449,6 +449,43 @@ describe("MessageHandler", () => {
       expect(roomState?.playerCount).toBe(1);
       expect(roomState?.status).toBe("waiting");
     });
+
+    it("finishes an active battle when a player leaves intentionally", () => {
+      const { handler, roomManager } = createHandler();
+      const conn1 = new MockConnection("conn-1");
+      const conn2 = new MockConnection("conn-2");
+
+      performHello(handler, conn1, "Host");
+      performHello(handler, conn2, "Joiner");
+
+      handler.handle(conn1, {
+        type: "create_room",
+        name: "Active Leave",
+        mapId: "arena_standard",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+      const roomId = conn1.findSentMessage("room_created")!.roomId;
+      handler.handle(conn2, { type: "join_room", roomId });
+      handler.handle(conn2, { type: "lobby_ready", ready: true });
+      handler.handle(conn1, { type: "start_game" });
+      handler.handle(conn1, {
+        type: "ready",
+        loadout: { primaryCharacterId: "reimu", alternateCharacterId: "marisa", abilityCardIds: [] },
+      });
+      handler.handle(conn2, {
+        type: "ready",
+        loadout: { primaryCharacterId: "sakuya", alternateCharacterId: "reimu", abilityCardIds: [] },
+      });
+      handler.handle(conn1, { type: "loading_done" });
+      handler.handle(conn2, { type: "loading_done" });
+      conn1.clearMessages();
+
+      handler.handle(conn2, { type: "leave_room" });
+
+      expect(roomManager.get(roomId)?.status).toBe("finished");
+      expect(conn1.findAllSentMessages("room_state").pop()?.status).toBe("finished");
+    });
   });
 
   describe("ready and battle start", () => {
@@ -695,12 +732,15 @@ describe("MessageHandler", () => {
     }
 
     it("relays input from one player to the other", () => {
-      const { handler } = createHandler();
+      const { handler, roomManager } = createHandler();
       const { conn1, conn2 } = setupFightingRoom(handler);
+      const roomId = conn1.findSentMessage("room_joined")?.roomId
+        ?? roomManager.getAllRooms()[0]!.id;
 
       handler.handle(conn1, {
         type: "input_frame",
         frame: 1,
+        ackFrame: 7,
         moveX: 1,
         moveY: 0,
         aimX: 100,
@@ -717,8 +757,10 @@ describe("MessageHandler", () => {
       expect(relayed).toBeDefined();
       expect(relayed?.playerId).toBe("player-1");
       expect(relayed?.frame).toBe(1);
+      expect(relayed?.ackFrame).toBe(7);
       expect(relayed?.moveX).toBe(1);
       expect(relayed?.shootPressed).toBe(true);
+      expect(roomManager.get(roomId)?.lastAckFrameIds[0]).toBe(7);
     });
 
     it("does not relay input back to the sender", () => {
@@ -728,6 +770,7 @@ describe("MessageHandler", () => {
       handler.handle(conn1, {
         type: "input_frame",
         frame: 5,
+        ackFrame: 0,
         moveX: 0,
         moveY: 1,
         aimX: 0,
@@ -770,6 +813,7 @@ describe("MessageHandler", () => {
       handler.handle(conn1, {
         type: "input_frame",
         frame: 1,
+        ackFrame: 0,
         moveX: 0,
         moveY: 0,
         aimX: 0,
@@ -785,6 +829,90 @@ describe("MessageHandler", () => {
       // No relay should happen
       const relayed = conn2.findSentMessage("input_frame");
       expect(relayed).toBeUndefined();
+    });
+  });
+
+  describe("game over verdicts", () => {
+    function setupFightingRoom(handler: MessageHandler) {
+      const conn1 = new MockConnection("conn-1");
+      const conn2 = new MockConnection("conn-2");
+
+      performHello(handler, conn1, "P1");
+      performHello(handler, conn2, "P2");
+
+      handler.handle(conn1, {
+        type: "create_room",
+        name: "Verdict Fight",
+        mapId: "arena_standard",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+      const roomId = conn1.findSentMessage("room_created")!.roomId;
+      handler.handle(conn2, { type: "join_room", roomId });
+      handler.handle(conn2, { type: "lobby_ready", ready: true });
+      handler.handle(conn1, { type: "start_game" });
+      handler.handle(conn1, {
+        type: "ready",
+        loadout: { primaryCharacterId: "reimu", alternateCharacterId: "marisa", abilityCardIds: [] },
+      });
+      handler.handle(conn2, {
+        type: "ready",
+        loadout: { primaryCharacterId: "sakuya", alternateCharacterId: "reimu", abilityCardIds: [] },
+      });
+      handler.handle(conn1, { type: "loading_done" });
+      handler.handle(conn2, { type: "loading_done" });
+      conn1.clearMessages();
+      conn2.clearMessages();
+      return { conn1, conn2, roomId };
+    }
+
+    it("waits for both players before broadcasting battle_finished", () => {
+      const { handler, roomManager } = createHandler();
+      const { conn1, conn2, roomId } = setupFightingRoom(handler);
+
+      handler.handle(conn1, {
+        type: "game_over",
+        frame: 120,
+        ackFrame: 120,
+        winnerPlayerId: "player-1",
+      });
+
+      expect(conn1.findSentMessage("battle_finished")).toBeUndefined();
+      expect(conn2.findSentMessage("battle_finished")).toBeUndefined();
+      expect(roomManager.get(roomId)?.status).toBe("fighting");
+
+      handler.handle(conn2, {
+        type: "game_over",
+        frame: 122,
+        ackFrame: 122,
+        winnerPlayerId: "player-1",
+      });
+
+      expect(conn1.findSentMessage("battle_finished")?.winnerPlayerId).toBe("player-1");
+      expect(conn2.findSentMessage("battle_finished")?.frame).toBe(122);
+      expect(roomManager.get(roomId)?.status).toBe("finished");
+    });
+
+    it("does not finish when the two verdicts disagree", () => {
+      const { handler, roomManager } = createHandler();
+      const { conn1, conn2, roomId } = setupFightingRoom(handler);
+
+      handler.handle(conn1, {
+        type: "game_over",
+        frame: 120,
+        ackFrame: 120,
+        winnerPlayerId: "player-1",
+      });
+      handler.handle(conn2, {
+        type: "game_over",
+        frame: 120,
+        ackFrame: 120,
+        winnerPlayerId: "player-2",
+      });
+
+      expect(conn1.findSentMessage("battle_finished")).toBeUndefined();
+      expect(conn2.findSentMessage("battle_finished")).toBeUndefined();
+      expect(roomManager.get(roomId)?.status).toBe("fighting");
     });
   });
 
@@ -854,6 +982,61 @@ describe("MessageHandler", () => {
       expect(peerStatus).toBeDefined();
       expect(peerStatus?.playerId).toBe("player-2");
       expect(peerStatus?.status).toBe("disconnected");
+    });
+
+    it("lets a fighting player reconnect to the same slot during the 1s grace window", () => {
+      const { handler, roomManager } = createHandler();
+      const conn1 = new MockConnection("conn-1");
+      const conn2 = new MockConnection("conn-2");
+
+      performHello(handler, conn1, "P1");
+      performHello(handler, conn2, "P2");
+
+      handler.handle(conn1, {
+        type: "create_room",
+        name: "Reconnect Fight",
+        mapId: "arena_standard",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+      const roomId = conn1.findSentMessage("room_created")!.roomId;
+      handler.handle(conn2, { type: "join_room", roomId });
+      handler.handle(conn2, { type: "lobby_ready", ready: true });
+      handler.handle(conn1, { type: "start_game" });
+      handler.handle(conn1, {
+        type: "ready",
+        loadout: { primaryCharacterId: "reimu", alternateCharacterId: "marisa", abilityCardIds: [] },
+      });
+      handler.handle(conn2, {
+        type: "ready",
+        loadout: { primaryCharacterId: "sakuya", alternateCharacterId: "reimu", abilityCardIds: [] },
+      });
+      handler.handle(conn1, { type: "loading_done" });
+      handler.handle(conn2, { type: "loading_done" });
+
+      const room = roomManager.get(roomId)!;
+      const battleId = room.battleId!;
+      conn1.clearMessages();
+
+      handler.handleDisconnect(conn2.id);
+      expect(conn1.findSentMessage("peer_status")?.status).toBe("disconnected");
+      expect(room.connectionIds[1]).toBeNull();
+      expect(room.playerSlots[1]).toBe("player-2");
+
+      const reconnect = new MockConnection("conn-2b");
+      handler.registerConnection(reconnect);
+      handler.handle(reconnect, {
+        type: "hello",
+        username: "P2",
+        clientVersion: "1.0.0",
+        debug: false,
+        reconnect: { roomId, playerId: "player-2", battleId },
+      });
+
+      expect(room.connectionIds[1]).toBe("conn-2b");
+      expect(room.status).toBe("fighting");
+      expect(reconnect.findSentMessage("battle_start")?.config.battleId).toBe(battleId);
+      expect(conn1.findAllSentMessages("peer_status").pop()?.status).toBe("reconnected");
     });
   });
 });

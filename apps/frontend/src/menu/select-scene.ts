@@ -131,18 +131,19 @@ export class SelectScene extends Phaser.Scene {
           returnScene: "battle-start",
           loadouts: {
             player: {
-              primaryCharacterId: me?.loadout.primaryCharacterId ?? "reimu",
-              alternateCharacterId: me?.loadout.alternateCharacterId ?? "marisa",
-              activeCardId: me?.loadout.activeAbilityCardId ?? undefined,
+              primaryCharacterId: config.players[0].loadout.primaryCharacterId,
+              alternateCharacterId: config.players[0].loadout.alternateCharacterId,
+              activeCardId: config.players[0].loadout.activeAbilityCardId ?? undefined,
             },
             target: {
-              primaryCharacterId: opponent?.loadout.primaryCharacterId ?? "sakuya",
-              alternateCharacterId: opponent?.loadout.alternateCharacterId ?? "reimu",
-              activeCardId: opponent?.loadout.activeAbilityCardId ?? undefined,
+              primaryCharacterId: config.players[1].loadout.primaryCharacterId,
+              alternateCharacterId: config.players[1].loadout.alternateCharacterId,
+              activeCardId: config.players[1].loadout.activeAbilityCardId ?? undefined,
             },
           },
           debug: uiSettings.debug,
-          /** Pass the battle config for the battle scene */
+          battleConfig: config,
+          localPlayerId: this.playerId,
         } satisfies Record<string, unknown>);
         break;
       }

@@ -16,8 +16,8 @@ export class FighterView {
 
   constructor(private readonly scene: Phaser.Scene) {
     this.visuals = {
-      player: this.createFighterVisual("player", 0x7ee39d, 180, 280, "fighter-player"),
-      target: this.createFighterVisual("target", 0xf05f65, 760, 280, "fighter-target"),
+      player: this.createFighterVisual(0x7ee39d, 180, 280, "fighter-player"),
+      target: this.createFighterVisual(0xf05f65, 760, 280, "fighter-player"),
     };
   }
 
@@ -27,14 +27,14 @@ export class FighterView {
     frame: number,
     gameOver: boolean,
     infoHeld: boolean,
+    localFighterKey: "player" | "target",
     alpha: number,
   ): void {
-    this.updateFighter(this.visuals.player, player, frame, gameOver, infoHeld, true, alpha);
-    this.updateFighter(this.visuals.target, target, frame, gameOver, infoHeld, false, alpha);
+    this.updateFighter(this.visuals.player, player, frame, gameOver, infoHeld, localFighterKey === "player", alpha);
+    this.updateFighter(this.visuals.target, target, frame, gameOver, infoHeld, localFighterKey === "target", alpha);
   }
 
   private createFighterVisual(
-    key: "player" | "target",
     bodyTint: number,
     x: number,
     y: number,
@@ -42,7 +42,7 @@ export class FighterView {
   ): FighterVisual {
     const body = this.scene.add
       .image(x, y, texture)
-      .setOrigin(0.5, key === "player" ? TRIANGLE_CENTROID_TEXTURE_Y / 256 : 0.5)
+      .setOrigin(0.5, TRIANGLE_CENTROID_TEXTURE_Y / 256)
       .setScale(0.42)
       .setTint(bodyTint)
       .setDepth(4);
@@ -64,7 +64,7 @@ export class FighterView {
     isPlayer: boolean,
     alpha: number,
   ): void {
-    const visible = isPlayer ? !gameOver : fighter.deadUntil === 0;
+    const visible = gameOver ? fighter.deadUntil === 0 : fighter.deadUntil === 0 || isPlayer;
     const x = lerp(fighter.previousX, fighter.x, alpha);
     const y = lerp(fighter.previousY, fighter.y, alpha);
     visual.body.setPosition(x, y);

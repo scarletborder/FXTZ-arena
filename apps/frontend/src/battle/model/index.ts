@@ -93,11 +93,19 @@ export class BattleModel {
   }
 
   step(input: BattleInputState): void {
+    this.stepFrame(input, undefined);
+  }
+
+  stepVersus(playerInput: BattleInputState, targetInput: BattleInputState): void {
+    this.stepFrame(playerInput, targetInput);
+  }
+
+  private stepFrame(playerInput: BattleInputState, targetInput: BattleInputState | undefined): void {
     this.capturePreviousFighterState();
     this.frame += 1;
     this.stats.elapsedTicks += 1;
-    this.stepPlayer(input);
-    this.stepTarget();
+    this.stepPlayer(playerInput);
+    this.stepTarget(targetInput);
     this.resolveProjectileClashes();
     this.projectileSystem.stepProjectiles({
       frame: this.frame,
@@ -176,7 +184,7 @@ export class BattleModel {
     }
   }
 
-  private stepTarget(): void {
+  private stepTarget(input: BattleInputState | undefined): void {
     const fighter = this.target;
     this.targetFighter.tickTimers();
     if (fighter.deadUntil > 0) {
@@ -187,10 +195,34 @@ export class BattleModel {
       return;
     }
 
-    if (this.cpuPlayer) {
+    if (input) {
+      this.stepTargetWithInput(fighter, input);
+    } else if (this.cpuPlayer) {
       this.stepTargetAi(fighter);
     } else {
       this.stepTargetSimple(fighter);
+    }
+  }
+
+  private stepTargetWithInput(fighter: FighterState, input: BattleInputState): void {
+    if (this.gameOver) {
+      return;
+    }
+
+    this.targetFighter.selectActiveCharacter(input.alternateHeld);
+    fighter.facing = Math.atan2(input.aimY - fighter.y, input.aimX - fighter.x);
+    this.targetFighter.moveBy(input);
+    this.targetFighter.handleReload(input.reloadPressed);
+
+    const ctx = this.fighterActionContext(fighter);
+    if (input.activeCardPressed) {
+      this.targetFighter.useActiveCard(ctx);
+    }
+    if (input.bombPressed) {
+      this.targetFighter.useBomb(ctx);
+    }
+    if (input.shootPressed) {
+      this.targetFighter.fire(ctx, input.aimX, input.aimY);
     }
   }
 

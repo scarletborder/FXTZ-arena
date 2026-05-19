@@ -59,6 +59,12 @@ export class SessionStore {
     );
   }
 
+  findByRoomAndPlayer(roomId: string, playerId: PlayerId): PlayerSession | undefined {
+    return Array.from(this.sessions.values()).find(
+      (s) => s.roomId === roomId && s.playerId === playerId,
+    );
+  }
+
   getAll(): PlayerSession[] {
     return Array.from(this.sessions.values());
   }

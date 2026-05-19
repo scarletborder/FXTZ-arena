@@ -26,6 +26,9 @@ describe("RoomManager", () => {
     expect(room.playerSlots).toEqual([null, null]);
     expect(room.loadouts).toEqual([null, null]);
     expect(room.loadingDone).toEqual([false, false]);
+    expect(room.disconnectedAt).toEqual([null, null]);
+    expect(room.lastAckFrameIds).toEqual([0, 0]);
+    expect(room.gameOverVerdicts).toEqual([null, null]);
     expect(room.battleId).toBeNull();
     expect(room.seed).toBeNull();
     expect(room.createdAt).toBeGreaterThan(0);

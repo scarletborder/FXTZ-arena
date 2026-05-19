@@ -14,6 +14,10 @@ export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "er
 export class ConnectionManager {
   private ws: WebSocket | null = null;
   private pingInterval: ReturnType<typeof setInterval> | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastAddress: string | null = null;
+  private lastUsername = "Player";
+  private manualDisconnect = false;
 
   /** Latest known server protocol version. */
   serverVersion: string | null = null;
@@ -70,6 +74,9 @@ export class ConnectionManager {
       return;
     }
 
+    this.lastAddress = address;
+    this.lastUsername = username;
+    this.manualDisconnect = false;
     this.setStatus("connecting");
 
     try {
@@ -83,19 +90,32 @@ export class ConnectionManager {
       this.setStatus("connected");
       this.startPing();
 
-      // Auto-send hello
+      const reconnect = this.roomId && this.playerId
+        ? {
+          roomId: this.roomId,
+          playerId: this.playerId,
+          battleId: this.battleConfig?.battleId,
+        }
+        : undefined;
+
       this.send({
         type: "hello",
         username,
         clientVersion: "0.1.0",
         debug: false,
+        reconnect,
       });
     };
 
     this.ws.onclose = () => {
       this.stopPing();
+      this.ws = null;
       this.setStatus("disconnected");
-      this.resetRoomState();
+      if (this.manualDisconnect || !this.roomId || !this.playerId) {
+        this.resetRoomState();
+        return;
+      }
+      this.scheduleReconnect();
     };
 
     this.ws.onerror = () => {
@@ -115,6 +135,8 @@ export class ConnectionManager {
 
   /** Close the WebSocket connection. */
   disconnect(): void {
+    this.manualDisconnect = true;
+    this.clearReconnectTimer();
     this.stopPing();
     this.ws?.close();
     this.ws = null;
@@ -155,6 +177,10 @@ export class ConnectionManager {
         this.battleConfig = msg.config;
         break;
       case "error":
+        if (msg.code === "reconnect_failed") {
+          this.clearReconnectTimer();
+          this.resetRoomState();
+        }
         // Errors are forwarded to the scene handler
         break;
     }
@@ -185,6 +211,23 @@ export class ConnectionManager {
     if (this.pingInterval !== null) {
       clearInterval(this.pingInterval);
       this.pingInterval = null;
+    }
+  }
+
+  private scheduleReconnect(): void {
+    this.clearReconnectTimer();
+    if (!this.lastAddress) return;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      if (!this.lastAddress || this.manualDisconnect) return;
+      this.connect(this.lastAddress, this.lastUsername);
+    }, 120);
+  }
+
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
     }
   }
 }

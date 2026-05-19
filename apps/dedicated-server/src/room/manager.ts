@@ -31,6 +31,10 @@ export class RoomManager {
       loadouts: [null, null],
       loadingDone: [false, false],
       lobbyReady: [false, false],
+      disconnectedAt: [null, null],
+      disconnectTimers: [null, null],
+      lastAckFrameIds: [0, 0],
+      gameOverVerdicts: [null, null],
       createdAt: Date.now(),
       battleId: null,
       seed: null,
@@ -60,8 +64,28 @@ export class RoomManager {
     room.connectionIds[slotIndex] = connectionId;
     const playerId = slotIndex === 0 ? "player-1" : "player-2";
     room.playerSlots[slotIndex] = playerId;
+    room.disconnectedAt[slotIndex] = null;
+    const timer = room.disconnectTimers[slotIndex];
+    if (timer) {
+      clearTimeout(timer);
+      room.disconnectTimers[slotIndex] = null;
+    }
 
     return { slotIndex, playerId };
+  }
+
+  reconnectSlot(room: InternalRoom, slotIndex: number, connectionId: string): { playerId: "player-1" | "player-2" } | null {
+    if (slotIndex < 0 || slotIndex >= room.connectionIds.length) return null;
+    const playerId = room.playerSlots[slotIndex];
+    if (!playerId) return null;
+    room.connectionIds[slotIndex] = connectionId;
+    room.disconnectedAt[slotIndex] = null;
+    const timer = room.disconnectTimers[slotIndex];
+    if (timer) {
+      clearTimeout(timer);
+      room.disconnectTimers[slotIndex] = null;
+    }
+    return { playerId };
   }
 
   removePlayer(room: InternalRoom, connectionId: string): void {
@@ -72,6 +96,14 @@ export class RoomManager {
       room.loadouts[idx] = null;
       room.loadingDone[idx] = false;
       room.lobbyReady[idx] = false;
+      room.disconnectedAt[idx] = null;
+      room.lastAckFrameIds[idx] = 0;
+      room.gameOverVerdicts[idx] = null;
+      const timer = room.disconnectTimers[idx];
+      if (timer) {
+        clearTimeout(timer);
+        room.disconnectTimers[idx] = null;
+      }
 
       // Transition back to waiting if a slot opened up
       if (room.status === "selecting" || room.status === "loading") {
@@ -80,10 +112,35 @@ export class RoomManager {
     }
   }
 
+  removeSlot(room: InternalRoom, slotIndex: number): void {
+    const connectionId = room.connectionIds[slotIndex];
+    if (connectionId) {
+      this.removePlayer(room, connectionId);
+      return;
+    }
+    room.connectionIds[slotIndex] = null;
+    room.playerSlots[slotIndex] = null;
+    room.loadouts[slotIndex] = null;
+    room.loadingDone[slotIndex] = false;
+    room.lobbyReady[slotIndex] = false;
+    room.disconnectedAt[slotIndex] = null;
+    room.lastAckFrameIds[slotIndex] = 0;
+    room.gameOverVerdicts[slotIndex] = null;
+    const timer = room.disconnectTimers[slotIndex];
+    if (timer) {
+      clearTimeout(timer);
+      room.disconnectTimers[slotIndex] = null;
+    }
+    if (room.status === "selecting" || room.status === "loading" || room.status === "fighting") {
+      room.status = "finished";
+    }
+  }
+
   getPublicRooms(): RoomSummary[] {
     const result: RoomSummary[] = [];
     for (const room of Array.from(this.rooms.values())) {
       if (room.password) continue;
+      if (room.status !== "waiting") continue;
       const openSlot = this.getOpenSlotIndex(room);
       if (openSlot === -1) continue;
       result.push(this.toSummary(room));

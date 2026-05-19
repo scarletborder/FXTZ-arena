@@ -34,19 +34,20 @@ export class BattleView {
     this.debugGraphics.setDepth(999);
   }
 
-  render(model: BattleModel, input: BattleInputState, alpha = 1): void {
-    this.fighters.render(model.player, model.target, model.frame, model.gameOver, input.infoHeld, alpha);
+  render(model: BattleModel, input: BattleInputState, localFighterKey: "player" | "target" = "player", alpha = 1): void {
+    const localFighter = localFighterKey === "player" ? model.player : model.target;
+    this.fighters.render(model.player, model.target, model.frame, model.gameOver, input.infoHeld, localFighterKey, alpha);
     this.projectiles.render(model.projectiles, model.frame, alpha);
     this.effects.render(model.effects);
     this.infoDisplay.render(model);
     this.crosshair.render({
       pointerX: input.aimX,
       pointerY: input.aimY,
-      danger: model.player.ammo <= 0 || model.player.reloadRemaining > 0,
-      ammoDisplay: model.player.ammoDisplay,
-      ammoCount: model.player.ammo,
-      ammoMax: model.player.ammoCapacity,
-      bombs: model.player.bombs,
+      danger: localFighter.ammo <= 0 || localFighter.reloadRemaining > 0,
+      ammoDisplay: localFighter.ammoDisplay,
+      ammoCount: localFighter.ammo,
+      ammoMax: localFighter.ammoCapacity,
+      bombs: localFighter.bombs,
     });
   }
 
