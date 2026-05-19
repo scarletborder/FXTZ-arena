@@ -1,19 +1,36 @@
+import { speedRankToPixelsPerTick } from "@repo/types";
+
 import { ARENA_HEIGHT_PX, ARENA_WIDTH_PX, PLAYER_CORE_RADIUS } from "../constants";
 import type { FighterState, ProjectileState } from "../types";
 import type { IntelligenceResult } from "./intelligence";
 
-/** 竞技场边距阈值 */
 const WALL_MARGIN = 48;
-/** 威胁判定锥形角度（弧度） */
 const THREAT_CONE = Math.PI / 4;
-/** 安全系数 */
 const SAFETY_FACTOR = 4;
-/** 最大追踪距离 */
-const MAX_THREAT_DIST = 500;
-/** 闪避动量混合系数 0~1, 越大越保留前一帧方向 */
-const MOMENTUM_BLEND = 0.45;
-/** 诱导子弹额外危险倍率 */
+const MAX_THREAT_DIST = 460;
 const HOMING_DANGER_BONUS = 1.8;
+
+const LOCAL_SCAN_RADIUS = 360;
+const LOCAL_SCAN_RADIUS_LASER = 560;
+const PLAN_INTERVAL_TICKS = 4;
+const LOOKAHEAD_TICKS = 8;
+const MAX_LOCAL_PROJECTILES = 20;
+const MOVE_STAY_PENALTY = 1.75;
+const SOFT_WALL_MARGIN = 140;
+const WALL_PRESSURE_WEIGHT = 8;
+const CORNER_PRESSURE_WEIGHT = 10;
+
+const MOVES: ReadonlyArray<{ readonly x: -1 | 0 | 1; readonly y: -1 | 0 | 1 }> = [
+  { x: 0, y: 0 },
+  { x: 1, y: 0 },
+  { x: -1, y: 0 },
+  { x: 0, y: 1 },
+  { x: 0, y: -1 },
+  { x: 1, y: 1 },
+  { x: 1, y: -1 },
+  { x: -1, y: 1 },
+  { x: -1, y: -1 },
+];
 
 export interface DodgeResult {
   readonly moveX: -1 | 0 | 1;
@@ -22,18 +39,37 @@ export interface DodgeResult {
   readonly emergencyBomb: boolean;
 }
 
-/** 单个威胁信息 */
 interface Threat {
   danger: number;
   escapeX: number;
   escapeY: number;
 }
 
+interface ProjectedProjectile {
+  readonly kind: ProjectileState["kind"];
+  readonly x: number;
+  readonly y: number;
+  readonly vx: number;
+  readonly vy: number;
+  readonly width: number;
+  readonly height: number;
+  readonly angle: number;
+  readonly damage: number;
+}
+
+interface ProjectionDanger {
+  readonly risk: number;
+  readonly collisions: number;
+  readonly threats: number;
+  readonly minClearance: number;
+}
+
 export class Dodger {
   private prevEscapeX = 0;
   private prevEscapeY = 0;
+  private cachedPlan: DodgeResult | null = null;
+  private nextPlanFrame = 0;
 
-  /** 根据周围弹幕和智能状态计算闪避方向 */
   getDodgeMovement(
     self: FighterState,
     opponent: FighterState,
@@ -41,89 +77,31 @@ export class Dodger {
     frame: number,
     intel: IntelligenceResult,
   ): DodgeResult {
-    const threats = this.evaluateThreats(self, projectiles, frame);
-
-    // 紧急 bomb 判定：有弹幕即将直接命中
-    const emergencyBomb = threats.some(
-      (t) => t.danger > 5 && intel.dodgeAccuracy > 0.3,
-    );
-
-    // 合成逃逸向量
-    let evadeX = 0;
-    let evadeY = 0;
-    for (const threat of threats) {
-      evadeX += threat.escapeX * threat.danger;
-      evadeY += threat.escapeY * threat.danger;
+    if (this.cachedPlan && frame < this.nextPlanFrame) {
+      return this.cachedPlan;
     }
 
-    // 墙壁回避
-    const wallX = this.wallAvoidance(self.x, WALL_MARGIN, ARENA_WIDTH_PX);
-    const wallY = this.wallAvoidance(self.y, WALL_MARGIN, ARENA_HEIGHT_PX);
-    evadeX += wallX * 3;
-    evadeY += wallY * 3;
-
-    // 距离控制
-    const dx = opponent.x - self.x;
-    const dy = opponent.y - self.y;
-    const dist = Math.hypot(dx, dy);
-    const distWeight = 1 - intel.dodgeAccuracy;
-    if (dist < 150) {
-      evadeX -= (dx / dist) * distWeight * 3;
-      evadeY -= (dy / dist) * distWeight * 3;
-    } else if (dist > 500) {
-      evadeX += (dx / dist) * distWeight * 2;
-      evadeY += (dy / dist) * distWeight * 2;
-    } else if (dist > 350 && intel.dodgeAccuracy > 0.5) {
-      evadeX += (dx / dist) * intel.dodgeAccuracy * 0.5;
-      evadeY += (dy / dist) * intel.dodgeAccuracy * 0.5;
+    const nearbyProjectiles = this.collectNearbyProjectiles(self, projectiles, frame);
+    if (nearbyProjectiles.length === 0) {
+      this.cachedPlan = {
+        moveX: 0,
+        moveY: 0,
+        threatCount: 0,
+        emergencyBomb: false,
+      };
+      this.nextPlanFrame = frame + PLAN_INTERVAL_TICKS;
+      return this.cachedPlan;
     }
 
-    // 闪避动量：与上一帧逃逸方向混合，减少连续帧的方向抖动
-    // 只在聪明阶段或威胁较多时启用，避免愚钝阶段"惯性太大"
-    if (intel.dodgeAccuracy > 0.3 || threats.length >= 2) {
-      const len = Math.hypot(evadeX, evadeY);
-      if (len > 0.01) {
-        evadeX /= len;
-        evadeY /= len;
-        const momentumX = evadeX * (1 - MOMENTUM_BLEND) + this.prevEscapeX * MOMENTUM_BLEND;
-        const momentumY = evadeY * (1 - MOMENTUM_BLEND) + this.prevEscapeY * MOMENTUM_BLEND;
-        const momentumLen = Math.hypot(momentumX, momentumY);
-        if (momentumLen > 0.01) {
-          evadeX = (momentumX / momentumLen) * len * intel.dodgeAccuracy;
-          evadeY = (momentumY / momentumLen) * len * intel.dodgeAccuracy;
-        }
-      }
-    }
-    this.prevEscapeX = evadeX;
-    this.prevEscapeY = evadeY;
-
-    // 应用精度退化(噪声)
-    if (intel.dodgeAccuracy < 1) {
-      const len = Math.hypot(evadeX, evadeY);
-      if (len > 0.01) {
-        const noise = intel.aimNoise;
-        const angle = Math.atan2(evadeY, evadeX) + (Math.random() - 0.5) * 2 * noise;
-        const reducedLen = len * intel.dodgeAccuracy;
-        evadeX = Math.cos(angle) * reducedLen;
-        evadeY = Math.sin(angle) * reducedLen;
-      }
-    }
-
-    // 愚钝状态下偶尔完全不躲
-    if (intel.isDumb && threats.length > 0 && Math.random() < 0.5) {
-      evadeX = 0;
-      evadeY = 0;
-    }
-
-    return {
-      moveX: this.sign(evadeX) as -1 | 0 | 1,
-      moveY: this.sign(evadeY) as -1 | 0 | 1,
-      threatCount: threats.length,
-      emergencyBomb,
-    };
+    const threats = this.evaluateThreats(self, nearbyProjectiles, frame);
+    const plan = this.planLocalDodge(self, opponent, nearbyProjectiles, threats, frame, intel);
+    this.cachedPlan = plan;
+    this.nextPlanFrame = frame + PLAN_INTERVAL_TICKS;
+    this.prevEscapeX = plan.moveX;
+    this.prevEscapeY = plan.moveY;
+    return plan;
   }
 
-  /** 如果没有威胁，生成战略性走位（面向对手的横移/靠近） */
   getStrategicMovement(
     self: FighterState,
     opponent: FighterState,
@@ -131,6 +109,9 @@ export class Dodger {
     const dx = opponent.x - self.x;
     const dy = opponent.y - self.y;
     const dist = Math.hypot(dx, dy);
+    if (dist < 0.01) {
+      return { moveX: 0, moveY: 0 };
+    }
 
     let targetX = 0;
     let targetY = 0;
@@ -142,14 +123,10 @@ export class Dodger {
       targetX = dx / dist;
       targetY = dy / dist;
     } else {
-      // 横移（垂直于玩家方向）
-      const perpX = -dy / dist;
-      const perpY = dx / dist;
-      targetX = perpX;
-      targetY = perpY;
+      targetX = -dy / dist;
+      targetY = dx / dist;
     }
 
-    // 墙壁回避
     targetX += this.wallAvoidance(self.x, WALL_MARGIN, ARENA_WIDTH_PX);
     targetY += this.wallAvoidance(self.y, WALL_MARGIN, ARENA_HEIGHT_PX);
 
@@ -159,10 +136,171 @@ export class Dodger {
     };
   }
 
-  /** 重置闪避动量（受击复活后调用） */
   reset(): void {
     this.prevEscapeX = 0;
     this.prevEscapeY = 0;
+    this.cachedPlan = null;
+    this.nextPlanFrame = 0;
+  }
+
+  private planLocalDodge(
+    self: FighterState,
+    opponent: FighterState,
+    projectiles: readonly ProjectileState[],
+    threats: readonly Threat[],
+    frame: number,
+    intel: IntelligenceResult,
+  ): DodgeResult {
+    const speed = self.movementLockedUntil > 0 ? 0 : speedRankToPixelsPerTick(self.moveSpeedOverride ?? self.activeCharacter.moveSpeed);
+    let best: {
+      moveX: -1 | 0 | 1;
+      moveY: -1 | 0 | 1;
+      score: number;
+      emergencyBomb: boolean;
+      threatCount: number;
+    } | null = null;
+
+    for (const move of MOVES) {
+      const candidate = this.scoreMove(self, opponent, projectiles, threats, frame, speed, move, intel);
+      if (!best || candidate.score < best.score) {
+        best = candidate;
+      }
+    }
+
+    if (!best) {
+      return {
+        moveX: 0,
+        moveY: 0,
+        threatCount: 0,
+        emergencyBomb: false,
+      };
+    }
+
+    return {
+      moveX: best.moveX,
+      moveY: best.moveY,
+      threatCount: best.threatCount,
+      emergencyBomb: best.emergencyBomb,
+    };
+  }
+
+  private scoreMove(
+    self: FighterState,
+    opponent: FighterState,
+    projectiles: readonly ProjectileState[],
+    threats: readonly Threat[],
+    frame: number,
+    speed: number,
+    move: { readonly x: -1 | 0 | 1; readonly y: -1 | 0 | 1 },
+    intel: IntelligenceResult,
+  ): {
+    readonly moveX: -1 | 0 | 1;
+    readonly moveY: -1 | 0 | 1;
+    readonly score: number;
+    readonly emergencyBomb: boolean;
+    readonly threatCount: number;
+  } {
+    let x = self.x;
+    let y = self.y;
+    let score = 0;
+    let emergencyBomb = false;
+    let worstThreats = threats.length;
+    let minClearance = Number.POSITIVE_INFINITY;
+
+    for (let tick = 1; tick <= LOOKAHEAD_TICKS; tick += 1) {
+      x = clamp(x + move.x * speed, 48, ARENA_WIDTH_PX - 48);
+      y = clamp(y + move.y * speed, 48, ARENA_HEIGHT_PX - 48);
+
+      const danger = this.evaluateProjectionDanger(x, y, projectiles, frame, tick);
+      score += danger.risk * (1 + tick * 0.15);
+      score += this.wallPressure(x, y) * (danger.collisions > 0 ? 0.2 : 1);
+      worstThreats = Math.max(worstThreats, danger.threats);
+      minClearance = Math.min(minClearance, danger.minClearance);
+
+      if (danger.collisions > 0) {
+        emergencyBomb = true;
+        score += 1000 * (LOOKAHEAD_TICKS - tick + 1);
+      }
+    }
+
+    if (move.x === 0 && move.y === 0) {
+      score += MOVE_STAY_PENALTY * Math.max(1, threats.length);
+    }
+
+    const dx = opponent.x - self.x;
+    const dy = opponent.y - self.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 0.01 && intel.dodgeAccuracy > 0.5) {
+      const awayX = -dx / dist;
+      const awayY = -dy / dist;
+      const alignment = move.x * awayX + move.y * awayY;
+      score -= alignment * 0.25;
+    }
+
+    if (Math.abs(this.prevEscapeX - move.x) + Math.abs(this.prevEscapeY - move.y) < 0.5) {
+      score -= 0.12;
+    }
+
+    if (minClearance < 8) {
+      score += (8 - minClearance) * 40;
+    }
+
+    return {
+      moveX: move.x,
+      moveY: move.y,
+      score,
+      emergencyBomb,
+      threatCount: Math.max(1, worstThreats),
+    };
+  }
+
+  private collectNearbyProjectiles(
+    self: FighterState,
+    projectiles: readonly ProjectileState[],
+    frame: number,
+  ): ProjectileState[] {
+    const nearby: ProjectileState[] = [];
+    const localRadiusSq = LOCAL_SCAN_RADIUS * LOCAL_SCAN_RADIUS;
+    const laserRadiusSq = LOCAL_SCAN_RADIUS_LASER * LOCAL_SCAN_RADIUS_LASER;
+
+    for (const projectile of projectiles) {
+      if (projectile.owner === "target") continue;
+      if (projectile.damage <= 0) continue;
+      if (frame < projectile.visibleFrom) continue;
+      if (projectile.pausedUntil > frame) continue;
+
+      const dx = projectile.x - self.x;
+      const dy = projectile.y - self.y;
+      const distSq = dx * dx + dy * dy;
+
+      if (projectile.kind === "laser" || projectile.kind === "spark") {
+        const forward = dx * Math.cos(projectile.angle) + dy * Math.sin(projectile.angle);
+        const side = Math.abs(-dx * Math.sin(projectile.angle) + dy * Math.cos(projectile.angle));
+        if (distSq <= laserRadiusSq || (side <= LOCAL_SCAN_RADIUS_LASER && forward >= -PLAYER_CORE_RADIUS)) {
+          nearby.push(projectile);
+        }
+        continue;
+      }
+
+      const travelReach = Math.hypot(projectile.vx, projectile.vy) * LOOKAHEAD_TICKS;
+      const scanRadius = LOCAL_SCAN_RADIUS + travelReach;
+      if (distSq <= scanRadius * scanRadius || distSq <= localRadiusSq) {
+        nearby.push(projectile);
+      }
+    }
+
+    if (nearby.length <= MAX_LOCAL_PROJECTILES) {
+      return nearby;
+    }
+
+    return nearby
+      .map((projectile) => ({
+        projectile,
+        distSq: (projectile.x - self.x) ** 2 + (projectile.y - self.y) ** 2,
+      }))
+      .sort((a, b) => a.distSq - b.distSq)
+      .slice(0, MAX_LOCAL_PROJECTILES)
+      .map((entry) => entry.projectile);
   }
 
   private evaluateThreats(
@@ -173,11 +311,6 @@ export class Dodger {
     const threats: Threat[] = [];
 
     for (const projectile of projectiles) {
-      if (projectile.owner === "target") continue;
-      if (frame < projectile.visibleFrom) continue;
-      if (projectile.damage <= 0) continue;
-      if (projectile.pausedUntil > frame) continue;
-
       const px = projectile.x;
       const py = projectile.y;
 
@@ -198,6 +331,151 @@ export class Dodger {
     return threats;
   }
 
+  private evaluateProjectionDanger(
+    x: number,
+    y: number,
+    projectiles: readonly ProjectileState[],
+    frame: number,
+    tick: number,
+  ): ProjectionDanger {
+    let risk = 0;
+    let collisions = 0;
+    let threats = 0;
+    let minClearance = Number.POSITIVE_INFINITY;
+
+    for (const projectile of projectiles) {
+      const futureFrame = frame + tick - 1;
+      if (futureFrame < projectile.visibleFrom) continue;
+      if (projectile.expireAt !== undefined && futureFrame > projectile.expireAt) continue;
+
+      const predicted = this.predictProjectile(projectile, frame, tick, x, y);
+      const danger = this.projectileDangerAt(predicted, x, y);
+      minClearance = Math.min(minClearance, danger.clearance);
+      if (danger.risk <= 0) continue;
+
+      threats += 1;
+      if (danger.collides) collisions += 1;
+
+      const timeWeight = 1 + (LOOKAHEAD_TICKS - tick) / LOOKAHEAD_TICKS;
+      risk += danger.risk * timeWeight * Math.max(1, projectile.damage);
+    }
+
+    return { risk, collisions, threats, minClearance };
+  }
+
+  private predictProjectile(
+    projectile: ProjectileState,
+    frame: number,
+    tick: number,
+    targetX: number,
+    targetY: number,
+  ): ProjectedProjectile {
+    let x = projectile.x;
+    let y = projectile.y;
+    let vx = projectile.vx;
+    let vy = projectile.vy;
+    let width = projectile.width;
+    let angle = projectile.angle;
+
+    for (let i = 0; i < tick; i += 1) {
+      const stepFrame = frame + i;
+      if (stepFrame < projectile.pausedUntil) {
+        continue;
+      }
+
+      if (projectile.kind === "laser" || projectile.kind === "spark") {
+        if (projectile.widthGrowthPerTick > 0) {
+          width = Math.min(projectile.maxWidth ?? Number.POSITIVE_INFINITY, width + projectile.widthGrowthPerTick);
+        }
+        if (projectile.anchorX !== undefined && projectile.anchorY !== undefined && Number.isFinite(width)) {
+          x = projectile.anchorX + Math.cos(angle) * (width / 2);
+          y = projectile.anchorY + Math.sin(angle) * (width / 2);
+        }
+        x += vx;
+        y += vy;
+        continue;
+      }
+
+      if (projectile.kind === "orb" && stepFrame >= projectile.homingStartAt && stepFrame <= projectile.homingUntil) {
+        const dx = targetX - x;
+        const dy = targetY - y;
+        const length = Math.max(1, Math.hypot(dx, dy));
+        const speed = Math.max(1.5, Math.hypot(vx, vy));
+        vx = vx * 0.9 + (dx / length) * speed * 0.1;
+        vy = vy * 0.9 + (dy / length) * speed * 0.1;
+      }
+
+      x += vx;
+      y += vy;
+      angle = Math.atan2(vy, vx);
+    }
+
+    return {
+      kind: projectile.kind,
+      x,
+      y,
+      vx,
+      vy,
+      width,
+      height: projectile.height,
+      angle,
+      damage: projectile.damage,
+    };
+  }
+
+  private projectileDangerAt(projectile: ProjectedProjectile, x: number, y: number): {
+    readonly risk: number;
+    readonly collides: boolean;
+    readonly clearance: number;
+  } {
+    const clearance = Number.isFinite(projectile.width)
+      ? this.distanceToRotatedRect(projectile, x, y) - PLAYER_CORE_RADIUS
+      : this.distanceToRay(projectile, x, y) - PLAYER_CORE_RADIUS;
+    const collides = clearance <= 1.25;
+    const speed = Math.hypot(projectile.vx, projectile.vy);
+    const safetyBand = 18 + speed * 1.4;
+
+    if (collides) {
+      return {
+        risk: 1000 + Math.max(0, -clearance) * 20,
+        collides: true,
+        clearance,
+      };
+    }
+
+    if (clearance >= safetyBand) {
+      return { risk: 0, collides: false, clearance };
+    }
+
+    const proximity = (safetyBand - clearance) / safetyBand;
+    return {
+      risk: proximity * proximity * 18 * Math.max(1, projectile.damage),
+      collides: false,
+      clearance,
+    };
+  }
+
+  private distanceToRotatedRect(projectile: ProjectedProjectile, x: number, y: number): number {
+    const dx = x - projectile.x;
+    const dy = y - projectile.y;
+    const localX = dx * Math.cos(projectile.angle) + dy * Math.sin(projectile.angle);
+    const localY = -dx * Math.sin(projectile.angle) + dy * Math.cos(projectile.angle);
+    const closestX = clamp(localX, -projectile.width / 2, projectile.width / 2);
+    const closestY = clamp(localY, -projectile.height / 2, projectile.height / 2);
+    return Math.hypot(localX - closestX, localY - closestY);
+  }
+
+  private distanceToRay(projectile: ProjectedProjectile, x: number, y: number): number {
+    const dx = x - projectile.x;
+    const dy = y - projectile.y;
+    const forward = dx * Math.cos(projectile.angle) + dy * Math.sin(projectile.angle);
+    const side = Math.abs(-dx * Math.sin(projectile.angle) + dy * Math.cos(projectile.angle));
+    if (forward >= 0) {
+      return Math.max(0, side - projectile.height / 2);
+    }
+    return Math.hypot(forward, Math.max(0, side - projectile.height / 2));
+  }
+
   private evaluateLaserThreat(
     projectile: ProjectileState,
     dx: number,
@@ -206,11 +484,9 @@ export class Dodger {
     const angle = projectile.angle;
     const forward = dx * Math.cos(angle) + dy * Math.sin(angle);
     const side = Math.abs(-dx * Math.sin(angle) + dy * Math.cos(angle));
-
     const threatRadius = projectile.height / 2 + PLAYER_CORE_RADIUS * SAFETY_FACTOR;
-    if (side > threatRadius) return null;
 
-    // 激光向 CPU 方向延伸(允许略过身后一个判定圈)
+    if (side > threatRadius) return null;
     if (forward < -PLAYER_CORE_RADIUS) return null;
 
     const closestDist = Math.max(0, side - projectile.height / 2);
@@ -233,59 +509,45 @@ export class Dodger {
     const angle = projectile.angle;
     const speed = Math.max(0.1, Math.hypot(projectile.vx, projectile.vy));
 
-    // 方向检测：弹幕是否朝向 CPU
     const toCpuAngle = Math.atan2(dy, dx);
     let angleDiff = toCpuAngle - angle;
     angleDiff = ((angleDiff + Math.PI) % (Math.PI * 2)) - Math.PI;
-
     if (Math.abs(angleDiff) > THREAT_CONE) return null;
 
-    // 向前分量：弹幕是否接近 CPU
     const forward = dx * Math.cos(angle) + dy * Math.sin(angle);
     if (forward < 0) return null;
 
-    // 侧向距离
     const side = Math.abs(-dx * Math.sin(angle) + dy * Math.cos(angle));
     const threatRadius = projectile.height / 2 + PLAYER_CORE_RADIUS * SAFETY_FACTOR;
     if (side > threatRadius) return null;
 
-    // 考虑诱导弹的弹道弯曲
     const isHoming = projectile.kind === "orb" && frame >= projectile.homingStartAt && frame <= projectile.homingUntil;
     let timeToClosest = forward / speed;
     if (isHoming) {
       timeToClosest = Math.min(timeToClosest, dist / (speed * 1.2));
     }
-
     if (timeToClosest < 0) return null;
 
     let danger = Math.max(0.05, (threatRadius - side) / threatRadius / Math.max(1, timeToClosest / 15));
-
-    // 诱导子弹额外危险倍率
     if (isHoming) {
       danger *= HOMING_DANGER_BONUS;
     }
 
     let escapeX: number;
     let escapeY: number;
-
     if (isHoming) {
-      // 对诱导弹：沿 弹→CPU 连线的垂直方向逃逸(切线方向)
-      // 这样让诱导弹需要不断大幅转向才能追上，效率最高
       const orbToCpuAngle = Math.atan2(-dy, -dx);
       escapeX = -Math.sin(orbToCpuAngle);
       escapeY = Math.cos(orbToCpuAngle);
     } else if (side < PLAYER_CORE_RADIUS * 2) {
-      // 弹幕几乎正对 CPU：沿弹幕垂直方向逃逸
       escapeX = -Math.sin(angle);
       escapeY = Math.cos(angle);
     } else {
-      // 弹幕从侧面来：朝远离弹幕的方向逃逸
       const sideSign = Math.sign(-dx * Math.sin(angle) + dy * Math.cos(angle));
       escapeX = Math.sin(angle) * sideSign;
       escapeY = -Math.cos(angle) * sideSign;
     }
 
-    // 归一化
     const escapeLen = Math.hypot(escapeX, escapeY);
     if (escapeLen > 0.01) {
       escapeX /= escapeLen;
@@ -301,9 +563,30 @@ export class Dodger {
     return 0;
   }
 
+  private wallPressure(x: number, y: number): number {
+    const left = this.edgePressure(x - 48);
+    const right = this.edgePressure(ARENA_WIDTH_PX - 48 - x);
+    const top = this.edgePressure(y - 48);
+    const bottom = this.edgePressure(ARENA_HEIGHT_PX - 48 - y);
+    const horizontal = Math.max(left, right);
+    const vertical = Math.max(top, bottom);
+    const edgePressure = left * left + right * right + top * top + bottom * bottom;
+    const cornerPressure = horizontal * vertical;
+    return edgePressure * WALL_PRESSURE_WEIGHT + cornerPressure * CORNER_PRESSURE_WEIGHT;
+  }
+
+  private edgePressure(distanceToWall: number): number {
+    if (distanceToWall >= SOFT_WALL_MARGIN) return 0;
+    return (SOFT_WALL_MARGIN - distanceToWall) / SOFT_WALL_MARGIN;
+  }
+
   private sign(value: number): number {
     if (value > 0.3) return 1;
     if (value < -0.3) return -1;
     return 0;
   }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }

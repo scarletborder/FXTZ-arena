@@ -17,7 +17,8 @@ export function applyHit(params: {
     return "ignored";
   }
 
-  params.victim.lives -= 1;
+  const isFatal = params.victim.lives <= 0;
+
   params.victim.damageTaken += params.damage;
   params.victim.flashUntil = params.frame + secondsToTicks(3);
   params.victim.statusVisibleUntil = params.frame + STATUS_VISIBLE_TICKS;
@@ -30,11 +31,12 @@ export function applyHit(params: {
     params.target.hits += 1;
   }
 
-  if (params.victim.lives <= 0) {
+  if (isFatal) {
     params.victim.deaths += 1;
     return params.victim.key === "target" ? "accepted" : "game-over";
   }
 
+  params.victim.lives -= 1;
   params.victim.invulnerableUntil = secondsToTicks(3);
   return "accepted";
 }

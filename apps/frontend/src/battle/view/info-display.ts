@@ -62,7 +62,7 @@ export class InfoDisplayView {
       `能力卡 ${player.activeCard?.name ?? "无"} ${player.activeCardUses}`,
       `射击 ${player.shotsFired}  命中 ${player.hits}`,
       `靶子 ${target.activeCharacter.name}`,
-      `靶命 ${Math.max(0, target.lives)}`,
+      `靶命 ${Math.max(0, target.lives)}  bomb ${target.bombs}`,
       `总命中 ${model.stats.hits}  总伤害 ${model.stats.damage}`,
       `时长 ${(model.stats.elapsedTicks / 60).toFixed(1)}s`,
     ];
@@ -70,7 +70,7 @@ export class InfoDisplayView {
   }
 
   private renderBottomHud(model: BattleModel): void {
-    this.bottomHud.setText(`我方 ${model.player.lives} 命 / ${model.player.bombs} bomb / ${Math.floor(model.player.ammo)}/${model.player.ammoCapacity} 弹夹    靶子 ${model.target.lives} 命`);
+    this.bottomHud.setText(`我方 ${model.player.lives} 命 / ${model.player.bombs} bomb / ${Math.floor(model.player.ammo)}/${model.player.ammoCapacity} 弹夹    靶子 ${model.target.lives} 命 ${model.target.bombs} bomb`);
   }
 
   private renderGameOver(model: BattleModel): void {

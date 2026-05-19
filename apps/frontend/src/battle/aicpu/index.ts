@@ -51,7 +51,7 @@ export class CpuPlayer {
     // 4. 如果没有威胁，使用战略性走位
     let moveX = dodgeResult.moveX;
     let moveY = dodgeResult.moveY;
-    if (moveX === 0 && moveY === 0) {
+    if (moveX === 0 && moveY === 0 && dodgeResult.threatCount === 0) {
       const strategic = this.dodger.getStrategicMovement(self, opponent);
       moveX = strategic.moveX;
       moveY = strategic.moveY;
