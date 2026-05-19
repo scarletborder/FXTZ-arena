@@ -171,6 +171,11 @@ export class CombatSyncManager {
     }
   }
 
+  /** Returns the highest frame number that both peers have acknowledged. */
+  getConfirmedFrame(): number {
+    return Math.min(this.lastReceivedRemoteFrame, this.lastPeerAckFrame);
+  }
+
   private trySendGameOverVerdict(): void {
     if (this.gameOverVerdictSent || !this.model.gameOver) {
       return;

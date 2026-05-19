@@ -10,6 +10,7 @@ import type { BattleModelSnapshot } from "./battle/model/snapshot";
 import { BattleView } from "./battle/view";
 import type { BattleInputState } from "./battle/types";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
+import { uiSettings } from "./menu/shared";
 import { connectionManager } from "./menu/shared";
 import { CombatSyncManager } from "./network/combat";
 
@@ -220,6 +221,9 @@ export class BattleScene extends Phaser.Scene {
   private goToOnlineResult(winnerPlayerId: PlayerId): void {
     if (this.resultScheduled) return;
     this.resultScheduled = true;
+    if (uiSettings.debug) {
+      this.printDebugHashBundle(winnerPlayerId);
+    }
     this.scene.start("result", {
       winnerName: winnerPlayerId === this.combatSync?.localPlayerId
         ? (this.sceneData.playerName ?? "Player")
@@ -276,6 +280,9 @@ export class BattleScene extends Phaser.Scene {
     if (!this.model.gameOver) {
       return;
     }
+    if (uiSettings.debug) {
+      this.printDebugHashBundle(null);
+    }
     this.scene.start("result", {
       winnerName: this.model.target.lives <= 0 ? (this.sceneData.playerName ?? "Player") : (this.sceneData.opponentName ?? "CPU"),
       durationSeconds: this.model.stats.elapsedTicks / 60,
@@ -313,6 +320,28 @@ export class BattleScene extends Phaser.Scene {
   private renderDebugPhysics(): void {
     if (!this.battlePhysics?.isReady()) return;
     this.view.renderDebug(this.battlePhysics.readAllBodies());
+  }
+
+  private printDebugHashBundle(winnerPlayerId: PlayerId | null): void {
+    const confirmedFrame = this.combatSync?.getConfirmedFrame() ?? this.model.frame;
+
+    const rows: DebugHashRow[] = [];
+    for (const record of this.debugHistory.values()) {
+      if (record.frame >= 0 && record.frame <= confirmedFrame) {
+        rows.push({ frame: record.frame, hash: record.hash });
+      }
+    }
+    rows.sort((left, right) => left.frame - right.frame);
+
+    const label = `FXTZ Debug Hash Bundle (mode=${
+      this.sceneData.mode ?? "offline"
+    }, winner=${winnerPlayerId ?? "local"}, confirmedFrames=0-${confirmedFrame}, totalFrames=${rows.length})`;
+
+    console.group(label);
+    for (const row of rows) {
+      console.log(`${row.frame}\t${row.hash}`);
+    }
+    console.groupEnd();
   }
 }
 
