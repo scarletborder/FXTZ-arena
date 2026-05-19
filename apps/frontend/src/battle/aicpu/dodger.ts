@@ -77,11 +77,14 @@ export class Dodger {
     frame: number,
     intel: IntelligenceResult,
   ): DodgeResult {
+    // 延迟反应：用滞后的帧号评估弹幕，模拟反应延迟
+    const delayedFrame = Math.max(0, frame - intel.reactionDelay);
+
     if (this.cachedPlan && frame < this.nextPlanFrame) {
       return this.cachedPlan;
     }
 
-    const nearbyProjectiles = this.collectNearbyProjectiles(self, projectiles, frame);
+    const nearbyProjectiles = this.collectNearbyProjectiles(self, projectiles, delayedFrame);
     if (nearbyProjectiles.length === 0) {
       this.cachedPlan = {
         moveX: 0,
@@ -93,8 +96,8 @@ export class Dodger {
       return this.cachedPlan;
     }
 
-    const threats = this.evaluateThreats(self, nearbyProjectiles, frame);
-    const plan = this.planLocalDodge(self, opponent, nearbyProjectiles, threats, frame, intel);
+    const threats = this.evaluateThreats(self, nearbyProjectiles, delayedFrame);
+    const plan = this.planLocalDodge(self, opponent, nearbyProjectiles, threats, delayedFrame, intel);
     this.cachedPlan = plan;
     this.nextPlanFrame = frame + PLAN_INTERVAL_TICKS;
     this.prevEscapeX = plan.moveX;
@@ -162,7 +165,13 @@ export class Dodger {
 
     for (const move of MOVES) {
       const candidate = this.scoreMove(self, opponent, projectiles, threats, frame, speed, move, intel);
-      if (!best || candidate.score < best.score) {
+      if (!best) {
+        best = candidate;
+      } else if (intel.crashIntoBullet) {
+        if (candidate.score > best.score) {
+          best = candidate;
+        }
+      } else if (candidate.score < best.score) {
         best = candidate;
       }
     }
@@ -212,14 +221,14 @@ export class Dodger {
       y = clamp(y + move.y * speed, 48, ARENA_HEIGHT_PX - 48);
 
       const danger = this.evaluateProjectionDanger(x, y, projectiles, frame, tick);
-      score += danger.risk * (1 + tick * 0.15);
+      score += danger.risk * (1 + tick * 0.15) * intel.dodgeAccuracy;
       score += this.wallPressure(x, y) * (danger.collisions > 0 ? 0.2 : 1);
       worstThreats = Math.max(worstThreats, danger.threats);
       minClearance = Math.min(minClearance, danger.minClearance);
 
       if (danger.collisions > 0) {
         emergencyBomb = true;
-        score += 1000 * (LOOKAHEAD_TICKS - tick + 1);
+        score += 1000 * (LOOKAHEAD_TICKS - tick + 1) * intel.dodgeAccuracy;
       }
     }
 
@@ -242,7 +251,7 @@ export class Dodger {
     }
 
     if (minClearance < 8) {
-      score += (8 - minClearance) * 40;
+      score += (8 - minClearance) * 40 * intel.dodgeAccuracy;
     }
 
     return {

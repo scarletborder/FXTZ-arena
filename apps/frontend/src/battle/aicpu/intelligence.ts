@@ -1,9 +1,9 @@
 import { secondsToTicks } from "@repo/types";
 
-/** 聪明阶段持续 tick 数: 25 秒 */
-const SMART_DURATION_TICKS = secondsToTicks(25);
-/** 钝化阶段持续 tick 数: 15 秒 */
-const DULLING_DURATION_TICKS = secondsToTicks(15);
+/** 聪明阶段持续 tick 数: 35 秒 */
+const SMART_DURATION_TICKS = secondsToTicks(35);
+/** 钝化阶段持续 tick 数: 20 秒 */
+const DULLING_DURATION_TICKS = secondsToTicks(20);
 /** 钝化阶段最大反应延迟 tick */
 const MAX_REACTION_DELAY = 20;
 /** 钝化阶段最大瞄准噪声(弧度) */
@@ -22,10 +22,14 @@ export interface IntelligenceResult {
   readonly dullingProgress: number;
   /** 是否允许使用 bomb (不完全是) */
   readonly canAct: boolean;
+  /** 愚钝阶段每隔3秒触发8%累加概率撞向子弹 */
+  readonly crashIntoBullet: boolean;
 }
 
 export class IntelligenceManager {
   private phaseTicks = 0;
+  private dumbTicks = 0;
+  private crashAccumulator = 0;
   private prevSelfLives = 2;
   private prevOpponentLives = 2;
 
@@ -48,6 +52,8 @@ export class IntelligenceManager {
 
     if (!this.isDumb()) {
       this.phaseTicks += 1;
+    } else {
+      this.dumbTicks += 1;
     }
   }
 
@@ -61,6 +67,7 @@ export class IntelligenceManager {
         isDumb: false,
         dullingProgress: 0,
         canAct: true,
+        crashIntoBullet: false,
       };
     }
 
@@ -74,16 +81,28 @@ export class IntelligenceManager {
         isDumb: false,
         dullingProgress: progress,
         canAct: progress < 0.5 || dullingElapsed % 30 < 15,
+        crashIntoBullet: false,
       };
     }
 
+    const DUMB_CRASH_INTERVAL = 180; // 3 秒
+    let crashIntoBullet = false;
+    if (this.dumbTicks > 0 && this.dumbTicks % DUMB_CRASH_INTERVAL === 0) {
+      this.crashAccumulator += 0.08; // 每次未触发累加 8%
+      if (Math.random() < this.crashAccumulator) {
+        crashIntoBullet = true;
+        this.crashAccumulator = 0; // 触发后重置
+      }
+    }
+
     return {
-      dodgeAccuracy: 0.1,
+      dodgeAccuracy: 0,
       reactionDelay: MAX_REACTION_DELAY,
       aimNoise: MAX_AIM_NOISE,
       isDumb: true,
       dullingProgress: 1,
       canAct: true,
+      crashIntoBullet,
     };
   }
 
@@ -93,5 +112,7 @@ export class IntelligenceManager {
 
   reset(): void {
     this.phaseTicks = 0;
+    this.dumbTicks = 0;
+    this.crashAccumulator = 0;
   }
 }
