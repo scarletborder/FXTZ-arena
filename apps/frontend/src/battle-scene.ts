@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import type { PlayerId, ServerMessage } from "@repo/types";
+import type { PlayerId } from "@repo/types";
 
 import { FIXED_STEP_MS } from "./battle/constants";
 import { createBattleInput, type BattleKeyMap } from "./battle/input";
@@ -11,39 +11,12 @@ import { BattleView } from "./battle/view";
 import type { BattleInputState } from "./battle/types";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
 import { connectionManager } from "./menu/shared";
+import { CombatSyncManager } from "./network/combat";
 
 interface DebugFrameRecord {
   readonly frame: number;
   readonly hash: string;
   readonly snapshot: BattleModelSnapshot;
-}
-
-interface OnlineBattleState {
-  readonly localPlayerId: PlayerId;
-  readonly remotePlayerId: PlayerId;
-  readonly inputs: Map<PlayerId, Map<number, BattleInputState>>;
-  readonly predictedInputs: Map<string, BattleInputState>;
-  readonly lastKnownInputs: Map<PlayerId, BattleInputState>;
-  readonly receive_scene: OnlineReceivedInput[];
-  readonly send_scene: OnlinePendingInput[];
-  lastReceivedRemoteFrame: number;
-  lastPeerAckFrame: number;
-  gameOverVerdictSent: boolean;
-  finishedByServer: boolean;
-  paused: boolean;
-  statusText?: Phaser.GameObjects.Text;
-}
-
-interface OnlineReceivedInput {
-  readonly playerId: PlayerId;
-  readonly frame: number;
-  readonly ackFrame: number;
-  readonly input: BattleInputState;
-}
-
-interface OnlinePendingInput {
-  readonly frame: number;
-  readonly input: BattleInputState;
 }
 
 const DEBUG_HISTORY_LIMIT = 3600;
@@ -65,7 +38,8 @@ export class BattleScene extends Phaser.Scene {
     readonly pointerX: number;
     readonly pointerY: number;
   };
-  private onlineState: OnlineBattleState | undefined;
+  private combatSync: CombatSyncManager | undefined;
+  private onlineStatusText: Phaser.GameObjects.Text | undefined;
   /** Reference kept for debug rendering access. */
   private battlePhysics: BattlePhysics | undefined;
 
@@ -108,7 +82,7 @@ export class BattleScene extends Phaser.Scene {
       this.input.setDefaultCursor("auto");
       ConsoleCmd.uninstall(this);
       if (this.sceneData.mode === "online") {
-        connectionManager.setMessageHandler(null);
+        this.combatSync?.destroy();
       }
     });
   }
@@ -122,7 +96,7 @@ export class BattleScene extends Phaser.Scene {
           readonly pointerY: number;
         };
         if (this.sceneData.mode === "online") {
-          this.stepOnlineFrame(this.lastInput);
+          this.combatSync?.step(this.lastInput);
         } else if (this.model.gameOver && Phaser.Input.Keyboard.JustDown(this.keys.enter)) {
           this.goToResult();
         } else {
@@ -138,7 +112,7 @@ export class BattleScene extends Phaser.Scene {
       pointerX: this.input.activePointer.x,
       pointerY: this.input.activePointer.y,
     };
-    this.view.render(this.model, this.lastInput, this.localFighterKey(), this.accumulator / FIXED_STEP_MS);
+    this.view.render(this.model, this.lastInput, this.combatSync?.localFighterKey() ?? "player", this.accumulator / FIXED_STEP_MS);
     if (this.debugPhysicsEnabled) {
       this.renderDebugPhysics();
     }
@@ -215,202 +189,31 @@ export class BattleScene extends Phaser.Scene {
 
   private setupOnlineBattle(data: BattleSceneData): void {
     if (data.mode !== "online") return;
-    const localPlayerId = data.localPlayerId ?? "player-1";
-    const remotePlayerId = localPlayerId === "player-1" ? "player-2" : "player-1";
-    const inputs = new Map<PlayerId, Map<number, BattleInputState>>();
-    inputs.set("player-1", new Map());
-    inputs.set("player-2", new Map());
-    this.onlineState = {
-      localPlayerId,
-      remotePlayerId,
-      inputs,
-      predictedInputs: new Map(),
-      receive_scene: [],
-      send_scene: [],
-      lastKnownInputs: new Map([
-        ["player-1", neutralInput()],
-        ["player-2", neutralInput()],
-      ]),
-      lastReceivedRemoteFrame: 0,
-      lastPeerAckFrame: 0,
-      gameOverVerdictSent: false,
-      finishedByServer: false,
-      paused: false,
-      statusText: this.add.text(24, 24, "", {
-        fontFamily: "Arial",
-        fontSize: "18px",
-        color: "#ffcf6e",
-        backgroundColor: "#101820cc",
-        padding: { x: 10, y: 6 },
-      }).setDepth(100).setVisible(false),
-    };
+    this.onlineStatusText = this.add.text(24, 24, "", {
+      fontFamily: "Arial",
+      fontSize: "18px",
+      color: "#ffcf6e",
+      backgroundColor: "#101820cc",
+      padding: { x: 10, y: 6 },
+    }).setDepth(100).setVisible(false);
 
-    connectionManager.setMessageHandler((msg: ServerMessage) => this.onOnlineServerMessage(msg));
-  }
-
-  private stepOnlineFrame(localInput: BattleInputState): void {
-    const online = this.onlineState;
-    if (!online) {
-      return;
-    }
-
-    this.consumeReceiveSceneQueue();
-    if (online.paused || online.finishedByServer) {
-      return;
-    }
-
-    if (this.model.gameOver) {
-      this.trySendOnlineGameOverVerdict();
-      return;
-    }
-
-    const frame = this.model.frame + 1;
-    this.queueSendSceneInput(frame, cloneInput(localInput));
-    this.consumeSendSceneQueue();
-
-    this.model.stepVersus(
-      this.getInputForFrame("player-1", frame),
-      this.getInputForFrame("player-2", frame),
-    );
-    this.recordDebugFrame();
-    this.pruneOnlineHistory();
-    this.trySendOnlineGameOverVerdict();
-  }
-
-  private queueSendSceneInput(frame: number, input: BattleInputState): void {
-    const online = this.onlineState;
-    if (!online) return;
-    online.send_scene.push({ frame, input });
-  }
-
-  private consumeSendSceneQueue(): void {
-    const online = this.onlineState;
-    if (!online) return;
-    while (online.send_scene.length > 0) {
-      const item = online.send_scene.shift()!;
-      this.storeInput(online.localPlayerId, item.frame, item.input);
-      online.lastKnownInputs.set(online.localPlayerId, item.input);
-      this.sendOnlineInput(item.frame, item.input);
-    }
-  }
-
-  private sendOnlineInput(frame: number, input: BattleInputState): void {
-    const online = this.onlineState;
-    if (!online) return;
-    connectionManager.send({
-      type: "input_frame",
-      frame,
-      ackFrame: online.lastReceivedRemoteFrame,
-      ...input,
-    });
-  }
-
-  private onOnlineServerMessage(msg: ServerMessage): void {
-    const online = this.onlineState;
-    if (!online) return;
-    if (msg.type === "input_frame") {
-      online.receive_scene.push({
-        playerId: msg.playerId,
-        frame: msg.frame,
-        ackFrame: msg.ackFrame,
-        input: cloneInput(msg),
-      });
-      return;
-    }
-    if (msg.type === "battle_finished") {
-      online.finishedByServer = true;
-      online.statusText?.setText("双方裁决完成，进入结算…").setVisible(true);
-      this.time.delayedCall(450, () => this.goToOnlineResult(msg.winnerPlayerId));
-      return;
-    }
-    if (msg.type === "peer_status" && msg.playerId === online.remotePlayerId) {
-      if (msg.status === "disconnected") {
-        online.paused = true;
-        online.statusText?.setText("对手断线，等待重连…").setVisible(true);
-      } else if (msg.status === "reconnected") {
-        online.paused = false;
-        online.statusText?.setText("对手已重连").setVisible(true);
-        this.time.delayedCall(700, () => online.statusText?.setVisible(false));
-      }
-      return;
-    }
-    if (msg.type === "room_state" && msg.status === "finished" && !online.finishedByServer) {
-      online.paused = true;
-      online.statusText?.setText("对手已退出，战斗结束").setVisible(true);
-      this.time.delayedCall(900, () => this.goToOnlineResult(online.localPlayerId));
-    }
-  }
-
-  private consumeReceiveSceneQueue(): void {
-    const online = this.onlineState;
-    if (!online) return;
-    while (online.receive_scene.length > 0) {
-      const item = online.receive_scene.shift()!;
-      online.lastPeerAckFrame = Math.max(online.lastPeerAckFrame, item.ackFrame);
-      this.receiveRemoteInput(item.playerId, item.frame, item.input);
-    }
-  }
-
-  private receiveRemoteInput(playerId: PlayerId, frame: number, input: BattleInputState): void {
-    const online = this.onlineState;
-    if (!online || playerId === online.localPlayerId) return;
-
-    const predicted = online.predictedInputs.get(inputKey(playerId, frame));
-    const existing = online.inputs.get(playerId)?.get(frame);
-    this.storeInput(playerId, frame, input);
-    if (frame >= online.lastReceivedRemoteFrame) {
-      online.lastReceivedRemoteFrame = frame;
-      online.lastKnownInputs.set(playerId, input);
-    }
-
-    if (frame <= this.model.frame && !existing && predicted && !sameInput(predicted, input)) {
-      this.rollbackOnlineTo(frame);
-      if (!this.model.gameOver && !online.paused) {
-        online.statusText?.setVisible(false);
-      }
-    }
-    this.pruneOnlineHistory();
-  }
-
-  private rollbackOnlineTo(changedFrame: number): void {
-    const restoreFrame = Math.max(0, changedFrame - 1);
-    const record = this.debugHistory.get(restoreFrame);
-    if (!record) return;
-
-    const currentFrame = this.model.frame;
-    this.model.deserialize(record.snapshot);
-    this.accumulator = 0;
-    this.pruneDebugHistoryAfter(restoreFrame);
-    this.recordDebugFrame();
-
-    for (let frame = restoreFrame + 1; frame <= currentFrame; frame += 1) {
-      this.model.stepVersus(
-        this.getInputForFrame("player-1", frame),
-        this.getInputForFrame("player-2", frame),
-      );
-      this.recordDebugFrame();
-    }
-  }
-
-  private trySendOnlineGameOverVerdict(): void {
-    const online = this.onlineState;
-    if (!online || online.gameOverVerdictSent || !this.model.gameOver) {
-      return;
-    }
-    if (online.lastReceivedRemoteFrame < this.model.frame) {
-      online.statusText?.setText("等待对手输入确认终局…").setVisible(true);
-      return;
-    }
-
-    online.gameOverVerdictSent = true;
-    online.paused = true;
-    const winnerPlayerId = this.onlineWinnerPlayerId();
-    online.statusText?.setText("已提交终局裁决，等待对手确认…").setVisible(true);
-    connectionManager.send({
-      type: "game_over",
-      frame: this.model.frame,
-      ackFrame: online.lastReceivedRemoteFrame,
-      winnerPlayerId,
+    this.combatSync = new CombatSyncManager(this.model, connectionManager, {
+      sceneData: data,
+      callbacks: {
+        recordFrame: () => this.recordDebugFrame(),
+        getRollbackRecord: (frame) => this.debugHistory.get(frame) ?? null,
+        pruneRollbackHistoryAfter: (frame) => this.pruneDebugHistoryAfter(frame),
+        pruneRollbackHistoryBefore: (frame) => this.pruneDebugHistoryBefore(frame),
+        onRollback: () => {
+          this.accumulator = 0;
+        },
+        setStatusText: (text) => this.onlineStatusText?.setText(text).setVisible(true),
+        hideStatusText: () => this.onlineStatusText?.setVisible(false),
+        delay: (ms, callback) => {
+          this.time.delayedCall(ms, callback);
+        },
+        finishBattle: (winnerPlayerId) => this.goToOnlineResult(winnerPlayerId),
+      },
     });
   }
 
@@ -418,7 +221,7 @@ export class BattleScene extends Phaser.Scene {
     if (this.resultScheduled) return;
     this.resultScheduled = true;
     this.scene.start("result", {
-      winnerName: winnerPlayerId === this.onlineState?.localPlayerId
+      winnerName: winnerPlayerId === this.combatSync?.localPlayerId
         ? (this.sceneData.playerName ?? "Player")
         : (this.sceneData.opponentName ?? "Opponent"),
       durationSeconds: this.model.stats.elapsedTicks / 60,
@@ -428,53 +231,6 @@ export class BattleScene extends Phaser.Scene {
       deaths: this.model.player.deaths + this.model.target.deaths,
       returnScene: this.sceneData.returnScene ?? "battle-start",
     });
-  }
-
-  private onlineWinnerPlayerId(): PlayerId {
-    return this.model.target.lives <= 0 ? "player-1" : "player-2";
-  }
-
-  private localFighterKey(): "player" | "target" {
-    return this.onlineState?.localPlayerId === "player-2" ? "target" : "player";
-  }
-
-  private storeInput(playerId: PlayerId, frame: number, input: BattleInputState): void {
-    this.onlineState?.inputs.get(playerId)?.set(frame, input);
-  }
-
-  private getInputForFrame(playerId: PlayerId, frame: number): BattleInputState {
-    const online = this.onlineState;
-    if (!online) return neutralInput();
-    const actual = online.inputs.get(playerId)?.get(frame);
-    if (actual) return actual;
-    const predicted = cloneInput(online.lastKnownInputs.get(playerId) ?? neutralInput());
-    online.predictedInputs.set(inputKey(playerId, frame), predicted);
-    return predicted;
-  }
-
-  private pruneOnlineHistory(): void {
-    const online = this.onlineState;
-    if (!online) return;
-    const confirmedFrame = Math.min(online.lastReceivedRemoteFrame, online.lastPeerAckFrame);
-    if (confirmedFrame <= 0) return;
-    for (const [frame] of this.debugHistory) {
-      if (frame < confirmedFrame) {
-        this.debugHistory.delete(frame);
-      }
-    }
-    for (const inputMap of online.inputs.values()) {
-      for (const [frame] of inputMap) {
-        if (frame < confirmedFrame) {
-          inputMap.delete(frame);
-        }
-      }
-    }
-    for (const key of online.predictedInputs.keys()) {
-      const frame = Number(key.split(":")[1]);
-      if (frame < confirmedFrame) {
-        online.predictedInputs.delete(key);
-      }
-    }
   }
 
   private recordDebugFrame(): void {
@@ -494,6 +250,14 @@ export class BattleScene extends Phaser.Scene {
   private pruneDebugHistoryAfter(frame: number): void {
     for (const key of this.debugHistory.keys()) {
       if (key > frame) {
+        this.debugHistory.delete(key);
+      }
+    }
+  }
+
+  private pruneDebugHistoryBefore(frame: number): void {
+    for (const key of this.debugHistory.keys()) {
+      if (key < frame) {
         this.debugHistory.delete(key);
       }
     }
@@ -557,53 +321,6 @@ function toHashRow(record: DebugFrameRecord): DebugHashRow {
     frame: record.frame,
     hash: record.hash,
   };
-}
-
-function inputKey(playerId: PlayerId, frame: number): string {
-  return `${playerId}:${frame}`;
-}
-
-function neutralInput(): BattleInputState {
-  return {
-    moveX: 0,
-    moveY: 0,
-    aimX: 640,
-    aimY: 338,
-    shootPressed: false,
-    bombPressed: false,
-    activeCardPressed: false,
-    reloadPressed: false,
-    alternateHeld: false,
-    infoHeld: false,
-  };
-}
-
-function cloneInput(input: BattleInputState): BattleInputState {
-  return {
-    moveX: input.moveX,
-    moveY: input.moveY,
-    aimX: input.aimX,
-    aimY: input.aimY,
-    shootPressed: input.shootPressed,
-    bombPressed: input.bombPressed,
-    activeCardPressed: input.activeCardPressed,
-    reloadPressed: input.reloadPressed,
-    alternateHeld: input.alternateHeld,
-    infoHeld: input.infoHeld,
-  };
-}
-
-function sameInput(left: BattleInputState, right: BattleInputState): boolean {
-  return left.moveX === right.moveX
-    && left.moveY === right.moveY
-    && left.aimX === right.aimX
-    && left.aimY === right.aimY
-    && left.shootPressed === right.shootPressed
-    && left.bombPressed === right.bombPressed
-    && left.activeCardPressed === right.activeCardPressed
-    && left.reloadPressed === right.reloadPressed
-    && left.alternateHeld === right.alternateHeld
-    && left.infoHeld === right.infoHeld;
 }
 
 function createPresetScriptInput(offset: number): BattleInputState {
