@@ -12,7 +12,7 @@ export interface BattleLoadouts {
 }
 
 export interface BattleSceneData {
-  readonly mode?: "ai" | "training";
+  readonly mode?: "ai" | "training" | "online";
   readonly playerName?: string;
   readonly opponentName?: string;
   readonly returnScene?: string;

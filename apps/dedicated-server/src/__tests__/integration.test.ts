@@ -88,19 +88,26 @@ describe("Full Game Lifecycle Integration", () => {
 
     const p2State = p2.findSentMessage("room_state");
     expect(p2State?.playerCount).toBe(2);
-    expect(p2State?.status).toBe("selecting");
+    expect(p2State?.status).toBe("waiting");
 
     // P1 should be notified
     const p1StateUpdated = p1.findSentMessage("room_state");
     expect(p1StateUpdated).toBeDefined();
     expect(p1StateUpdated?.playerCount).toBe(2);
-    expect(p1StateUpdated?.status).toBe("selecting");
+    expect(p1StateUpdated?.status).toBe("waiting");
     expect(p1StateUpdated?.opponentUsername).toBe("Bob");
 
     p1.clearMessages();
     p2.clearMessages();
 
-    // ─── Step 4: P1 readies up ──────────────────────────────
+    // ─── Step 4: Lobby flow: guest readies → host starts ──
+    handler.handle(p2, { type: "lobby_ready", ready: true });
+    handler.handle(p1, { type: "start_game" });
+
+    p1.clearMessages();
+    p2.clearMessages();
+
+    // ─── Step 5: P1 readies up ──────────────────────────────
     handler.handle(p1, {
       type: "ready",
       loadout: {
@@ -121,7 +128,7 @@ describe("Full Game Lifecycle Integration", () => {
     p1.clearMessages();
     p2.clearMessages();
 
-    // ─── Step 5: P2 readies up ──────────────────────────────
+    // ─── Step 6: P2 readies up ───────────────────────────
     handler.handle(p2, {
       type: "ready",
       loadout: {
@@ -152,7 +159,7 @@ describe("Full Game Lifecycle Integration", () => {
     p1.clearMessages();
     p2.clearMessages();
 
-    // ─── Step 6: Both finish loading ────────────────────────
+    // ─── Step 7: Both finish loading ────────────────────────
     handler.handle(p1, { type: "loading_done" });
     handler.handle(p2, { type: "loading_done" });
 
@@ -165,7 +172,7 @@ describe("Full Game Lifecycle Integration", () => {
     p1.clearMessages();
     p2.clearMessages();
 
-    // ─── Step 7: Input relay during fight ───────────────────
+    // ─── Step 8: Input relay during fight ───────────────────
     handler.handle(p1, {
       type: "input_frame",
       frame: 1,

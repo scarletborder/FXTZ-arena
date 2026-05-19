@@ -30,6 +30,7 @@ export class RoomManager {
       playerSlots: [null, null],
       loadouts: [null, null],
       loadingDone: [false, false],
+      lobbyReady: [false, false],
       createdAt: Date.now(),
       battleId: null,
       seed: null,
@@ -60,11 +61,6 @@ export class RoomManager {
     const playerId = slotIndex === 0 ? "player-1" : "player-2";
     room.playerSlots[slotIndex] = playerId;
 
-    // Transition room status if both players now present
-    if (room.connectionIds.every((c) => c !== null)) {
-      room.status = "selecting";
-    }
-
     return { slotIndex, playerId };
   }
 
@@ -75,6 +71,7 @@ export class RoomManager {
       room.playerSlots[idx] = null;
       room.loadouts[idx] = null;
       room.loadingDone[idx] = false;
+      room.lobbyReady[idx] = false;
 
       // Transition back to waiting if a slot opened up
       if (room.status === "selecting" || room.status === "loading") {

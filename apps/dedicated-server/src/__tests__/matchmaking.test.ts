@@ -16,6 +16,7 @@ function createRoom(overrides?: Partial<InternalRoom>): InternalRoom {
     playerSlots: [null, null],
     loadouts: [null, null],
     loadingDone: [false, false],
+    lobbyReady: [false, false],
     createdAt: Date.now(),
     battleId: null,
     seed: null,

@@ -1,0 +1,190 @@
+import type { BattleConfig, ClientMessage, PlayerId, ServerMessage } from "@repo/types";
+
+export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
+
+/**
+ * Singleton WebSocket connection manager.
+ *
+ * - Connects to the dedicated server as a WebSocket client.
+ * - Dispatches incoming {@link ServerMessage}s to a single handler
+ *   (set by whichever Phaser scene is currently active).
+ * - Tracks connection and room state for synchronous reads by scenes.
+ * - Sends periodic pings to keep the connection alive.
+ */
+export class ConnectionManager {
+  private ws: WebSocket | null = null;
+  private pingInterval: ReturnType<typeof setInterval> | null = null;
+
+  /** Latest known server protocol version. */
+  serverVersion: string | null = null;
+  /** ID of the room this client is currently in, if any. */
+  roomId: string | null = null;
+  /** This client's assigned player slot in the room. */
+  playerId: PlayerId | null = null;
+  /** The opponent's display name, if known. */
+  opponentUsername: string | null = null;
+  /** Latest room status received from the server. */
+  roomStatus: string | null = null;
+  /** Battle configuration received from server when both players ready. */
+  battleConfig: BattleConfig | null = null;
+
+  /** Lobby: room display name. */
+  roomName: string | null = null;
+  /** Lobby: host player's display name. */
+  hostName: string | null = null;
+  /** Lobby: configured life count. */
+  lifeCount: number | null = null;
+  /** Lobby: configured cost limit. */
+  costLimit: number | null = null;
+  /** Lobby: whether the opponent has readied up. */
+  opponentReady: boolean | null = null;
+
+  /** Fires whenever the connection status changes. */
+  onStatusChange: ((status: ConnectionStatus) => void) | null = null;
+
+  private _handler: ((msg: ServerMessage) => void) | null = null;
+  private _status: ConnectionStatus = "disconnected";
+
+  get status(): ConnectionStatus {
+    return this._status;
+  }
+
+  private setStatus(s: ConnectionStatus): void {
+    if (this._status !== s) {
+      this._status = s;
+      this.onStatusChange?.(s);
+    }
+  }
+
+  /** Register the single message handler (typically called by the active scene). */
+  setMessageHandler(handler: ((msg: ServerMessage) => void) | null): void {
+    this._handler = handler;
+  }
+
+  /**
+   * Open a WebSocket connection to the server.
+   * If already connected or connecting, this is a no-op.
+   */
+  connect(address: string, username: string = "Player"): void {
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
+    this.setStatus("connecting");
+
+    try {
+      this.ws = new WebSocket(address);
+    } catch {
+      this.setStatus("error");
+      return;
+    }
+
+    this.ws.onopen = () => {
+      this.setStatus("connected");
+      this.startPing();
+
+      // Auto-send hello
+      this.send({
+        type: "hello",
+        username,
+        clientVersion: "0.1.0",
+        debug: false,
+      });
+    };
+
+    this.ws.onclose = () => {
+      this.stopPing();
+      this.setStatus("disconnected");
+      this.resetRoomState();
+    };
+
+    this.ws.onerror = () => {
+      this.setStatus("error");
+    };
+
+    this.ws.onmessage = (event: MessageEvent) => {
+      try {
+        const msg = JSON.parse(event.data as string) as ServerMessage;
+        this.handleServerMessage(msg);
+        this._handler?.(msg);
+      } catch {
+        // Ignore malformed messages
+      }
+    };
+  }
+
+  /** Close the WebSocket connection. */
+  disconnect(): void {
+    this.stopPing();
+    this.ws?.close();
+    this.ws = null;
+    this.setStatus("disconnected");
+    this.resetRoomState();
+    this._handler = null;
+  }
+
+  /** Send a typed message to the server. */
+  send(msg: ClientMessage): void {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(msg));
+    }
+  }
+
+  /** Update internal state from server messages (fires before the scene handler). */
+  private handleServerMessage(msg: ServerMessage): void {
+    switch (msg.type) {
+      case "server_hello":
+        this.serverVersion = msg.serverVersion;
+        break;
+      case "room_joined":
+        this.roomId = msg.roomId;
+        this.playerId = msg.playerId;
+        break;
+      case "room_state":
+        this.roomStatus = msg.status;
+        if (msg.opponentUsername) {
+          this.opponentUsername = msg.opponentUsername;
+        }
+        if (msg.roomName !== undefined) this.roomName = msg.roomName;
+        if (msg.hostName !== undefined) this.hostName = msg.hostName;
+        if (msg.lifeCount !== undefined) this.lifeCount = msg.lifeCount;
+        if (msg.costLimit !== undefined) this.costLimit = msg.costLimit;
+        if (msg.opponentReady !== undefined) this.opponentReady = msg.opponentReady;
+        break;
+      case "battle_start":
+        this.battleConfig = msg.config;
+        break;
+      case "error":
+        // Errors are forwarded to the scene handler
+        break;
+    }
+  }
+
+  /** Clear room-related state (used on disconnect / leave). */
+  private resetRoomState(): void {
+    this.roomId = null;
+    this.playerId = null;
+    this.opponentUsername = null;
+    this.roomStatus = null;
+    this.battleConfig = null;
+    this.roomName = null;
+    this.hostName = null;
+    this.lifeCount = null;
+    this.costLimit = null;
+    this.opponentReady = null;
+  }
+
+  private startPing(): void {
+    this.stopPing();
+    this.pingInterval = setInterval(() => {
+      this.send({ type: "ping", seq: Date.now() });
+    }, 10_000);
+  }
+
+  private stopPing(): void {
+    if (this.pingInterval !== null) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+  }
+}

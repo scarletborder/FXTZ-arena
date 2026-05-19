@@ -12,6 +12,7 @@ export interface InternalRoom {
   playerSlots: (PlayerId | null)[]; // ["player-1" | "player-2" | null]
   loadouts: (PlayerLoadout | null)[];
   loadingDone: boolean[];
+  lobbyReady: boolean[];
   createdAt: number;
   battleId: string | null;
   seed: number | null;

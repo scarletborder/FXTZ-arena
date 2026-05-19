@@ -1,5 +1,11 @@
 import Phaser from "phaser";
-import { DEFAULT_ABILITY_CARDS, DEFAULT_CHARACTERS, type AbilityCardDefinition, type CharacterDefinition } from "@repo/content";
+import {
+  DEFAULT_ABILITY_CARDS,
+  DEFAULT_CHARACTERS,
+  type AbilityCardDefinition,
+  type CharacterDefinition,
+} from "@repo/content";
+import type { PlayerLoadout } from "@repo/types";
 
 import { type BattleLoadouts } from "../battle/loadout";
 import { type FighterLoadout } from "../battle/loadout";
@@ -14,12 +20,20 @@ import {
   drawPanelToLayer,
   bodyStyle,
 } from "./ui";
-import { getCardById, getCharacterById, uiSettings, type SceneKey, type SelectionData } from "./shared";
+import {
+  connectionManager,
+  getCardById,
+  getCharacterById,
+  uiSettings,
+  type SceneKey,
+  type SelectionData,
+} from "./shared";
 
 const COST_LIMIT = 10;
 
 export class SelectScene extends Phaser.Scene {
   private mode: SelectionData["mode"] = "ai";
+  private playerId: string | undefined;
   private primaryId: CharacterDefinition["id"] | undefined;
   private alternateId: CharacterDefinition["id"] | undefined;
   private roleFilter: CharacterDefinition["roleClass"] | "all" = "all";
@@ -28,7 +42,8 @@ export class SelectScene extends Phaser.Scene {
   private hoverCost = 0;
   private layer!: Phaser.GameObjects.Container;
   private costLayer!: Phaser.GameObjects.Container;
-  private confirmButton!: { setEnabled(enabled: boolean): void };
+  private confirmButton!: { setEnabled(enabled: boolean): void; setLabel(label: string): void };
+  private statusText!: Phaser.GameObjects.Text;
   private characterScrollOffset = 0;
   private cardScrollOffset = 0;
   private scrollAreas: Array<{ bounds: Phaser.Geom.Rectangle; scroll: (deltaY: number) => void }> = [];
@@ -52,18 +67,111 @@ export class SelectScene extends Phaser.Scene {
 
   create(data: SelectionData): void {
     this.mode = data.mode;
+    this.playerId = data.playerId;
     this.primaryId = undefined;
     this.alternateId = undefined;
     this.selectedCards.clear();
-    drawFightingBackdrop(this, "SELECT", this.mode === "training" ? "TRAINING" : "CPU VERSUS");
-    createBackButton(this, "battle-start");
+
+    const subtitle = this.mode === "online"
+      ? "ONLINE VERSUS"
+      : this.mode === "training"
+        ? "TRAINING"
+        : "CPU VERSUS";
+    drawFightingBackdrop(this, "SELECT", subtitle);
+
+    // Online mode: custom back button sends leave_room
+    if (this.mode === "online") {
+      createFightButton(this, 1138, 62, 160, 44, "返回", () => {
+        connectionManager.send({ type: "leave_room" });
+        this.scene.start("home");
+      }, { accent: 0x5c7185 });
+    } else {
+      createBackButton(this);
+    }
+
     this.layer = this.add.container(0, 0);
     this.costLayer = this.add.container(0, 0);
+
+    // Status text for online waiting state — use space not empty string to
+    // avoid zero-width canvas crash in Phaser's Text pipeline (drawImage on null).
+    this.statusText = this.add.text(1036, 80, " ", bodyStyle("#ffcf6e", 18)).setOrigin(0.5).setVisible(false);
+    this.layer.add(this.statusText);
+
     this.input.on("wheel", this.onWheel);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.off("wheel", this.onWheel);
+      connectionManager.setMessageHandler(null);
     });
+
+    // In online mode, listen for server messages
+    if (this.mode === "online") {
+      connectionManager.setMessageHandler((msg) => this.onServerMessage(msg));
+    }
+
     this.render();
+  }
+
+  private onServerMessage(msg: import("@repo/types").ServerMessage): void {
+    const m = msg as unknown as Record<string, unknown>;
+    switch (m.type) {
+      case "opponent_ready":
+        this.statusText.setText("对手已确认").setColor("#34d399");
+        break;
+
+      case "battle_start": {
+        const bsg = msg as unknown as { config: import("@repo/types").BattleConfig };
+        const config = bsg.config;
+        const me = config.players.find((p) => p.playerId === this.playerId);
+        const opponent = config.players.find((p) => p.playerId !== this.playerId);
+
+        this.scene.start("loading", {
+          mode: "online",
+          playerName: me?.username ?? uiSettings.username,
+          opponentName: opponent?.username ?? "对手",
+          returnScene: "battle-start",
+          loadouts: {
+            player: {
+              primaryCharacterId: me?.loadout.primaryCharacterId ?? "reimu",
+              alternateCharacterId: me?.loadout.alternateCharacterId ?? "marisa",
+              activeCardId: me?.loadout.activeAbilityCardId ?? undefined,
+            },
+            target: {
+              primaryCharacterId: opponent?.loadout.primaryCharacterId ?? "sakuya",
+              alternateCharacterId: opponent?.loadout.alternateCharacterId ?? "reimu",
+              activeCardId: opponent?.loadout.activeAbilityCardId ?? undefined,
+            },
+          },
+          debug: uiSettings.debug,
+          /** Pass the battle config for the battle scene */
+        } satisfies Record<string, unknown>);
+        break;
+      }
+
+      case "peer_status": {
+        const ps = msg as unknown as { status: string };
+        if (ps.status === "disconnected") {
+          this.statusText.setText("对手已离开，返回主界面…").setColor("#ff5c66");
+          this.time.delayedCall(1500, () => {
+            if (this.scene.isActive()) this.scene.start("home");
+          });
+        }
+        break;
+      }
+      case "room_state": {
+        const rs = msg as unknown as { playerCount: number };
+        if (rs.playerCount < 2) {
+          this.statusText.setText("对手已离开，返回主界面…").setColor("#ff5c66");
+          this.time.delayedCall(1500, () => {
+            if (this.scene.isActive()) this.scene.start("home");
+          });
+        }
+        break;
+      }
+      case "error":
+        this.statusText.setText(`错误: ${(msg as { message: string }).message}`).setColor("#ff5c66");
+        this.confirmButton.setEnabled(true);
+        break;
+    }
   }
 
   private render(): void {
@@ -71,6 +179,7 @@ export class SelectScene extends Phaser.Scene {
     this.costLayer.removeAll(true);
     this.scrollAreas = [];
     this.hoverCost = 0;
+
     this.addDropBox(1020, 170, "常驻模式", this.primaryId, () => {
       this.primaryId = undefined;
       this.render();
@@ -82,12 +191,17 @@ export class SelectScene extends Phaser.Scene {
     this.addCharacterRoster();
     this.addCardRoster();
     this.addCostDisplay();
-    const confirmButton = createFightButton(this, 1036, 680, 250, 58, "确认出战", () => this.confirm(), {
+
+    const label = this.mode === "online" ? "确认配装" : "确认出战";
+    const confirmButton = createFightButton(this, 1036, 680, 250, 58, label, () => this.confirm(), {
       enabled: this.isValid(),
       accent: 0xe33d44,
     });
     this.confirmButton = confirmButton;
     this.layer.add(confirmButton.container);
+
+    // Bring status text to front (above all other elements)
+    this.layer.bringToTop(this.statusText);
   }
 
   private addDropBox(
@@ -150,7 +264,9 @@ export class SelectScene extends Phaser.Scene {
       ).container);
     });
 
-    const characters = DEFAULT_CHARACTERS.filter((character) => this.roleFilter === "all" || character.roleClass === this.roleFilter);
+    const characters = DEFAULT_CHARACTERS.filter(
+      (character) => this.roleFilter === "all" || character.roleClass === this.roleFilter,
+    );
     const listBounds = new Phaser.Geom.Rectangle(
       panel.x + 18,
       panel.y + 72,
@@ -227,7 +343,9 @@ export class SelectScene extends Phaser.Scene {
       ).container);
     });
 
-    const cards = DEFAULT_ABILITY_CARDS.filter((card) => this.cardFilter === "all" || card.kind === this.cardFilter);
+    const cards = DEFAULT_ABILITY_CARDS.filter(
+      (card) => this.cardFilter === "all" || card.kind === this.cardFilter,
+    );
     const listBounds = new Phaser.Geom.Rectangle(
       panel.x + 18,
       panel.y + 72,
@@ -310,9 +428,7 @@ export class SelectScene extends Phaser.Scene {
     offset = Phaser.Math.Clamp(offset, 0, maxOffset);
     container.y = -offset;
     const scroll = (deltaY: number) => {
-      if (maxOffset <= 0) {
-        return;
-      }
+      if (maxOffset <= 0) return;
       offset = Phaser.Math.Clamp(offset + deltaY, 0, maxOffset);
       container.y = -offset;
       if (kind === "characters") {
@@ -339,7 +455,9 @@ export class SelectScene extends Phaser.Scene {
     readonly height: number;
   }): void {
     const bar = this.add.graphics();
-    const visualLimit = this.mode === "training" ? Math.max(COST_LIMIT, params.total, params.projected, 1) : COST_LIMIT;
+    const visualLimit = this.mode === "training"
+      ? Math.max(COST_LIMIT, params.total, params.projected, 1)
+      : COST_LIMIT;
     const currentRatio = clamp(params.total / visualLimit, 0, 1);
     const projectedRatio = clamp(params.projected / visualLimit, 0, 1);
     const currentWidth = params.width * currentRatio;
@@ -450,7 +568,9 @@ export class SelectScene extends Phaser.Scene {
       .filter(Boolean)
       .map((id) => getCharacterById(id!).cost)
       .reduce((sum, cost) => sum + cost, 0);
-    const cardCost = [...this.selectedCards].map((id) => getCardById(id).cost).reduce((sum, cost) => sum + cost, 0);
+    const cardCost = [...this.selectedCards]
+      .map((id) => getCardById(id).cost)
+      .reduce((sum, cost) => sum + cost, 0);
     return characterCost + cardCost;
   }
 
@@ -462,9 +582,14 @@ export class SelectScene extends Phaser.Scene {
   }
 
   private confirm(): void {
-    if (!this.isValid() || !this.primaryId || !this.alternateId) {
+    if (!this.isValid() || !this.primaryId || !this.alternateId) return;
+
+    if (this.mode === "online") {
+      this.sendOnlineReady();
       return;
     }
+
+    // Local mode (ai / training) — navigate directly
     const activeCardId = [...this.selectedCards].find((id) => getCardById(id).kind === "active");
     const player: FighterLoadout = {
       primaryCharacterId: this.primaryId,
@@ -485,6 +610,24 @@ export class SelectScene extends Phaser.Scene {
       loadouts,
       debug: uiSettings.debug,
     });
+  }
+
+  private sendOnlineReady(): void {
+    const loadout: PlayerLoadout = {
+      primaryCharacterId: this.primaryId!,
+      alternateCharacterId: this.alternateId!,
+      abilityCardIds: [...this.selectedCards],
+      activeAbilityCardId: [...this.selectedCards].find((id) => getCardById(id).kind === "active") ?? undefined,
+    };
+
+    // Send network message first, then update UI
+    connectionManager.send({ type: "ready", loadout });
+
+    if (!this.scene.isActive()) return;
+
+    this.confirmButton.setEnabled(false);
+    this.confirmButton.setLabel("等待对手…");
+    this.statusText.setText("已确认，等待对手…").setColor("#ffcf6e").setVisible(true);
   }
 }
 

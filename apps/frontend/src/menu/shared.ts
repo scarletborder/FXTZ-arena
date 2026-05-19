@@ -1,9 +1,12 @@
 import Phaser from "phaser";
 import { DEFAULT_ABILITY_CARDS, DEFAULT_CHARACTERS, type AbilityCardDefinition, type CharacterDefinition } from "@repo/content";
-import type { BattleSceneData } from "../battle/loadout";
+import type { PlayerId } from "@repo/types";
 
-export type SceneKey = "home" | "battle-start" | "settings" | "codex" | "select" | "loading" | "result";
-export type SelectionMode = "ai" | "training";
+import type { BattleSceneData } from "../battle/loadout";
+import { ConnectionManager } from "../network";
+
+export type SceneKey = "home" | "battle-start" | "lobby" | "settings" | "codex" | "select" | "loading" | "result";
+export type SelectionMode = "ai" | "training" | "online";
 export type CodexTab = "characters" | "cards";
 
 export interface UiSettings {
@@ -14,11 +17,18 @@ export interface UiSettings {
 
 export interface SelectionData {
   readonly mode: SelectionMode;
+  /** Set when mode === "online" — the room this client is in. */
+  readonly roomId?: string;
+  /** Set when mode === "online" — this client's player slot. */
+  readonly playerId?: PlayerId;
 }
 
 export interface LoadingData extends BattleSceneData {
   readonly mode: SelectionMode;
 }
+
+/** Global ConnectionManager singleton, shared across scenes. */
+export const connectionManager = new ConnectionManager();
 
 export interface ResultData {
   readonly winnerName?: string;
@@ -61,8 +71,12 @@ export interface CharacterTileControl {
   setHovered(hovered: boolean): void;
 }
 
+const savedUsername = typeof localStorage !== "undefined"
+  ? localStorage.getItem("fxtz_username")
+  : null;
+
 export const uiSettings: UiSettings = {
-  username: "Player",
+  username: savedUsername ?? "Player",
   debug: false,
   serverAddress: "ws://localhost:22334",
 };

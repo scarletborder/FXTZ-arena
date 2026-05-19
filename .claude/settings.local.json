@@ -3,7 +3,11 @@
     "allow": [
       "Bash(find \"d:\\\\code\\\\js\\\\mvz443\" -type f \\\\\\( -name \"*.ts\" -o -name \"*.js\" -o -name \"*.json\" \\\\\\) | grep -v node_modules | head -60)",
       "Read(//d/code/js/mvz443/**)",
-      "Bash(pnpm --filter dedicated-server run test)"
+      "Bash(pnpm --filter dedicated-server run test)",
+      "Bash(pnpm --filter dedicated-server run check-types)",
+      "Bash(pnpm --filter frontend run check-types)",
+      "Bash(pnpm --filter @repo/types run check-types)",
+      "Bash(pnpm --filter frontend run test)"
     ]
   }
 }

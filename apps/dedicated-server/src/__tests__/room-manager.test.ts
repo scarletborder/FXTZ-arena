@@ -95,14 +95,14 @@ describe("RoomManager", () => {
     expect(mgr.assignSlot(room, "conn-3")).toBeNull();
   });
 
-  it("transitions to selecting when both slots are filled", () => {
+  it("stays in waiting when both slots are filled (lobby)", () => {
     const mgr = new RoomManager();
     const room = mgr.create(defaultParams);
     expect(room.status).toBe("waiting");
     mgr.assignSlot(room, "conn-1");
     expect(room.status).toBe("waiting");
     mgr.assignSlot(room, "conn-2");
-    expect(room.status).toBe("selecting");
+    expect(room.status).toBe("waiting");
   });
 
   it("removes a player and frees their slot", () => {
@@ -124,7 +124,7 @@ describe("RoomManager", () => {
     const room = mgr.create(defaultParams);
     mgr.assignSlot(room, "conn-1");
     mgr.assignSlot(room, "conn-2");
-    expect(room.status).toBe("selecting");
+    room.status = "selecting"; // lobby start_game transitions to selecting
 
     mgr.removePlayer(room, "conn-2");
     expect(room.status).toBe("waiting");

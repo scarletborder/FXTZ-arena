@@ -208,7 +208,7 @@ describe("MessageHandler", () => {
       // Host should get notified about room state change
       const hostState = conn1.findSentMessage("room_state");
       expect(hostState?.playerCount).toBe(2);
-      expect(hostState?.status).toBe("selecting");
+      expect(hostState?.status).toBe("waiting");
       expect(hostState?.opponentUsername).toBe("Joiner");
     });
 
@@ -471,6 +471,10 @@ describe("MessageHandler", () => {
 
       handler.handle(conn2, { type: "join_room", roomId: roomCreated.roomId });
 
+      // Lobby flow: guest readies then host starts
+      handler.handle(conn2, { type: "lobby_ready", ready: true });
+      handler.handle(conn1, { type: "start_game" });
+
       conn1.clearMessages();
       conn2.clearMessages();
 
@@ -613,6 +617,10 @@ describe("MessageHandler", () => {
       const roomCreated = conn1.findSentMessage("room_created")!;
       handler.handle(conn2, { type: "join_room", roomId: roomCreated.roomId });
 
+      // Lobby flow: guest readies then host starts
+      handler.handle(conn2, { type: "lobby_ready", ready: true });
+      handler.handle(conn1, { type: "start_game" });
+
       conn1.clearMessages();
       conn2.clearMessages();
 
@@ -663,6 +671,10 @@ describe("MessageHandler", () => {
       });
       const roomCreated = conn1.findSentMessage("room_created")!;
       handler.handle(conn2, { type: "join_room", roomId: roomCreated.roomId });
+
+      // Lobby flow: guest readies, host starts game
+      handler.handle(conn2, { type: "lobby_ready", ready: true });
+      handler.handle(conn1, { type: "start_game" });
 
       handler.handle(conn1, {
         type: "ready",

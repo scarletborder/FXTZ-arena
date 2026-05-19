@@ -13,9 +13,11 @@ import type {
   HelloMessage,
   InputFrameMessage,
   JoinRoomMessage,
+  LobbyReadyMessage,
   PingMessage,
   ReadyMessage,
   ServerMessage,
+  StartGameMessage,
 } from "./messages";
 
 export const ErrorCodes = {
@@ -96,6 +98,10 @@ export class MessageHandler {
         return this.handleQuickMatch(connection);
       case "leave_room":
         return this.handleLeaveRoom(connection);
+      case "start_game":
+        return this.handleStartGame(connection, raw as StartGameMessage);
+      case "lobby_ready":
+        return this.handleLobbyReady(connection, raw as LobbyReadyMessage);
       case "ready":
         return this.handleReady(connection, raw as ReadyMessage);
       case "loading_done":
@@ -134,6 +140,18 @@ export class MessageHandler {
             type: "peer_status",
             playerId: session.playerId,
             status: "disconnected",
+          });
+
+          const remainingSession = this.sessionStore.get(room.connectionIds[otherIdx]!);
+          this.sendToSlot(room, otherIdx, {
+            type: "room_state",
+            roomId: room.id,
+            playerCount: 1,
+            status: "waiting",
+            roomName: room.name,
+            hostName: remainingSession?.username ?? "",
+            lifeCount: room.lifeCount,
+            costLimit: room.costLimit,
           });
         }
 
@@ -234,6 +252,10 @@ export class MessageHandler {
       roomId: room.id,
       playerCount: 1,
       status: room.status,
+      roomName: room.name,
+      hostName: session.username,
+      lifeCount: room.lifeCount,
+      costLimit: room.costLimit,
     });
   }
 
@@ -303,11 +325,19 @@ export class MessageHandler {
       playerId: assignment.playerId,
     });
 
+    // Get host info for lobby display
+    const hostSession = this.sessionStore.get(room.connectionIds[0]!);
+
     this.send(connection, {
       type: "room_state",
       roomId: room.id,
       playerCount: 2,
       status: room.status,
+      opponentUsername: hostSession?.username ?? "",
+      roomName: room.name,
+      hostName: hostSession?.username ?? "",
+      lifeCount: room.lifeCount,
+      costLimit: room.costLimit,
     });
 
     // Notify the other player about room state change
@@ -319,8 +349,13 @@ export class MessageHandler {
         type: "room_state",
         roomId: room.id,
         playerCount: 2,
-        status: "selecting",
+        status: room.status,
         opponentUsername: session.username,
+        opponentReady: false,
+        roomName: room.name,
+        hostName: otherSession?.username ?? "",
+        lifeCount: room.lifeCount,
+        costLimit: room.costLimit,
       });
     }
   }
@@ -371,11 +406,18 @@ export class MessageHandler {
       playerId: assignment.playerId,
     });
 
+    const hostSession = this.sessionStore.get(match.connectionIds[0]!);
+
     this.send(connection, {
       type: "room_state",
       roomId: match.id,
       playerCount: 2,
       status: match.status,
+      opponentUsername: hostSession?.username ?? "",
+      roomName: match.name,
+      hostName: hostSession?.username ?? "",
+      lifeCount: match.lifeCount,
+      costLimit: match.costLimit,
     });
 
     // Notify the other player
@@ -387,8 +429,13 @@ export class MessageHandler {
         type: "room_state",
         roomId: match.id,
         playerCount: 2,
-        status: "selecting",
+        status: match.status,
         opponentUsername: session.username,
+        opponentReady: false,
+        roomName: match.name,
+        hostName: otherSession?.username ?? "",
+        lifeCount: match.lifeCount,
+        costLimit: match.costLimit,
       });
     }
   }
@@ -420,11 +467,16 @@ export class MessageHandler {
         status: "disconnected",
       });
 
+      const remainingSession = this.sessionStore.get(otherConnId);
       this.sendToConnection(otherConnId, {
         type: "room_state",
         roomId: room.id,
         playerCount: 1,
         status: "waiting",
+        roomName: room.name,
+        hostName: remainingSession?.username ?? "",
+        lifeCount: room.lifeCount,
+        costLimit: room.costLimit,
       });
     }
 
@@ -436,6 +488,135 @@ export class MessageHandler {
 
     this.sessionStore.setRoomId(connection.id, null);
     this.sessionStore.setPlayerId(connection.id, null!); // will be re-set on next join
+  }
+
+  // ─── Start Game ────────────────────────────────────
+
+  private handleStartGame(
+    connection: TransportConnection,
+    _msg: StartGameMessage,
+  ): void {
+    const session = this.sessionStore.get(connection.id);
+    if (!session || !session.roomId || !session.playerId) {
+      this.send(connection, {
+        type: "error",
+        code: ErrorCodes.NOT_IN_ROOM,
+        message: "You must be in a room",
+      });
+      return;
+    }
+
+    const room = this.roomManager.get(session.roomId);
+    if (!room) return;
+
+    if (session.playerId !== "player-1") {
+      this.send(connection, {
+        type: "error",
+        code: ErrorCodes.INVALID_STATE,
+        message: "Only the host can start the game",
+      });
+      return;
+    }
+
+    if (room.status !== "waiting") {
+      this.send(connection, {
+        type: "error",
+        code: ErrorCodes.INVALID_STATE,
+        message: `Cannot start in room state: ${room.status}`,
+      });
+      return;
+    }
+
+    if (room.connectionIds.some((c) => c === null)) {
+      this.send(connection, {
+        type: "error",
+        code: ErrorCodes.INVALID_STATE,
+        message: "Waiting for opponent to join",
+      });
+      return;
+    }
+
+    if (!room.lobbyReady[1]) {
+      this.send(connection, {
+        type: "error",
+        code: ErrorCodes.INVALID_STATE,
+        message: "Opponent is not ready",
+      });
+      return;
+    }
+
+    // Transition to selecting
+    room.status = "selecting";
+    room.lobbyReady = [false, false];
+
+    // Broadcast game_starting to both players
+    for (const connId of room.connectionIds) {
+      if (connId) {
+        this.sendToConnection(connId, {
+          type: "game_starting",
+        });
+      }
+    }
+  }
+
+  // ─── Lobby Ready ────────────────────────────────────
+
+  private handleLobbyReady(
+    connection: TransportConnection,
+    msg: LobbyReadyMessage,
+  ): void {
+    const session = this.sessionStore.get(connection.id);
+    if (!session || !session.roomId || !session.playerId) {
+      this.send(connection, {
+        type: "error",
+        code: ErrorCodes.NOT_IN_ROOM,
+        message: "You must be in a room",
+      });
+      return;
+    }
+
+    const room = this.roomManager.get(session.roomId);
+    if (!room) return;
+
+    if (room.status !== "waiting") {
+      this.send(connection, {
+        type: "error",
+        code: ErrorCodes.INVALID_STATE,
+        message: `Cannot toggle ready in room state: ${room.status}`,
+      });
+      return;
+    }
+
+    if (session.playerId !== "player-2") {
+      return; // host doesn't use lobby ready
+    }
+
+    const idx = room.playerSlots.indexOf(session.playerId);
+    if (idx === -1) return;
+
+    room.lobbyReady[idx] = msg.ready;
+
+    // Broadcast updated room_state to both players
+    const hostSession = this.sessionStore.get(room.connectionIds[0]!);
+    const guestSession = this.sessionStore.get(room.connectionIds[1]!);
+
+    for (let i = 0; i < room.connectionIds.length; i++) {
+      const connId = room.connectionIds[i];
+      if (!connId) continue;
+
+      this.sendToConnection(connId, {
+        type: "room_state",
+        roomId: room.id,
+        playerCount: room.connectionIds.filter(Boolean).length,
+        status: room.status,
+        opponentUsername: i === 0 ? guestSession?.username : hostSession?.username,
+        opponentReady: i === 0 ? room.lobbyReady[1] : undefined,
+        roomName: room.name,
+        hostName: hostSession?.username ?? "",
+        lifeCount: room.lifeCount,
+        costLimit: room.costLimit,
+      });
+    }
   }
 
   // ─── Ready ────────────────────────────────────────
@@ -454,7 +635,7 @@ export class MessageHandler {
     const room = this.roomManager.get(session.roomId);
     if (!room) return;
 
-    if (room.status !== "waiting" && room.status !== "selecting") {
+    if (room.status !== "selecting") {
       this.send(connection, {
         type: "error",
         code: ErrorCodes.INVALID_STATE,
