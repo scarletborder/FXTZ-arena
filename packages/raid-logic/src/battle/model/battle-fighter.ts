@@ -68,20 +68,8 @@ export class BattleFighter {
       return;
     }
     let startedReload = false;
-    if (reloadPressed && this.state.reloadRemaining === 0 && this.state.ammo < this.state.ammoCapacity) {
-      if (this.activeCharacter.reloadStartPolicy === "keep_current") {
-        setCharacterAmmo(this.state, this.state.activeCharacter, this.state.ammo);
-      }
-      this.state.reloadStartedAmmo = this.reloadStartAmmo();
-      this.state.reloadTotal = this.reloadTicksForMissingAmmo();
-      this.state.reloadRemaining = this.state.reloadTotal;
-      this.state.reloadCharacterId = this.state.activeCharacter.id;
-      if (this.activeCharacter.reloadStartPolicy === "reset_to_zero") {
-        this.state.ammo = 0;
-        setCharacterAmmo(this.state, this.state.activeCharacter, 0);
-      }
-      this.state.ammoDisplay = this.state.ammo;
-      startedReload = true;
+    if (reloadPressed) {
+      startedReload = this.startReload();
     }
 
     if (startedReload || this.state.reloadRemaining <= 0) {
@@ -106,7 +94,14 @@ export class BattleFighter {
   }
 
   fire(ctx: CharacterActionContext, aimX: number, aimY: number): void {
-    if (this.state.actionLockedUntil > 0 || this.state.reloadRemaining > 0 || this.state.ammo <= 0 || this.state.fireCooldownUntil > 0 || this.state.deadUntil > 0) {
+    if (this.state.actionLockedUntil > 0 || this.state.reloadRemaining > 0 || this.state.deadUntil > 0) {
+      return;
+    }
+    if (this.state.ammo <= 0) {
+      this.startReload();
+      return;
+    }
+    if (this.state.fireCooldownUntil > 0) {
       return;
     }
 
@@ -183,6 +178,25 @@ export class BattleFighter {
     this.state.reloadRemaining = 0;
     this.state.reloadCharacterId = undefined;
     this.state.ammoDisplay = this.state.ammo;
+  }
+
+  private startReload(): boolean {
+    if (this.state.nonFireActionLockedUntil > 0 || this.state.reloadRemaining > 0 || this.state.ammo >= this.state.ammoCapacity) {
+      return false;
+    }
+    if (this.activeCharacter.reloadStartPolicy === "keep_current") {
+      setCharacterAmmo(this.state, this.state.activeCharacter, this.state.ammo);
+    }
+    this.state.reloadStartedAmmo = this.reloadStartAmmo();
+    this.state.reloadTotal = this.reloadTicksForMissingAmmo();
+    this.state.reloadRemaining = this.state.reloadTotal;
+    this.state.reloadCharacterId = this.state.activeCharacter.id;
+    if (this.activeCharacter.reloadStartPolicy === "reset_to_zero") {
+      this.state.ammo = 0;
+      setCharacterAmmo(this.state, this.state.activeCharacter, 0);
+    }
+    this.state.ammoDisplay = this.state.ammo;
+    return true;
   }
 
   private reloadDisplayAmmo(reloadRatio: number): number {

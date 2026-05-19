@@ -1,4 +1,5 @@
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
+import { DEFAULT_BOMBS } from "@repo/types";
 
 import type { FighterKey, FighterState } from "../types";
 
@@ -19,7 +20,7 @@ export function createFighter(
     previousY: y,
     previousFacing: 0,
     lives: 2,
-    bombs: 3,
+    bombs: getDefaultBombs(activeCard),
     ammo: primaryCharacter.ammoCapacity,
     ammoDisplay: primaryCharacter.ammoCapacity,
     ammoCapacity: primaryCharacter.ammoCapacity,
@@ -58,6 +59,10 @@ export function createFighter(
     statusVisibleUntil: 0,
     ammoByCharacterId: createAmmoState(primaryCharacter, alternateCharacter),
   };
+}
+
+export function getDefaultBombs(activeCard: AbilityCardDefinition | undefined): number {
+  return activeCard?.effectIds.includes("set_default_bombs_4") ? 4 : DEFAULT_BOMBS;
 }
 
 export function resetFighter(

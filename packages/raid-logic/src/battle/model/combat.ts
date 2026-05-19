@@ -1,6 +1,7 @@
 import { secondsToTicks } from "@repo/types";
 
 import type { FighterKey, FighterState, TrainingStats } from "../types";
+import { getDefaultBombs } from "./fighter";
 
 const STATUS_VISIBLE_TICKS = secondsToTicks(1.5);
 
@@ -37,6 +38,7 @@ export function applyHit(params: {
   }
 
   params.victim.lives -= 1;
+  params.victim.bombs = getDefaultBombs(params.victim.activeCard);
   params.victim.invulnerableUntil = secondsToTicks(3);
   return "accepted";
 }

@@ -152,6 +152,46 @@ describe("BattleModel reload timing", () => {
 
     expect(model.player.shotsFired).toBe(shotsBeforeReload);
   });
+
+  it("starts reload when left click is pressed after ammo is empty", async () => {
+    const model = await createBattleModel("marisa", "reimu");
+    model.step(input({ shootPressed: true }));
+    for (let index = 0; index < 20; index += 1) {
+      model.step(input());
+    }
+    model.step(input({ shootPressed: true }));
+
+    expect(model.player.ammo).toBe(0);
+
+    model.step(input({ shootPressed: true }));
+
+    expect(model.player.reloadStartedAmmo).toBe(0);
+    expect(model.player.reloadTotal).toBe(180);
+    expect(model.player.reloadRemaining).toBe(180);
+  });
+});
+
+describe("BattleModel hit recovery", () => {
+  it("restores bombs to the default count after taking a hit", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+    model.player.bombs = 0;
+
+    hitPlayer(model);
+
+    expect(model.player.lives).toBe(1);
+    expect(model.player.bombs).toBe(3);
+  });
+
+  it("restores bombs to ember's default count after taking a hit", async () => {
+    const model = await createBattleModel("reimu", "marisa", "ember");
+    expect(model.player.bombs).toBe(4);
+    model.player.bombs = 0;
+
+    hitPlayer(model);
+
+    expect(model.player.lives).toBe(1);
+    expect(model.player.bombs).toBe(4);
+  });
 });
 
 function createInputs(frames: number): BattleInputState[] {
@@ -188,16 +228,19 @@ function input(overrides: Partial<BattleInputState> = {}): BattleInputState {
 async function createBattleModel(
   primaryCharacterId: BattleLoadouts["player"]["primaryCharacterId"],
   alternateCharacterId: BattleLoadouts["player"]["alternateCharacterId"],
+  activeCardId?: BattleLoadouts["player"]["activeCardId"],
 ): Promise<BattleModel>;
 async function createBattleModel(): Promise<BattleModel>;
 async function createBattleModel(
   primaryCharacterId: BattleLoadouts["player"]["primaryCharacterId"] = "reimu",
   alternateCharacterId: BattleLoadouts["player"]["alternateCharacterId"] = "marisa",
+  activeCardId?: BattleLoadouts["player"]["activeCardId"],
 ): Promise<BattleModel> {
   const model = new BattleModel({
     player: {
       primaryCharacterId,
       alternateCharacterId,
+      activeCardId,
     },
     target: {
       primaryCharacterId: "reimu",
@@ -208,4 +251,11 @@ async function createBattleModel(
   await physics.init();
   model.setPhysics(physics);
   return model;
+}
+
+function hitPlayer(model: BattleModel): void {
+  const hit = model as unknown as {
+    onProjectileHit(owner: "player" | "target", victim: BattleModel["player"], damage: number): boolean;
+  };
+  hit.onProjectileHit("target", model.player, 1);
 }
