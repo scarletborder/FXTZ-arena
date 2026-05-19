@@ -291,7 +291,6 @@ export class SelectScene extends Phaser.Scene {
       total,
       projected,
       delta,
-      overLimit: this.mode !== "training" && projected >= COST_LIMIT,
       x: 916,
       y: 640,
       width: 240,
@@ -334,7 +333,6 @@ export class SelectScene extends Phaser.Scene {
     readonly total: number;
     readonly projected: number;
     readonly delta: number;
-    readonly overLimit: boolean;
     readonly x: number;
     readonly y: number;
     readonly width: number;
@@ -346,13 +344,31 @@ export class SelectScene extends Phaser.Scene {
     const projectedRatio = clamp(params.projected / visualLimit, 0, 1);
     const currentWidth = params.width * currentRatio;
     const projectedWidth = params.width * projectedRatio;
+    const currentOverLimit = this.mode !== "training" && params.total > COST_LIMIT;
 
     bar.fillStyle(0x223042, 0.95).fillRect(params.x, params.y, params.width, params.height);
-    bar.fillStyle(0x34d399, 1).fillRect(params.x, params.y, currentWidth, params.height);
+
+    if (currentOverLimit) {
+      bar.fillStyle(0xff5c66, 1).fillRect(params.x, params.y, params.width, params.height);
+    } else {
+      bar.fillStyle(0x34d399, 1).fillRect(params.x, params.y, currentWidth, params.height);
+    }
 
     if (params.delta > 0) {
-      bar.fillStyle(params.overLimit ? 0xff5c66 : 0x7cff8a, 0.95);
-      bar.fillRect(params.x + currentWidth, params.y, Math.max(0, projectedWidth - currentWidth), params.height);
+      const withinProjected = Math.min(params.projected, visualLimit);
+      const withinProjectedWidth = params.width * clamp(withinProjected / visualLimit, 0, 1);
+      if (!currentOverLimit && withinProjectedWidth > currentWidth) {
+        bar.fillStyle(0x7cff8a, 0.95);
+        bar.fillRect(params.x + currentWidth, params.y, withinProjectedWidth - currentWidth, params.height);
+      }
+      if (!currentOverLimit && params.projected > visualLimit) {
+        const overflowRatio = clamp((params.projected - visualLimit) / visualLimit, 0, 1);
+        const overflowWidth = Math.max(0, params.width * overflowRatio);
+        if (overflowWidth > 0) {
+          bar.fillStyle(0xff5c66, 0.95);
+          bar.fillRect(params.x + params.width - overflowWidth, params.y, overflowWidth, params.height);
+        }
+      }
     } else if (params.delta < 0) {
       bar.fillStyle(0x101820, 0.62);
       bar.fillRect(params.x + projectedWidth, params.y, Math.max(0, currentWidth - projectedWidth), params.height);
@@ -442,7 +458,7 @@ export class SelectScene extends Phaser.Scene {
     if (!this.primaryId || !this.alternateId || this.primaryId === this.alternateId) {
       return false;
     }
-    return this.mode === "training" || this.totalCost() < COST_LIMIT;
+    return this.mode === "training" || this.totalCost() <= COST_LIMIT;
   }
 
   private confirm(): void {
