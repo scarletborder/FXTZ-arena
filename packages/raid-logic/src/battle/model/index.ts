@@ -34,6 +34,14 @@ export class BattleModel {
   private readonly cpuPlayer: CpuPlayer | undefined;
   /** Rapier-backed collision provider. */
   private physics: BattlePhysics | undefined;
+  /**
+   * Deferred spawn queue for projectiles.
+   * Populated during fighter action processing (Phase 2),
+   * flushed after projectile stepping (Phase 3 post-update).
+   * This prevents newly-spawned projectiles from being stepped
+   * or hit-tested in the same frame they were created.
+   */
+  private pendingSpawns: Array<() => void> = [];
 
   constructor(loadouts: BattleLoadouts = DEFAULT_BATTLE_LOADOUTS, params: { readonly endOnTargetDefeat?: boolean } = {}) {
     this.loadouts = loadouts;
@@ -99,14 +107,35 @@ export class BattleModel {
   }
 
   step(input: BattleInputState): void {
-    this.stepFrame(input, undefined);
+    this.stepFrame(input, undefined, true);
   }
 
-  stepVersus(playerInput: BattleInputState, targetInput: BattleInputState): void {
-    this.stepFrame(playerInput, targetInput);
+  /**
+   * @param hostIsPlayer - When true (default), the "player" fighter has priority
+   *   (processed first). The host / lower playerId should set this to true.
+   */
+  stepVersus(playerInput: BattleInputState, targetInput: BattleInputState, hostIsPlayer = true): void {
+    if (hostIsPlayer) {
+      this.stepFrame(playerInput, targetInput, true);
+    } else {
+      // Target (higher playerId) has priority → process them first
+      this.stepFrame(targetInput, playerInput, false);
+    }
   }
 
-  private stepFrame(playerInput: BattleInputState, targetInput: BattleInputState | undefined): void {
+  /**
+   * Frame stepping with three phases:
+   *
+   * Phase 1 – Tick all fighters' timers (order-independent).
+   * Phase 2 – Process fighter actions in priority order (lower playerId first).
+   * Phase 3 – Post-update: resolve projectile clashes, step projectiles,
+   *           then flush deferred spawns so new projectiles start from next frame.
+   */
+  private stepFrame(
+    firstInput: BattleInputState,
+    secondInput: BattleInputState | undefined,
+    firstIsPlayer: boolean,
+  ): void {
     if (!this.physics?.isReady()) {
       throw new Error("BattleModel requires Rapier physics before stepping");
     }
@@ -114,8 +143,32 @@ export class BattleModel {
     this.capturePreviousFighterState();
     this.frame += 1;
     this.stats.elapsedTicks += 1;
-    this.stepPlayer(playerInput);
-    this.stepTarget(targetInput);
+
+    // --- Phase 1: Timer ticking (order-independent) ---
+    this.pendingSpawns = [];
+    this.playerFighter.tickTimers();
+    this.targetFighter.tickTimers();
+
+    // Handle target death countdown (outside action processing)
+    if (this.target.deadUntil > 0) {
+      this.target.deadUntil -= 1;
+      if (this.target.deadUntil === 0) {
+        this.respawnTarget();
+      }
+    }
+
+    if (this.gameOver) return;
+
+    // --- Phase 2: Fighter actions in priority order ---
+    if (firstIsPlayer) {
+      this.processFighterActions(this.playerFighter, firstInput);
+      this.processFighterActions(this.targetFighter, secondInput);
+    } else {
+      this.processFighterActions(this.targetFighter, firstInput);
+      this.processFighterActions(this.playerFighter, secondInput);
+    }
+
+    // --- Phase 3: Post-update ---
     this.resolveProjectileClashes();
     this.projectileSystem.stepProjectiles({
       frame: this.frame,
@@ -125,6 +178,7 @@ export class BattleModel {
       onHit: (ctx) => this.onProjectileHit(ctx),
       computeRapierHits: (projectiles) => this.physics!.computeCollisions(projectiles, this.player, this.target),
     });
+    this.flushDeferredSpawns();
     this.effectSystem.stepEffects(this.effects, this.frame);
   }
 
@@ -184,73 +238,53 @@ export class BattleModel {
     return this.physics?.isReady() ?? false;
   }
 
-  private stepPlayer(input: BattleInputState): void {
-    const fighter = this.player;
-    if (this.gameOver) {
-      return;
-    }
+  /**
+   * Process one fighter's actions for this frame.
+   * Called in priority order (by playerId, lower first).
+   * Handles: character select, facing, movement, reload, active card, bomb, fire.
+   */
+  private processFighterActions(
+    fighter: BattleFighter,
+    input: BattleInputState | undefined,
+  ): void {
+    if (this.gameOver) return;
+    const state = fighter.state;
+    if (state.deadUntil > 0) return;
 
-    this.playerFighter.tickTimers();
-    this.playerFighter.selectActiveCharacter(input.alternateHeld);
-    fighter.facing = Math.atan2(input.aimY - fighter.y, input.aimX - fighter.x);
-    this.playerFighter.moveBy(input);
-    this.playerFighter.handleReload(input.reloadPressed);
-
-    const ctx = this.fighterActionContext(fighter);
-    if (input.activeCardPressed) {
-      this.playerFighter.useActiveCard(ctx);
-    }
-    if (input.bombPressed) {
-      this.playerFighter.useBomb(ctx);
-    }
-    if (input.shootPressed) {
-      this.playerFighter.fire(ctx, input.aimX, input.aimY);
-    }
-  }
-
-  private stepTarget(input: BattleInputState | undefined): void {
-    const fighter = this.target;
-    this.targetFighter.tickTimers();
-    if (fighter.deadUntil > 0) {
-      fighter.deadUntil -= 1;
-      if (fighter.deadUntil === 0) {
-        this.respawnTarget();
+    // No input → AI or simple movement for the target fighter
+    if (!input) {
+      if (state.key === "target") {
+        if (this.cpuPlayer) {
+          this.stepTargetAi();
+        } else {
+          this.stepTargetSimple();
+        }
       }
       return;
     }
 
-    if (input) {
-      this.stepTargetWithInput(fighter, input);
-    } else if (this.cpuPlayer) {
-      this.stepTargetAi(fighter);
-    } else {
-      this.stepTargetSimple(fighter);
-    }
-  }
+    // Deterministic action order within a fighter's turn:
+    // 1. Character select  2. Facing  3. Movement  4. Reload
+    // 5. Active card  6. Bomb  7. Fire
+    fighter.selectActiveCharacter(input.alternateHeld);
+    state.facing = Math.atan2(input.aimY - state.y, input.aimX - state.x);
+    fighter.moveBy(input);
+    fighter.handleReload(input.reloadPressed);
 
-  private stepTargetWithInput(fighter: FighterState, input: BattleInputState): void {
-    if (this.gameOver) {
-      return;
-    }
-
-    this.targetFighter.selectActiveCharacter(input.alternateHeld);
-    fighter.facing = Math.atan2(input.aimY - fighter.y, input.aimX - fighter.x);
-    this.targetFighter.moveBy(input);
-    this.targetFighter.handleReload(input.reloadPressed);
-
-    const ctx = this.fighterActionContext(fighter);
+    const ctx = this.fighterActionContext(state);
     if (input.activeCardPressed) {
-      this.targetFighter.useActiveCard(ctx);
+      fighter.useActiveCard(ctx);
     }
     if (input.bombPressed) {
-      this.targetFighter.useBomb(ctx);
+      fighter.useBomb(ctx);
     }
     if (input.shootPressed) {
-      this.targetFighter.fire(ctx, input.aimX, input.aimY);
+      fighter.fire(ctx, input.aimX, input.aimY);
     }
   }
 
-  private stepTargetAi(fighter: FighterState): void {
+  private stepTargetAi(): void {
+    const fighter = this.target;
     const aiInput = this.cpuPlayer!.getAction({
       frame: this.frame,
       self: fighter,
@@ -272,7 +306,8 @@ export class BattleModel {
     }
   }
 
-  private stepTargetSimple(fighter: FighterState): void {
+  private stepTargetSimple(): void {
+    const fighter = this.target;
     if (fighter.movementLockedUntil === 0) {
       fighter.x = clamp(fighter.x + Math.sin(this.frame / 36) * 1.6, 780, 1150);
       fighter.y = clamp(fighter.y + Math.cos(this.frame / 50) * 1.2, 72, 600);
@@ -344,18 +379,26 @@ export class BattleModel {
   }
 
   private fighterActionContext(self: FighterState): CharacterActionContext {
+    const frame = this.frame;
     return {
-      frame: this.frame,
+      frame,
       self,
       opponent: self.key === "player" ? this.target : this.player,
       projectiles: this.projectiles,
       effects: this.effects,
       stats: this.stats,
       spawnBullet: (params) => {
-        this.projectileSystem.spawnBullet(this.projectiles, { ...params, frame: params.frame ?? this.frame });
+        // Defer: collect spawn, flush in post-update after projectile stepping
+        const spawnParams = { ...params, frame: params.frame ?? frame };
+        this.pendingSpawns.push(() => {
+          this.projectileSystem.spawnBullet(this.projectiles, spawnParams);
+        });
       },
       spawnLaser: (params) => {
-        this.projectileSystem.spawnLaser(this.projectiles, { ...params, frame: params.frame ?? this.frame });
+        const spawnParams = { ...params, frame: params.frame ?? frame };
+        this.pendingSpawns.push(() => {
+          this.projectileSystem.spawnLaser(this.projectiles, spawnParams);
+        });
       },
       clearProjectilesAround: (params) => clearProjectilesAround(this.projectiles, params.x, params.y, params.radius),
       spawnEffectRing: (params) => {
@@ -365,6 +408,14 @@ export class BattleModel {
         this.effectSystem.spawnRing(this.effects, this.frame, params.x, params.y, params.tint, params.radius / 100, params.duration);
       },
     };
+  }
+
+  /** Post-update: flush all deferred projectiles into the active array. */
+  private flushDeferredSpawns(): void {
+    for (const spawn of this.pendingSpawns) {
+      spawn();
+    }
+    this.pendingSpawns = [];
   }
 
   private capturePreviousFighterState(): void {

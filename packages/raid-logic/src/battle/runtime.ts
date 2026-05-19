@@ -16,6 +16,13 @@ export type RaidLogicStepInput =
       readonly mode: "online";
       readonly player: BattleInputState;
       readonly target: BattleInputState;
+      /**
+       * Priority order for simultaneous actions.
+       * When true (default), the "player" fighter (player-1 / host) is processed first.
+       * When false, the "target" fighter (player-2) is processed first.
+       * Determined by playerId: lower playerId → higher priority.
+       */
+      readonly hostIsPlayer?: boolean;
     };
 
 export interface RaidLogicRuntimeOptions {
@@ -93,7 +100,7 @@ class BattleRuntime implements RaidLogicRuntime {
     }
 
     if (input.mode === "online") {
-      this.model.stepVersus(input.player, input.target);
+      this.model.stepVersus(input.player, input.target, input.hostIsPlayer ?? true);
     } else {
       this.model.step(input.player);
     }

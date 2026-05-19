@@ -64,6 +64,8 @@ export class CombatSyncManager {
       mode: "online",
       player: this.getInputForFrame("player-1", frame),
       target: this.getInputForFrame("player-2", frame),
+      // player-1 (host / lower playerId) has priority over player-2
+      hostIsPlayer: true,
     });
     this.options.callbacks.recordFrame();
     this.pruneOnlineHistory();
@@ -167,6 +169,7 @@ export class CombatSyncManager {
         mode: "online",
         player: this.getInputForFrame("player-1", frame),
         target: this.getInputForFrame("player-2", frame),
+        hostIsPlayer: true,
       });
       this.options.callbacks.recordFrame();
     }
