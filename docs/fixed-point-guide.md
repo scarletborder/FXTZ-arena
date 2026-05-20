@@ -96,7 +96,21 @@ fp.sqrt(fp.add(fp.mul(fpDx, fpDx), fp.mul(fpDy, fpDy)));
 fpHypotFp(fpDx, fpDy);
 ```
 
-### 4. 取整方向
+### 4. fpAtan2 返回值已是 float，不要套 fp.toFloat
+
+```typescript
+// ❌ 错误：fpAtan2 内部已调用 fp.toFloat，外层再套会把正确弧度值当作 Q16.16 编码
+const angle = fp.toFloat(fpAtan2(fp.fromFloat(vy), fp.fromFloat(vx)));
+
+// ✅ 正确：fpAtan2 直接返回 float
+const angle = fpAtan2(fp.fromFloat(vy), fp.fromFloat(vx));
+```
+
+**原因**：`fpAtan2` 的每个 return 路径都调用了 `fp.toFloat`（将 Q16.16 转回普通 number）。外层再加 `fp.toFloat` 会把已经正确的 float 值（如 `0.785`）当作 Q16.16 整数解码，除以 65536 后趋近于零，导致渲染和物理体方向丢失。
+
+**检查**：如果你看到子弹/物体渲染方向变成水平，但移动速度方向正确，很可能是 `fpAtan2` 的结果被重复 `fp.toFloat`。
+
+### 5. 取整方向
 
 ```typescript
 // 业务上需要取整到 tick 数时可用 Math.round，但入参必须是 fp 计算后的值

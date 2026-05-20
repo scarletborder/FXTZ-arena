@@ -76,7 +76,7 @@ export function stepBulletProjectile(
       projectile.homingUntil = frame - 1;
       projectile.x = fp.toFloat(fp.add(fp.fromFloat(projectile.x), fp.fromFloat(projectile.vx)));
       projectile.y = fp.toFloat(fp.add(fp.fromFloat(projectile.y), fp.fromFloat(projectile.vy)));
-      projectile.angle = fp.toFloat(fpAtan2(fp.fromFloat(projectile.vy), fp.fromFloat(projectile.vx)));
+      projectile.angle = fpAtan2(fp.fromFloat(projectile.vy), fp.fromFloat(projectile.vx));
       return;
     }
 
@@ -103,7 +103,7 @@ export function stepBulletProjectile(
   // Position step (non-homing: simple fp add)
   projectile.x = fp.toFloat(fp.add(fp.fromFloat(projectile.x), fp.fromFloat(projectile.vx)));
   projectile.y = fp.toFloat(fp.add(fp.fromFloat(projectile.y), fp.fromFloat(projectile.vy)));
-  projectile.angle = fp.toFloat(fpAtan2(fp.fromFloat(projectile.vy), fp.fromFloat(projectile.vx)));
+  projectile.angle = fpAtan2(fp.fromFloat(projectile.vy), fp.fromFloat(projectile.vx));
 }
 
 function canHomeTo(target: FighterState): boolean {
