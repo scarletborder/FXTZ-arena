@@ -1,8 +1,14 @@
 {
   "extends": "@repo/typescript-config/base.json",
   "compilerOptions": {
+    "baseUrl": ".",
     "lib": ["ES2020"],
     "outDir": "./dist",
+    "paths": {
+      "@repo/constants": ["../../packages/constants/src/index.ts"],
+      "@repo/content": ["../../packages/content/src/index.ts"],
+      "@repo/types": ["../../packages/types/src/index.ts"]
+    },
     "types": ["node", "vitest"]
   },
   "include": ["src"],

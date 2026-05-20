@@ -439,7 +439,8 @@ export class Dodger {
     let fpY = fp.fromFloat(projectile.y);
     let fpVx = fp.fromFloat(projectile.vx);
     let fpVy = fp.fromFloat(projectile.vy);
-    let fpWidth = fp.fromFloat(projectile.width);
+    const fpWidthFinite = Number.isFinite(projectile.width);
+    let fpWidth = fpWidthFinite ? fp.fromFloat(projectile.width) : fp.fromInt(0);
     let fpAngle = fp.fromFloat(projectile.angle);
 
     for (let i = 0; i < tick; i += 1) {
@@ -450,8 +451,11 @@ export class Dodger {
 
       if (projectile.kind === "laser" || projectile.kind === "spark") {
         if (projectile.widthGrowthPerTick > 0) {
+          const fpMaxW = projectile.maxWidth !== undefined && Number.isFinite(projectile.maxWidth)
+            ? fp.fromFloat(projectile.maxWidth)
+            : fp.fromInt(9999);
           fpWidth = fpMin(
-            fp.fromFloat(projectile.maxWidth ?? Number.POSITIVE_INFINITY),
+            fpMaxW,
             fp.add(fpWidth, fp.fromFloat(projectile.widthGrowthPerTick)),
           );
         }
@@ -487,7 +491,7 @@ export class Dodger {
       y: fp.toFloat(fpY),
       vx: fp.toFloat(fpVx),
       vy: fp.toFloat(fpVy),
-      width: fp.toFloat(fpWidth),
+      width: fpWidthFinite ? fp.toFloat(fpWidth) : projectile.width,
       height: projectile.height,
       angle: fp.toFloat(fpAngle),
       damage: projectile.damage,

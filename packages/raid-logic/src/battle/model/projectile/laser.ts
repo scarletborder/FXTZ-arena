@@ -77,17 +77,14 @@ export function createLaserProjectile(params: {
 }
 
 export function stepLaserProjectile(projectile: ProjectileState): void {
-  if (projectile.widthGrowthPerTick > 0) {
+  if (projectile.widthGrowthPerTick > 0 && Number.isFinite(projectile.width)) {
     // Use fp for width growth
     const fpWidth = fp.fromFloat(projectile.width);
     const fpGrowth = fp.fromFloat(projectile.widthGrowthPerTick);
-    const fpMaxW = projectile.maxWidth !== undefined
+    const fpMaxW = projectile.maxWidth !== undefined && Number.isFinite(projectile.maxWidth)
       ? fp.fromFloat(projectile.maxWidth)
-      : undefined;
-    const newWidth = fpMin(
-      fpMaxW ?? fp.fromFloat(Number.POSITIVE_INFINITY),
-      fp.add(fpWidth, fpGrowth),
-    );
+      : fp.fromInt(9999);
+    const newWidth = fpMin(fpMaxW, fp.add(fpWidth, fpGrowth));
     projectile.width = fp.toFloat(newWidth);
   }
 
