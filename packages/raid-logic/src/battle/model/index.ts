@@ -399,9 +399,6 @@ export class BattleModel {
         });
       },
       clearProjectilesAround: (params) => clearProjectilesAround(this.projectiles, params.x, params.y, params.radius),
-      spawnEffectRing: (params) => {
-        this.effectSystem.spawnRing(this.effects, this.frame, params.x, params.y, params.tint, params.scale, params.duration);
-      },
       spawnClearRing: (params) => {
         this.effectSystem.spawnRing(this.effects, this.frame, params.x, params.y, params.tint, fp.toFloat(fp.div(fp.fromFloat(params.radius), fp.fromInt(100))), params.duration);
       },
@@ -484,7 +481,7 @@ function hitsBeam(beam: ProjectileState, x: number, y: number): boolean {
     return fp.gte(fpForward, fp.fromInt(0)) && fp.lte(fpSide, fp.div(fp.fromFloat(beam.height), fp.fromInt(2)));
   }
   return fp.lte(fp.abs(fpForward), fp.div(fp.fromFloat(beam.width), fp.fromInt(2))) &&
-         fp.lte(fpSide, fp.div(fp.fromFloat(beam.height), fp.fromInt(2)));
+    fp.lte(fpSide, fp.div(fp.fromFloat(beam.height), fp.fromInt(2)));
 }
 
 function loadoutCards(loadout: FighterLoadout) {
