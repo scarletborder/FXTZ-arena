@@ -3,7 +3,9 @@ import type { AbilityCardDefinition } from "@repo/content";
 
 import type { FighterState, ShieldState } from "../../types";
 import { BattleAbilityCard, type BattleCardContext } from "./base";
+import { Vanilla } from "../../registry";
 
+@Vanilla.RegisterCard("multi_shot")
 export class MultiShotBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "multi_shot";
   readonly name = "多射";

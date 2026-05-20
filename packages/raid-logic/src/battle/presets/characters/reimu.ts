@@ -3,9 +3,11 @@ import type { CharacterDefinition, CharacterGalleryAssets } from "@repo/content"
 import type { FighterState } from "../../types";
 import type { BattleHitContext } from "../ability-cards";
 import { BattleCharacter, hitCircleUnits, secondsToTicks, type CharacterActionContext } from "./base";
+import { Vanilla } from "../../registry";
 
 const CLEAR_RING_TICKS = secondsToTicks(2 / 3);
 
+@Vanilla.RegisterCharacter("reimu")
 export class ReimuBattleCharacter extends BattleCharacter {
   readonly id = "reimu" as CharacterDefinition["id"];
   readonly name = "博丽灵梦";

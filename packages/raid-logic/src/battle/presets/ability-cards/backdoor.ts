@@ -2,7 +2,9 @@ import type { AbilityCardDefinition } from "@repo/content";
 
 import type { FighterState, ShieldState } from "../../types";
 import { BattleAbilityCard } from "./base";
+import { Vanilla } from "../../registry";
 
+@Vanilla.RegisterCard("backdoor")
 export class BackdoorBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "backdoor";
   readonly name = "后门";

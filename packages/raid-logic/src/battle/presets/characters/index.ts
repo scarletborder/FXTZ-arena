@@ -1,19 +1,13 @@
-import { ReimuBattleCharacter } from "./reimu";
-import { MarisaBattleCharacter } from "./marisa";
-import { SakuyaBattleCharacter } from "./sakuya";
+import { characterLibrary } from "../../registry";
 import type { BattleCharacter } from "./base";
 
-export type { BattleBulletSpawnParams, BattleCharacter, BattleLaserSpawnParams, CharacterActionContext } from "./base";
+// Side-effect imports trigger @Vanilla.RegisterCharacter decorators
+import "./reimu";
+import "./marisa";
+import "./sakuya";
 
 export function createBattleCharacter(characterId: BattleCharacter["id"]): BattleCharacter {
-  if (characterId === "reimu") {
-    return new ReimuBattleCharacter();
-  }
-  if (characterId === "marisa") {
-    return new MarisaBattleCharacter();
-  }
-  if (characterId === "sakuya") {
-    return new SakuyaBattleCharacter();
-  }
-  throw new Error(`Unknown battle character: ${characterId}`);
+  return characterLibrary.create(characterId);
 }
+
+export type { BattleBulletSpawnParams, BattleCharacter, BattleLaserSpawnParams, CharacterActionContext } from "./base";

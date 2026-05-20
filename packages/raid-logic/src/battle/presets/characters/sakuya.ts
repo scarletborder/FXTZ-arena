@@ -3,7 +3,9 @@ import type { CharacterDefinition, CharacterGalleryAssets } from "@repo/content"
 import type { FighterState } from "../../types";
 import type { BattleHitContext } from "../ability-cards";
 import { BattleCharacter, hitCircleUnits, secondsToTicks, type CharacterActionContext } from "./base";
+import { Vanilla } from "../../registry";
 
+@Vanilla.RegisterCharacter("sakuya")
 export class SakuyaBattleCharacter extends BattleCharacter {
   readonly id = "sakuya" as CharacterDefinition["id"];
   readonly name = "咲夜";

@@ -3,7 +3,9 @@ import type { AbilityCardDefinition } from "@repo/content";
 
 import type { FighterState, ShieldState } from "../../types";
 import { BattleAbilityCard, type BattleCardContext } from "./base";
+import { Vanilla } from "../../registry";
 
+@Vanilla.RegisterCard("spirit_strike_card")
 export class SpiritStrikeBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "spirit_strike_card";
   readonly name = "灵击符";

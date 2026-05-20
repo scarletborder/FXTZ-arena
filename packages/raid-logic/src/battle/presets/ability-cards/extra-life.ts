@@ -2,7 +2,9 @@ import type { AbilityCardDefinition } from "@repo/content";
 
 import type { FighterState, ShieldState } from "../../types";
 import { BattleAbilityCard, type BattleCardContext, type BattleHitContext, type BattleInitializeContext } from "./base";
+import { Vanilla } from "../../registry";
 
+@Vanilla.RegisterCard("extra_life")
 export class ExtraLifeBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "extra_life";
   readonly name = "余命";

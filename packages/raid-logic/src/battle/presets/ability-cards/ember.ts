@@ -3,7 +3,9 @@ import { DEFAULT_BOMBS } from "@repo/types";
 
 import type { FighterState, ShieldState } from "../../types";
 import { BattleAbilityCard, type BattleCardContext, type BattleHitContext, type BattleInitializeContext } from "./base";
+import { Vanilla } from "../../registry";
 
+@Vanilla.RegisterCard("ember")
 export class EmberBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "ember";
   readonly name = "余烬";
