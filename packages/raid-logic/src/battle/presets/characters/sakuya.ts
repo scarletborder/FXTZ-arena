@@ -120,10 +120,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
       height: size.height,
       homingTicks: 0,
       spawnOffset: 0,
+      pausedUntil,
     });
-    const projectile = ctx.projectiles[ctx.projectiles.length - 1];
-    if (projectile) {
-      projectile.pausedUntil = Math.max(projectile.pausedUntil, pausedUntil);
-    }
   }
 }

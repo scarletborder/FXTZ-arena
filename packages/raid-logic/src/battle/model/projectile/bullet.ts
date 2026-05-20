@@ -20,6 +20,7 @@ export function createBulletProjectile(params: {
   readonly frame: number;
   readonly homingTicks: number;
   readonly spawnOffset?: number;
+  readonly pausedUntil?: number;
 }): ProjectileState {
   const speed = bulletSpeedRankToPixelsPerTick(params.speedRank);
   const spawnOffset = params.spawnOffset ?? 28;
@@ -56,7 +57,7 @@ export function createBulletProjectile(params: {
     expireAt: undefined,
     homingStartAt: params.frame + HOMING_START_DELAY_TICKS,
     homingUntil: params.frame + HOMING_START_DELAY_TICKS + params.homingTicks,
-    pausedUntil: params.frame,
+    pausedUntil: params.pausedUntil ?? params.frame,
     widthGrowthPerTick: 0,
     maxWidth: undefined,
     damage: 1,
