@@ -11,6 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@repo/constants": "workspace:*",
     "@repo/content": "workspace:*",
     "@repo/raid-logic": "workspace:*",
     "@repo/types": "workspace:*",

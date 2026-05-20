@@ -1,0 +1,9 @@
+node_modules
+.turbo
+.git
+dist
+**/dist
+*.log
+.env
+.cache
+release

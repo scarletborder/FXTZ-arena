@@ -100,7 +100,7 @@ export class BattleStartScene extends Phaser.Scene {
     this.indicator.fillCircle(96, 142, 5);
     this.statusLabel.setText(
       status === "connected"
-        ? `已连接 ${connectionManager.serverVersion ? `(v${connectionManager.serverVersion})` : ""}`
+        ? `已连接 ${connectionManager.serverVersion ? `(${connectionManager.serverVersion})` : ""}`
         : status === "connecting"
           ? "正在连接…"
           : status === "error"

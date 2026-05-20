@@ -1,3 +1,5 @@
+import { APP_BUILD_LABEL } from "@repo/constants";
+
 export interface ServerConfig {
   readonly port: number;
   readonly host: string;
@@ -11,5 +13,5 @@ export const DEFAULT_SERVER_CONFIG: ServerConfig = {
   host: process.env.HOST ?? "0.0.0.0",
   maxPlayersPerRoom: 2,
   maxRooms: 100,
-  serverVersion: "0.1.0",
+  serverVersion: APP_BUILD_LABEL,
 };

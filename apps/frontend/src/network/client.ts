@@ -1,4 +1,5 @@
 import type { BattleConfig, ClientMessage, PlayerId, ServerMessage } from "@repo/types";
+import { APP_BUILD_LABEL } from "@repo/constants";
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
 
@@ -112,7 +113,7 @@ export class ConnectionManager {
       this.send({
         type: "hello",
         username,
-        clientVersion: "0.1.0",
+        clientVersion: APP_BUILD_LABEL,
         debug: false,
         reconnect,
       });

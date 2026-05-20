@@ -112,7 +112,7 @@ describe("MessageHandler", () => {
       const hello = performHello(handler, conn);
       expect(hello).toEqual({
         type: "server_hello",
-        serverVersion: "0.1.0",
+        serverVersion: DEFAULT_SERVER_CONFIG.serverVersion,
       });
     });
   });

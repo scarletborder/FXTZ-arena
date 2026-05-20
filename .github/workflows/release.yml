@@ -1,0 +1,118 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Resolve build metadata
+        id: meta
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+          APP_VERSION="${TAG_NAME}"
+          APP_COMMIT="$(git rev-list --count HEAD)"
+          BUILD_LABEL="${APP_VERSION}+${APP_COMMIT}"
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          APP_BASE="/${REPO_NAME}/"
+
+          echo "version=${APP_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "commit=${APP_COMMIT}" >> "$GITHUB_OUTPUT"
+          echo "build_label=${BUILD_LABEL}" >> "$GITHUB_OUTPUT"
+          echo "base=${APP_BASE}" >> "$GITHUB_OUTPUT"
+          echo "Building ${REPO_NAME} ${BUILD_LABEL} at base ${APP_BASE}"
+
+      - name: Build frontend and dedicated server
+        env:
+          APP_VERSION: ${{ steps.meta.outputs.version }}
+          APP_COMMIT: ${{ steps.meta.outputs.commit }}
+          VITE_APP_VERSION: ${{ steps.meta.outputs.version }}
+          VITE_APP_COMMIT: ${{ steps.meta.outputs.commit }}
+          VITE_APP_BASE: ${{ steps.meta.outputs.base }}
+          VITE_DOCS_URL: "https://mvz443-team.github.io/docs/"
+        run: pnpm turbo run build --filter=frontend... --filter=dedicated-server...
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/frontend/dist
+
+      - name: Prepare release artifacts
+        env:
+          BUILD_LABEL: ${{ steps.meta.outputs.build_label }}
+        run: |
+          mkdir -p release/dedicated-server/dist
+          (cd apps/frontend/dist && zip -r "../../../release/fxtz-arena-frontend-${BUILD_LABEL}.zip" .)
+          cp apps/dedicated-server/dist/index.js release/dedicated-server/dist/index.js
+          cp apps/dedicated-server/dist/index.js.map release/dedicated-server/dist/index.js.map
+          cp apps/dedicated-server/package.json release/dedicated-server/package.json
+          tar -czf "release/fxtz-arena-dedicated-server-${BUILD_LABEL}.tar.gz" -C release/dedicated-server .
+
+      - name: Build Docker image
+        env:
+          APP_VERSION: ${{ steps.meta.outputs.version }}
+          APP_COMMIT: ${{ steps.meta.outputs.commit }}
+        run: |
+          docker build \
+            --build-arg APP_VERSION="${APP_VERSION}" \
+            --build-arg APP_COMMIT="${APP_COMMIT}" \
+            -t "fxtz-arena-dedicated-server:${APP_VERSION}" \
+            .
+          docker save "fxtz-arena-dedicated-server:${APP_VERSION}" | gzip > "release/fxtz-arena-dedicated-server-image-${APP_VERSION}+${APP_COMMIT}.tar.gz"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: FXTZ Arena ${{ steps.meta.outputs.build_label }}
+          body: |
+            Release usage: [Release.md](${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/Release.md)
+
+            GitHub Pages will be deployed by this workflow after the release artifacts are built.
+          files: |
+            Release.md
+            release/fxtz-arena-frontend-${{ steps.meta.outputs.build_label }}.zip
+            release/fxtz-arena-dedicated-server-${{ steps.meta.outputs.build_label }}.tar.gz
+            release/fxtz-arena-dedicated-server-image-${{ steps.meta.outputs.build_label }}.tar.gz
+
+  deploy-pages:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

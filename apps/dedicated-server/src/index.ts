@@ -7,6 +7,8 @@ import { WsTransportServer } from "./transport/ws-server";
 
 const config = DEFAULT_SERVER_CONFIG;
 
+console.log(`You are running FXTZ_area dedicated server.  Version:${config.serverVersion}`);
+
 const roomManager = new RoomManager();
 const roomLifecycle = new RoomLifecycle();
 const sessionStore = new SessionStore();

@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-import { createFightButton, drawFightingBackdrop, drawTitleBlock } from "./ui";
+import { createFightButton, drawBuildLabel, drawFightingBackdrop, drawTitleBlock } from "./ui";
 import type { SelectionData, SelectionMode, SceneKey } from "./shared";
 
 export class HomeScene extends Phaser.Scene {
@@ -24,5 +24,7 @@ export class HomeScene extends Phaser.Scene {
         this.scene.start(button.scene, "data" in button ? (button.data as SelectionData) : undefined);
       });
     });
+
+    drawBuildLabel(this);
   }
 }

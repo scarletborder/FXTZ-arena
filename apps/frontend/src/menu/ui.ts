@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
+import { APP_BUILD_LABEL } from "@repo/constants";
 
 import type { CardTileControl, CharacterTileControl, FightButton, TextFieldControl } from "./shared";
 
@@ -248,6 +249,13 @@ export function drawTitleBlock(scene: Phaser.Scene, title: string, subtitle: str
     color: "#f6f1e6",
   }).setOrigin(0.5);
   scene.add.text(640, 182, subtitle, bodyStyle("#ffcf6e", 22)).setOrigin(0.5);
+}
+
+export function drawBuildLabel(scene: Phaser.Scene, x = GAME_WIDTH - 26, y = GAME_HEIGHT - 22): Phaser.GameObjects.Text {
+  return scene.add.text(x, y, APP_BUILD_LABEL, {
+    ...bodyStyle("#9fb4c8", 15),
+    align: "right",
+  }).setOrigin(1, 1).setAlpha(0.82);
 }
 
 export function drawPanel(scene: Phaser.Scene, x: number, y: number, width: number, height: number, title: string): void {

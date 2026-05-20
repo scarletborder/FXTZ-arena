@@ -4,6 +4,7 @@ import {
   createBackButton,
   createFightButton,
   createTextField,
+  drawBuildLabel,
   drawFightingBackdrop,
   drawPanel,
   bodyStyle,
@@ -87,6 +88,8 @@ export class SettingsScene extends Phaser.Scene {
     this.add.text(880, 258, "Design / Code: fxtz-arena team\nUI Scene M5: Phaser only", bodyStyle("#d7e3ef", 17)).setLineSpacing(10);
     this.add.text(880, 386, "项目网址", bodyStyle("#f6f1e6", 19));
     this.add.text(880, 430, "https://github.com/", bodyStyle("#9fd8ff", 17));
+    this.add.text(880, 500, "版本", bodyStyle("#f6f1e6", 19));
+    drawBuildLabel(this, 1174, 548);
 
     // ─── Keyboard ──────────────────────────────────
 
@@ -108,7 +111,7 @@ export class SettingsScene extends Phaser.Scene {
     const statusMap: Record<ConnectionStatus, { text: string; color: string }> = {
       disconnected: { text: "连接状态：未连接", color: "#b7c7d8" },
       connecting: { text: "连接状态：正在连接…", color: "#f7b733" },
-      connected: { text: `连接状态：已连接 ${connectionManager.serverVersion ? `(v${connectionManager.serverVersion})` : ""}`, color: "#34d399" },
+      connected: { text: `连接状态：已连接 ${connectionManager.serverVersion ? `(${connectionManager.serverVersion})` : ""}`, color: "#34d399" },
       error: { text: "连接状态：连接失败", color: "#ff5c66" },
     };
     const info = statusMap[status] ?? statusMap.disconnected;

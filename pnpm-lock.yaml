@@ -23,6 +23,9 @@ importers:
 
   apps/dedicated-server:
     dependencies:
+      '@repo/constants':
+        specifier: workspace:*
+        version: link:../../packages/constants
       '@repo/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -42,6 +45,9 @@ importers:
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
+      esbuild:
+        specifier: ^0.28.0
+        version: 0.28.0
       eslint:
         specifier: ^9.39.0
         version: 9.39.0
@@ -57,6 +63,9 @@ importers:
 
   apps/frontend:
     dependencies:
+      '@repo/constants':
+        specifier: workspace:*
+        version: link:../../packages/constants
       '@repo/content':
         specifier: workspace:*
         version: link:../../packages/content
