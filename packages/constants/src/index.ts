@@ -6,6 +6,8 @@ export const ARENA_WIDTH = 1200;
 export const ARENA_HEIGHT = 675;
 export const HIT_CIRCLE_DIAMETER = 3;
 
+export * from "./battle";
+
 type BuildEnv = Partial<Record<
   | "APP_VERSION"
   | "APP_COMMIT"

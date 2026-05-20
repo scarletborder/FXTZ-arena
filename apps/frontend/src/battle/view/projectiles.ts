@@ -1,7 +1,10 @@
 import Phaser from "phaser";
 
 import type { ProjectileState } from "@repo/raid-logic";
+import { OWN_PROJECTILE_ALPHA } from "@repo/constants";
 import { createMasterSparkPreviewSfx, renderMasterSparkPreviewSfx } from "../sfx";
+
+type FighterKey = ProjectileState["owner"];
 
 export class ProjectileView {
   private readonly sprites = new Map<number, Phaser.GameObjects.Image>();
@@ -9,7 +12,7 @@ export class ProjectileView {
 
   constructor(private readonly scene: Phaser.Scene) {}
 
-  render(projectiles: readonly ProjectileState[], frame: number, alpha = 1): void {
+  render(projectiles: readonly ProjectileState[], frame: number, localFighterKey: FighterKey = "player", alpha = 1): void {
     const active = new Set<number>();
     for (const projectile of projectiles) {
       if (frame < projectile.visibleFrom) {
@@ -38,7 +41,7 @@ export class ProjectileView {
           length: display.width,
           width: display.height,
         });
-        preview.setAlpha(0.85);
+        preview.setAlpha(projectileAlpha(projectile, localFighterKey));
         preview.setVisible(true);
         continue;
       }
@@ -52,7 +55,7 @@ export class ProjectileView {
       sprite.setRotation(projectile.angle);
       sprite.setTint(projectileTint(projectile));
       sprite.setDisplaySize(display.width, display.height);
-      sprite.setAlpha(projectile.damage === 0 ? 0.85 : projectile.owner === "player" ? 0.72 : 1);
+      sprite.setAlpha(projectileAlpha(projectile, localFighterKey));
       sprite.setVisible(true);
     }
 
@@ -72,6 +75,14 @@ export class ProjectileView {
 }
 
 const PROJECTILE_VISUAL_SIZE_BONUS = 4;
+const PROJECTILE_PREVIEW_ALPHA = 0.85;
+
+function projectileAlpha(projectile: ProjectileState, localFighterKey: FighterKey): number {
+  if (projectile.owner === localFighterKey) {
+    return OWN_PROJECTILE_ALPHA;
+  }
+  return projectile.damage === 0 ? PROJECTILE_PREVIEW_ALPHA : 1;
+}
 
 function projectileDisplay(projectile: ProjectileState, alpha: number): {
   readonly x: number;
