@@ -126,9 +126,8 @@ export class SelectScene extends Phaser.Scene {
         const me = config.players.find((p) => p.playerId === this.playerId);
         const opponent = config.players.find((p) => p.playerId !== this.playerId);
 
-        // Map loadouts based on which player is local
-        const playerCfg = config.players.find((p) => p.playerId === this.playerId) ?? config.players[0];
-        const targetCfg = config.players.find((p) => p.playerId !== this.playerId) ?? config.players[1];
+        const playerCfg = config.players[0];
+        const targetCfg = config.players[1];
 
         this.scene.start("loading", {
           mode: "online",

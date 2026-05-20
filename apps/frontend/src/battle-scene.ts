@@ -9,7 +9,7 @@ import {
 } from "@repo/raid-logic";
 
 import { FIXED_STEP_MS } from "./battle/constants";
-import { createBattleInput, type BattleKeyMap } from "./battle/input";
+import { createBattleInput, getBattlePointerWorld, type BattleKeyMap } from "./battle/input";
 import type { BattleSceneData } from "./battle/loadout";
 import { BattleView } from "./battle/view";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
@@ -112,12 +112,13 @@ export class BattleScene extends Phaser.Scene {
       }
       this.accumulator -= FIXED_STEP_MS;
     }
+    const pointerWorld = getBattlePointerWorld(this);
     this.lastInput = {
       ...this.lastInput,
-      aimX: this.input.activePointer.x,
-      aimY: this.input.activePointer.y,
-      pointerX: this.input.activePointer.x,
-      pointerY: this.input.activePointer.y,
+      aimX: pointerWorld.x,
+      aimY: pointerWorld.y,
+      pointerX: pointerWorld.x,
+      pointerY: pointerWorld.y,
     };
     this.view.render(this.currentOutput.state, this.lastInput, this.combatSync?.localFighterKey() ?? "player", this.accumulator / FIXED_STEP_MS);
     if (this.debugPhysicsEnabled) {

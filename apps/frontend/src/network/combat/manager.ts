@@ -39,7 +39,7 @@ export class CombatSyncManager {
   }
 
   localFighterKey(): CanonicalFighterKey {
-    return "player";
+    return this.localPlayerId === "player-1" ? "player" : "target";
   }
 
   step(localInput: BattleInputState): void {
@@ -62,8 +62,8 @@ export class CombatSyncManager {
 
     this.runtime.step({
       mode: "online",
-      player: this.getInputForFrame(this.localPlayerId, frame),
-      target: this.getInputForFrame(this.remotePlayerId, frame),
+      player: this.getInputForFrame("player-1", frame),
+      target: this.getInputForFrame("player-2", frame),
       // player-1 (host / lower playerId) has priority over player-2
       hostIsPlayer: true,
     });
@@ -139,10 +139,7 @@ export class CombatSyncManager {
     const predicted = this.predictedInputs.get(inputKey(playerId, frame));
     const existing = this.inputs.get(playerId)?.get(frame);
     this.storeInput(playerId, frame, input);
-    if (frame >= this.lastReceivedRemoteFrame) {
-      this.lastReceivedRemoteFrame = frame;
-      this.lastKnownInputs.set(playerId, input);
-    }
+    this.advanceRemoteContiguousFrame();
 
     if (frame <= this.runtime.frame && !existing && predicted && !sameInput(predicted, input)) {
       this.rollbackTo(frame);
@@ -167,8 +164,8 @@ export class CombatSyncManager {
     for (let frame = restoreFrame + 1; frame <= currentFrame; frame += 1) {
       this.runtime.step({
         mode: "online",
-        player: this.getInputForFrame(this.localPlayerId, frame),
-        target: this.getInputForFrame(this.remotePlayerId, frame),
+        player: this.getInputForFrame("player-1", frame),
+        target: this.getInputForFrame("player-2", frame),
         hostIsPlayer: true,
       });
       this.options.callbacks.recordFrame();
@@ -202,7 +199,7 @@ export class CombatSyncManager {
   }
 
   private winnerPlayerId(): PlayerId {
-    return this.runtime.state.target.lives <= 0 ? this.localPlayerId : this.remotePlayerId;
+    return this.runtime.state.target.lives <= 0 ? "player-1" : "player-2";
   }
 
   private storeInput(playerId: PlayerId, frame: number, input: BattleInputState): void {
@@ -234,6 +231,21 @@ export class CombatSyncManager {
       if (frame < confirmedFrame) {
         this.predictedInputs.delete(key);
       }
+    }
+  }
+
+  private advanceRemoteContiguousFrame(): void {
+    const remoteInputs = this.inputs.get(this.remotePlayerId);
+    if (!remoteInputs) return;
+
+    while (true) {
+      const nextFrame = this.lastReceivedRemoteFrame + 1;
+      const nextInput = remoteInputs.get(nextFrame);
+      if (!nextInput) {
+        break;
+      }
+      this.lastReceivedRemoteFrame = nextFrame;
+      this.lastKnownInputs.set(this.remotePlayerId, nextInput);
     }
   }
 }
