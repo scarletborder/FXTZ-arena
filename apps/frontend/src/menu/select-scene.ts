@@ -83,10 +83,10 @@ export class SelectScene extends Phaser.Scene {
 
     // Online mode: custom back button sends leave_room
     if (this.mode === "online") {
-      createFightButton(this, 1138, 62, 160, 44, "返回", () => {
-        connectionManager.send({ type: "leave_room" });
-        this.scene.start("battle-start");
-      }, { accent: 0x5c7185 });
+      // createFightButton(this, 1138, 62, 160, 44, "返回", () => {
+      //   connectionManager.send({ type: "leave_room" });
+      //   this.scene.start("battle-start");
+      // }, { accent: 0x5c7185 });
     } else {
       createBackButton(this);
     }
