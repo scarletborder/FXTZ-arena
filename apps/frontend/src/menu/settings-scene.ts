@@ -85,9 +85,9 @@ export class SettingsScene extends Phaser.Scene {
     // ─── About ─────────────────────────────────────
 
     this.add.text(880, 214, "staff", bodyStyle("#f6f1e6", 19));
-    this.add.text(880, 258, "Design / Code: fxtz-arena team\nUI Scene M5: Phaser only", bodyStyle("#d7e3ef", 17)).setLineSpacing(10);
+    this.add.text(880, 258, "Design / Code: scarletborder\nUI Scene: Phaser4\nPhysics: Rapier-2d", bodyStyle("#d7e3ef", 17)).setLineSpacing(10);
     this.add.text(880, 386, "项目网址", bodyStyle("#f6f1e6", 19));
-    this.add.text(880, 430, "https://github.com/", bodyStyle("#9fd8ff", 17));
+    this.add.text(880, 430, "github.com/scarletborder/FXTZ-arena", bodyStyle("#9fd8ff", 17));
     this.add.text(880, 500, "版本", bodyStyle("#f6f1e6", 19));
     drawBuildLabel(this, 1174, 548);
 
