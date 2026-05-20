@@ -16,6 +16,7 @@ interface FightButtonOptions {
 interface TextFieldOptions {
   readonly value: string;
   readonly onChange: (value: string) => void;
+  readonly maxLength?: number;
 }
 
 interface EntryTileOptions {
@@ -140,12 +141,17 @@ export function createTextField(
     .setInteractive({ useHandCursor: true });
   let active = false;
   let value = options.value;
+  let cursorIndex = value.length;
+  const maxLength = options.maxLength ?? 42;
 
   const redraw = () => {
     background.clear();
     drawAngledPanel(background, 0, 0, width, 46, active ? 0x151b26 : 0x0f141d, active ? 0xffcf6e : 0x5c7185, 1);
     label.setColor(active ? "#ffcf6e" : "#f6f1e6");
-    label.setText(`${value}${active ? "_" : ""}`);
+    const displayValue = active
+      ? `${value.slice(0, cursorIndex)}_${value.slice(cursorIndex)}`
+      : value;
+    label.setText(displayValue);
   };
 
   hitArea.on("pointerdown", () => {
@@ -176,11 +182,32 @@ export function createTextField(
       if (!active) {
         return;
       }
-      if (event.key === "Backspace") {
-        value = value.slice(0, -1);
-      } else if (event.key.length === 1 && value.length < 42) {
-        value += event.key;
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        return;
       }
+      if (event.key === "Backspace") {
+        if (cursorIndex > 0) {
+          value = `${value.slice(0, cursorIndex - 1)}${value.slice(cursorIndex)}`;
+          cursorIndex -= 1;
+        }
+      } else if (event.key === "ArrowLeft") {
+        cursorIndex = Math.max(0, cursorIndex - 1);
+      } else if (event.key === "ArrowRight") {
+        cursorIndex = Math.min(value.length, cursorIndex + 1);
+      } else if (event.key.length === 1 && value.length < maxLength) {
+        value = `${value.slice(0, cursorIndex)}${event.key}${value.slice(cursorIndex)}`;
+        cursorIndex += event.key.length;
+      }
+      options.onChange(value);
+      redraw();
+    },
+    handlePaste(text: string): void {
+      if (!active || text.length === 0) {
+        return;
+      }
+      const nextValue = `${value.slice(0, cursorIndex)}${text}${value.slice(cursorIndex)}`.slice(0, maxLength);
+      cursorIndex = Math.min(cursorIndex + text.length, nextValue.length);
+      value = nextValue;
       options.onChange(value);
       redraw();
     },

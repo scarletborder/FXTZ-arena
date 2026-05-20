@@ -51,6 +51,7 @@ export interface TextFieldControl {
   readonly hitArea: Phaser.GameObjects.Rectangle;
   setActive(active: boolean): void;
   handleKey(event: KeyboardEvent): void;
+  handlePaste(text: string): void;
 }
 
 export interface CardTileControl {
@@ -74,11 +75,14 @@ export interface CharacterTileControl {
 const savedUsername = typeof localStorage !== "undefined"
   ? localStorage.getItem("fxtz_username")
   : null;
+const savedServerAddress = typeof localStorage !== "undefined"
+  ? localStorage.getItem("fxtz_server_address")
+  : null;
 
 export const uiSettings: UiSettings = {
   username: savedUsername ?? "Player",
   debug: false,
-  serverAddress: "ws://localhost:22334",
+  serverAddress: savedServerAddress ?? "ws://localhost:22334",
 };
 
 export function getCharacterById(id: CharacterDefinition["id"]): CharacterDefinition {

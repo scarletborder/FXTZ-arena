@@ -43,9 +43,7 @@ export class ConnectionManager {
   /** Lobby: whether the opponent has readied up. */
   opponentReady: boolean | null = null;
 
-  /** Fires whenever the connection status changes. */
-  onStatusChange: ((status: ConnectionStatus) => void) | null = null;
-
+  private readonly statusListeners = new Set<(status: ConnectionStatus) => void>();
   private _handler: ((msg: ServerMessage) => void) | null = null;
   private _status: ConnectionStatus = "disconnected";
 
@@ -56,7 +54,20 @@ export class ConnectionManager {
   private setStatus(s: ConnectionStatus): void {
     if (this._status !== s) {
       this._status = s;
-      this.onStatusChange?.(s);
+      this.notifyStatusListeners();
+    }
+  }
+
+  addStatusListener(listener: (status: ConnectionStatus) => void): () => void {
+    this.statusListeners.add(listener);
+    return () => {
+      this.statusListeners.delete(listener);
+    };
+  }
+
+  private notifyStatusListeners(): void {
+    for (const listener of this.statusListeners) {
+      listener(this._status);
     }
   }
 
@@ -157,6 +168,7 @@ export class ConnectionManager {
     switch (msg.type) {
       case "server_hello":
         this.serverVersion = msg.serverVersion;
+        this.notifyStatusListeners();
         break;
       case "room_joined":
         this.roomId = msg.roomId;

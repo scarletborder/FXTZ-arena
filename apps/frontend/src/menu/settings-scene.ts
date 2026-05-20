@@ -16,9 +16,21 @@ export class SettingsScene extends Phaser.Scene {
   private activeField: TextFieldControl | undefined;
   private connectionStatusText!: Phaser.GameObjects.Text;
   private connectBtn!: { setEnabled(enabled: boolean): void; setLabel(label: string): void; container: Phaser.GameObjects.Container };
+  private unsubscribeStatus: (() => void) | null = null;
 
   private readonly onKeyDown = (event: KeyboardEvent) => {
     this.activeField?.handleKey(event);
+  };
+  private readonly onPaste = (event: ClipboardEvent) => {
+    if (!this.activeField) {
+      return;
+    }
+    const text = event.clipboardData?.getData("text") ?? "";
+    if (text.length === 0) {
+      return;
+    }
+    this.activeField.handlePaste(text);
+    event.preventDefault();
   };
 
   constructor() {
@@ -65,9 +77,9 @@ export class SettingsScene extends Phaser.Scene {
     });
 
     // Listen for status changes
-    connectionManager.onStatusChange = (s: ConnectionStatus) => {
+    this.unsubscribeStatus = connectionManager.addStatusListener((s: ConnectionStatus) => {
       this.updateConnectionDisplay(s);
-    };
+    });
 
     // ─── About ─────────────────────────────────────
 
@@ -79,10 +91,13 @@ export class SettingsScene extends Phaser.Scene {
     // ─── Keyboard ──────────────────────────────────
 
     this.input.keyboard?.on("keydown", this.onKeyDown);
+    window.addEventListener("paste", this.onPaste);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.keyboard?.off("keydown", this.onKeyDown);
+      window.removeEventListener("paste", this.onPaste);
       this.activeField = undefined;
-      connectionManager.onStatusChange = null;
+      this.unsubscribeStatus?.();
+      this.unsubscribeStatus = null;
     });
 
     // Initial display update
@@ -107,17 +122,20 @@ export class SettingsScene extends Phaser.Scene {
     if (connectionManager.status === "connected") {
       connectionManager.disconnect();
     } else {
-      connectionManager.connect(uiSettings.serverAddress);
+      connectionManager.connect(uiSettings.serverAddress, uiSettings.username);
     }
   }
 
   private createField(x: number, y: number, width: number, key: "username" | "serverAddress"): void {
     const field = createTextField(this, x, y, width, {
       value: uiSettings[key],
+      maxLength: key === "serverAddress" ? 160 : 32,
       onChange: (value) => {
         uiSettings[key] = value;
         if (key === "username") {
           localStorage.setItem("fxtz_username", value);
+        } else if (key === "serverAddress") {
+          localStorage.setItem("fxtz_server_address", value);
         }
       },
     });

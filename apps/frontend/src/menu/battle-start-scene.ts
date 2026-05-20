@@ -19,6 +19,7 @@ export class BattleStartScene extends Phaser.Scene {
   private createRoomBtn!: { setEnabled(enabled: boolean): void; container: Phaser.GameObjects.Container };
   private formContainer: Phaser.GameObjects.Container | null = null;
   private connected = false;
+  private unsubscribeStatus: (() => void) | null = null;
 
   constructor() {
     super("battle-start" satisfies SceneKey);
@@ -70,12 +71,14 @@ export class BattleStartScene extends Phaser.Scene {
     });
 
     // Wire up connection manager
-    connectionManager.onStatusChange = (s: ConnectionStatus) => {
+    const updateConnectionState = (s: ConnectionStatus) => {
       this.drawIndicator(s);
       this.connected = s === "connected";
       this.quickMatchBtn.setEnabled(this.connected);
       this.createRoomBtn.setEnabled(this.connected);
     };
+    this.unsubscribeStatus = connectionManager.addStatusListener(updateConnectionState);
+    updateConnectionState(connectionManager.status);
     connectionManager.setMessageHandler((msg) => this.onServerMessage(msg));
 
     // Initial connection
@@ -83,7 +86,8 @@ export class BattleStartScene extends Phaser.Scene {
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       connectionManager.setMessageHandler(null);
-      connectionManager.onStatusChange = null;
+      this.unsubscribeStatus?.();
+      this.unsubscribeStatus = null;
     });
   }
 
