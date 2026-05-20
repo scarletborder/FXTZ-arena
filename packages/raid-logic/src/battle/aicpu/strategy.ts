@@ -4,7 +4,7 @@ import { bulletSpeedRankToPixelsPerTick, secondsToTicks } from "@repo/types";
 
 import type { FighterState } from "../types";
 import type { IntelligenceResult } from "./intelligence";
-import { fpHypot, fpMax } from "../fp";
+import { fpHypotFp, fpMax } from "../fp";
 
 const BOMB_THREAT_THRESHOLD = 3;
 const SWITCH_COOLDOWN_TICKS = secondsToTicks(1.5);
@@ -100,7 +100,7 @@ export class StrategyManager {
 
     const fpDx = fp.fromFloat(opponent.x - self.x);
     const fpDy = fp.fromFloat(opponent.y - self.y);
-    const fpDist = fpHypot(fpDx, fpDy);
+    const fpDist = fpHypotFp(fpDx, fpDy);
 
     const bulletSpeedFp = fp.fromFloat(bulletSpeed);
     const fpTravelTime = fpMax(fp.fromInt(1), fp.div(fpDist, fpMax(bulletSpeedFp, fp.fromFloat(0.1))));
