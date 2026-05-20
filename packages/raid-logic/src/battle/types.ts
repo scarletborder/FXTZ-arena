@@ -3,6 +3,15 @@ import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
 export type FighterKey = "player" | "target";
 export type ProjectileKind = "orb" | "knife" | "laser" | "spark";
 
+export interface ShieldState {
+  readonly owner: FighterKey;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly angle: number;
+}
+
 export interface BattleInputState {
   readonly moveX: -1 | 0 | 1;
   readonly moveY: -1 | 0 | 1;
@@ -51,6 +60,7 @@ export interface FighterState {
   activeCharacter: CharacterDefinition;
   alternateCharacter: CharacterDefinition;
   activeCard: AbilityCardDefinition | undefined;
+  abilityCards: readonly AbilityCardDefinition[];
   activeCardUses: number;
   activeCardCooldownUntil: number;
   fireCooldownUntil: number;
@@ -94,13 +104,16 @@ export interface ProjectileState {
 
 export interface EffectState {
   readonly id: number;
-  readonly kind: "ring" | "burst" | "damage";
+  readonly kind: "ring" | "burst" | "damage" | "shield";
   x: number;
   y: number;
   readonly tint: number;
   readonly scale: number;
   readonly expireAt: number;
   readonly text?: string;
+  readonly width?: number;
+  readonly height?: number;
+  readonly angle?: number;
 }
 
 export interface TrainingStats {
@@ -118,5 +131,6 @@ export interface BattleOutputState {
   readonly target: FighterState;
   readonly projectiles: readonly ProjectileState[];
   readonly effects: readonly EffectState[];
+  readonly shields: readonly ShieldState[];
   readonly stats: TrainingStats;
 }

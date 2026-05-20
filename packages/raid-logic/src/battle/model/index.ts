@@ -3,7 +3,7 @@ import type { ProjectileCollisionContext } from "@repo/types";
 import { getAbilityCard, getCharacter } from "../content";
 import { PLAYER_SPAWN, RESPAWN_DELAY_TICKS, TARGET_SPAWN } from "../constants";
 import type { BattleLoadouts, FighterLoadout } from "../loadout";
-import type { BattleInputState, BattleOutputState, EffectState, FighterState, ProjectileState, TrainingStats } from "../types";
+import type { BattleInputState, BattleOutputState, EffectState, FighterState, ProjectileState, ShieldState, TrainingStats } from "../types";
 import { BattleFighter } from "./battle-fighter";
 import { CpuPlayer } from "../aicpu";
 import { EffectSystem } from "./effects";
@@ -176,7 +176,7 @@ export class BattleModel {
       player: this.player,
       target: this.target,
       onHit: (ctx) => this.onProjectileHit(ctx),
-      computeRapierHits: (projectiles) => this.physics!.computeCollisions(projectiles, this.player, this.target),
+      computeRapierHits: (projectiles) => this.physics!.computeCollisions(projectiles, this.player, this.target, this.currentShields()),
     });
     this.flushDeferredSpawns();
     this.effectSystem.stepEffects(this.effects, this.frame);
@@ -198,6 +198,7 @@ export class BattleModel {
       target: this.target,
       projectiles: this.projectiles,
       effects: this.effects,
+      shields: this.currentShields(),
       stats: this.stats,
     };
   }
@@ -269,6 +270,7 @@ export class BattleModel {
     fighter.selectActiveCharacter(input.alternateHeld);
     state.facing = Math.atan2(input.aimY - state.y, input.aimX - state.x);
     fighter.moveBy(input);
+    fighter.postUpdate(this.fighterActionContext(state));
     fighter.handleReload(input.reloadPressed);
 
     const ctx = this.fighterActionContext(state);
@@ -295,6 +297,7 @@ export class BattleModel {
     this.targetFighter.selectActiveCharacter(aiInput.alternateHeld);
     fighter.facing = Math.atan2(aiInput.aimY - fighter.y, aiInput.aimX - fighter.x);
     this.targetFighter.moveBy(aiInput);
+    this.targetFighter.postUpdate(this.fighterActionContext(fighter));
     this.targetFighter.handleReload(aiInput.reloadPressed);
 
     const ctx = this.fighterActionContext(fighter);
@@ -313,6 +316,7 @@ export class BattleModel {
       fighter.y = clamp(fighter.y + Math.cos(this.frame / 50) * 1.2, 72, 600);
     }
     fighter.facing = Math.atan2(this.player.y - fighter.y, this.player.x - fighter.x);
+    this.targetFighter.postUpdate(this.fighterActionContext(fighter));
     if (this.frame % 72 === 0) {
       this.targetFighter.fire(this.fighterActionContext(fighter), this.player.x, this.player.y);
     }
@@ -443,6 +447,13 @@ export class BattleModel {
       }),
     );
   }
+
+  private currentShields(): readonly ShieldState[] {
+    return [this.player, this.target]
+      .filter((fighter) => fighter.deadUntil <= 0 && fighter.abilityCards.some((card) => card.effectIds.includes("rear_bullet_shield")))
+      .map((fighter) => rearShieldFor(fighter));
+  }
+
 }
 
 const DEFAULT_BATTLE_LOADOUTS: BattleLoadouts = {
@@ -474,6 +485,19 @@ function hitsBeam(beam: ProjectileState, x: number, y: number): boolean {
   }
   return Math.abs(forward) <= beam.width / 2 && side <= beam.height / 2;
 }
+
+function rearShieldFor(fighter: FighterState): ShieldState {
+  const distance = 28;
+  return {
+    owner: fighter.key,
+    x: fighter.x - Math.cos(fighter.facing) * distance,
+    y: fighter.y - Math.sin(fighter.facing) * distance,
+    width: 34,
+    height: 14,
+    angle: fighter.facing,
+  };
+}
+
 
 function loadoutCards(loadout: FighterLoadout) {
   const ids = new Set(loadout.cardIds ?? []);

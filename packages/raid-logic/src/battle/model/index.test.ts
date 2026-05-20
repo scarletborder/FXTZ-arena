@@ -172,6 +172,12 @@ describe("BattleModel reload timing", () => {
 });
 
 describe("BattleModel hit recovery", () => {
+  it("applies extra life's initialization callback", async () => {
+    const model = await createBattleModel("reimu", "marisa", ["extra_life"]);
+
+    expect(model.player.lives).toBe(3);
+  });
+
   it("restores bombs to the default count after taking a hit", async () => {
     const model = await createBattleModel("reimu", "marisa");
     model.player.bombs = 0;
@@ -183,7 +189,7 @@ describe("BattleModel hit recovery", () => {
   });
 
   it("restores bombs to ember's default count after taking a hit", async () => {
-    const model = await createBattleModel("reimu", "marisa", "ember");
+    const model = await createBattleModel("reimu", "marisa", ["ember"]);
     expect(model.player.bombs).toBe(4);
     model.player.bombs = 0;
 
@@ -191,6 +197,38 @@ describe("BattleModel hit recovery", () => {
 
     expect(model.player.lives).toBe(1);
     expect(model.player.bombs).toBe(4);
+  });
+});
+
+describe("BattleModel ability cards", () => {
+  it("adds multi-shot's extra homing bullet after a normal shot", async () => {
+    const model = await createBattleModel("reimu", "marisa", ["multi_shot"]);
+
+    model.step(input({ shootPressed: true }));
+
+    expect(model.projectiles).toHaveLength(4);
+    expect(model.projectiles.some((projectile) => projectile.width === 18 && projectile.height === 10)).toBe(true);
+  });
+
+  it("clears nearby bullets with spirit strike", async () => {
+    const model = await createBattleModel("reimu", "marisa", ["spirit_strike_card"], "spirit_strike_card");
+    model.projectiles.push(testProjectile({ id: 1, owner: "target", x: model.player.x, y: model.player.y }));
+
+    model.step(input({ activeCardPressed: true }));
+
+    expect(model.projectiles).toHaveLength(0);
+    expect(model.player.activeCardUses).toBe(2);
+  });
+
+  it("clears ordinary bullets behind the fighter with backdoor", async () => {
+    const model = await createBattleModel("reimu", "marisa", ["backdoor"]);
+    model.player.facing = 0;
+    model.projectiles.push(testProjectile({ id: 1, owner: "target", x: model.player.x - 28, y: model.player.y }));
+
+    model.step(input({ aimX: model.player.x + 100, aimY: model.player.y }));
+
+    expect(model.projectiles).toHaveLength(0);
+    expect(model.toOutputState().shields).toHaveLength(1);
   });
 });
 
@@ -228,19 +266,21 @@ function input(overrides: Partial<BattleInputState> = {}): BattleInputState {
 async function createBattleModel(
   primaryCharacterId: BattleLoadouts["player"]["primaryCharacterId"],
   alternateCharacterId: BattleLoadouts["player"]["alternateCharacterId"],
+  cardIds?: BattleLoadouts["player"]["cardIds"],
   activeCardId?: BattleLoadouts["player"]["activeCardId"],
 ): Promise<BattleModel>;
 async function createBattleModel(): Promise<BattleModel>;
 async function createBattleModel(
   primaryCharacterId: BattleLoadouts["player"]["primaryCharacterId"] = "reimu",
   alternateCharacterId: BattleLoadouts["player"]["alternateCharacterId"] = "marisa",
+  cardIds?: BattleLoadouts["player"]["cardIds"],
   activeCardId?: BattleLoadouts["player"]["activeCardId"],
 ): Promise<BattleModel> {
   const model = new BattleModel({
     player: {
       primaryCharacterId,
       alternateCharacterId,
-      cardIds: activeCardId ? [activeCardId] : undefined,
+      cardIds,
       activeCardId,
     },
     target: {
@@ -252,6 +292,34 @@ async function createBattleModel(
   await physics.init();
   model.setPhysics(physics);
   return model;
+}
+
+function testProjectile(overrides: Partial<BattleModel["projectiles"][number]> & { readonly id: number; readonly owner: "player" | "target" }) {
+  return {
+    kind: "orb" as const,
+    x: 0,
+    y: 0,
+    previousX: 0,
+    previousY: 0,
+    vx: 0,
+    vy: 0,
+    width: 12,
+    previousWidth: 12,
+    height: 12,
+    anchorX: undefined,
+    anchorY: undefined,
+    visibleFrom: 0,
+    expireAt: undefined,
+    homingStartAt: 999,
+    homingUntil: 999,
+    pausedUntil: 0,
+    widthGrowthPerTick: 0,
+    maxWidth: undefined,
+    damage: 1,
+    pierce: false,
+    angle: 0,
+    ...overrides,
+  };
 }
 
 function hitPlayer(model: BattleModel): void {

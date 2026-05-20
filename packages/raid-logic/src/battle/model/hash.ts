@@ -77,6 +77,10 @@ function writeFighter(hasher: DeterministicHasher, fighter: FighterState): void 
   hasher.writeString(fighter.activeCharacter.id);
   hasher.writeString(fighter.alternateCharacter.id);
   hasher.writeString(fighter.activeCard?.id ?? "");
+  for (const card of fighter.abilityCards) {
+    hasher.writeString(card.id);
+  }
+  hasher.writeNumber(fighter.abilityCards.length);
   hasher.writeNumber(fighter.activeCardUses);
   hasher.writeNumber(fighter.activeCardCooldownUntil);
   hasher.writeNumber(fighter.fireCooldownUntil);
@@ -132,6 +136,9 @@ function writeEffects(hasher: DeterministicHasher, effects: readonly EffectState
     writeFixed(hasher, effect.scale);
     hasher.writeNumber(effect.expireAt);
     hasher.writeString(effect.text ?? "");
+    writeFixed(hasher, effect.width ?? 0);
+    writeFixed(hasher, effect.height ?? 0);
+    writeFixed(hasher, effect.angle ?? 0);
   }
 }
 

@@ -2,6 +2,7 @@ import type { AbilityCardDefinition } from "@repo/content";
 import {
   DEFAULT_BOMBS,
   hitCircleUnits,
+  secondsToTicks,
   type BattleActionContext as StandardBattleActionContext,
   type BattleHitContext as StandardBattleHitContext,
   type HitResolutionContext,
@@ -36,8 +37,16 @@ export interface BattleHitContext
 
 export interface BattleAbilityCard {
   readonly definition: AbilityCardDefinition;
+  onInitialize(ctx: BattleInitializeContext): void;
   onHit(ctx: BattleHitContext): void;
+  onAfterFire(ctx: BattleCardContext): void;
+  onPostUpdate(ctx: BattleCardContext): void;
   onUse(ctx: BattleCardContext): void;
+}
+
+export interface BattleInitializeContext {
+  readonly self: FighterState;
+  readonly resolution: HitResolution;
 }
 
 export function createBattleAbilityCard(definition: AbilityCardDefinition): BattleAbilityCard {
@@ -52,12 +61,47 @@ export function getInitialBombs(cards: readonly AbilityCardDefinition[]): number
   return resolution.defaultBombs;
 }
 
+export function applyInitialCardState(fighter: FighterState, cards: readonly AbilityCardDefinition[]): void {
+  const resolution: HitResolution = { defaultBombs: DEFAULT_BOMBS };
+  for (const card of cards) {
+    createBattleAbilityCard(card).onInitialize({ self: fighter, resolution });
+  }
+  fighter.bombs = resolution.defaultBombs;
+}
+
 class DefaultBattleAbilityCard implements BattleAbilityCard {
   constructor(readonly definition: AbilityCardDefinition) {}
+
+  onInitialize(ctx: BattleInitializeContext): void {
+    if (this.definition.effectIds.includes("set_initial_lives_3")) {
+      ctx.self.lives += 1;
+    }
+    applyCardDefaultBombs(this.definition, ctx.resolution);
+  }
 
   onHit(ctx: BattleHitContext): void {
     applyCardDefaultBombs(this.definition, ctx.resolution);
   }
+
+  onAfterFire(ctx: BattleCardContext): void {
+    if (!this.definition.effectIds.includes("extra_homing_bullet")) {
+      return;
+    }
+    ctx.spawnBullet({
+      owner: ctx.self.key,
+      kind: "orb",
+      x: ctx.self.x,
+      y: ctx.self.y,
+      angle: ctx.self.facing,
+      speedRank: "low",
+      width: 18,
+      height: 10,
+      homingTicks: secondsToTicks(1.5),
+      spawnOffset: 34,
+    });
+  }
+
+  onPostUpdate(_ctx: BattleCardContext): void {}
 
   onUse(ctx: BattleCardContext): void {
     if (!this.definition.effectIds.includes("clear_projectiles_radius_4")) {

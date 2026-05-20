@@ -5,7 +5,7 @@ import {
   type AbilityCardDefinition,
   type CharacterDefinition,
 } from "@repo/content";
-import type { PlayerLoadout } from "@repo/types";
+import type { AbilityCardId, CharacterId, PlayerLoadout } from "@repo/types";
 
 import { type BattleLoadouts } from "../battle/loadout";
 import { type FighterLoadout } from "../battle/loadout";
@@ -34,11 +34,11 @@ const COST_LIMIT = 10;
 export class SelectScene extends Phaser.Scene {
   private mode: SelectionData["mode"] = "ai";
   private playerId: string | undefined;
-  private primaryId: CharacterDefinition["id"] | undefined;
-  private alternateId: CharacterDefinition["id"] | undefined;
+  private primaryId: CharacterId | undefined;
+  private alternateId: CharacterId | undefined;
   private roleFilter: CharacterDefinition["roleClass"] | "all" = "all";
   private cardFilter: AbilityCardDefinition["kind"] | "all" = "all";
-  private readonly selectedCards = new Set<AbilityCardDefinition["id"]>();
+  private readonly selectedCards = new Set<AbilityCardId>();
   private hoverCost = 0;
   private layer!: Phaser.GameObjects.Container;
   private costLayer!: Phaser.GameObjects.Container;

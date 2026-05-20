@@ -4,7 +4,7 @@ import { ARENA_WIDTH, DEFAULT_BOMBS, speedRankToPixelsPerTick } from "@repo/type
 import type { BattleInputState, FighterKey, FighterState, TrainingStats } from "../types";
 import { applyHit, getFireCooldown } from "./combat";
 import { createFighter, getCharacterAmmo, resetFighter, setCharacterAmmo, tickFighterTimers } from "./fighter";
-import { createBattleAbilityCard, type BattleAbilityCard, type BattleHitContext } from "../presets/ability-cards";
+import { applyInitialCardState, createBattleAbilityCard, type BattleAbilityCard, type BattleHitContext } from "../presets/ability-cards";
 import { createBattleCharacter, type BattleCharacter, type CharacterActionContext } from "../presets/characters";
 
 export class BattleFighter {
@@ -27,6 +27,7 @@ export class BattleFighter {
     this.battleCards = cards.map((card) => createBattleAbilityCard(card));
     this.registerCharacter(primaryCharacter);
     this.registerCharacter(alternateCharacter);
+    applyInitialCardState(this.state, cards);
     this.applyActiveCharacter(primaryCharacter);
   }
 
@@ -43,6 +44,7 @@ export class BattleFighter {
     this.battleCards = cards.map((card) => createBattleAbilityCard(card));
     this.registerCharacter(primaryCharacter);
     this.registerCharacter(alternateCharacter);
+    applyInitialCardState(this.state, cards);
     this.applyActiveCharacter(primaryCharacter);
   }
 
@@ -125,6 +127,9 @@ export class BattleFighter {
     ctx.stats.shots += 1;
     this.state.fireCooldownUntil = getFireCooldown(this.activeCharacter.fireRate);
     this.activeCharacter.shoot(ctx, this.state, aimX, aimY);
+    for (const card of this.battleCards) {
+      card.onAfterFire(ctx);
+    }
   }
 
   useBomb(ctx: CharacterActionContext): void {
@@ -142,6 +147,12 @@ export class BattleFighter {
     this.state.activeCardUses -= 1;
     this.state.activeCardCooldownUntil = this.state.activeCard.cooldownTicks;
     this.activeBattleCard?.onUse(ctx);
+  }
+
+  postUpdate(ctx: CharacterActionContext): void {
+    for (const card of this.battleCards) {
+      card.onPostUpdate(ctx);
+    }
   }
 
   onProjectileHit(params: {

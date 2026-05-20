@@ -65,15 +65,23 @@ export class ProjectileSystem {
     }
 
     // Compute Rapier hit results after position updates, if callback provided.
-    let rapierHitMap: Map<number, FighterKey> | undefined;
+    let rapierHitMap: Map<number, FighterKey | "blocked"> | undefined;
     if (params.computeRapierHits) {
       const results = params.computeRapierHits(params.projectiles);
       if (results) {
-        rapierHitMap = new Map(results.map((r) => [r.projectileId, r.victimKey]));
+        rapierHitMap = new Map(results.filter((r) => r.victimKey).map((r) => [r.projectileId, r.victimKey!]));
+        for (const result of results) {
+          if (result.blockedByShield) {
+            rapierHitMap.set(result.projectileId, "blocked");
+          }
+        }
       }
     }
 
     for (const projectile of params.projectiles) {
+      if (rapierHitMap?.get(projectile.id) === "blocked") {
+        continue;
+      }
       const victim = projectile.owner === "player" ? params.target : params.player;
       const visible = params.frame >= projectile.visibleFrom;
       if (visible && projectile.damage > 0) {
@@ -152,6 +160,7 @@ function rotatedRectIntersectsCircle(
   const closestY = clamp(localY, -projectile.height / 2, projectile.height / 2);
   return Math.hypot(localX - closestX, localY - closestY) <= circleRadius;
 }
+
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));

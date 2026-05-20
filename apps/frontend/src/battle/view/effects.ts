@@ -1,15 +1,16 @@
 import Phaser from "phaser";
 
-import type { EffectState } from "@repo/raid-logic";
+import type { EffectState, ShieldState } from "@repo/raid-logic";
 import { createClearRingSfx, renderClearRingSfx } from "../sfx";
 
 export class EffectsView {
   private readonly sprites = new Map<number, Phaser.GameObjects.Image>();
   private readonly rings = new Map<number, Phaser.GameObjects.Graphics>();
+  private readonly shields = new Map<ShieldState["owner"], Phaser.GameObjects.Rectangle>();
 
   constructor(private readonly scene: Phaser.Scene) {}
 
-  render(effects: readonly EffectState[]): void {
+  render(effects: readonly EffectState[], shields: readonly ShieldState[] = []): void {
     const active = new Set<number>();
     for (const effect of effects) {
       active.add(effect.id);
@@ -55,6 +56,28 @@ export class EffectsView {
       if (!active.has(id)) {
         ring.destroy();
         this.rings.delete(id);
+      }
+    }
+
+    const activeShields = new Set<ShieldState["owner"]>();
+    for (const shield of shields) {
+      activeShields.add(shield.owner);
+      let rect = this.shields.get(shield.owner);
+      if (!rect) {
+        rect = this.scene.add.rectangle(shield.x, shield.y, shield.width, shield.height, 0x8af7ff, 0.18).setOrigin(0.5).setDepth(7);
+        rect.setStrokeStyle(2, 0x8af7ff, 0.95);
+        rect.setBlendMode(Phaser.BlendModes.ADD);
+        this.shields.set(shield.owner, rect);
+      }
+      rect.setPosition(shield.x, shield.y);
+      rect.setSize(shield.width, shield.height);
+      rect.setRotation(shield.angle);
+      rect.setVisible(true);
+    }
+    for (const [owner, shield] of this.shields) {
+      if (!activeShields.has(owner)) {
+        shield.destroy();
+        this.shields.delete(owner);
       }
     }
   }

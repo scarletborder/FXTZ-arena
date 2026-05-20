@@ -47,6 +47,7 @@ export function createFighter(
     activeCharacter: primaryCharacter,
     alternateCharacter,
     activeCard,
+    abilityCards: cards,
     activeCardUses: activeCard?.useLimit === "infinite" ? 999 : (activeCard?.useLimit ?? 0),
     activeCardCooldownUntil: 0,
     fireCooldownUntil: 0,

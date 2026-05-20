@@ -36,7 +36,7 @@ export class BattleView {
     const localFighter = localFighterKey === "player" ? state.player : state.target;
     this.fighters.render(state.player, state.target, state.frame, state.gameOver, input.infoHeld, localFighterKey, alpha);
     this.projectiles.render(state.projectiles, state.frame, alpha);
-    this.effects.render(state.effects);
+    this.effects.render(state.effects, state.shields);
     this.infoDisplay.render(state);
     this.crosshair.render({
       pointerX: input.aimX,

@@ -20,6 +20,7 @@ export type FighterSnapshot = Omit<
   | "activeCharacter"
   | "alternateCharacter"
   | "activeCard"
+  | "abilityCards"
   | "flashUntil"
   | "statusVisibleUntil"
 > & {
@@ -27,6 +28,7 @@ export type FighterSnapshot = Omit<
   readonly activeCharacterId: CharacterDefinition["id"];
   readonly alternateCharacterId: CharacterDefinition["id"];
   readonly activeCardId: AbilityCardDefinition["id"] | undefined;
+  readonly abilityCardIds: readonly AbilityCardDefinition["id"][];
   readonly flashRemaining: number;
   readonly statusVisibleRemaining: number;
 };
@@ -74,6 +76,7 @@ export function restoreFighterSnapshot(fighter: FighterState, snapshot: FighterS
     activeCharacter: getCharacter(snapshot.activeCharacterId),
     alternateCharacter: getCharacter(snapshot.alternateCharacterId),
     activeCard: snapshot.activeCardId ? getAbilityCard(snapshot.activeCardId) : undefined,
+    abilityCards: snapshot.abilityCardIds.map((id) => getAbilityCard(id)),
     flashUntil: frame + snapshot.flashRemaining,
     statusVisibleUntil: frame + snapshot.statusVisibleRemaining,
   });
@@ -136,6 +139,7 @@ function serializeFighter(fighter: FighterState, frame: number): FighterSnapshot
     activeCharacterId: fighter.activeCharacter.id,
     alternateCharacterId: fighter.alternateCharacter.id,
     activeCardId: fighter.activeCard?.id,
+    abilityCardIds: fighter.abilityCards.map((card) => card.id),
     activeCardUses: fighter.activeCardUses,
     activeCardCooldownUntil: fighter.activeCardCooldownUntil,
     fireCooldownUntil: fighter.fireCooldownUntil,
@@ -190,6 +194,9 @@ function serializeEffect(effect: EffectState, frame: number): EffectSnapshot {
     scale: effect.scale,
     expireIn: effect.expireAt - frame,
     text: effect.text,
+    width: effect.width,
+    height: effect.height,
+    angle: effect.angle,
   };
 }
 
@@ -199,6 +206,7 @@ function deleteSnapshotIds(fighter: FighterState): void {
     activeCharacterId?: string;
     alternateCharacterId?: string;
     activeCardId?: string;
+    abilityCardIds?: readonly string[];
     flashRemaining?: number;
     statusVisibleRemaining?: number;
   };
@@ -206,6 +214,7 @@ function deleteSnapshotIds(fighter: FighterState): void {
   delete snapshotShape.activeCharacterId;
   delete snapshotShape.alternateCharacterId;
   delete snapshotShape.activeCardId;
+  delete snapshotShape.abilityCardIds;
   delete snapshotShape.flashRemaining;
   delete snapshotShape.statusVisibleRemaining;
 }

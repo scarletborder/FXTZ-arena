@@ -31,7 +31,7 @@ export function ensureRapierInit(): Promise<void> {
 
 export interface PhysicsBodyDef {
   readonly id: string;
-  readonly kind: "fighter" | "projectile" | "obstacle";
+  readonly kind: "fighter" | "projectile" | "shield" | "obstacle";
   readonly shape?: "cuboid" | "ball";
   readonly x: number;
   readonly y: number;
@@ -160,11 +160,13 @@ export class PhysicsWorld {
 
     const translation = { x: clamp(def.x, this.minX, this.maxX), y: clamp(def.y, this.minY, this.maxY) };
     const desc = RAPIER.RigidBodyDesc.kinematicVelocityBased()
-      .setTranslation(translation.x, translation.y);
+      .setTranslation(translation.x, translation.y)
+      .setCcdEnabled(true);
     if (def.angleRad !== undefined && def.angleRad !== 0) {
       desc.setRotation(def.angleRad);
     }
     const body = this.world!.createRigidBody(desc);
+    body.enableCcd(true);
 
     const isBall = def.shape === "ball";
     const colliderDesc = isBall
@@ -302,7 +304,7 @@ export class PhysicsWorld {
 
       bodies.push({
         id,
-        kind: (this.bodyKind.get(id) ?? "obstacle") as "fighter" | "projectile" | "obstacle",
+        kind: (this.bodyKind.get(id) ?? "obstacle") as "fighter" | "projectile" | "shield" | "obstacle",
         shape: isBall ? "ball" : "cuboid",
         x: Math.trunc(t.x),
         y: Math.trunc(t.y),
