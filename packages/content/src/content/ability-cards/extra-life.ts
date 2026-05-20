@@ -1,8 +1,8 @@
-import type { AbilityCardDefinition } from "@repo/content";
+import type { AbilityCardDefinition } from "./types";
 
-import type { FighterState, ShieldState } from "../../types";
+import type { FighterState, ShieldState } from "../battle-types";
 import { BattleAbilityCard, type BattleCardContext, type BattleHitContext, type BattleInitializeContext } from "./base";
-import { Vanilla } from "../../registry";
+import { Vanilla } from "../decorators";
 
 @Vanilla.RegisterCard("extra_life")
 export class ExtraLifeBattleCard extends BattleAbilityCard {

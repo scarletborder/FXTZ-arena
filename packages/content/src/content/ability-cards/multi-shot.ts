@@ -1,9 +1,9 @@
-import { secondsToTicks } from "@repo/types";
-import type { AbilityCardDefinition } from "@repo/content";
+import { secondsToTicks } from "../seconds-to-ticks";
+import type { AbilityCardDefinition } from "./types";
 
-import type { FighterState, ShieldState } from "../../types";
-import { BattleAbilityCard, type BattleCardContext } from "./base";
-import { Vanilla } from "../../registry";
+import type { FighterState } from "../battle-types";
+import { BattleAbilityCard, type BattleCardContext, type BattleHitContext, type BattleInitializeContext } from "./base";
+import { Vanilla } from "../decorators";
 
 @Vanilla.RegisterCard("multi_shot")
 export class MultiShotBattleCard extends BattleAbilityCard {

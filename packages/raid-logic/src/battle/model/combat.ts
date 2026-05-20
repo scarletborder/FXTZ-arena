@@ -1,6 +1,6 @@
 import { secondsToTicks } from "@repo/types";
 
-import type { FighterKey, FighterState, TrainingStats } from "../types";
+import type { FighterKey, FighterState, TrainingStats } from "@repo/content";
 
 const STATUS_VISIBLE_TICKS = secondsToTicks(1.5);
 

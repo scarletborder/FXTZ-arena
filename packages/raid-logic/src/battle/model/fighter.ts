@@ -1,7 +1,7 @@
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
 import { DEFAULT_BOMBS } from "@repo/types";
 
-import type { FighterKey, FighterState } from "../types";
+import type { FighterKey, FighterState } from "@repo/content";
 
 export function createFighter(
   key: FighterKey,

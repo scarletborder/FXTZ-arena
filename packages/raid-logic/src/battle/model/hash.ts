@@ -1,5 +1,5 @@
 import type { BattleModel } from ".";
-import type { EffectState, FighterState, ProjectileState, TrainingStats } from "../types";
+import type { EffectState, FighterState, ProjectileState, TrainingStats } from "@repo/content";
 
 class DeterministicHasher {
   private value = 0x811c9dc5;

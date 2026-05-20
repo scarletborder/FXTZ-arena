@@ -3,9 +3,9 @@ import { fp } from "@shaisrc/fixed-point";
 import type { ProjectileCollisionContext } from "@repo/types";
 
 import { PLAYER_CORE_RADIUS } from "../../constants";
-import type { FighterKey, FighterState, ProjectileState } from "../../types";
+import type { FighterKey, FighterState, ProjectileState } from "@repo/content";
 import type { CollisionResult } from "../physics-adapter";
-import { fpHypotFp, fpClamp, fpMin, fpMax } from "../../fp";
+import { fpHypotFp, fpClamp, fpMin, fpMax } from "@repo/content";
 import { createBulletProjectile, isProjectileOutOfWorld, stepBulletProjectile } from "./bullet";
 import { createLaserProjectile, stepLaserProjectile } from "./laser";
 

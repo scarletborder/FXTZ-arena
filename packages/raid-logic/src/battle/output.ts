@@ -1,5 +1,5 @@
 import type { BattleModelSnapshot } from "./model/snapshot";
-import type { BattleOutputState } from "./types";
+import type { BattleOutputState } from "@repo/content";
 
 export type BattleOutputEvent =
   | {

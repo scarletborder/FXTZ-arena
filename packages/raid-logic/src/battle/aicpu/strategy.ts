@@ -2,9 +2,9 @@ import { fp } from "@shaisrc/fixed-point";
 
 import { bulletSpeedRankToPixelsPerTick, secondsToTicks } from "@repo/types";
 
-import type { FighterState } from "../types";
+import type { FighterState } from "@repo/content";
 import type { IntelligenceResult } from "./intelligence";
-import { fpHypotFp, fpMax } from "../fp";
+import { fpHypotFp, fpMax } from "@repo/content";
 
 const BOMB_THREAT_THRESHOLD = 3;
 const SWITCH_COOLDOWN_TICKS = secondsToTicks(1.5);

@@ -1,4 +1,5 @@
-import type { BattleInputState, FighterState, ProjectileState } from "../types";
+import type { BattleInputState } from "@repo/types";
+import type { FighterState, ProjectileState } from "@repo/content";
 import { IntelligenceManager } from "./intelligence";
 import { Dodger } from "./dodger";
 import { StrategyManager } from "./strategy";

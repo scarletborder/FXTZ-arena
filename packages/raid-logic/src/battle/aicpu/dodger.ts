@@ -3,9 +3,9 @@ import { fp } from "@shaisrc/fixed-point";
 import { speedRankToPixelsPerTick } from "@repo/types";
 
 import { ARENA_HEIGHT_PX, ARENA_WIDTH_PX, PLAYER_CORE_RADIUS } from "../constants";
-import type { FighterState, ProjectileState } from "../types";
+import type { FighterState, ProjectileState } from "@repo/content";
 import type { IntelligenceResult } from "./intelligence";
-import { fpAtan2, fpClamp, fpHypot, fpHypotFp, fpMax, fpMin } from "../fp";
+import { fpAtan2, fpClamp, fpHypot, fpHypotFp, fpMax, fpMin } from "@repo/content";
 
 const WALL_MARGIN = 48;
 const THREAT_CONE = Math.PI / 4;

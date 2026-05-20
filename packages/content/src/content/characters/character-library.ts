@@ -1,4 +1,4 @@
-import type { BattleCharacter } from "../presets/characters/base";
+import type { BattleCharacter } from "./base";
 
 export class CharacterLibrary {
   private registry = new Map<string, new () => BattleCharacter>();
@@ -20,6 +20,10 @@ export class CharacterLibrary {
 
   has(id: string): boolean {
     return this.registry.has(id);
+  }
+
+  ids(): string[] {
+    return Array.from(this.registry.keys());
   }
 }
 

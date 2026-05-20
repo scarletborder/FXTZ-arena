@@ -1,4 +1,4 @@
-import { DEFAULT_CHARACTERS } from "@repo/content";
+import { getCharacterDefinition } from "@repo/content";
 import {
   getDefaultBombs,
   getInitialLives,
@@ -464,7 +464,7 @@ export class AbilityCardEntity
 }
 
 function getCharacterDefinitionOrThrow(id: CharacterId) {
-  const definition = DEFAULT_CHARACTERS.find((character) => character.id === id);
+  const definition = getCharacterDefinition(id);
   if (!definition) {
     throw new Error(`Unknown character id: ${id}`);
   }

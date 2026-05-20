@@ -1,16 +1,53 @@
 import { fp } from "@shaisrc/fixed-point";
-import type { CharacterDefinition, CharacterGalleryAssets } from "@repo/content";
-import { hitCircleUnits, secondsToTicks, type BattleActionContext as StandardBattleActionContext } from "@repo/types";
+import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
+import { HIT_CIRCLE_DIAMETER } from "@repo/constants";
+import type { BattleActionContext as StandardBattleActionContext } from "../battle-ctx";
+import { secondsToTicks } from "../seconds-to-ticks";
 
-import type { EffectState, FighterState, ProjectileState, TrainingStats } from "../../types";
-import type { BulletProjectileParams, LaserProjectileParams } from "../../model/projectile";
-import type { BattleHitContext } from "../ability-cards";
-import { fpAtan2, fpMax } from "../../fp";
+import type { EffectState, FighterKey, FighterState, ProjectileState, TrainingStats } from "../battle-types";
+import type { BattleHitContext } from "../ability-cards/base";
+import { fpAtan2, fpMax } from "../fp";
 
 const STATUS_VISIBLE_TICKS = secondsToTicks(1.5);
 
-export type BattleBulletSpawnParams = Omit<BulletProjectileParams, "frame"> & { readonly frame?: number };
-export type BattleLaserSpawnParams = Omit<LaserProjectileParams, "frame"> & { readonly frame?: number };
+// Spawn param types matching the shapes from raid-logic's projectile system,
+// defined locally so this package doesn't depend on raid-logic internals.
+export interface BattleBulletSpawnParams {
+  readonly owner: FighterKey;
+  readonly kind: "orb" | "knife" | "spark";
+  readonly x: number;
+  readonly y: number;
+  readonly angle: number;
+  readonly speedRank: "low" | "medium" | "high";
+  readonly width: number;
+  readonly height: number;
+  readonly homingTicks: number;
+  readonly spawnOffset?: number;
+  readonly pausedUntil?: number;
+  readonly frame?: number;
+}
+
+export interface BattleLaserSpawnParams {
+  readonly owner: FighterKey;
+  readonly kind?: "laser" | "spark";
+  readonly x: number;
+  readonly y: number;
+  readonly angle: number;
+  readonly speedRank?: "low" | "medium" | "high";
+  readonly width?: number;
+  readonly height?: number;
+  readonly expireTicks?: number;
+  readonly initialLength?: number;
+  readonly maxLength?: number;
+  readonly lengthGrowthPerTick?: number;
+  readonly damage?: number;
+  readonly spawnOffset?: number;
+  readonly pinned?: boolean;
+  readonly anchored?: boolean;
+  readonly rayLike?: boolean;
+  readonly visibleFrom?: number;
+  readonly frame?: number;
+}
 
 export interface CharacterActionContext
   extends StandardBattleActionContext<
@@ -38,6 +75,27 @@ export abstract class BattleCharacter {
   abstract readonly reloadTicksPerAmmo: CharacterDefinition["reloadTicksPerAmmo"];
   abstract readonly reloadStartPolicy: CharacterDefinition["reloadStartPolicy"];
   abstract readonly reloadCommitPolicy: CharacterDefinition["reloadCommitPolicy"];
+  abstract readonly bulletSpeed: CharacterDefinition["bulletSpeed"];
+
+  get definition(): CharacterDefinition {
+    return {
+      id: this.id,
+      name: this.name,
+      cost: this.cost,
+      roleClass: this.roleClass,
+      moveSpeed: this.moveSpeed,
+      ammoCapacity: this.ammoCapacity,
+      reloadTicksPerAmmo: this.reloadTicksPerAmmo,
+      reloadStartPolicy: this.reloadStartPolicy,
+      reloadCommitPolicy: this.reloadCommitPolicy,
+      fireRate: this.fireRate,
+      bulletSpeed: this.bulletSpeed,
+      description: this.description,
+      normalAttackId: this.normalAttackId,
+      bombId: this.bombId,
+      gallery: this.gallery,
+    };
+  }
 
   abstract shoot(ctx: CharacterActionContext, fighter: FighterState, aimX: number, aimY: number): void;
   abstract useBomb(ctx: CharacterActionContext, fighter: FighterState): void;
@@ -79,4 +137,8 @@ export abstract class BattleCharacter {
   }
 }
 
-export { hitCircleUnits, secondsToTicks };
+export function hitCircleUnits(multiplier: number): number {
+  return HIT_CIRCLE_DIAMETER * multiplier;
+}
+
+export { secondsToTicks };

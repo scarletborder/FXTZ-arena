@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { DEFAULT_ABILITY_CARDS, DEFAULT_CHARACTERS, type AbilityCardDefinition, type CharacterDefinition } from "@repo/content";
+import { getAllAbilityCardDefinitions, getAllCharacterDefinitions, type AbilityCardDefinition, type CharacterDefinition } from "@repo/content";
 
 import {
   createBackButton,
@@ -19,8 +19,8 @@ export class CodexScene extends Phaser.Scene {
   private tab: CodexTab = "characters";
   private roleFilter: CharacterDefinition["roleClass"] | "all" = "all";
   private cardFilter: AbilityCardDefinition["kind"] | "all" = "all";
-  private selectedCharacter = DEFAULT_CHARACTERS[0]!;
-  private selectedCard = DEFAULT_ABILITY_CARDS[0]!;
+  private selectedCharacter = getAllCharacterDefinitions()[0]!;
+  private selectedCard = getAllAbilityCardDefinitions()[0]!;
   private listLayer!: Phaser.GameObjects.Container;
   private detailLayer!: Phaser.GameObjects.Container;
   private listScrollOffset = 0;
@@ -133,7 +133,7 @@ export class CodexScene extends Phaser.Scene {
     const startX = LIST_PANEL.x + (LIST_PANEL.width - gridWidth) / 2 + tileWidth / 2;
     const startY = LIST_PANEL.y + 118 + tileHeight / 2;
     const listContainer = this.add.container(0, 0);
-    const characters = DEFAULT_CHARACTERS
+    const characters = getAllCharacterDefinitions()
       .filter((character) => this.roleFilter === "all" || character.roleClass === this.roleFilter)
     characters.forEach((character, index) => {
       const col = index % columns;
@@ -182,7 +182,7 @@ export class CodexScene extends Phaser.Scene {
     const startX = LIST_PANEL.x + (LIST_PANEL.width - gridWidth) / 2 + scaledWidth / 2;
     const startY = LIST_PANEL.y + 122 + scaledHeight / 2;
     const listContainer = this.add.container(0, 0);
-    const cards = DEFAULT_ABILITY_CARDS
+    const cards = getAllAbilityCardDefinitions()
       .filter((card) => this.cardFilter === "all" || card.kind === this.cardFilter)
     cards.forEach((card, index) => {
       const col = index % columns;

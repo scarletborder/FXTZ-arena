@@ -3,7 +3,7 @@ import { PhysicsWorld, ensureRapierInit, type BodyDebugData } from "../../physic
 import { fp } from "@shaisrc/fixed-point";
 
 import { PLAYER_CORE_RADIUS } from "../constants";
-import type { FighterState, ProjectileState, ShieldState } from "../types";
+import type { FighterState, ProjectileState, ShieldState } from "@repo/content";
 
 /**
  * Result of a Rapier collision query — maps a projectile to the fighter

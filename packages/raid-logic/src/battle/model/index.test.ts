@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { BattleInputState } from "../types";
+import type { BattleInputState } from "@repo/types";
 import type { BattleLoadouts } from "../loadout";
 import { BattleModel } from ".";
 import { BattlePhysics } from "./physics-adapter";

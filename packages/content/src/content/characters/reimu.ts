@@ -1,12 +1,12 @@
 import { fp } from "@shaisrc/fixed-point";
 
-import type { CharacterDefinition, CharacterGalleryAssets } from "@repo/content";
+import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 
-import type { FighterState } from "../../types";
-import type { BattleHitContext } from "../ability-cards";
+import type { FighterState } from "../battle-types";
+import type { BattleHitContext } from "../ability-cards/base";
 import { BattleCharacter, hitCircleUnits, secondsToTicks, type CharacterActionContext } from "./base";
-import { fpAtan2 } from "../../fp";
-import { Vanilla } from "../../registry";
+import { fpAtan2 } from "../fp";
+import { Vanilla } from "../decorators";
 
 const CLEAR_RING_TICKS = secondsToTicks(2 / 3);
 
@@ -29,6 +29,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
   readonly reloadTicksPerAmmo = secondsToTicks(0.8);
   readonly reloadStartPolicy = "keep_current" as CharacterDefinition["reloadStartPolicy"];
   readonly reloadCommitPolicy = "commit_per_ammo" as CharacterDefinition["reloadCommitPolicy"];
+  readonly bulletSpeed = "low" as CharacterDefinition["bulletSpeed"];
 
   shoot(ctx: CharacterActionContext, fighter: FighterState, aimX: number, aimY: number): void {
     const fpAngle = fp.fromFloat(this.aimAngle(fighter, aimX, aimY));

@@ -16,11 +16,11 @@ import {
   validateLoadout,
   type PlayerLoadout,
 } from "./index";
-import { DEFAULT_ABILITY_CARDS, DEFAULT_CHARACTERS } from "@repo/content";
+import { getAllAbilityCardDefinitions, getAllCharacterDefinitions } from "@repo/content";
 
 describe("@repo/types static content", () => {
   it("exports the baseline characters", () => {
-    expect(DEFAULT_CHARACTERS).toMatchObject([
+    expect(getAllCharacterDefinitions()).toMatchObject([
       {
         id: "reimu",
         name: "博丽灵梦",
@@ -52,7 +52,7 @@ describe("@repo/types static content", () => {
   });
 
   it("exports the baseline ability cards", () => {
-    expect(DEFAULT_ABILITY_CARDS.map((card) => card.id)).toEqual([
+    expect(getAllAbilityCardDefinitions().map((card) => card.id)).toEqual([
       "extra_life",
       "ember",
       "backdoor",

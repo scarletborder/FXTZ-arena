@@ -1,7 +1,7 @@
-import { characterLibrary } from "./character-library";
-import { cardLibrary } from "./card-library";
-import { BattleCharacter } from "../presets/characters";
-import { BattleAbilityCard } from "../presets/ability-cards";
+import { characterLibrary } from "./characters/character-library";
+import { cardLibrary } from "./ability-cards/card-library";
+import type { BattleCharacter } from "./characters/base";
+import type { BattleAbilityCard } from "./ability-cards/base";
 
 export const Vanilla = {
   RegisterCharacter(id: string) {

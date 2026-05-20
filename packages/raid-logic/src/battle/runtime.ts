@@ -3,7 +3,8 @@ import { BattleModel } from "./model";
 import { BattlePhysics } from "./model/physics-adapter";
 import type { BattleModelSnapshot } from "./model/snapshot";
 import { BattleOutputQueue, type BattleOutputEvent, type BattleOutputFrame } from "./output";
-import type { BattleInputState, BattleOutputState } from "./types";
+import type { BattleInputState } from "@repo/types";
+import type { BattleOutputState } from "@repo/content";
 
 export type RaidLogicMode = "training" | "ai" | "online";
 

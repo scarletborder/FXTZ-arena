@@ -1,9 +1,9 @@
-import type { CharacterDefinition, CharacterGalleryAssets } from "@repo/content";
+import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 
-import type { FighterState } from "../../types";
-import type { BattleHitContext } from "../ability-cards";
+import type { FighterState } from "../battle-types";
+import type { BattleHitContext } from "../ability-cards/base";
 import { BattleCharacter, hitCircleUnits, secondsToTicks, type CharacterActionContext } from "./base";
-import { Vanilla } from "../../registry";
+import { Vanilla } from "../decorators";
 
 @Vanilla.RegisterCharacter("marisa")
 export class MarisaBattleCharacter extends BattleCharacter {
@@ -17,6 +17,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
   readonly reloadTicksPerAmmo = secondsToTicks(1.5);
   readonly reloadStartPolicy = "reset_to_zero" as CharacterDefinition["reloadStartPolicy"];
   readonly reloadCommitPolicy = "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
+  readonly bulletSpeed = "high" as CharacterDefinition["bulletSpeed"];
   readonly description = "高速激光与长前摇魔炮，爆发强但动作约束明显。";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/marisa/portrait.png",

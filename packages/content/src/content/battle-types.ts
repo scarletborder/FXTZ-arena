@@ -1,4 +1,5 @@
-import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
+import type { AbilityCardDefinition } from "./ability-cards/types";
+import type { CharacterDefinition } from "./characters/types";
 
 export type FighterKey = "player" | "target";
 export type ProjectileKind = "orb" | "knife" | "laser" | "spark";
@@ -10,19 +11,6 @@ export interface ShieldState {
   readonly width: number;
   readonly height: number;
   readonly angle: number;
-}
-
-export interface BattleInputState {
-  readonly moveX: -1 | 0 | 1;
-  readonly moveY: -1 | 0 | 1;
-  readonly aimX: number;
-  readonly aimY: number;
-  readonly shootPressed: boolean;
-  readonly bombPressed: boolean;
-  readonly activeCardPressed: boolean;
-  readonly reloadPressed: boolean;
-  readonly alternateHeld: boolean;
-  readonly infoHeld: boolean;
 }
 
 export interface FighterState {

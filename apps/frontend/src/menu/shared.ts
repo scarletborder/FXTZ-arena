@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { DEFAULT_ABILITY_CARDS, DEFAULT_CHARACTERS, type AbilityCardDefinition, type CharacterDefinition } from "@repo/content";
+import { getAbilityCardDefinition, getCharacterDefinition, type AbilityCardDefinition, type CharacterDefinition } from "@repo/content";
 import type { PlayerId } from "@repo/types";
 
 import type { BattleSceneData } from "../battle/loadout";
@@ -85,22 +85,6 @@ export const uiSettings: UiSettings = {
   serverAddress: savedServerAddress ?? "ws://localhost:22334",
 };
 
-export function getCharacterById(id: CharacterDefinition["id"]): CharacterDefinition {
-  const character = DEFAULT_CHARACTERS.find((item) => item.id === id);
-  if (!character) {
-    throw new Error(`Missing character: ${id}`);
-  }
-  return character;
-}
-
-export function getCardById(id: AbilityCardDefinition["id"]): AbilityCardDefinition {
-  const card = DEFAULT_ABILITY_CARDS.find((item) => item.id === id);
-  if (!card) {
-    throw new Error(`Missing ability card: ${id}`);
-  }
-  return card;
-}
-
 export function roleLabel(role: CharacterDefinition["roleClass"]): string {
   return {
     assault: "突击",
@@ -116,4 +100,20 @@ export function speedLabel(speed: CharacterDefinition["moveSpeed"]): string {
     medium: "中",
     high: "高",
   }[speed];
+}
+
+export function getCharacterById(id: CharacterDefinition["id"]): CharacterDefinition {
+  const character = getCharacterDefinition(id);
+  if (!character) {
+    throw new Error(`Missing character: ${id}`);
+  }
+  return character;
+}
+
+export function getCardById(id: AbilityCardDefinition["id"]): AbilityCardDefinition {
+  const card = getAbilityCardDefinition(id);
+  if (!card) {
+    throw new Error(`Missing ability card: ${id}`);
+  }
+  return card;
 }

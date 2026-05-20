@@ -1,4 +1,4 @@
-import type { EffectState } from "../types";
+import type { EffectState } from "@repo/content";
 
 export class EffectSystem {
   private nextEffectId = 1;

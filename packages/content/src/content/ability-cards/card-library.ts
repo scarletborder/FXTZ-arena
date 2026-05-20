@@ -1,4 +1,4 @@
-import type { BattleAbilityCard } from "../presets/ability-cards/base";
+import type { BattleAbilityCard } from "./base";
 
 export class CardLibrary {
   private registry = new Map<string, new () => BattleAbilityCard>();
@@ -20,6 +20,10 @@ export class CardLibrary {
 
   has(id: string): boolean {
     return this.registry.has(id);
+  }
+
+  ids(): string[] {
+    return Array.from(this.registry.keys());
   }
 }
 

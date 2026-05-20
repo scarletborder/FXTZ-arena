@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import {
-  DEFAULT_ABILITY_CARDS,
-  DEFAULT_CHARACTERS,
+  getAllAbilityCardDefinitions,
+  getAllCharacterDefinitions,
   type AbilityCardDefinition,
   type CharacterDefinition,
 } from "@repo/content";
@@ -267,7 +267,7 @@ export class SelectScene extends Phaser.Scene {
       ).container);
     });
 
-    const characters = DEFAULT_CHARACTERS.filter(
+    const characters = getAllCharacterDefinitions().filter(
       (character) => this.roleFilter === "all" || character.roleClass === this.roleFilter,
     );
     const listBounds = new Phaser.Geom.Rectangle(
@@ -346,7 +346,7 @@ export class SelectScene extends Phaser.Scene {
       ).container);
     });
 
-    const cards = DEFAULT_ABILITY_CARDS.filter(
+    const cards = getAllAbilityCardDefinitions().filter(
       (card) => this.cardFilter === "all" || card.kind === this.cardFilter,
     );
     const listBounds = new Phaser.Geom.Rectangle(

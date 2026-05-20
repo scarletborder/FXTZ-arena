@@ -1,7 +1,7 @@
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
 
 import { getAbilityCard, getCharacter } from "../content";
-import type { EffectState, FighterState, ProjectileState, TrainingStats } from "../types";
+import type { EffectState, FighterState, ProjectileState, TrainingStats } from "@repo/content";
 
 export interface BattleModelSnapshot {
   readonly version: 1;

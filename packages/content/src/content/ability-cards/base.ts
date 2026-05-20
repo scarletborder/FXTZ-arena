@@ -1,8 +1,12 @@
-import type { AbilityCardDefinition } from "@repo/content";
-import type { BattleActionContext as StandardBattleActionContext, BattleHitContext as StandardBattleHitContext, HitResolutionContext } from "@repo/types";
+import type { AbilityCardDefinition } from "./types";
+import type {
+  BattleActionContext as StandardBattleActionContext,
+  BattleHitContext as StandardBattleHitContext,
+  HitResolutionContext,
+} from "../battle-ctx";
 
-import type { EffectState, FighterKey, FighterState, ProjectileState, ShieldState, TrainingStats } from "../../types";
-import type { BattleBulletSpawnParams, BattleLaserSpawnParams } from "../characters";
+import type { EffectState, FighterKey, FighterState, ProjectileState, ShieldState, TrainingStats } from "../battle-types";
+import type { BattleBulletSpawnParams, BattleLaserSpawnParams } from "../characters/base";
 
 export interface BattleCardContext
   extends StandardBattleActionContext<

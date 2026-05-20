@@ -1,12 +1,12 @@
 import { fp } from "@shaisrc/fixed-point";
 
-import type { CharacterDefinition, CharacterGalleryAssets } from "@repo/content";
+import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 
-import type { FighterState } from "../../types";
-import type { BattleHitContext } from "../ability-cards";
+import type { FighterState } from "../battle-types";
+import type { BattleHitContext } from "../ability-cards/base";
 import { BattleCharacter, hitCircleUnits, secondsToTicks, type CharacterActionContext } from "./base";
-import { fpAtan2 } from "../../fp";
-import { Vanilla } from "../../registry";
+import { fpAtan2 } from "../fp";
+import { Vanilla } from "../decorators";
 
 @Vanilla.RegisterCharacter("sakuya")
 export class SakuyaBattleCharacter extends BattleCharacter {
@@ -20,6 +20,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
   readonly reloadTicksPerAmmo = secondsToTicks(1);
   readonly reloadStartPolicy = "keep_current" as CharacterDefinition["reloadStartPolicy"];
   readonly reloadCommitPolicy = "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
+  readonly bulletSpeed = "medium" as CharacterDefinition["bulletSpeed"];
   readonly description = "平行双弹和时间停止 bomb，擅长近中距离压迫。";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/sakuya/portrait.png",

@@ -5,7 +5,8 @@ import type { ProjectileCollisionContext } from "@repo/types";
 import { getAbilityCard, getCharacter } from "../content";
 import { PLAYER_SPAWN, RESPAWN_DELAY_TICKS, TARGET_SPAWN } from "../constants";
 import type { BattleLoadouts, FighterLoadout } from "../loadout";
-import type { BattleInputState, BattleOutputState, EffectState, FighterState, ProjectileState, ShieldState, TrainingStats } from "../types";
+import type { BattleInputState } from "@repo/types";
+import type { BattleOutputState, EffectState, FighterState, ProjectileState, ShieldState, TrainingStats } from "@repo/content";
 import { BattleFighter } from "./battle-fighter";
 import { CpuPlayer } from "../aicpu";
 import { EffectSystem } from "./effects";
@@ -19,8 +20,8 @@ import {
   restoreProjectileSnapshot,
   type BattleModelSnapshot,
 } from "./snapshot";
-import type { CharacterActionContext } from "../presets/characters";
-import { fpClamp, fpAtan2 } from "../fp";
+import type { CharacterActionContext } from "@repo/content";
+import { fpClamp, fpAtan2 } from "@repo/content";
 
 export class BattleModel {
   readonly projectiles: ProjectileState[] = [];

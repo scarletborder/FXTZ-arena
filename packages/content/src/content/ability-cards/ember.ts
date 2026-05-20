@@ -1,9 +1,9 @@
-import type { AbilityCardDefinition } from "@repo/content";
-import { DEFAULT_BOMBS } from "@repo/types";
+import { DEFAULT_BOMBS } from "@repo/constants";
+import type { AbilityCardDefinition } from "./types";
 
-import type { FighterState, ShieldState } from "../../types";
+import type { FighterState } from "../battle-types";
 import { BattleAbilityCard, type BattleCardContext, type BattleHitContext, type BattleInitializeContext } from "./base";
-import { Vanilla } from "../../registry";
+import { Vanilla } from "../decorators";
 
 @Vanilla.RegisterCard("ember")
 export class EmberBattleCard extends BattleAbilityCard {

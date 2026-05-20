@@ -2,8 +2,8 @@ import { fp } from "@shaisrc/fixed-point";
 
 import { ARENA_WIDTH, bulletSpeedRankToPixelsPerTick, secondsToTicks } from "@repo/types";
 
-import type { FighterKey, FighterState, ProjectileState } from "../../types";
-import { fpAtan2, fpHypotFp, fpMax } from "../../fp";
+import type { FighterKey, FighterState, ProjectileState } from "@repo/content";
+import { fpAtan2, fpHypotFp, fpMax } from "@repo/content";
 
 const HOMING_START_DELAY_TICKS = secondsToTicks(0.5);
 

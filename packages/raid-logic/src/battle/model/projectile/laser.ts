@@ -2,8 +2,8 @@ import { fp } from "@shaisrc/fixed-point";
 
 import { bulletSpeedRankToPixelsPerTick } from "@repo/types";
 
-import type { FighterKey, ProjectileState } from "../../types";
-import { fpMin } from "../../fp";
+import type { FighterKey, ProjectileState } from "@repo/content";
+import { fpMin } from "@repo/content";
 import { isProjectileOutOfWorld } from "./bullet";
 
 export function createLaserProjectile(params: {

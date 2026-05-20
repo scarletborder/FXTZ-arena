@@ -28,7 +28,8 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@repo/constants": "workspace:*"
+    "@repo/constants": "workspace:*",
+    "@shaisrc/fixed-point": "^0.1.0"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

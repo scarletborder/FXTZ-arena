@@ -1,7 +1,7 @@
-import { DEFAULT_ABILITY_CARDS, DEFAULT_CHARACTERS, type AbilityCardDefinition, type CharacterDefinition } from "@repo/content";
+import { getAbilityCardDefinition, getCharacterDefinition, type AbilityCardDefinition, type CharacterDefinition } from "@repo/content";
 
 export function getCharacter(id: CharacterDefinition["id"]): CharacterDefinition {
-  const character = DEFAULT_CHARACTERS.find((item) => item.id === id);
+  const character = getCharacterDefinition(id);
   if (!character) {
     throw new Error(`Unknown character id: ${id}`);
   }
@@ -9,7 +9,7 @@ export function getCharacter(id: CharacterDefinition["id"]): CharacterDefinition
 }
 
 export function getAbilityCard(id: AbilityCardDefinition["id"]): AbilityCardDefinition {
-  const card = DEFAULT_ABILITY_CARDS.find((item) => item.id === id);
+  const card = getAbilityCardDefinition(id);
   if (!card) {
     throw new Error(`Unknown ability card id: ${id}`);
   }

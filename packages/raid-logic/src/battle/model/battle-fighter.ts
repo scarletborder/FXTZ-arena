@@ -3,12 +3,13 @@ import { fp } from "@shaisrc/fixed-point";
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
 import { ARENA_WIDTH, DEFAULT_BOMBS, speedRankToPixelsPerTick } from "@repo/types";
 
-import type { BattleInputState, FighterKey, FighterState, ShieldState, TrainingStats } from "../types";
+import type { BattleInputState } from "@repo/types";
+import type { FighterKey, FighterState, ShieldState, TrainingStats } from "@repo/content";
 import { applyHit, getFireCooldown } from "./combat";
 import { createFighter, getCharacterAmmo, resetFighter, setCharacterAmmo, tickFighterTimers } from "./fighter";
-import { applyInitialCardState, createBattleAbilityCard, type BattleAbilityCard, type BattleHitContext } from "../presets/ability-cards";
-import { createBattleCharacter, type BattleCharacter, type CharacterActionContext } from "../presets/characters";
-import { fpClamp, fpMax, fpMin } from "../fp";
+import { applyInitialCardState, createBattleAbilityCard, type BattleAbilityCard, type BattleHitContext } from "@repo/content";
+import { createBattleCharacter, type BattleCharacter, type CharacterActionContext } from "@repo/content";
+import { fpClamp, fpMax, fpMin } from "@repo/content";
 
 export class BattleFighter {
   readonly state: FighterState;

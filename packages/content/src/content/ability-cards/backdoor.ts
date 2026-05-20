@@ -1,13 +1,12 @@
 import { fp } from "@shaisrc/fixed-point";
+import type { AbilityCardDefinition } from "./types";
 
-import type { AbilityCardDefinition } from "@repo/content";
-
-import type { FighterState, ShieldState } from "../../types";
-import { BattleAbilityCard } from "./base";
-import { Vanilla } from "../../registry";
+import type { FighterState, ShieldState } from "../battle-types";
+import { BattleAbilityCard, type BattleCardContext, type BattleHitContext, type BattleInitializeContext } from "./base";
+import { Vanilla } from "../decorators";
 
 @Vanilla.RegisterCard("backdoor")
-export class BackDoorBattleCard extends BattleAbilityCard {
+export class BackdoorBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "backdoor";
   readonly name = "后门";
   readonly cost = 1;

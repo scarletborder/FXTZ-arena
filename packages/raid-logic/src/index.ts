@@ -21,7 +21,17 @@ export * from "./battle/model/physics-adapter";
 export * from "./battle/model/snapshot";
 export * from "./battle/output";
 export * from "./battle/runtime";
-export * from "./battle/types";
+export type {
+  BattleOutputState,
+  EffectState,
+  FighterKey,
+  FighterState,
+  ProjectileKind,
+  ProjectileState,
+  ShieldState,
+  TrainingStats,
+} from "@repo/content";
+export type { BattleInputState } from "@repo/types";
 
 export interface LegacyFighterState {
   readonly playerId: string;
