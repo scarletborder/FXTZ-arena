@@ -14,7 +14,6 @@ export const DEFAULT_ABILITY_CARDS: readonly AbilityCardDefinition[] = [
       iconAsset: "assets/ability-cards/extra-life/icon.png",
       previewAsset: "assets/ability-cards/extra-life/preview.png",
     },
-    effectIds: ["set_initial_lives_3"],
   },
   {
     id: "ember",
@@ -28,7 +27,6 @@ export const DEFAULT_ABILITY_CARDS: readonly AbilityCardDefinition[] = [
       iconAsset: "assets/ability-cards/ember/icon.png",
       previewAsset: "assets/ability-cards/ember/preview.png",
     },
-    effectIds: ["set_default_bombs_4"],
   },
   {
     id: "backdoor",
@@ -42,7 +40,6 @@ export const DEFAULT_ABILITY_CARDS: readonly AbilityCardDefinition[] = [
       iconAsset: "assets/ability-cards/backdoor/icon.png",
       previewAsset: "assets/ability-cards/backdoor/preview.png",
     },
-    effectIds: ["rear_bullet_shield"],
   },
   {
     id: "multi_shot",
@@ -56,7 +53,6 @@ export const DEFAULT_ABILITY_CARDS: readonly AbilityCardDefinition[] = [
       iconAsset: "assets/ability-cards/multi-shot/icon.png",
       previewAsset: "assets/ability-cards/multi-shot/preview.png",
     },
-    effectIds: ["extra_homing_bullet"],
   },
   {
     id: "spirit_strike_card",
@@ -70,6 +66,5 @@ export const DEFAULT_ABILITY_CARDS: readonly AbilityCardDefinition[] = [
       iconAsset: "assets/ability-cards/spirit-strike-card/icon.png",
       previewAsset: "assets/ability-cards/spirit-strike-card/preview.png",
     },
-    effectIds: ["clear_projectiles_radius_4"],
   },
 ];

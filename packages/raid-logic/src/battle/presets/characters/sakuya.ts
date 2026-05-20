@@ -1,18 +1,27 @@
-import type { CharacterDefinition } from "@repo/content";
+import type { CharacterDefinition, CharacterGalleryAssets } from "@repo/content";
 
 import type { FighterState } from "../../types";
 import type { BattleHitContext } from "../ability-cards";
 import { BattleCharacter, hitCircleUnits, secondsToTicks, type CharacterActionContext } from "./base";
 
 export class SakuyaBattleCharacter extends BattleCharacter {
-  constructor(definition: CharacterDefinition) {
-    super(definition);
-  }
-
-  readonly moveSpeed = this.definition.moveSpeed;
-  readonly fireRate = this.definition.fireRate;
-  readonly ammoCapacity = this.definition.ammoCapacity;
-  readonly reloadTicksPerAmmo = this.definition.reloadTicksPerAmmo;
+  readonly id = "sakuya" as CharacterDefinition["id"];
+  readonly name = "咲夜";
+  readonly cost = 4;
+  readonly roleClass = "assault" as CharacterDefinition["roleClass"];
+  readonly moveSpeed = "medium" as CharacterDefinition["moveSpeed"];
+  readonly fireRate = "medium" as CharacterDefinition["fireRate"];
+  readonly ammoCapacity = 3;
+  readonly reloadTicksPerAmmo = secondsToTicks(1);
+  readonly reloadStartPolicy = "keep_current" as CharacterDefinition["reloadStartPolicy"];
+  readonly reloadCommitPolicy = "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
+  readonly description = "平行双弹和时间停止 bomb，擅长近中距离压迫。";
+  readonly gallery: CharacterGalleryAssets = {
+    portraitAsset: "assets/characters/sakuya/portrait.png",
+    attackPreviewAsset: "assets/characters/sakuya/attack-preview.png",
+  };
+  readonly normalAttackId = "sakuya_parallel_knives";
+  readonly bombId = "sakuya_time_stop";
 
   shoot(ctx: CharacterActionContext, fighter: FighterState, aimX: number, aimY: number): void {
     const angle = this.aimAngle(fighter, aimX, aimY);

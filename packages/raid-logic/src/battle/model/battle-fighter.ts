@@ -1,7 +1,7 @@
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
 import { ARENA_WIDTH, DEFAULT_BOMBS, speedRankToPixelsPerTick } from "@repo/types";
 
-import type { BattleInputState, FighterKey, FighterState, TrainingStats } from "../types";
+import type { BattleInputState, FighterKey, FighterState, ShieldState, TrainingStats } from "../types";
 import { applyHit, getFireCooldown } from "./combat";
 import { createFighter, getCharacterAmmo, resetFighter, setCharacterAmmo, tickFighterTimers } from "./fighter";
 import { applyInitialCardState, createBattleAbilityCard, type BattleAbilityCard, type BattleHitContext } from "../presets/ability-cards";
@@ -27,7 +27,7 @@ export class BattleFighter {
     this.battleCards = cards.map((card) => createBattleAbilityCard(card));
     this.registerCharacter(primaryCharacter);
     this.registerCharacter(alternateCharacter);
-    applyInitialCardState(this.state, cards);
+    applyInitialCardState(this.state, this.battleCards);
     this.applyActiveCharacter(primaryCharacter);
   }
 
@@ -44,7 +44,7 @@ export class BattleFighter {
     this.battleCards = cards.map((card) => createBattleAbilityCard(card));
     this.registerCharacter(primaryCharacter);
     this.registerCharacter(alternateCharacter);
-    applyInitialCardState(this.state, cards);
+    applyInitialCardState(this.state, this.battleCards);
     this.applyActiveCharacter(primaryCharacter);
   }
 
@@ -54,6 +54,14 @@ export class BattleFighter {
 
   cardDefinitions(): readonly AbilityCardDefinition[] {
     return this.battleCards.map((card) => card.definition);
+  }
+
+  collectShields(): readonly ShieldState[] {
+    const shields: ShieldState[] = [];
+    for (const card of this.battleCards) {
+      shields.push(...card.collectShields(this.state));
+    }
+    return shields;
   }
 
   selectActiveCharacter(alternateHeld: boolean): void {
@@ -202,7 +210,7 @@ export class BattleFighter {
 
   private registerCharacter(character: CharacterDefinition): void {
     if (!this.characters.has(character.id)) {
-      this.characters.set(character.id, createBattleCharacter(character));
+      this.characters.set(character.id, createBattleCharacter(character.id));
     }
   }
 

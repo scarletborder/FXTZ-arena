@@ -15,5 +15,4 @@ export interface AbilityCardDefinition {
   readonly cooldownTicks: number;
   readonly description: string;
   readonly gallery: AbilityCardGalleryAssets;
-  readonly effectIds: readonly string[];
 }

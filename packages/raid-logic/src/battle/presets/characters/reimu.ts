@@ -1,4 +1,4 @@
-import type { CharacterDefinition } from "@repo/content";
+import type { CharacterDefinition, CharacterGalleryAssets } from "@repo/content";
 
 import type { FighterState } from "../../types";
 import type { BattleHitContext } from "../ability-cards";
@@ -7,14 +7,23 @@ import { BattleCharacter, hitCircleUnits, secondsToTicks, type CharacterActionCo
 const CLEAR_RING_TICKS = secondsToTicks(2 / 3);
 
 export class ReimuBattleCharacter extends BattleCharacter {
-  constructor(definition: CharacterDefinition) {
-    super(definition);
-  }
-
-  readonly moveSpeed = this.definition.moveSpeed;
-  readonly fireRate = this.definition.fireRate;
-  readonly ammoCapacity = this.definition.ammoCapacity;
-  readonly reloadTicksPerAmmo = this.definition.reloadTicksPerAmmo;
+  readonly id = "reimu" as CharacterDefinition["id"];
+  readonly name = "博丽灵梦";
+  readonly cost = 4;
+  readonly roleClass = "suppress" as CharacterDefinition["roleClass"];
+  readonly description = "低速诱导弹与清弹 bomb，适合压制弹幕空间。";
+  readonly gallery: CharacterGalleryAssets = {
+    portraitAsset: "assets/characters/reimu/portrait.png",
+    attackPreviewAsset: "assets/characters/reimu/attack-preview.png",
+  };
+  readonly normalAttackId = "reimu_homing_shot";
+  readonly bombId = "reimu_clear_bomb";
+  readonly moveSpeed = "medium" as CharacterDefinition["moveSpeed"];
+  readonly fireRate = "medium" as CharacterDefinition["fireRate"];
+  readonly ammoCapacity = 5;
+  readonly reloadTicksPerAmmo = secondsToTicks(0.8);
+  readonly reloadStartPolicy = "keep_current" as CharacterDefinition["reloadStartPolicy"];
+  readonly reloadCommitPolicy = "commit_per_ammo" as CharacterDefinition["reloadCommitPolicy"];
 
   shoot(ctx: CharacterActionContext, fighter: FighterState, aimX: number, aimY: number): void {
     const angle = this.aimAngle(fighter, aimX, aimY);

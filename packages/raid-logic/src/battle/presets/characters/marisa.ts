@@ -1,18 +1,27 @@
-import type { CharacterDefinition } from "@repo/content";
+import type { CharacterDefinition, CharacterGalleryAssets } from "@repo/content";
 
 import type { FighterState } from "../../types";
 import type { BattleHitContext } from "../ability-cards";
 import { BattleCharacter, hitCircleUnits, secondsToTicks, type CharacterActionContext } from "./base";
 
 export class MarisaBattleCharacter extends BattleCharacter {
-  constructor(definition: CharacterDefinition) {
-    super(definition);
-  }
-
-  readonly moveSpeed = this.definition.moveSpeed;
-  readonly fireRate = this.definition.fireRate;
-  readonly ammoCapacity = this.definition.ammoCapacity;
-  readonly reloadTicksPerAmmo = this.definition.reloadTicksPerAmmo;
+  readonly id = "marisa" as CharacterDefinition["id"];
+  readonly name = "魔理沙";
+  readonly cost = 5;
+  readonly roleClass = "sniper" as CharacterDefinition["roleClass"];
+  readonly moveSpeed = "high" as CharacterDefinition["moveSpeed"];
+  readonly fireRate = "low" as CharacterDefinition["fireRate"];
+  readonly ammoCapacity = 2;
+  readonly reloadTicksPerAmmo = secondsToTicks(1.5);
+  readonly reloadStartPolicy = "reset_to_zero" as CharacterDefinition["reloadStartPolicy"];
+  readonly reloadCommitPolicy = "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
+  readonly description = "高速激光与长前摇魔炮，爆发强但动作约束明显。";
+  readonly gallery: CharacterGalleryAssets = {
+    portraitAsset: "assets/characters/marisa/portrait.png",
+    attackPreviewAsset: "assets/characters/marisa/attack-preview.png",
+  };
+  readonly normalAttackId = "marisa_laser";
+  readonly bombId = "marisa_master_spark";
 
   shoot(ctx: CharacterActionContext, fighter: FighterState, aimX: number, aimY: number): void {
     ctx.spawnLaser({

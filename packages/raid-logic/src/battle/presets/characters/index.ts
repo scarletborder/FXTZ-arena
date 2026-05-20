@@ -1,5 +1,3 @@
-import type { CharacterDefinition } from "@repo/content";
-
 import { ReimuBattleCharacter } from "./reimu";
 import { MarisaBattleCharacter } from "./marisa";
 import { SakuyaBattleCharacter } from "./sakuya";
@@ -7,15 +5,15 @@ import type { BattleCharacter } from "./base";
 
 export type { BattleBulletSpawnParams, BattleCharacter, BattleLaserSpawnParams, CharacterActionContext } from "./base";
 
-export function createBattleCharacter(definition: CharacterDefinition): BattleCharacter {
-  if (definition.id === "reimu") {
-    return new ReimuBattleCharacter(definition);
+export function createBattleCharacter(characterId: BattleCharacter["id"]): BattleCharacter {
+  if (characterId === "reimu") {
+    return new ReimuBattleCharacter();
   }
-  if (definition.id === "marisa") {
-    return new MarisaBattleCharacter(definition);
+  if (characterId === "marisa") {
+    return new MarisaBattleCharacter();
   }
-  if (definition.id === "sakuya") {
-    return new SakuyaBattleCharacter(definition);
+  if (characterId === "sakuya") {
+    return new SakuyaBattleCharacter();
   }
-  throw new Error(`Unknown battle character: ${definition.id}`);
+  throw new Error(`Unknown battle character: ${characterId}`);
 }

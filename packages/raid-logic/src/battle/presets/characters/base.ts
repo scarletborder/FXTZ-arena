@@ -1,4 +1,4 @@
-import type { CharacterDefinition } from "@repo/content";
+import type { CharacterDefinition, CharacterGalleryAssets } from "@repo/content";
 import { hitCircleUnits, secondsToTicks, type BattleActionContext as StandardBattleActionContext } from "@repo/types";
 
 import type { EffectState, FighterState, ProjectileState, TrainingStats } from "../../types";
@@ -21,19 +21,21 @@ export interface CharacterActionContext
   > {}
 
 export abstract class BattleCharacter {
-  protected constructor(readonly definition: CharacterDefinition) {}
+  abstract readonly id: CharacterDefinition["id"];
+  abstract readonly name: CharacterDefinition["name"];
+  abstract readonly cost: CharacterDefinition["cost"];
+  abstract readonly roleClass: CharacterDefinition["roleClass"];
+  abstract readonly description: CharacterDefinition["description"];
+  abstract readonly gallery: CharacterDefinition["gallery"];
+  abstract readonly normalAttackId: CharacterDefinition["normalAttackId"];
+  abstract readonly bombId: CharacterDefinition["bombId"];
 
   abstract readonly moveSpeed: CharacterDefinition["moveSpeed"];
   abstract readonly fireRate: CharacterDefinition["fireRate"];
-  abstract readonly ammoCapacity: number;
-  abstract readonly reloadTicksPerAmmo: number;
-  get reloadStartPolicy(): CharacterDefinition["reloadStartPolicy"] {
-    return this.definition.reloadStartPolicy;
-  }
-
-  get reloadCommitPolicy(): CharacterDefinition["reloadCommitPolicy"] {
-    return this.definition.reloadCommitPolicy;
-  }
+  abstract readonly ammoCapacity: CharacterDefinition["ammoCapacity"];
+  abstract readonly reloadTicksPerAmmo: CharacterDefinition["reloadTicksPerAmmo"];
+  abstract readonly reloadStartPolicy: CharacterDefinition["reloadStartPolicy"];
+  abstract readonly reloadCommitPolicy: CharacterDefinition["reloadCommitPolicy"];
 
   abstract shoot(ctx: CharacterActionContext, fighter: FighterState, aimX: number, aimY: number): void;
   abstract useBomb(ctx: CharacterActionContext, fighter: FighterState): void;

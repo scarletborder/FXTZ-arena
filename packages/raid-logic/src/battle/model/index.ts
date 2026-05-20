@@ -449,9 +449,14 @@ export class BattleModel {
   }
 
   private currentShields(): readonly ShieldState[] {
-    return [this.player, this.target]
-      .filter((fighter) => fighter.deadUntil <= 0 && fighter.abilityCards.some((card) => card.effectIds.includes("rear_bullet_shield")))
-      .map((fighter) => rearShieldFor(fighter));
+    const shields: ShieldState[] = [];
+    if (this.player.deadUntil <= 0) {
+      shields.push(...this.playerFighter.collectShields());
+    }
+    if (this.target.deadUntil <= 0) {
+      shields.push(...this.targetFighter.collectShields());
+    }
+    return shields;
   }
 
 }
@@ -485,19 +490,6 @@ function hitsBeam(beam: ProjectileState, x: number, y: number): boolean {
   }
   return Math.abs(forward) <= beam.width / 2 && side <= beam.height / 2;
 }
-
-function rearShieldFor(fighter: FighterState): ShieldState {
-  const distance = 28;
-  return {
-    owner: fighter.key,
-    x: fighter.x - Math.cos(fighter.facing) * distance,
-    y: fighter.y - Math.sin(fighter.facing) * distance,
-    width: 34,
-    height: 14,
-    angle: fighter.facing,
-  };
-}
-
 
 function loadoutCards(loadout: FighterLoadout) {
   const ids = new Set(loadout.cardIds ?? []);

@@ -1,7 +1,7 @@
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
+import { DEFAULT_BOMBS } from "@repo/types";
 
 import type { FighterKey, FighterState } from "../types";
-import { getInitialBombs } from "../presets/ability-cards";
 
 export function createFighter(
   key: FighterKey,
@@ -21,7 +21,7 @@ export function createFighter(
     previousY: y,
     previousFacing: 0,
     lives: 2,
-    bombs: getInitialBombs(cards),
+    bombs: DEFAULT_BOMBS,
     ammo: primaryCharacter.ammoCapacity,
     ammoDisplay: primaryCharacter.ammoCapacity,
     ammoCapacity: primaryCharacter.ammoCapacity,
