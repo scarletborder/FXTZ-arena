@@ -46,6 +46,7 @@ export class SelectScene extends Phaser.Scene {
   private statusText!: Phaser.GameObjects.Text;
   private characterScrollOffset = 0;
   private cardScrollOffset = 0;
+  private leavingOnlineRoom = false;
   private scrollAreas: Array<{ bounds: Phaser.Geom.Rectangle; scroll: (deltaY: number) => void }> = [];
   private readonly onWheel = (
     pointer: Phaser.Input.Pointer,
@@ -70,6 +71,7 @@ export class SelectScene extends Phaser.Scene {
     this.playerId = data.playerId;
     this.primaryId = undefined;
     this.alternateId = undefined;
+    this.leavingOnlineRoom = false;
     this.selectedCards.clear();
 
     const subtitle = this.mode === "online"
@@ -83,7 +85,7 @@ export class SelectScene extends Phaser.Scene {
     if (this.mode === "online") {
       createFightButton(this, 1138, 62, 160, 44, "返回", () => {
         connectionManager.send({ type: "leave_room" });
-        this.scene.start("home");
+        this.scene.start("battle-start");
       }, { accent: 0x5c7185 });
     } else {
       createBackButton(this);
@@ -157,20 +159,14 @@ export class SelectScene extends Phaser.Scene {
       case "peer_status": {
         const ps = msg as unknown as { status: string };
         if (ps.status === "disconnected") {
-          this.statusText.setText("对手已离开，返回主界面…").setColor("#ff5c66");
-          this.time.delayedCall(1500, () => {
-            if (this.scene.isActive()) this.scene.start("home");
-          });
+          this.leaveOnlineRoomView();
         }
         break;
       }
       case "room_state": {
         const rs = msg as unknown as { playerCount: number };
         if (rs.playerCount < 2) {
-          this.statusText.setText("对手已离开，返回主界面…").setColor("#ff5c66");
-          this.time.delayedCall(1500, () => {
-            if (this.scene.isActive()) this.scene.start("home");
-          });
+          this.leaveOnlineRoomView();
         }
         break;
       }
@@ -179,6 +175,17 @@ export class SelectScene extends Phaser.Scene {
         this.confirmButton.setEnabled(true);
         break;
     }
+  }
+
+  private leaveOnlineRoomView(): void {
+    if (this.leavingOnlineRoom) return;
+    this.leavingOnlineRoom = true;
+    this.statusText.setVisible(true).setText("对方已经退出房间").setColor("#ff5c66");
+    this.time.delayedCall(150, () => {
+      if (this.scene.isActive("select")) {
+        this.scene.start("battle-start");
+      }
+    });
   }
 
   private render(): void {

@@ -162,6 +162,9 @@ export class ConnectionManager {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg));
     }
+    if (msg.type === "leave_room") {
+      this.resetRoomState();
+    }
   }
 
   /** Update internal state from server messages (fires before the scene handler). */
@@ -174,10 +177,33 @@ export class ConnectionManager {
       case "room_joined":
         this.roomId = msg.roomId;
         this.playerId = msg.playerId;
+        // Clear stale state from previous room (opponentUsername, etc.)
+        this.opponentUsername = null;
+        this.opponentReady = null;
+        this.battleConfig = null;
+        this.roomStatus = null;
+        this.roomName = null;
+        this.hostName = null;
+        this.lifeCount = null;
+        this.costLimit = null;
         break;
-      case "room_state":
+      case "room_state": {
+        const previousStatus = this.roomStatus;
+        const hadOpponent =
+          this.opponentUsername !== null ||
+          this.opponentReady !== null ||
+          previousStatus === "selecting" ||
+          previousStatus === "loading" ||
+          previousStatus === "fighting";
+        if (msg.playerCount < 2 && hadOpponent && msg.roomId === this.roomId) {
+          this.resetRoomState();
+          break;
+        }
         this.roomStatus = msg.status;
-        if (msg.opponentUsername) {
+        if (msg.playerCount < 2) {
+          this.opponentUsername = null;
+          this.opponentReady = null;
+        } else if (msg.opponentUsername) {
           this.opponentUsername = msg.opponentUsername;
         }
         if (msg.roomName !== undefined) this.roomName = msg.roomName;
@@ -186,6 +212,7 @@ export class ConnectionManager {
         if (msg.costLimit !== undefined) this.costLimit = msg.costLimit;
         if (msg.opponentReady !== undefined) this.opponentReady = msg.opponentReady;
         break;
+      }
       case "battle_start":
         this.battleConfig = msg.config;
         break;

@@ -156,16 +156,27 @@ export class MessageHandler {
                 status: "disconnected",
               });
             }
+            // Collect remaining connections before cleanup
+            const remainingConnIds = room.connectionIds.filter((c): c is string => c !== null);
+
             this.notifyAllConnected(room, {
               type: "room_state",
               roomId: room.id,
-              playerCount: room.connectionIds.filter(Boolean).length,
+              playerCount: remainingConnIds.length,
               status: room.status,
               roomName: room.name,
               hostName: this.hostName(room),
               lifeCount: room.lifeCount,
               costLimit: room.costLimit,
             });
+
+            // Clean up remaining players' sessions so they can create/join new rooms
+            for (const connId of remainingConnIds) {
+              this.sessionStore.setRoomId(connId, null);
+              this.sessionStore.setPlayerId(connId, null!);
+              this.roomManager.removePlayer(room, connId);
+            }
+
             if (room.connectionIds.every((c) => c === null)) {
               this.roomManager.delete(room.id);
             }
@@ -177,9 +188,8 @@ export class MessageHandler {
         if (slotIdx !== -1 && session.playerId) {
           this.notifyPeerStatus(room, slotIdx, session.playerId, "disconnected");
           const otherIdx = slotIdx === 0 ? 1 : 0;
-          const remainingSession = room.connectionIds[otherIdx]
-            ? this.sessionStore.get(room.connectionIds[otherIdx]!)
-            : undefined;
+          const otherConnId = room.connectionIds[otherIdx];
+          const remainingSession = otherConnId ? this.sessionStore.get(otherConnId) : undefined;
           this.sendToSlot(room, otherIdx, {
             type: "room_state",
             roomId: room.id,
@@ -190,6 +200,13 @@ export class MessageHandler {
             lifeCount: room.lifeCount,
             costLimit: room.costLimit,
           });
+
+          // Clean up remaining player: remove from room and clear session
+          if (otherConnId) {
+            this.sessionStore.setRoomId(otherConnId, null);
+            this.sessionStore.setPlayerId(otherConnId, null!);
+            this.roomManager.removePlayer(room, otherConnId);
+          }
         }
 
         this.roomManager.removePlayer(room, connectionId);
@@ -557,11 +574,7 @@ export class MessageHandler {
   private handleLeaveRoom(connection: TransportConnection): void {
     const session = this.sessionStore.get(connection.id);
     if (!session || !session.roomId) {
-      this.send(connection, {
-        type: "error",
-        code: ErrorCodes.NOT_IN_ROOM,
-        message: "You are not in a room",
-      });
+      // Already left or cleaned up by server — silently succeed
       return;
     }
 
@@ -584,14 +597,13 @@ export class MessageHandler {
         status: "disconnected",
       });
 
-      const remainingSession = this.sessionStore.get(otherConnId);
       this.sendToConnection(otherConnId, {
         type: "room_state",
         roomId: room.id,
         playerCount: 1,
         status: room.status,
         roomName: room.name,
-        hostName: remainingSession?.username ?? "",
+        hostName: "",
         lifeCount: room.lifeCount,
         costLimit: room.costLimit,
       });
@@ -599,12 +611,19 @@ export class MessageHandler {
 
     this.roomManager.removePlayer(room, connection.id);
 
+    // Clean up the remaining player's session too so they can create/join new rooms
+    if (otherConnId) {
+      this.sessionStore.setRoomId(otherConnId, null);
+      this.sessionStore.setPlayerId(otherConnId, null!);
+      this.roomManager.removePlayer(room, otherConnId);
+    }
+
     if (room.connectionIds.every((c) => c === null)) {
       this.roomManager.delete(room.id);
     }
 
     this.sessionStore.setRoomId(connection.id, null);
-    this.sessionStore.setPlayerId(connection.id, null!); // will be re-set on next join
+    this.sessionStore.setPlayerId(connection.id, null!);
   }
 
   // ─── Start Game ────────────────────────────────────
@@ -941,6 +960,16 @@ export class MessageHandler {
       lifeCount: room.lifeCount,
       costLimit: room.costLimit,
     });
+
+    // Clean up all players' sessions so they can create/join new rooms after the match
+    for (const connId of room.connectionIds) {
+      if (connId) {
+        this.sessionStore.setRoomId(connId, null);
+        this.sessionStore.setPlayerId(connId, null!);
+        this.roomManager.removePlayer(room, connId);
+      }
+    }
+    this.roomManager.delete(room.id);
   }
 
   // ─── Ping / Pong ──────────────────────────────────

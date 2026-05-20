@@ -12,6 +12,7 @@ export class RoomLobbyScene extends Phaser.Scene {
   private statusLabel!: Phaser.GameObjects.Text;
   private startBtn!: ReturnType<typeof createFightButton>;
   private readyBtn!: ReturnType<typeof createFightButton>;
+  private leavingOnlineRoom = false;
 
   /** Track guest's own ready state locally for responsive UI. */
   private selfReady = false;
@@ -22,6 +23,7 @@ export class RoomLobbyScene extends Phaser.Scene {
 
   create(): void {
     this.selfReady = false;
+    this.leavingOnlineRoom = false;
 
     drawFightingBackdrop(this, "LOBBY", "WAITING ROOM");
 
@@ -225,9 +227,15 @@ export class RoomLobbyScene extends Phaser.Scene {
   private onServerMessage(msg: unknown): void {
     const m = msg as Record<string, unknown>;
     switch (m.type) {
-      case "room_state":
+      case "room_state": {
+        const rs = m as { playerCount?: number };
+        if (rs.playerCount !== undefined && rs.playerCount < 2) {
+          this.leaveOnlineRoomView();
+          return;
+        }
         this.renderLobby();
         break;
+      }
       case "game_starting":
         this.scene.start("select", {
           mode: "online",
@@ -235,9 +243,15 @@ export class RoomLobbyScene extends Phaser.Scene {
           playerId: connectionManager.playerId ?? undefined,
         } satisfies SelectionData);
         break;
-      case "peer_status":
+      case "peer_status": {
+        const ps = m as { status?: string };
+        if (ps.status === "disconnected") {
+          this.leaveOnlineRoomView();
+          return;
+        }
         this.renderLobby();
         break;
+      }
       case "error": {
         const code = m.code as string;
         const message = m.message as string;
@@ -245,6 +259,17 @@ export class RoomLobbyScene extends Phaser.Scene {
         break;
       }
     }
+  }
+
+  private leaveOnlineRoomView(): void {
+    if (this.leavingOnlineRoom) return;
+    this.leavingOnlineRoom = true;
+    this.showToast("对方已经退出房间");
+    this.time.delayedCall(150, () => {
+      if (this.scene.isActive("lobby")) {
+        this.scene.start("battle-start");
+      }
+    });
   }
 
   // ─── Toast notification ──────────────────────────────

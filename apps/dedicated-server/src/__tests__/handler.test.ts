@@ -406,16 +406,18 @@ describe("MessageHandler", () => {
       expect(roomManager.get(roomCreated.roomId)).toBeUndefined();
     });
 
-    it("fails leave room when not in a room", () => {
+    it("allows leave room when not in a room (no-op)", () => {
       const { handler } = createHandler();
       const conn = new MockConnection();
 
       performHello(handler, conn);
 
+      // Should silently succeed (no error) — needed when server has already
+      // cleaned up the session after the other player left/disconnected
       handler.handle(conn, { type: "leave_room" });
 
       const error = conn.findSentMessage("error");
-      expect(error?.code).toBe("not_in_room");
+      expect(error).toBeUndefined();
     });
 
     it("notifies other player when someone leaves", () => {
@@ -483,8 +485,54 @@ describe("MessageHandler", () => {
 
       handler.handle(conn2, { type: "leave_room" });
 
-      expect(roomManager.get(roomId)?.status).toBe("finished");
-      expect(conn1.findAllSentMessages("room_state").pop()?.status).toBe("finished");
+      // Room is cleaned up and deleted (remaining player's session is freed)
+      expect(roomManager.get(roomId)).toBeUndefined();
+      // Final room_state sent before cleanup has "finished" status
+      const lastRoomState = conn1.findAllSentMessages("room_state").pop();
+      expect(lastRoomState?.status).toBe("finished");
+      expect(lastRoomState?.playerCount).toBe(1);
+    });
+
+    it("does not carry the previous opponent into a new room after leaving selection", () => {
+      const { handler, roomManager, sessionStore } = createHandler();
+      const conn1 = new MockConnection("conn-1");
+      const conn2 = new MockConnection("conn-2");
+
+      performHello(handler, conn1, "Host");
+      performHello(handler, conn2, "Joiner");
+
+      handler.handle(conn1, {
+        type: "create_room",
+        name: "Selection Leave",
+        mapId: "arena_standard",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+      const oldRoomId = conn1.findSentMessage("room_created")!.roomId;
+      handler.handle(conn2, { type: "join_room", roomId: oldRoomId });
+      handler.handle(conn2, { type: "lobby_ready", ready: true });
+      handler.handle(conn1, { type: "start_game" });
+
+      handler.handle(conn1, { type: "leave_room" });
+
+      expect(roomManager.get(oldRoomId)).toBeUndefined();
+      expect(sessionStore.get(conn1.id)?.roomId).toBeNull();
+      expect(sessionStore.get(conn2.id)?.roomId).toBeNull();
+
+      conn1.clearMessages();
+      handler.handle(conn1, {
+        type: "create_room",
+        name: "Fresh Room",
+        mapId: "arena_standard",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+
+      const newRoomId = conn1.findSentMessage("room_created")!.roomId;
+      const newRoom = roomManager.get(newRoomId);
+      expect(newRoom?.connectionIds).toEqual(["conn-1", null]);
+      expect(newRoom?.playerSlots).toEqual(["player-1", null]);
+      expect(conn1.findAllSentMessages("room_state").pop()?.playerCount).toBe(1);
     });
   });
 
@@ -890,7 +938,11 @@ describe("MessageHandler", () => {
 
       expect(conn1.findSentMessage("battle_finished")?.winnerPlayerId).toBe("player-1");
       expect(conn2.findSentMessage("battle_finished")?.frame).toBe(122);
-      expect(roomManager.get(roomId)?.status).toBe("finished");
+      // Room is cleaned up after both verdicts (players freed for new rooms)
+      expect(roomManager.get(roomId)).toBeUndefined();
+      // Final room_state sent before cleanup has "finished" status
+      const p1RoomState = conn1.findAllSentMessages("room_state").pop();
+      expect(p1RoomState?.status).toBe("finished");
     });
 
     it("does not finish when the two verdicts disagree", () => {
