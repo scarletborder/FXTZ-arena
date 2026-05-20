@@ -31,7 +31,8 @@
   "dependencies": {
     "@dimforge/rapier2d-deterministic-compat": "^0.19.3",
     "@repo/content": "workspace:*",
-    "@repo/types": "workspace:*"
+    "@repo/types": "workspace:*",
+    "@shaisrc/fixed-point": "^0.1.0"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

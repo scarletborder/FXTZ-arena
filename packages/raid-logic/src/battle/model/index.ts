@@ -1,3 +1,5 @@
+import { fp } from "@shaisrc/fixed-point";
+
 import type { ProjectileCollisionContext } from "@repo/types";
 
 import { getAbilityCard, getCharacter } from "../content";
@@ -18,6 +20,7 @@ import {
   type BattleModelSnapshot,
 } from "./snapshot";
 import type { CharacterActionContext } from "../presets/characters";
+import { fpClamp, fpAtan2 } from "../fp";
 
 export class BattleModel {
   readonly projectiles: ProjectileState[] = [];
@@ -32,15 +35,7 @@ export class BattleModel {
   private readonly playerFighter: BattleFighter;
   private readonly targetFighter: BattleFighter;
   private readonly cpuPlayer: CpuPlayer | undefined;
-  /** Rapier-backed collision provider. */
   private physics: BattlePhysics | undefined;
-  /**
-   * Deferred spawn queue for projectiles.
-   * Populated during fighter action processing (Phase 2),
-   * flushed after projectile stepping (Phase 3 post-update).
-   * This prevents newly-spawned projectiles from being stepped
-   * or hit-tested in the same frame they were created.
-   */
   private pendingSpawns: Array<() => void> = [];
 
   constructor(loadouts: BattleLoadouts = DEFAULT_BATTLE_LOADOUTS, params: { readonly endOnTargetDefeat?: boolean } = {}) {
@@ -110,27 +105,14 @@ export class BattleModel {
     this.stepFrame(input, undefined, true);
   }
 
-  /**
-   * @param hostIsPlayer - When true (default), the "player" fighter has priority
-   *   (processed first). The host / lower playerId should set this to true.
-   */
   stepVersus(playerInput: BattleInputState, targetInput: BattleInputState, hostIsPlayer = true): void {
     if (hostIsPlayer) {
       this.stepFrame(playerInput, targetInput, true);
     } else {
-      // Target (higher playerId) has priority → process them first
       this.stepFrame(targetInput, playerInput, false);
     }
   }
 
-  /**
-   * Frame stepping with three phases:
-   *
-   * Phase 1 – Tick all fighters' timers (order-independent).
-   * Phase 2 – Process fighter actions in priority order (lower playerId first).
-   * Phase 3 – Post-update: resolve projectile clashes, step projectiles,
-   *           then flush deferred spawns so new projectiles start from next frame.
-   */
   private stepFrame(
     firstInput: BattleInputState,
     secondInput: BattleInputState | undefined,
@@ -230,7 +212,6 @@ export class BattleModel {
     this.effectSystem.restoreNextId(this.effects);
   }
 
-  /** Inject the Rapier-backed physics provider. */
   setPhysics(physics: BattlePhysics): void {
     this.physics = physics;
   }
@@ -239,11 +220,6 @@ export class BattleModel {
     return this.physics?.isReady() ?? false;
   }
 
-  /**
-   * Process one fighter's actions for this frame.
-   * Called in priority order (by playerId, lower first).
-   * Handles: character select, facing, movement, reload, active card, bomb, fire.
-   */
   private processFighterActions(
     fighter: BattleFighter,
     input: BattleInputState | undefined,
@@ -252,7 +228,6 @@ export class BattleModel {
     const state = fighter.state;
     if (state.deadUntil > 0) return;
 
-    // No input → AI or simple movement for the target fighter
     if (!input) {
       if (state.key === "target") {
         if (this.cpuPlayer) {
@@ -265,10 +240,11 @@ export class BattleModel {
     }
 
     // Deterministic action order within a fighter's turn:
-    // 1. Character select  2. Facing  3. Movement  4. Reload
-    // 5. Active card  6. Bomb  7. Fire
     fighter.selectActiveCharacter(input.alternateHeld);
-    state.facing = Math.atan2(input.aimY - state.y, input.aimX - state.x);
+    state.facing = fpAtan2(
+      fp.fromFloat(input.aimY - state.y),
+      fp.fromFloat(input.aimX - state.x),
+    );
     fighter.moveBy(input);
     fighter.postUpdate(this.fighterActionContext(state));
     fighter.handleReload(input.reloadPressed);
@@ -295,7 +271,10 @@ export class BattleModel {
     });
 
     this.targetFighter.selectActiveCharacter(aiInput.alternateHeld);
-    fighter.facing = Math.atan2(aiInput.aimY - fighter.y, aiInput.aimX - fighter.x);
+    fighter.facing = fpAtan2(
+      fp.fromFloat(aiInput.aimY - fighter.y),
+      fp.fromFloat(aiInput.aimX - fighter.x),
+    );
     this.targetFighter.moveBy(aiInput);
     this.targetFighter.postUpdate(this.fighterActionContext(fighter));
     this.targetFighter.handleReload(aiInput.reloadPressed);
@@ -312,10 +291,25 @@ export class BattleModel {
   private stepTargetSimple(): void {
     const fighter = this.target;
     if (fighter.movementLockedUntil === 0) {
-      fighter.x = clamp(fighter.x + Math.sin(this.frame / 36) * 1.6, 780, 1150);
-      fighter.y = clamp(fighter.y + Math.cos(this.frame / 50) * 1.2, 72, 600);
+      // Sinusoidal movement pattern for the simple AI target
+      const fpFrame = fp.fromInt(this.frame);
+      const fpSinOffset = fp.mul(fp.sin(fp.div(fpFrame, fp.fromInt(36))), fp.fromFloat(1.6));
+      const fpCosOffset = fp.mul(fp.cos(fp.div(fpFrame, fp.fromInt(50))), fp.fromFloat(1.2));
+      fighter.x = fp.toFloat(fpClamp(
+        fp.add(fp.fromFloat(fighter.x), fpSinOffset),
+        fp.fromInt(780),
+        fp.fromInt(1150),
+      ));
+      fighter.y = fp.toFloat(fpClamp(
+        fp.add(fp.fromFloat(fighter.y), fpCosOffset),
+        fp.fromInt(72),
+        fp.fromInt(600),
+      ));
     }
-    fighter.facing = Math.atan2(this.player.y - fighter.y, this.player.x - fighter.x);
+    fighter.facing = fpAtan2(
+      fp.fromFloat(this.player.y - fighter.y),
+      fp.fromFloat(this.player.x - fighter.x),
+    );
     this.targetFighter.postUpdate(this.fighterActionContext(fighter));
     if (this.frame % 72 === 0) {
       this.targetFighter.fire(this.fighterActionContext(fighter), this.player.x, this.player.y);
@@ -392,7 +386,6 @@ export class BattleModel {
       effects: this.effects,
       stats: this.stats,
       spawnBullet: (params) => {
-        // Defer: collect spawn, flush in post-update after projectile stepping
         const spawnParams = { ...params, frame: params.frame ?? frame };
         this.pendingSpawns.push(() => {
           this.projectileSystem.spawnBullet(this.projectiles, spawnParams);
@@ -409,12 +402,11 @@ export class BattleModel {
         this.effectSystem.spawnRing(this.effects, this.frame, params.x, params.y, params.tint, params.scale, params.duration);
       },
       spawnClearRing: (params) => {
-        this.effectSystem.spawnRing(this.effects, this.frame, params.x, params.y, params.tint, params.radius / 100, params.duration);
+        this.effectSystem.spawnRing(this.effects, this.frame, params.x, params.y, params.tint, fp.toFloat(fp.div(fp.fromFloat(params.radius), fp.fromInt(100))), params.duration);
       },
     };
   }
 
-  /** Post-update: flush all deferred projectiles into the active array. */
   private flushDeferredSpawns(): void {
     for (const spawn of this.pendingSpawns) {
       spawn();
@@ -431,7 +423,9 @@ export class BattleModel {
   }
 
   private resolveProjectileClashes(): void {
-    const masters = this.projectiles.filter((projectile) => projectile.kind === "spark" && projectile.height >= 36 && projectile.damage > 0 && this.frame >= projectile.pausedUntil);
+    const masters = this.projectiles.filter(
+      (projectile) => projectile.kind === "spark" && projectile.height >= 36 && projectile.damage > 0 && this.frame >= projectile.pausedUntil,
+    );
     if (masters.length === 0) {
       return;
     }
@@ -458,7 +452,6 @@ export class BattleModel {
     }
     return shields;
   }
-
 }
 
 const DEFAULT_BATTLE_LOADOUTS: BattleLoadouts = {
@@ -476,19 +469,21 @@ const DEFAULT_BATTLE_LOADOUTS: BattleLoadouts = {
   },
 };
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
 function hitsBeam(beam: ProjectileState, x: number, y: number): boolean {
-  const dx = x - beam.x;
-  const dy = y - beam.y;
-  const forward = dx * Math.cos(beam.angle) + dy * Math.sin(beam.angle);
-  const side = Math.abs(-dx * Math.sin(beam.angle) + dy * Math.cos(beam.angle));
+  const fpDx = fp.sub(fp.fromFloat(x), fp.fromFloat(beam.x));
+  const fpDy = fp.sub(fp.fromFloat(y), fp.fromFloat(beam.y));
+  const fpAngle = fp.fromFloat(beam.angle);
+  const fpCos = fp.cos(fpAngle);
+  const fpSin = fp.sin(fpAngle);
+
+  const fpForward = fp.add(fp.mul(fpDx, fpCos), fp.mul(fpDy, fpSin));
+  const fpSide = fp.abs(fp.add(fp.mul(fp.negate(fpDx), fpSin), fp.mul(fpDy, fpCos)));
+
   if (!Number.isFinite(beam.width)) {
-    return forward >= 0 && side <= beam.height / 2;
+    return fp.gte(fpForward, fp.fromInt(0)) && fp.lte(fpSide, fp.div(fp.fromFloat(beam.height), fp.fromInt(2)));
   }
-  return Math.abs(forward) <= beam.width / 2 && side <= beam.height / 2;
+  return fp.lte(fp.abs(fpForward), fp.div(fp.fromFloat(beam.width), fp.fromInt(2))) &&
+         fp.lte(fpSide, fp.div(fp.fromFloat(beam.height), fp.fromInt(2)));
 }
 
 function loadoutCards(loadout: FighterLoadout) {
@@ -498,3 +493,4 @@ function loadoutCards(loadout: FighterLoadout) {
   }
   return Array.from(ids).map((id) => getAbilityCard(id));
 }
+

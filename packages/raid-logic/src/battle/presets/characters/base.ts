@@ -1,9 +1,11 @@
+import { fp } from "@shaisrc/fixed-point";
 import type { CharacterDefinition, CharacterGalleryAssets } from "@repo/content";
 import { hitCircleUnits, secondsToTicks, type BattleActionContext as StandardBattleActionContext } from "@repo/types";
 
 import type { EffectState, FighterState, ProjectileState, TrainingStats } from "../../types";
 import type { BulletProjectileParams, LaserProjectileParams } from "../../model/projectile";
 import type { BattleHitContext } from "../ability-cards";
+import { fpAtan2, fpMax } from "../../fp";
 
 const STATUS_VISIBLE_TICKS = secondsToTicks(1.5);
 
@@ -42,11 +44,11 @@ export abstract class BattleCharacter {
   abstract onHit(ctx: BattleHitContext): void;
 
   protected aimAngle(fighter: FighterState, aimX: number, aimY: number): number {
-    return Math.atan2(aimY - fighter.y, aimX - fighter.x);
+    return fpAtan2(fp.fromFloat(aimY - fighter.y), fp.fromFloat(aimX - fighter.x));
   }
 
   protected angleToOpponent(ctx: CharacterActionContext, fighter: FighterState): number {
-    return Math.atan2(ctx.opponent.y - fighter.y, ctx.opponent.x - fighter.x);
+    return fpAtan2(fp.fromFloat(ctx.opponent.y - fighter.y), fp.fromFloat(ctx.opponent.x - fighter.x));
   }
 
   protected startBomb(ctx: CharacterActionContext, fighter: FighterState, cooldownTicks = 60): void {

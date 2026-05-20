@@ -1,8 +1,11 @@
+import { fp } from "@shaisrc/fixed-point";
+
 import type { CharacterDefinition, CharacterGalleryAssets } from "@repo/content";
 
 import type { FighterState } from "../../types";
 import type { BattleHitContext } from "../ability-cards";
 import { BattleCharacter, hitCircleUnits, secondsToTicks, type CharacterActionContext } from "./base";
+import { fpAtan2 } from "../../fp";
 import { Vanilla } from "../../registry";
 
 @Vanilla.RegisterCharacter("sakuya")
@@ -26,16 +29,24 @@ export class SakuyaBattleCharacter extends BattleCharacter {
   readonly bombId = "sakuya_time_stop";
 
   shoot(ctx: CharacterActionContext, fighter: FighterState, aimX: number, aimY: number): void {
-    const angle = this.aimAngle(fighter, aimX, aimY);
+    const fpAngle = fp.fromFloat(this.aimAngle(fighter, aimX, aimY));
     const halfBulletGap = (8 + hitCircleUnits(1)) / 2;
-    const sideX = Math.cos(angle + Math.PI / 2) * halfBulletGap;
-    const sideY = Math.sin(angle + Math.PI / 2) * halfBulletGap;
+    const fpPI2 = fp.fromFloat(Math.PI / 2);
+    const fpSideX = fp.mul(fp.cos(fp.add(fpAngle, fpPI2)), fp.fromFloat(halfBulletGap));
+    const fpSideY = fp.mul(fp.sin(fp.add(fpAngle, fpPI2)), fp.fromFloat(halfBulletGap));
     const pausedUntil = ctx.frame + fighter.projectilePauseUntil;
     for (const side of [-1, 1]) {
-      this.spawnKnife(ctx, fighter, fighter.x + sideX * side, fighter.y + sideY * side, angle, "medium", pausedUntil, {
-        width: hitCircleUnits(3),
-        height: hitCircleUnits(1),
-      });
+      this.spawnKnife(ctx, fighter,
+        fp.toFloat(fp.add(fp.fromFloat(fighter.x), fp.mul(fpSideX, fp.fromInt(side)))),
+        fp.toFloat(fp.add(fp.fromFloat(fighter.y), fp.mul(fpSideY, fp.fromInt(side)))),
+        fp.toFloat(fpAngle),
+        "medium",
+        pausedUntil,
+        {
+          width: hitCircleUnits(3),
+          height: hitCircleUnits(1),
+        },
+      );
     }
   }
 
@@ -56,14 +67,28 @@ export class SakuyaBattleCharacter extends BattleCharacter {
     }
 
     const orbitRadius = hitCircleUnits(24);
-    for (const angle of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
-      const x = ctx.opponent.x + Math.cos(angle) * orbitRadius;
-      const y = ctx.opponent.y + Math.sin(angle) * orbitRadius;
-      const shotAngle = Math.atan2(ctx.opponent.y - y, ctx.opponent.x - x);
-      this.spawnKnife(ctx, fighter, x, y, shotAngle, "medium", ctx.frame + freezeTicks, {
-        width: hitCircleUnits(3),
-        height: hitCircleUnits(1),
-      });
+    const fpOrbit = fp.fromFloat(orbitRadius);
+    for (const angleRad of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
+      const fpAngle = fp.fromFloat(angleRad);
+      const fpCos = fp.cos(fpAngle);
+      const fpSin = fp.sin(fpAngle);
+      const fpX = fp.add(fp.fromFloat(ctx.opponent.x), fp.mul(fpCos, fpOrbit));
+      const fpY = fp.add(fp.fromFloat(ctx.opponent.y), fp.mul(fpSin, fpOrbit));
+      const fpShotAngle = fpAtan2(
+        fp.sub(fp.fromFloat(ctx.opponent.y), fpY),
+        fp.sub(fp.fromFloat(ctx.opponent.x), fpX),
+      );
+      this.spawnKnife(ctx, fighter,
+        fp.toFloat(fpX),
+        fp.toFloat(fpY),
+        fpShotAngle,
+        "medium",
+        ctx.frame + freezeTicks,
+        {
+          width: hitCircleUnits(3),
+          height: hitCircleUnits(1),
+        },
+      );
     }
   }
 

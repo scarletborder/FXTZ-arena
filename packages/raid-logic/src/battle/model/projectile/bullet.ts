@@ -1,6 +1,9 @@
+import { fp } from "@shaisrc/fixed-point";
+
 import { ARENA_WIDTH, bulletSpeedRankToPixelsPerTick, secondsToTicks } from "@repo/types";
 
 import type { FighterKey, FighterState, ProjectileState } from "../../types";
+import { fpAtan2, fpHypotFp, fpMax } from "../../fp";
 
 const HOMING_START_DELAY_TICKS = secondsToTicks(0.5);
 
@@ -20,16 +23,30 @@ export function createBulletProjectile(params: {
 }): ProjectileState {
   const speed = bulletSpeedRankToPixelsPerTick(params.speedRank);
   const spawnOffset = params.spawnOffset ?? 28;
+
+  const fpAngle = fp.fromFloat(params.angle);
+  const fpCos = fp.cos(fpAngle);
+  const fpSin = fp.sin(fpAngle);
+  const fpOffset = fp.fromFloat(spawnOffset);
+  const fpSpeed = fp.fromFloat(speed);
+  const fpX = fp.fromFloat(params.x);
+  const fpY = fp.fromFloat(params.y);
+
+  const fpx = fp.add(fpX, fp.mul(fpCos, fpOffset));
+  const fpy = fp.add(fpY, fp.mul(fpSin, fpOffset));
+  const fpvx = fp.mul(fpCos, fpSpeed);
+  const fpvy = fp.mul(fpSin, fpSpeed);
+
   return {
     id: params.id,
     kind: params.kind,
     owner: params.owner,
-    x: params.x + Math.cos(params.angle) * spawnOffset,
-    y: params.y + Math.sin(params.angle) * spawnOffset,
-    previousX: params.x + Math.cos(params.angle) * spawnOffset,
-    previousY: params.y + Math.sin(params.angle) * spawnOffset,
-    vx: Math.cos(params.angle) * speed,
-    vy: Math.sin(params.angle) * speed,
+    x: fp.toFloat(fpx),
+    y: fp.toFloat(fpy),
+    previousX: fp.toFloat(fpx),
+    previousY: fp.toFloat(fpy),
+    vx: fp.toFloat(fpvx),
+    vy: fp.toFloat(fpvy),
     width: params.width,
     previousWidth: params.width,
     height: params.height,
@@ -56,22 +73,36 @@ export function stepBulletProjectile(
   if (projectile.kind === "orb" && frame >= projectile.homingStartAt && frame <= projectile.homingUntil) {
     if (!canHomeTo(target)) {
       projectile.homingUntil = frame - 1;
-      projectile.x += projectile.vx;
-      projectile.y += projectile.vy;
-      projectile.angle = Math.atan2(projectile.vy, projectile.vx);
+      projectile.x = fp.toFloat(fp.add(fp.fromFloat(projectile.x), fp.fromFloat(projectile.vx)));
+      projectile.y = fp.toFloat(fp.add(fp.fromFloat(projectile.y), fp.fromFloat(projectile.vy)));
+      projectile.angle = fp.toFloat(fpAtan2(fp.fromFloat(projectile.vy), fp.fromFloat(projectile.vx)));
       return;
     }
-    const dx = target.x - projectile.x;
-    const dy = target.y - projectile.y;
-    const length = Math.max(1, Math.hypot(dx, dy));
-    const speed = Math.max(1.5, Math.hypot(projectile.vx, projectile.vy));
-    projectile.vx = projectile.vx * 0.9 + (dx / length) * speed * 0.1;
-    projectile.vy = projectile.vy * 0.9 + (dy / length) * speed * 0.1;
+
+    const fpTx = fp.fromFloat(target.x);
+    const fpTy = fp.fromFloat(target.y);
+    const fpPx = fp.fromFloat(projectile.x);
+    const fpPy = fp.fromFloat(projectile.y);
+    const fpDx = fp.sub(fpTx, fpPx);
+    const fpDy = fp.sub(fpTy, fpPy);
+    const fpLen = fpMax(fp.fromInt(1), fpHypotFp(fpDx, fpDy));
+    const fpVx = fp.fromFloat(projectile.vx);
+    const fpVy = fp.fromFloat(projectile.vy);
+    const fpSpd = fpMax(fp.fromFloat(1.5), fpHypotFp(fpVx, fpVy));
+
+    const fp09 = fp.fromFloat(0.9);
+    const fp01 = fp.fromFloat(0.1);
+    const fpNewVx = fp.add(fp.mul(fpVx, fp09), fp.mul(fp.mul(fp.div(fpDx, fpLen), fpSpd), fp01));
+    const fpNewVy = fp.add(fp.mul(fpVy, fp09), fp.mul(fp.mul(fp.div(fpDy, fpLen), fpSpd), fp01));
+
+    projectile.vx = fp.toFloat(fpNewVx);
+    projectile.vy = fp.toFloat(fpNewVy);
   }
 
-  projectile.x += projectile.vx;
-  projectile.y += projectile.vy;
-  projectile.angle = Math.atan2(projectile.vy, projectile.vx);
+  // Position step (non-homing: simple fp add)
+  projectile.x = fp.toFloat(fp.add(fp.fromFloat(projectile.x), fp.fromFloat(projectile.vx)));
+  projectile.y = fp.toFloat(fp.add(fp.fromFloat(projectile.y), fp.fromFloat(projectile.vy)));
+  projectile.angle = fp.toFloat(fpAtan2(fp.fromFloat(projectile.vy), fp.fromFloat(projectile.vx)));
 }
 
 function canHomeTo(target: FighterState): boolean {

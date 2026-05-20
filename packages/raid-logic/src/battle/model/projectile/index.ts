@@ -1,8 +1,11 @@
+import { fp } from "@shaisrc/fixed-point";
+
 import type { ProjectileCollisionContext } from "@repo/types";
 
 import { PLAYER_CORE_RADIUS } from "../../constants";
 import type { FighterKey, FighterState, ProjectileState } from "../../types";
 import type { CollisionResult } from "../physics-adapter";
+import { fpHypotFp, fpClamp, fpMin, fpMax } from "../../fp";
 import { createBulletProjectile, isProjectileOutOfWorld, stepBulletProjectile } from "./bullet";
 import { createLaserProjectile, stepLaserProjectile } from "./laser";
 
@@ -40,12 +43,6 @@ export class ProjectileSystem {
     readonly player: FighterState;
     readonly target: FighterState;
     readonly onHit: (ctx: ProjectileCollisionContext<ProjectileState, FighterState, FighterKey>) => boolean;
-    /**
-     * Optional callback invoked AFTER projectile positions have been updated
-     * but BEFORE hit-testing. Receives the projectiles with their new
-     * positions and should return any Rapier-driven collision results.
-     * Return `undefined` to use the built-in manual hitTest for all projectiles.
-     */
     readonly computeRapierHits?: (projectiles: readonly ProjectileState[]) => readonly CollisionResult[] | undefined;
   }): void {
     const remaining: ProjectileState[] = [];
@@ -64,7 +61,6 @@ export class ProjectileSystem {
       }
     }
 
-    // Compute Rapier hit results after position updates, if callback provided.
     let rapierHitMap: Map<number, FighterKey | "blocked"> | undefined;
     if (params.computeRapierHits) {
       const results = params.computeRapierHits(params.projectiles);
@@ -85,7 +81,6 @@ export class ProjectileSystem {
       const victim = projectile.owner === "player" ? params.target : params.player;
       const visible = params.frame >= projectile.visibleFrom;
       if (visible && projectile.damage > 0) {
-        // Use Rapier hit results if available; fall back to manual hitTest.
         const rapierVictim = rapierHitMap?.get(projectile.id);
         const isHit = rapierHitMap !== undefined && canUseRapierHitTest(projectile)
           ? rapierVictim === victim.key
@@ -124,7 +119,15 @@ export function clearProjectilesAround(
   projectiles.splice(
     0,
     projectiles.length,
-    ...projectiles.filter((projectile) => Math.hypot(projectile.x - x, projectile.y - y) > radius),
+    ...projectiles.filter(
+      (projectile) => fp.gt(
+        fpHypotFp(
+          fp.sub(fp.fromFloat(projectile.x), fp.fromFloat(x)),
+          fp.sub(fp.fromFloat(projectile.y), fp.fromFloat(y)),
+        ),
+        fp.fromFloat(radius),
+      ),
+    ),
   );
   return before - projectiles.length;
 }
@@ -132,11 +135,23 @@ export function clearProjectilesAround(
 function hitTest(projectile: ProjectileState, victim: FighterState): boolean {
   if (projectile.kind === "laser" || projectile.kind === "spark") {
     if (!Number.isFinite(projectile.width)) {
-      const dx = victim.x - projectile.x;
-      const dy = victim.y - projectile.y;
-      const forward = dx * Math.cos(projectile.angle) + dy * Math.sin(projectile.angle);
-      const side = Math.abs(-dx * Math.sin(projectile.angle) + dy * Math.cos(projectile.angle));
-      return forward >= -PLAYER_CORE_RADIUS && side <= projectile.height / 2 + PLAYER_CORE_RADIUS;
+      // Infinite-width beam: ray vs circle
+      const fpVx = fp.fromFloat(victim.x);
+      const fpVy = fp.fromFloat(victim.y);
+      const fpPx = fp.fromFloat(projectile.x);
+      const fpPy = fp.fromFloat(projectile.y);
+      const fpDx = fp.sub(fpVx, fpPx);
+      const fpDy = fp.sub(fpVy, fpPy);
+      const fpAngle = fp.fromFloat(projectile.angle);
+      const fpCos = fp.cos(fpAngle);
+      const fpSin = fp.sin(fpAngle);
+      const fpForward = fp.add(fp.mul(fpDx, fpCos), fp.mul(fpDy, fpSin));
+      const fpSide = fp.abs(fp.add(fp.mul(fp.negate(fpDx), fpSin), fp.mul(fpDy, fpCos)));
+      const fpHalfH = fp.div(fp.fromFloat(projectile.height), fp.fromInt(2));
+      const fpRadius = fp.fromFloat(PLAYER_CORE_RADIUS);
+      const fpSideMax = fp.add(fpHalfH, fpRadius);
+      const fpNegRadius = fp.negate(fpRadius);
+      return fp.gte(fpForward, fpNegRadius) && fp.lte(fpSide, fpSideMax);
     }
   }
   return rotatedRectIntersectsCircle(projectile, victim.x, victim.y, PLAYER_CORE_RADIUS);
@@ -152,16 +167,29 @@ function rotatedRectIntersectsCircle(
   circleY: number,
   circleRadius: number,
 ): boolean {
-  const dx = circleX - projectile.x;
-  const dy = circleY - projectile.y;
-  const localX = dx * Math.cos(projectile.angle) + dy * Math.sin(projectile.angle);
-  const localY = -dx * Math.sin(projectile.angle) + dy * Math.cos(projectile.angle);
-  const closestX = clamp(localX, -projectile.width / 2, projectile.width / 2);
-  const closestY = clamp(localY, -projectile.height / 2, projectile.height / 2);
-  return Math.hypot(localX - closestX, localY - closestY) <= circleRadius;
-}
+  const fpCx = fp.fromFloat(circleX);
+  const fpCy = fp.fromFloat(circleY);
+  const fpPx = fp.fromFloat(projectile.x);
+  const fpPy = fp.fromFloat(projectile.y);
+  const fpDx = fp.sub(fpCx, fpPx);
+  const fpDy = fp.sub(fpCy, fpPy);
+  const fpAngle = fp.fromFloat(projectile.angle);
+  const fpCos = fp.cos(fpAngle);
+  const fpSin = fp.sin(fpAngle);
 
+  // localX = dx * cos + dy * sin
+  const fpLocalX = fp.add(fp.mul(fpDx, fpCos), fp.mul(fpDy, fpSin));
+  // localY = -dx * sin + dy * cos
+  const fpLocalY = fp.add(fp.mul(fp.negate(fpDx), fpSin), fp.mul(fpDy, fpCos));
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
+  const fpHalfW = fp.div(fp.fromFloat(projectile.width), fp.fromInt(2));
+  const fpHalfH = fp.div(fp.fromFloat(projectile.height), fp.fromInt(2));
+  const fpClosestX = fpClamp(fpLocalX, fp.negate(fpHalfW), fpHalfW);
+  const fpClosestY = fpClamp(fpLocalY, fp.negate(fpHalfH), fpHalfH);
+
+  const fpDist = fpHypotFp(
+    fp.sub(fpLocalX, fpClosestX),
+    fp.sub(fpLocalY, fpClosestY),
+  );
+  return fp.lte(fpDist, fp.fromFloat(circleRadius));
 }

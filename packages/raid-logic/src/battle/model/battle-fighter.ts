@@ -1,3 +1,5 @@
+import { fp } from "@shaisrc/fixed-point";
+
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
 import { ARENA_WIDTH, DEFAULT_BOMBS, speedRankToPixelsPerTick } from "@repo/types";
 
@@ -6,6 +8,7 @@ import { applyHit, getFireCooldown } from "./combat";
 import { createFighter, getCharacterAmmo, resetFighter, setCharacterAmmo, tickFighterTimers } from "./fighter";
 import { applyInitialCardState, createBattleAbilityCard, type BattleAbilityCard, type BattleHitContext } from "../presets/ability-cards";
 import { createBattleCharacter, type BattleCharacter, type CharacterActionContext } from "../presets/characters";
+import { fpClamp, fpMax, fpMin } from "../fp";
 
 export class BattleFighter {
   readonly state: FighterState;
@@ -82,8 +85,16 @@ export class BattleFighter {
       return;
     }
     const speed = speedRankToPixelsPerTick(this.state.moveSpeedOverride ?? this.activeCharacter.moveSpeed);
-    this.state.x = clamp(this.state.x + input.moveX * speed, 48, ARENA_WIDTH - 48);
-    this.state.y = clamp(this.state.y + input.moveY * speed, 48, 627);
+    this.state.x = fp.toFloat(fpClamp(
+      fp.add(fp.fromFloat(this.state.x), fp.mul(fp.fromFloat(input.moveX), fp.fromFloat(speed))),
+      fp.fromInt(48),
+      fp.fromInt(ARENA_WIDTH - 48),
+    ));
+    this.state.y = fp.toFloat(fpClamp(
+      fp.add(fp.fromFloat(this.state.y), fp.mul(fp.fromFloat(input.moveY), fp.fromFloat(speed))),
+      fp.fromInt(48),
+      fp.fromInt(627),
+    ));
   }
 
   handleReload(reloadPressed: boolean): void {
@@ -101,8 +112,12 @@ export class BattleFighter {
     }
 
     this.state.reloadRemaining -= 1;
-    const reloadRatio = 1 - this.state.reloadRemaining / Math.max(1, this.state.reloadTotal);
-    this.state.ammoDisplay = Math.min(this.state.ammoCapacity, this.reloadDisplayAmmo(reloadRatio));
+    const fpReloadTotal = fpMax(fp.fromInt(1), fp.fromFloat(this.state.reloadTotal));
+    const reloadRatio = fp.sub(fp.fromInt(1), fp.div(fp.fromFloat(this.state.reloadRemaining), fpReloadTotal));
+    this.state.ammoDisplay = fp.toFloat(fpMin(
+      fp.fromFloat(this.state.ammoCapacity),
+      this.reloadDisplayAmmoFP(reloadRatio),
+    ));
     if (this.activeCharacter.reloadCommitPolicy === "commit_per_ammo") {
       const reloadedAmmo = this.reloadCommittedAmmo();
       this.state.ammo = reloadedAmmo;
@@ -274,13 +289,16 @@ export class BattleFighter {
     return true;
   }
 
-  private reloadDisplayAmmo(reloadRatio: number): number {
-    return this.state.reloadStartedAmmo + (this.state.ammoCapacity - this.state.reloadStartedAmmo) * reloadRatio;
+  private reloadDisplayAmmoFP(fpRatio: number): number {
+    const fpStarted = fp.fromFloat(this.state.reloadStartedAmmo);
+    const fpCapacity = fp.fromFloat(this.state.ammoCapacity);
+    return fp.add(fpStarted, fp.mul(fp.sub(fpCapacity, fpStarted), fpRatio));
   }
 
   private reloadTicksForMissingAmmo(): number {
     const missingAmmo = this.state.ammoCapacity - this.state.reloadStartedAmmo;
-    return Math.max(1, missingAmmo) * this.activeCharacter.reloadTicksPerAmmo;
+    const fpCount = fpMax(fp.fromInt(1), fp.fromInt(missingAmmo));
+    return fp.toFloat(fp.mul(fpCount, fp.fromFloat(this.activeCharacter.reloadTicksPerAmmo)));
   }
 
   private reloadStartAmmo(): number {
@@ -290,13 +308,9 @@ export class BattleFighter {
   private reloadCommittedAmmo(): number {
     if (this.activeCharacter.reloadCommitPolicy === "commit_per_ammo") {
       const elapsedTicks = this.state.reloadTotal - this.state.reloadRemaining;
-      const committedAmmo = this.state.reloadStartedAmmo + Math.floor(elapsedTicks / this.activeCharacter.reloadTicksPerAmmo);
-      return Math.min(this.state.ammoCapacity, committedAmmo);
+      const committedAmmo = Math.floor(elapsedTicks / this.activeCharacter.reloadTicksPerAmmo);
+      return Math.min(this.state.ammoCapacity, this.state.reloadStartedAmmo + committedAmmo);
     }
     return this.state.reloadStartedAmmo;
   }
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }

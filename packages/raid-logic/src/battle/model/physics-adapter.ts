@@ -1,5 +1,7 @@
 import { PhysicsWorld, ensureRapierInit, type BodyDebugData } from "../../physics-world";
 
+import { fp } from "@shaisrc/fixed-point";
+
 import { PLAYER_CORE_RADIUS } from "../constants";
 import type { FighterState, ProjectileState, ShieldState } from "../types";
 
@@ -96,8 +98,8 @@ export class BattlePhysics {
         y: p.y,
         vx: 0,
         vy: 0,
-        halfWidth: Math.max(1, p.width / 2),
-        halfHeight: Math.max(1, p.height / 2),
+        halfWidth: Math.max(1, fp.toFloat(fp.div(fp.fromFloat(p.width), fp.fromInt(2)))),
+        halfHeight: Math.max(1, fp.toFloat(fp.div(fp.fromFloat(p.height), fp.fromInt(2)))),
         angleRad: p.angle,
       });
       this.projBodyIds.add(bodyId);
@@ -113,8 +115,8 @@ export class BattlePhysics {
         y: shield.y,
         vx: 0,
         vy: 0,
-        halfWidth: Math.max(1, shield.width / 2),
-        halfHeight: Math.max(1, shield.height / 2),
+        halfWidth: Math.max(1, fp.toFloat(fp.div(fp.fromFloat(shield.width), fp.fromInt(2)))),
+        halfHeight: Math.max(1, fp.toFloat(fp.div(fp.fromFloat(shield.height), fp.fromInt(2)))),
         angleRad: shield.angle,
       });
       this.shieldBodyIds.add(bodyId);

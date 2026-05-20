@@ -1,8 +1,11 @@
+import { fp } from "@shaisrc/fixed-point";
+
 import { speedRankToPixelsPerTick } from "@repo/types";
 
 import { ARENA_HEIGHT_PX, ARENA_WIDTH_PX, PLAYER_CORE_RADIUS } from "../constants";
 import type { FighterState, ProjectileState } from "../types";
 import type { IntelligenceResult } from "./intelligence";
+import { fpAtan2, fpClamp, fpHypot, fpHypotFp, fpMax, fpMin } from "../fp";
 
 const WALL_MARGIN = 48;
 const THREAT_CONE = Math.PI / 4;
@@ -19,6 +22,8 @@ const MOVE_STAY_PENALTY = 1.75;
 const SOFT_WALL_MARGIN = 140;
 const WALL_PRESSURE_WEIGHT = 8;
 const CORNER_PRESSURE_WEIGHT = 10;
+const FP_48 = 3145728; // fp.fromInt(48)
+const FP_SOFT_WALL_MARGIN = 9175040; // fp.fromInt(140)
 
 const MOVES: ReadonlyArray<{ readonly x: -1 | 0 | 1; readonly y: -1 | 0 | 1 }> = [
   { x: 0, y: 0 },
@@ -77,7 +82,6 @@ export class Dodger {
     frame: number,
     intel: IntelligenceResult,
   ): DodgeResult {
-    // 延迟反应：用滞后的帧号评估弹幕，模拟反应延迟
     const delayedFrame = Math.max(0, frame - intel.reactionDelay);
 
     if (this.cachedPlan && frame < this.nextPlanFrame) {
@@ -109,25 +113,26 @@ export class Dodger {
     self: FighterState,
     opponent: FighterState,
   ): { moveX: -1 | 0 | 1; moveY: -1 | 0 | 1 } {
-    const dx = opponent.x - self.x;
-    const dy = opponent.y - self.y;
-    const dist = Math.hypot(dx, dy);
-    if (dist < 0.01) {
+    const fpDx = fp.sub(fp.fromFloat(opponent.x), fp.fromFloat(self.x));
+    const fpDy = fp.sub(fp.fromFloat(opponent.y), fp.fromFloat(self.y));
+    const fpDist = fpHypotFp(fpDx, fpDy);
+
+    if (fp.lt(fpDist, fp.fromFloat(0.01))) {
       return { moveX: 0, moveY: 0 };
     }
 
     let targetX = 0;
     let targetY = 0;
 
-    if (dist < 150) {
-      targetX = -dx / dist;
-      targetY = -dy / dist;
-    } else if (dist > 400) {
-      targetX = dx / dist;
-      targetY = dy / dist;
+    if (fp.lt(fpDist, fp.fromInt(150))) {
+      targetX = fp.toFloat(fp.div(fp.negate(fpDx), fpDist));
+      targetY = fp.toFloat(fp.div(fp.negate(fpDy), fpDist));
+    } else if (fp.gt(fpDist, fp.fromInt(400))) {
+      targetX = fp.toFloat(fp.div(fpDx, fpDist));
+      targetY = fp.toFloat(fp.div(fpDy, fpDist));
     } else {
-      targetX = -dy / dist;
-      targetY = dx / dist;
+      targetX = fp.toFloat(fp.div(fp.negate(fpDy), fpDist));
+      targetY = fp.toFloat(fp.div(fpDx, fpDist));
     }
 
     targetX += this.wallAvoidance(self.x, WALL_MARGIN, ARENA_WIDTH_PX);
@@ -154,7 +159,9 @@ export class Dodger {
     frame: number,
     intel: IntelligenceResult,
   ): DodgeResult {
-    const speed = self.movementLockedUntil > 0 ? 0 : speedRankToPixelsPerTick(self.moveSpeedOverride ?? self.activeCharacter.moveSpeed);
+    const speed = self.movementLockedUntil > 0
+      ? 0
+      : speedRankToPixelsPerTick(self.moveSpeedOverride ?? self.activeCharacter.moveSpeed);
     let best: {
       moveX: -1 | 0 | 1;
       moveY: -1 | 0 | 1;
@@ -209,55 +216,96 @@ export class Dodger {
     readonly emergencyBomb: boolean;
     readonly threatCount: number;
   } {
-    let x = self.x;
-    let y = self.y;
-    let score = 0;
+    let fpX = fp.fromFloat(self.x);
+    let fpY = fp.fromFloat(self.y);
+    let fpScore = fp.fromInt(0);
     let emergencyBomb = false;
     let worstThreats = threats.length;
     let minClearance = Number.POSITIVE_INFINITY;
 
-    for (let tick = 1; tick <= LOOKAHEAD_TICKS; tick += 1) {
-      x = clamp(x + move.x * speed, 48, ARENA_WIDTH_PX - 48);
-      y = clamp(y + move.y * speed, 48, ARENA_HEIGHT_PX - 48);
+    const fpSpeed = fp.fromFloat(speed);
 
-      const danger = this.evaluateProjectionDanger(x, y, projectiles, frame, tick);
-      score += danger.risk * (1 + tick * 0.15) * intel.dodgeAccuracy;
-      score += this.wallPressure(x, y) * (danger.collisions > 0 ? 0.2 : 1);
+    for (let tick = 1; tick <= LOOKAHEAD_TICKS; tick += 1) {
+      fpX = fpClamp(
+        fp.add(fpX, fp.mul(fp.fromInt(move.x), fpSpeed)),
+        FP_48,
+        fp.fromInt(ARENA_WIDTH_PX - 48),
+      );
+      fpY = fpClamp(
+        fp.add(fpY, fp.mul(fp.fromInt(move.y), fpSpeed)),
+        FP_48,
+        fp.fromInt(ARENA_HEIGHT_PX - 48),
+      );
+
+      const danger = this.evaluateProjectionDanger(
+        fp.toFloat(fpX),
+        fp.toFloat(fpY),
+        projectiles,
+        frame,
+        tick,
+      );
+
+      const fpTickWeight = fp.add(fp.fromInt(1), fp.mul(fp.fromInt(tick), fp.fromFloat(0.15)));
+      fpScore = fp.add(fpScore, fp.mul(fp.mul(fp.fromFloat(danger.risk), fpTickWeight), fp.fromFloat(intel.dodgeAccuracy)));
+
+      const fpWallPressure = this.wallPressureFp(fpX, fpY);
+      fpScore = fp.add(fpScore, fp.mul(fpWallPressure, fp.fromFloat(danger.collisions > 0 ? 0.2 : 1)));
+
       worstThreats = Math.max(worstThreats, danger.threats);
       minClearance = Math.min(minClearance, danger.minClearance);
 
       if (danger.collisions > 0) {
         emergencyBomb = true;
-        score += 1000 * (LOOKAHEAD_TICKS - tick + 1) * intel.dodgeAccuracy;
+        fpScore = fp.add(
+          fpScore,
+          fp.mul(
+            fp.fromInt(1000 * (LOOKAHEAD_TICKS - tick + 1)),
+            fp.fromFloat(intel.dodgeAccuracy),
+          ),
+        );
       }
     }
 
     if (move.x === 0 && move.y === 0) {
-      score += MOVE_STAY_PENALTY * Math.max(1, threats.length);
+      fpScore = fp.add(
+        fpScore,
+        fp.mul(fp.fromFloat(MOVE_STAY_PENALTY), fp.fromInt(Math.max(1, threats.length))),
+      );
     }
 
-    const dx = opponent.x - self.x;
-    const dy = opponent.y - self.y;
-    const dist = Math.hypot(dx, dy);
+    const fpDx = fp.sub(fp.fromFloat(opponent.x), fp.fromFloat(self.x));
+    const fpDy = fp.sub(fp.fromFloat(opponent.y), fp.fromFloat(self.y));
+    const dist = fpHypot(fpDx, fpDy);
+
     if (dist > 0.01 && intel.dodgeAccuracy > 0.5) {
-      const awayX = -dx / dist;
-      const awayY = -dy / dist;
-      const alignment = move.x * awayX + move.y * awayY;
-      score -= alignment * 0.25;
+      const fpDist = fp.fromFloat(dist);
+      const fpAwayX = fp.div(fp.negate(fpDx), fpDist);
+      const fpAwayY = fp.div(fp.negate(fpDy), fpDist);
+      const fpAlignment = fp.add(
+        fp.mul(fp.fromInt(move.x), fpAwayX),
+        fp.mul(fp.fromInt(move.y), fpAwayY),
+      );
+      fpScore = fp.sub(fpScore, fp.mul(fpAlignment, fp.fromFloat(0.25)));
     }
 
     if (Math.abs(this.prevEscapeX - move.x) + Math.abs(this.prevEscapeY - move.y) < 0.5) {
-      score -= 0.12;
+      fpScore = fp.sub(fpScore, fp.fromFloat(0.12));
     }
 
     if (minClearance < 8) {
-      score += (8 - minClearance) * 40 * intel.dodgeAccuracy;
+      fpScore = fp.add(
+        fpScore,
+        fp.mul(
+          fp.mul(fp.sub(fp.fromInt(8), fp.fromFloat(minClearance)), fp.fromInt(40)),
+          fp.fromFloat(intel.dodgeAccuracy),
+        ),
+      );
     }
 
     return {
       moveX: move.x,
       moveY: move.y,
-      score,
+      score: fp.toFloat(fpScore),
       emergencyBomb,
       threatCount: Math.max(1, worstThreats),
     };
@@ -269,8 +317,8 @@ export class Dodger {
     frame: number,
   ): ProjectileState[] {
     const nearby: ProjectileState[] = [];
-    const localRadiusSq = LOCAL_SCAN_RADIUS * LOCAL_SCAN_RADIUS;
-    const laserRadiusSq = LOCAL_SCAN_RADIUS_LASER * LOCAL_SCAN_RADIUS_LASER;
+    const fpLocalRadiusSq = fp.fromInt(LOCAL_SCAN_RADIUS * LOCAL_SCAN_RADIUS);
+    const fpLaserRadiusSq = fp.fromInt(LOCAL_SCAN_RADIUS_LASER * LOCAL_SCAN_RADIUS_LASER);
 
     for (const projectile of projectiles) {
       if (projectile.owner === "target") continue;
@@ -278,22 +326,31 @@ export class Dodger {
       if (frame < projectile.visibleFrom) continue;
       if (projectile.pausedUntil > frame) continue;
 
-      const dx = projectile.x - self.x;
-      const dy = projectile.y - self.y;
-      const distSq = dx * dx + dy * dy;
+      const fpDx = fp.sub(fp.fromFloat(projectile.x), fp.fromFloat(self.x));
+      const fpDy = fp.sub(fp.fromFloat(projectile.y), fp.fromFloat(self.y));
+      const fpDistSq = fp.add(fp.mul(fpDx, fpDx), fp.mul(fpDy, fpDy));
 
       if (projectile.kind === "laser" || projectile.kind === "spark") {
-        const forward = dx * Math.cos(projectile.angle) + dy * Math.sin(projectile.angle);
-        const side = Math.abs(-dx * Math.sin(projectile.angle) + dy * Math.cos(projectile.angle));
-        if (distSq <= laserRadiusSq || (side <= LOCAL_SCAN_RADIUS_LASER && forward >= -PLAYER_CORE_RADIUS)) {
+        const fpAngle = fp.fromFloat(projectile.angle);
+        const fpCos = fp.cos(fpAngle);
+        const fpSin = fp.sin(fpAngle);
+        const fpForward = fp.add(fp.mul(fpDx, fpCos), fp.mul(fpDy, fpSin));
+        const fpSide = fp.abs(fp.add(fp.mul(fp.negate(fpDx), fpSin), fp.mul(fpDy, fpCos)));
+
+        if (fp.lte(fpDistSq, fpLaserRadiusSq) ||
+            (fp.lte(fpSide, fp.fromInt(LOCAL_SCAN_RADIUS_LASER)) && fp.gte(fpForward, fp.negate(fp.fromFloat(PLAYER_CORE_RADIUS))))) {
           nearby.push(projectile);
         }
         continue;
       }
 
-      const travelReach = Math.hypot(projectile.vx, projectile.vy) * LOOKAHEAD_TICKS;
-      const scanRadius = LOCAL_SCAN_RADIUS + travelReach;
-      if (distSq <= scanRadius * scanRadius || distSq <= localRadiusSq) {
+      const fpTravelReach = fp.mul(
+        fpHypotFp(fp.fromFloat(projectile.vx), fp.fromFloat(projectile.vy)),
+        fp.fromInt(LOOKAHEAD_TICKS),
+      );
+      const fpScanRadius = fp.add(fp.fromInt(LOCAL_SCAN_RADIUS), fpTravelReach);
+
+      if (fp.lte(fpDistSq, fp.mul(fpScanRadius, fpScanRadius)) || fp.lte(fpDistSq, fpLocalRadiusSq)) {
         nearby.push(projectile);
       }
     }
@@ -303,9 +360,9 @@ export class Dodger {
     }
 
     return nearby
-      .map((projectile) => ({
-        projectile,
-        distSq: (projectile.x - self.x) ** 2 + (projectile.y - self.y) ** 2,
+      .map((proj) => ({
+        projectile: proj,
+        distSq: (proj.x - self.x) ** 2 + (proj.y - self.y) ** 2,
       }))
       .sort((a, b) => a.distSq - b.distSq)
       .slice(0, MAX_LOCAL_PROJECTILES)
@@ -318,21 +375,20 @@ export class Dodger {
     frame: number,
   ): Threat[] {
     const threats: Threat[] = [];
+    const fpMaxDist = fp.fromInt(MAX_THREAT_DIST);
 
     for (const projectile of projectiles) {
-      const px = projectile.x;
-      const py = projectile.y;
+      const fpDx = fp.sub(fp.fromFloat(self.x), fp.fromFloat(projectile.x));
+      const fpDy = fp.sub(fp.fromFloat(self.y), fp.fromFloat(projectile.y));
+      const fpDist = fpHypotFp(fpDx, fpDy);
 
-      const dx = self.x - px;
-      const dy = self.y - py;
-      const dist = Math.hypot(dx, dy);
-      if (dist > MAX_THREAT_DIST) continue;
+      if (fp.gt(fpDist, fpMaxDist)) continue;
 
       if (projectile.kind === "laser" || projectile.kind === "spark") {
-        const threat = this.evaluateLaserThreat(projectile, dx, dy);
+        const threat = this.evaluateLaserThreat(projectile, fpDx, fpDy);
         if (threat) threats.push(threat);
       } else {
-        const threat = this.evaluateBulletThreat(projectile, dx, dy, dist, frame);
+        const threat = this.evaluateBulletThreat(projectile, fpDx, fpDy, fpDist, frame);
         if (threat) threats.push(threat);
       }
     }
@@ -365,8 +421,8 @@ export class Dodger {
       threats += 1;
       if (danger.collides) collisions += 1;
 
-      const timeWeight = 1 + (LOOKAHEAD_TICKS - tick) / LOOKAHEAD_TICKS;
-      risk += danger.risk * timeWeight * Math.max(1, projectile.damage);
+      const fpTimeWeight = fp.fromFloat(1 + (LOOKAHEAD_TICKS - tick) / LOOKAHEAD_TICKS);
+      risk += fp.toFloat(fp.mul(fp.mul(fp.fromFloat(danger.risk), fpTimeWeight), fp.fromInt(Math.max(1, projectile.damage))));
     }
 
     return { risk, collisions, threats, minClearance };
@@ -379,12 +435,12 @@ export class Dodger {
     targetX: number,
     targetY: number,
   ): ProjectedProjectile {
-    let x = projectile.x;
-    let y = projectile.y;
-    let vx = projectile.vx;
-    let vy = projectile.vy;
-    let width = projectile.width;
-    let angle = projectile.angle;
+    let fpX = fp.fromFloat(projectile.x);
+    let fpY = fp.fromFloat(projectile.y);
+    let fpVx = fp.fromFloat(projectile.vx);
+    let fpVy = fp.fromFloat(projectile.vy);
+    let fpWidth = fp.fromFloat(projectile.width);
+    let fpAngle = fp.fromFloat(projectile.angle);
 
     for (let i = 0; i < tick; i += 1) {
       const stepFrame = frame + i;
@@ -394,40 +450,46 @@ export class Dodger {
 
       if (projectile.kind === "laser" || projectile.kind === "spark") {
         if (projectile.widthGrowthPerTick > 0) {
-          width = Math.min(projectile.maxWidth ?? Number.POSITIVE_INFINITY, width + projectile.widthGrowthPerTick);
+          fpWidth = fpMin(
+            fp.fromFloat(projectile.maxWidth ?? Number.POSITIVE_INFINITY),
+            fp.add(fpWidth, fp.fromFloat(projectile.widthGrowthPerTick)),
+          );
         }
-        if (projectile.anchorX !== undefined && projectile.anchorY !== undefined && Number.isFinite(width)) {
-          x = projectile.anchorX + Math.cos(angle) * (width / 2);
-          y = projectile.anchorY + Math.sin(angle) * (width / 2);
+        if (projectile.anchorX !== undefined && projectile.anchorY !== undefined && Number.isFinite(projectile.width)) {
+          const fpAnchorX = fp.fromFloat(projectile.anchorX);
+          const fpAnchorY = fp.fromFloat(projectile.anchorY);
+          const fpHalfW = fp.div(fpWidth, fp.fromInt(2));
+          fpX = fp.add(fpAnchorX, fp.mul(fp.cos(fpAngle), fpHalfW));
+          fpY = fp.add(fpAnchorY, fp.mul(fp.sin(fpAngle), fpHalfW));
         }
-        x += vx;
-        y += vy;
+        fpX = fp.add(fpX, fpVx);
+        fpY = fp.add(fpY, fpVy);
         continue;
       }
 
       if (projectile.kind === "orb" && stepFrame >= projectile.homingStartAt && stepFrame <= projectile.homingUntil) {
-        const dx = targetX - x;
-        const dy = targetY - y;
-        const length = Math.max(1, Math.hypot(dx, dy));
-        const speed = Math.max(1.5, Math.hypot(vx, vy));
-        vx = vx * 0.9 + (dx / length) * speed * 0.1;
-        vy = vy * 0.9 + (dy / length) * speed * 0.1;
+        const fpDx = fp.sub(fp.fromFloat(targetX), fpX);
+        const fpDy = fp.sub(fp.fromFloat(targetY), fpY);
+        const fpLen = fpMax(fp.fromInt(1), fpHypotFp(fpDx, fpDy));
+        const fpSpd = fpMax(fp.fromFloat(1.5), fpHypotFp(fpVx, fpVy));
+        fpVx = fp.add(fp.mul(fpVx, fp.fromFloat(0.9)), fp.mul(fp.mul(fp.div(fpDx, fpLen), fpSpd), fp.fromFloat(0.1)));
+        fpVy = fp.add(fp.mul(fpVy, fp.fromFloat(0.9)), fp.mul(fp.mul(fp.div(fpDy, fpLen), fpSpd), fp.fromFloat(0.1)));
       }
 
-      x += vx;
-      y += vy;
-      angle = Math.atan2(vy, vx);
+      fpX = fp.add(fpX, fpVx);
+      fpY = fp.add(fpY, fpVy);
+      fpAngle = fp.fromFloat(fpAtan2(fpVy, fpVx));
     }
 
     return {
       kind: projectile.kind,
-      x,
-      y,
-      vx,
-      vy,
-      width,
+      x: fp.toFloat(fpX),
+      y: fp.toFloat(fpY),
+      vx: fp.toFloat(fpVx),
+      vy: fp.toFloat(fpVy),
+      width: fp.toFloat(fpWidth),
       height: projectile.height,
-      angle,
+      angle: fp.toFloat(fpAngle),
       damage: projectile.damage,
     };
   }
@@ -440,130 +502,177 @@ export class Dodger {
     const clearance = Number.isFinite(projectile.width)
       ? this.distanceToRotatedRect(projectile, x, y) - PLAYER_CORE_RADIUS
       : this.distanceToRay(projectile, x, y) - PLAYER_CORE_RADIUS;
-    const collides = clearance <= 1.25;
-    const speed = Math.hypot(projectile.vx, projectile.vy);
-    const safetyBand = 18 + speed * 1.4;
+
+    const fpClearance = fp.fromFloat(clearance);
+    const collides = fp.lte(fpClearance, fp.fromFloat(1.25));
 
     if (collides) {
       return {
-        risk: 1000 + Math.max(0, -clearance) * 20,
+        risk: fp.toFloat(fp.add(fp.fromInt(1000), fp.mul(fpMax(fp.fromInt(0), fp.negate(fpClearance)), fp.fromInt(20)))),
         collides: true,
         clearance,
       };
     }
 
-    if (clearance >= safetyBand) {
+    const fpSpeed = fpHypotFp(fp.fromFloat(projectile.vx), fp.fromFloat(projectile.vy));
+    const fpSafetyBand = fp.add(fp.fromInt(18), fp.mul(fpSpeed, fp.fromFloat(1.4)));
+
+    if (fp.gte(fpClearance, fpSafetyBand)) {
       return { risk: 0, collides: false, clearance };
     }
 
-    const proximity = (safetyBand - clearance) / safetyBand;
-    return {
-      risk: proximity * proximity * 18 * Math.max(1, projectile.damage),
-      collides: false,
-      clearance,
-    };
+    const fpProximity = fp.div(fp.sub(fpSafetyBand, fpClearance), fpSafetyBand);
+    const risk = fp.toFloat(
+      fp.mul(
+        fp.mul(fp.mul(fpProximity, fpProximity), fp.fromInt(18)),
+        fp.fromInt(Math.max(1, projectile.damage)),
+      ),
+    );
+    return { risk, collides: false, clearance };
   }
 
   private distanceToRotatedRect(projectile: ProjectedProjectile, x: number, y: number): number {
-    const dx = x - projectile.x;
-    const dy = y - projectile.y;
-    const localX = dx * Math.cos(projectile.angle) + dy * Math.sin(projectile.angle);
-    const localY = -dx * Math.sin(projectile.angle) + dy * Math.cos(projectile.angle);
-    const closestX = clamp(localX, -projectile.width / 2, projectile.width / 2);
-    const closestY = clamp(localY, -projectile.height / 2, projectile.height / 2);
-    return Math.hypot(localX - closestX, localY - closestY);
+    const fpDx = fp.sub(fp.fromFloat(x), fp.fromFloat(projectile.x));
+    const fpDy = fp.sub(fp.fromFloat(y), fp.fromFloat(projectile.y));
+    const fpAngle = fp.fromFloat(projectile.angle);
+    const fpCos = fp.cos(fpAngle);
+    const fpSin = fp.sin(fpAngle);
+
+    const fpLocalX = fp.add(fp.mul(fpDx, fpCos), fp.mul(fpDy, fpSin));
+    const fpLocalY = fp.add(fp.mul(fp.negate(fpDx), fpSin), fp.mul(fpDy, fpCos));
+
+    const fpHalfW = fp.div(fp.fromFloat(projectile.width), fp.fromInt(2));
+    const fpHalfH = fp.div(fp.fromFloat(projectile.height), fp.fromInt(2));
+    const fpClosestX = fpClamp(fpLocalX, fp.negate(fpHalfW), fpHalfW);
+    const fpClosestY = fpClamp(fpLocalY, fp.negate(fpHalfH), fpHalfH);
+
+    return fpHypot(fp.sub(fpLocalX, fpClosestX), fp.sub(fpLocalY, fpClosestY));
   }
 
   private distanceToRay(projectile: ProjectedProjectile, x: number, y: number): number {
-    const dx = x - projectile.x;
-    const dy = y - projectile.y;
-    const forward = dx * Math.cos(projectile.angle) + dy * Math.sin(projectile.angle);
-    const side = Math.abs(-dx * Math.sin(projectile.angle) + dy * Math.cos(projectile.angle));
-    if (forward >= 0) {
-      return Math.max(0, side - projectile.height / 2);
+    const fpDx = fp.sub(fp.fromFloat(x), fp.fromFloat(projectile.x));
+    const fpDy = fp.sub(fp.fromFloat(y), fp.fromFloat(projectile.y));
+    const fpAngle = fp.fromFloat(projectile.angle);
+    const fpCos = fp.cos(fpAngle);
+    const fpSin = fp.sin(fpAngle);
+    const fpForward = fp.add(fp.mul(fpDx, fpCos), fp.mul(fpDy, fpSin));
+    const fpSide = fp.abs(fp.add(fp.mul(fp.negate(fpDx), fpSin), fp.mul(fpDy, fpCos)));
+    const fpHalfH = fp.div(fp.fromFloat(projectile.height), fp.fromInt(2));
+
+    if (fp.gte(fpForward, fp.fromInt(0))) {
+      return fp.toFloat(fpMax(fp.fromInt(0), fp.sub(fpSide, fpHalfH)));
     }
-    return Math.hypot(forward, Math.max(0, side - projectile.height / 2));
+    return fpHypot(fpForward, fpMax(fp.fromInt(0), fp.sub(fpSide, fpHalfH)));
   }
 
   private evaluateLaserThreat(
     projectile: ProjectileState,
-    dx: number,
-    dy: number,
+    fpDx: number,
+    fpDy: number,
   ): Threat | null {
-    const angle = projectile.angle;
-    const forward = dx * Math.cos(angle) + dy * Math.sin(angle);
-    const side = Math.abs(-dx * Math.sin(angle) + dy * Math.cos(angle));
-    const threatRadius = projectile.height / 2 + PLAYER_CORE_RADIUS * SAFETY_FACTOR;
+    const fpAngle = fp.fromFloat(projectile.angle);
+    const fpCos = fp.cos(fpAngle);
+    const fpSin = fp.sin(fpAngle);
+    const fpForward = fp.add(fp.mul(fpDx, fpCos), fp.mul(fpDy, fpSin));
+    const fpSide = fp.abs(fp.add(fp.mul(fp.negate(fpDx), fpSin), fp.mul(fpDy, fpCos)));
+    const fpThreatRadius = fp.add(
+      fp.div(fp.fromFloat(projectile.height), fp.fromInt(2)),
+      fp.fromFloat(PLAYER_CORE_RADIUS * SAFETY_FACTOR),
+    );
 
-    if (side > threatRadius) return null;
-    if (forward < -PLAYER_CORE_RADIUS) return null;
+    if (fp.gt(fpSide, fpThreatRadius)) return null;
+    if (fp.lt(fpForward, fp.negate(fp.fromFloat(PLAYER_CORE_RADIUS)))) return null;
 
-    const closestDist = Math.max(0, side - projectile.height / 2);
-    const danger = Math.max(0.1, (threatRadius - closestDist) / threatRadius);
+    const fpClosestDist = fpMax(fp.fromInt(0), fp.sub(fpSide, fp.div(fp.fromFloat(projectile.height), fp.fromInt(2))));
+    const fpDanger = fpMax(fp.fromFloat(0.1), fp.div(fp.sub(fpThreatRadius, fpClosestDist), fpThreatRadius));
 
     return {
-      danger,
-      escapeX: -Math.sin(angle),
-      escapeY: Math.cos(angle),
+      danger: fp.toFloat(fpDanger),
+      escapeX: fp.toFloat(fp.negate(fpSin)),
+      escapeY: fp.toFloat(fpCos),
     };
   }
 
   private evaluateBulletThreat(
     projectile: ProjectileState,
-    dx: number,
-    dy: number,
-    dist: number,
+    fpDx: number,
+    fpDy: number,
+    fpDist: number,
     frame: number,
   ): Threat | null {
-    const angle = projectile.angle;
-    const speed = Math.max(0.1, Math.hypot(projectile.vx, projectile.vy));
+    const fpAngle = fp.fromFloat(projectile.angle);
+    const fpVx = fp.fromFloat(projectile.vx);
+    const fpVy = fp.fromFloat(projectile.vy);
+    const fpSpeed = fpMax(fp.fromFloat(0.1), fpHypotFp(fpVx, fpVy));
 
-    const toCpuAngle = Math.atan2(dy, dx);
-    let angleDiff = toCpuAngle - angle;
-    angleDiff = ((angleDiff + Math.PI) % (Math.PI * 2)) - Math.PI;
-    if (Math.abs(angleDiff) > THREAT_CONE) return null;
+    const fpToCpuAngle = fp.fromFloat(fpAtan2(fpDy, fpDx));
+    let fpAngleDiff = fp.sub(fpToCpuAngle, fpAngle);
+    const fpTwoPI = fp.mul(fp.fromFloat(Math.PI), fp.fromInt(2));
+    const fpPI = fp.fromFloat(Math.PI);
+    fpAngleDiff = fp.sub(fp.mod(fp.add(fpAngleDiff, fpPI), fpTwoPI), fpPI);
 
-    const forward = dx * Math.cos(angle) + dy * Math.sin(angle);
-    if (forward < 0) return null;
+    if (fp.gt(fp.abs(fpAngleDiff), fp.fromFloat(THREAT_CONE))) return null;
 
-    const side = Math.abs(-dx * Math.sin(angle) + dy * Math.cos(angle));
-    const threatRadius = projectile.height / 2 + PLAYER_CORE_RADIUS * SAFETY_FACTOR;
-    if (side > threatRadius) return null;
+    const fpCos = fp.cos(fpAngle);
+    const fpSin = fp.sin(fpAngle);
+    const fpForward = fp.add(fp.mul(fpDx, fpCos), fp.mul(fpDy, fpSin));
+    if (fp.lt(fpForward, fp.fromInt(0))) return null;
+
+    const fpSide = fp.abs(fp.add(fp.mul(fp.negate(fpDx), fpSin), fp.mul(fpDy, fpCos)));
+    const fpThreatRadius = fp.add(
+      fp.div(fp.fromFloat(projectile.height), fp.fromInt(2)),
+      fp.fromFloat(PLAYER_CORE_RADIUS * SAFETY_FACTOR),
+    );
+    if (fp.gt(fpSide, fpThreatRadius)) return null;
 
     const isHoming = projectile.kind === "orb" && frame >= projectile.homingStartAt && frame <= projectile.homingUntil;
-    let timeToClosest = forward / speed;
-    if (isHoming) {
-      timeToClosest = Math.min(timeToClosest, dist / (speed * 1.2));
-    }
-    if (timeToClosest < 0) return null;
 
-    let danger = Math.max(0.05, (threatRadius - side) / threatRadius / Math.max(1, timeToClosest / 15));
+    let fpTimeToClosest = fp.div(fpForward, fpSpeed);
+    if (isHoming) {
+      fpTimeToClosest = fpMin(fpTimeToClosest, fp.div(fpDist, fp.mul(fpSpeed, fp.fromFloat(1.2))));
+    }
+    if (fp.lt(fpTimeToClosest, fp.fromInt(0))) return null;
+
+    const fpDanger = fpMax(
+      fp.fromFloat(0.05),
+      fp.div(
+        fp.div(fp.sub(fpThreatRadius, fpSide), fpThreatRadius),
+        fpMax(fp.fromInt(1), fp.div(fpTimeToClosest, fp.fromInt(15))),
+      ),
+    );
+
+    let danger = fp.toFloat(fpDanger);
     if (isHoming) {
       danger *= HOMING_DANGER_BONUS;
     }
 
-    let escapeX: number;
-    let escapeY: number;
+    let fpEscapeX: number;
+    let fpEscapeY: number;
     if (isHoming) {
-      const orbToCpuAngle = Math.atan2(-dy, -dx);
-      escapeX = -Math.sin(orbToCpuAngle);
-      escapeY = Math.cos(orbToCpuAngle);
-    } else if (side < PLAYER_CORE_RADIUS * 2) {
-      escapeX = -Math.sin(angle);
-      escapeY = Math.cos(angle);
+      const fpOrbToCpuAngle = fp.fromFloat(fpAtan2(fp.negate(fpDy), fp.negate(fpDx)));
+      fpEscapeX = fp.negate(fp.sin(fpOrbToCpuAngle));
+      fpEscapeY = fp.cos(fpOrbToCpuAngle);
+    } else if (fp.lt(fpSide, fp.fromFloat(PLAYER_CORE_RADIUS * 2))) {
+      fpEscapeX = fp.negate(fpSin);
+      fpEscapeY = fpCos;
     } else {
-      const sideSign = Math.sign(-dx * Math.sin(angle) + dy * Math.cos(angle));
-      escapeX = Math.sin(angle) * sideSign;
-      escapeY = -Math.cos(angle) * sideSign;
+      const fpCross = fp.add(fp.mul(fp.negate(fpDx), fpSin), fp.mul(fpDy, fpCos));
+      const fpSideSign = fp.gte(fpCross, fp.fromInt(0)) ? fp.fromInt(1) : fp.negate(fp.fromInt(1));
+      fpEscapeX = fp.mul(fpSin, fpSideSign);
+      fpEscapeY = fp.mul(fp.negate(fpCos), fpSideSign);
     }
 
-    const escapeLen = Math.hypot(escapeX, escapeY);
-    if (escapeLen > 0.01) {
-      escapeX /= escapeLen;
-      escapeY /= escapeLen;
+    const fpEscapeLen = fpHypotFp(fpEscapeX, fpEscapeY);
+    if (fp.gt(fpEscapeLen, fp.fromFloat(0.01))) {
+      fpEscapeX = fp.div(fpEscapeX, fpEscapeLen);
+      fpEscapeY = fp.div(fpEscapeY, fpEscapeLen);
     }
 
-    return { danger, escapeX, escapeY };
+    return {
+      danger,
+      escapeX: fp.toFloat(fpEscapeX),
+      escapeY: fp.toFloat(fpEscapeY),
+    };
   }
 
   private wallAvoidance(pos: number, margin: number, max: number): number {
@@ -572,21 +681,30 @@ export class Dodger {
     return 0;
   }
 
-  private wallPressure(x: number, y: number): number {
-    const left = this.edgePressure(x - 48);
-    const right = this.edgePressure(ARENA_WIDTH_PX - 48 - x);
-    const top = this.edgePressure(y - 48);
-    const bottom = this.edgePressure(ARENA_HEIGHT_PX - 48 - y);
-    const horizontal = Math.max(left, right);
-    const vertical = Math.max(top, bottom);
-    const edgePressure = left * left + right * right + top * top + bottom * bottom;
-    const cornerPressure = horizontal * vertical;
-    return edgePressure * WALL_PRESSURE_WEIGHT + cornerPressure * CORNER_PRESSURE_WEIGHT;
+  private wallPressureFp(fpX: number, fpY: number): number {
+    const fpLeft = this.edgePressureFp(fp.sub(fpX, FP_48));
+    const fpRight = this.edgePressureFp(fp.sub(fp.fromInt(ARENA_WIDTH_PX - 48), fpX));
+    const fpTop = this.edgePressureFp(fp.sub(fpY, FP_48));
+    const fpBottom = this.edgePressureFp(fp.sub(fp.fromInt(ARENA_HEIGHT_PX - 48), fpY));
+
+    const fpHorizontal = fpMax(fpLeft, fpRight);
+    const fpVertical = fpMax(fpTop, fpBottom);
+
+    const fpEdgePressure = fp.add(
+      fp.add(fp.mul(fpLeft, fpLeft), fp.mul(fpRight, fpRight)),
+      fp.add(fp.mul(fpTop, fpTop), fp.mul(fpBottom, fpBottom)),
+    );
+    const fpCornerPressure = fp.mul(fpHorizontal, fpVertical);
+
+    return fp.add(
+      fp.mul(fpEdgePressure, fp.fromInt(WALL_PRESSURE_WEIGHT)),
+      fp.mul(fpCornerPressure, fp.fromInt(CORNER_PRESSURE_WEIGHT)),
+    );
   }
 
-  private edgePressure(distanceToWall: number): number {
-    if (distanceToWall >= SOFT_WALL_MARGIN) return 0;
-    return (SOFT_WALL_MARGIN - distanceToWall) / SOFT_WALL_MARGIN;
+  private edgePressureFp(fpDist: number): number {
+    if (fp.gte(fpDist, FP_SOFT_WALL_MARGIN)) return fp.fromInt(0);
+    return fp.div(fp.sub(FP_SOFT_WALL_MARGIN, fpDist), FP_SOFT_WALL_MARGIN);
   }
 
   private sign(value: number): number {
@@ -594,8 +712,4 @@ export class Dodger {
     if (value < -0.3) return -1;
     return 0;
   }
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }

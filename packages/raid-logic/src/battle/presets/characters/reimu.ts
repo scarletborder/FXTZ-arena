@@ -1,8 +1,11 @@
+import { fp } from "@shaisrc/fixed-point";
+
 import type { CharacterDefinition, CharacterGalleryAssets } from "@repo/content";
 
 import type { FighterState } from "../../types";
 import type { BattleHitContext } from "../ability-cards";
 import { BattleCharacter, hitCircleUnits, secondsToTicks, type CharacterActionContext } from "./base";
+import { fpAtan2 } from "../../fp";
 import { Vanilla } from "../../registry";
 
 const CLEAR_RING_TICKS = secondsToTicks(2 / 3);
@@ -28,9 +31,11 @@ export class ReimuBattleCharacter extends BattleCharacter {
   readonly reloadCommitPolicy = "commit_per_ammo" as CharacterDefinition["reloadCommitPolicy"];
 
   shoot(ctx: CharacterActionContext, fighter: FighterState, aimX: number, aimY: number): void {
-    const angle = this.aimAngle(fighter, aimX, aimY);
-    for (const offset of [-Math.PI / 4, 0, Math.PI / 4]) {
-      this.spawnHomingOrb(ctx, fighter, angle + offset, secondsToTicks(2));
+    const fpAngle = fp.fromFloat(this.aimAngle(fighter, aimX, aimY));
+    const fpPI4 = fp.fromFloat(Math.PI / 4);
+    for (const fpOffset of [fp.negate(fpPI4), fp.fromInt(0), fpPI4]) {
+      const fpShotAngle = fp.add(fpAngle, fpOffset);
+      this.spawnHomingOrb(ctx, fighter, fp.toFloat(fpShotAngle), secondsToTicks(2));
     }
   }
 
@@ -41,10 +46,12 @@ export class ReimuBattleCharacter extends BattleCharacter {
     this.spawnClearRing(ctx, fighter, radius, 0xaec7ff, CLEAR_RING_TICKS);
 
     for (let index = 0; index < 12; index += 1) {
-      const spawnAngle = (index / 12) * Math.PI * 2;
-      const x = fighter.x + Math.cos(spawnAngle) * radius;
-      const y = fighter.y + Math.sin(spawnAngle) * radius;
-      const shotAngle = Math.atan2(ctx.opponent.y - y, ctx.opponent.x - x);
+      const fpAngle = fp.mul(fp.div(fp.fromInt(index), fp.fromInt(12)), fp.mul(fp.fromFloat(Math.PI), fp.fromInt(2)));
+      const fpCos = fp.cos(fpAngle);
+      const fpSin = fp.sin(fpAngle);
+      const x = fp.toFloat(fp.add(fp.fromFloat(fighter.x), fp.mul(fpCos, fp.fromFloat(radius))));
+      const y = fp.toFloat(fp.add(fp.fromFloat(fighter.y), fp.mul(fpSin, fp.fromFloat(radius))));
+      const shotAngle = fpAtan2(fp.fromFloat(ctx.opponent.y - y), fp.fromFloat(ctx.opponent.x - x));
       this.spawnHomingOrbAt(
         ctx,
         fighter,

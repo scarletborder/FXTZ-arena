@@ -1,3 +1,5 @@
+import { fp } from "@shaisrc/fixed-point";
+
 import type { AbilityCardDefinition } from "@repo/content";
 
 import type { FighterState, ShieldState } from "../../types";
@@ -5,7 +7,7 @@ import { BattleAbilityCard } from "./base";
 import { Vanilla } from "../../registry";
 
 @Vanilla.RegisterCard("backdoor")
-export class BackdoorBattleCard extends BattleAbilityCard {
+export class BackDoorBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "backdoor";
   readonly name = "后门";
   readonly cost = 1;
@@ -20,11 +22,15 @@ export class BackdoorBattleCard extends BattleAbilityCard {
 
   collectShields(fighter: FighterState): ShieldState[] {
     const distance = 28;
+    const fpFacing = fp.fromFloat(fighter.facing);
+    const fpCos = fp.cos(fpFacing);
+    const fpSin = fp.sin(fpFacing);
+    const fpDist = fp.fromInt(distance);
     return [
       {
         owner: fighter.key,
-        x: fighter.x - Math.cos(fighter.facing) * distance,
-        y: fighter.y - Math.sin(fighter.facing) * distance,
+        x: fp.toFloat(fp.sub(fp.fromFloat(fighter.x), fp.mul(fpCos, fpDist))),
+        y: fp.toFloat(fp.sub(fp.fromFloat(fighter.y), fp.mul(fpSin, fpDist))),
         width: 34,
         height: 14,
         angle: fighter.facing,

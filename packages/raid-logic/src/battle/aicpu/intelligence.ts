@@ -1,3 +1,5 @@
+import { fp } from "@shaisrc/fixed-point";
+
 import { secondsToTicks } from "@repo/types";
 
 /** 聪明阶段持续 tick 数: 35 秒 */
@@ -8,6 +10,8 @@ const DULLING_DURATION_TICKS = secondsToTicks(20);
 const MAX_REACTION_DELAY = 20;
 /** 钝化阶段最大瞄准噪声(弧度) */
 const MAX_AIM_NOISE = 0.3;
+const CRASH_INTERVAL = 180;
+const CRASH_ACCUM_DELTA = 0.08;
 
 export interface IntelligenceResult {
   /** 0..1 的闪避精度，1=完美，0=完全不躲 */
@@ -73,25 +77,27 @@ export class IntelligenceManager {
 
     const dullingElapsed = this.phaseTicks - SMART_DURATION_TICKS;
     if (dullingElapsed < DULLING_DURATION_TICKS) {
-      const progress = dullingElapsed / DULLING_DURATION_TICKS;
+      const fpProgress = fp.div(fp.fromInt(dullingElapsed), fp.fromInt(DULLING_DURATION_TICKS));
+      const progress = fp.toFloat(fpProgress);
       return {
-        dodgeAccuracy: 1 - progress * 0.9,
-        reactionDelay: Math.round(progress * MAX_REACTION_DELAY),
-        aimNoise: progress * MAX_AIM_NOISE,
+        dodgeAccuracy: fp.toFloat(fp.sub(fp.fromInt(1), fp.mul(fpProgress, fp.fromFloat(0.9)))),
+        reactionDelay: Math.round(fp.toFloat(fp.mul(fpProgress, fp.fromInt(MAX_REACTION_DELAY)))),
+        aimNoise: fp.toFloat(fp.mul(fpProgress, fp.fromFloat(MAX_AIM_NOISE))),
         isDumb: false,
         dullingProgress: progress,
-        canAct: progress < 0.5 || dullingElapsed % 30 < 15,
+        canAct: fp.lt(fpProgress, fp.fromFloat(0.5)) || (dullingElapsed % 30) < 15,
         crashIntoBullet: false,
       };
     }
 
-    const DUMB_CRASH_INTERVAL = 180; // 3 秒
     let crashIntoBullet = false;
-    if (this.dumbTicks > 0 && this.dumbTicks % DUMB_CRASH_INTERVAL === 0) {
-      this.crashAccumulator += 0.08; // 每次未触发累加 8%
-      if (deterministicUnit(this.phaseTicks, this.dumbTicks) < this.crashAccumulator) {
+    if (this.dumbTicks > 0 && this.dumbTicks % CRASH_INTERVAL === 0) {
+      this.crashAccumulator = fp.toFloat(
+        fp.add(fp.fromFloat(this.crashAccumulator), fp.fromFloat(CRASH_ACCUM_DELTA)),
+      );
+      if (fp.lt(fp.fromFloat(deterministicUnit(this.phaseTicks, this.dumbTicks)), fp.fromFloat(this.crashAccumulator))) {
         crashIntoBullet = true;
-        this.crashAccumulator = 0; // 触发后重置
+        this.crashAccumulator = 0;
       }
     }
 

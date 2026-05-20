@@ -184,6 +184,9 @@ importers:
       '@repo/types':
         specifier: workspace:*
         version: link:../types
+      '@shaisrc/fixed-point':
+        specifier: ^0.1.0
+        version: 0.1.0
     devDependencies:
       '@repo/eslint-config':
         specifier: workspace:*
@@ -1319,6 +1322,10 @@ packages:
     requiresBuild: true
     dev: true
     optional: true
+
+  /@shaisrc/fixed-point@0.1.0:
+    resolution: {integrity: sha512-/CLUj8WQiZx3OyuQxhaA7gyfYfm3w8n/mWbPjZUl2gI1MQQm0xEUAKLfRRciCwFpqBQ6wVppElKuZ9HraHIP1Q==}
+    dev: false
 
   /@swc/core-darwin-arm64@1.11.13:
     resolution: {integrity: sha512-loSERhLaQ9XDS+5Kdx8cLe2tM1G0HLit8MfehipAcsdctpo79zrRlkW34elOf3tQoVPKUItV0b/rTuhjj8NtHg==}
