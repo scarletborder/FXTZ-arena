@@ -87,7 +87,7 @@ describe("@repo/types loadout validation", () => {
     });
   });
 
-  it("rejects standard loadouts that reach the cost limit", () => {
+  it("accepts standard loadouts at the cost limit", () => {
     const result = validateLoadout({
       primaryCharacterId: "reimu",
       alternateCharacterId: "sakuya",
@@ -96,6 +96,19 @@ describe("@repo/types loadout validation", () => {
     });
 
     expect(result.totalCost).toBe(DEFAULT_COST_LIMIT);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it("rejects standard loadouts that exceed the cost limit", () => {
+    const result = validateLoadout({
+      primaryCharacterId: "reimu",
+      alternateCharacterId: "sakuya",
+      abilityCardIds: ["multi_shot", "spirit_strike_card", "extra_life"],
+      activeAbilityCardId: "spirit_strike_card",
+    });
+
+    expect(result.totalCost).toBe(DEFAULT_COST_LIMIT + 3);
     expect(result.errors).toContain("cost_limit_reached");
     expect(result.valid).toBe(false);
   });

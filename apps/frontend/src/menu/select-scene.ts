@@ -124,6 +124,10 @@ export class SelectScene extends Phaser.Scene {
         const me = config.players.find((p) => p.playerId === this.playerId);
         const opponent = config.players.find((p) => p.playerId !== this.playerId);
 
+        // Map loadouts based on which player is local
+        const playerCfg = config.players.find((p) => p.playerId === this.playerId) ?? config.players[0];
+        const targetCfg = config.players.find((p) => p.playerId !== this.playerId) ?? config.players[1];
+
         this.scene.start("loading", {
           mode: "online",
           playerName: me?.username ?? uiSettings.username,
@@ -131,16 +135,16 @@ export class SelectScene extends Phaser.Scene {
           returnScene: "battle-start",
           loadouts: {
             player: {
-              primaryCharacterId: config.players[0].loadout.primaryCharacterId,
-              alternateCharacterId: config.players[0].loadout.alternateCharacterId,
-              cardIds: config.players[0].loadout.abilityCardIds,
-              activeCardId: config.players[0].loadout.activeAbilityCardId ?? undefined,
+              primaryCharacterId: playerCfg.loadout.primaryCharacterId,
+              alternateCharacterId: playerCfg.loadout.alternateCharacterId,
+              cardIds: playerCfg.loadout.abilityCardIds,
+              activeCardId: playerCfg.loadout.activeAbilityCardId ?? undefined,
             },
             target: {
-              primaryCharacterId: config.players[1].loadout.primaryCharacterId,
-              alternateCharacterId: config.players[1].loadout.alternateCharacterId,
-              cardIds: config.players[1].loadout.abilityCardIds,
-              activeCardId: config.players[1].loadout.activeAbilityCardId ?? undefined,
+              primaryCharacterId: targetCfg.loadout.primaryCharacterId,
+              alternateCharacterId: targetCfg.loadout.alternateCharacterId,
+              cardIds: targetCfg.loadout.abilityCardIds,
+              activeCardId: targetCfg.loadout.activeAbilityCardId ?? undefined,
             },
           },
           debug: uiSettings.debug,

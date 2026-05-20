@@ -80,7 +80,7 @@ export function validateLoadout(
 
   const totalCost = calculateLoadoutCost(loadout);
 
-  if (mode === "standard" && totalCost >= costLimit) {
+  if (mode === "standard" && totalCost > costLimit) {
     errors.push("cost_limit_reached");
   }
 
