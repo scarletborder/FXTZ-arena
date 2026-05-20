@@ -20,7 +20,7 @@ export class BackdoorBattleCard extends BattleAbilityCard {
   };
 
   collectShields(fighter: FighterState): ShieldState[] {
-    const distance = 28;
+    const distance = 64;
     const fpFacing = fp.fromFloat(fighter.facing);
     const fpCos = fp.cos(fpFacing);
     const fpSin = fp.sin(fpFacing);
@@ -30,8 +30,8 @@ export class BackdoorBattleCard extends BattleAbilityCard {
         owner: fighter.key,
         x: fp.toFloat(fp.sub(fp.fromFloat(fighter.x), fp.mul(fpCos, fpDist))),
         y: fp.toFloat(fp.sub(fp.fromFloat(fighter.y), fp.mul(fpSin, fpDist))),
-        width: 34,
-        height: 14,
+        width: 7,
+        height: 34,
         angle: fighter.facing,
       },
     ];
