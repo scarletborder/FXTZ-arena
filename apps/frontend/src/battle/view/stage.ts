@@ -12,7 +12,7 @@ import {
   HUD_TOP,
   SIDEBAR_LEFT,
   SIDEBAR_TOP,
-} from "../constants";
+} from "@repo/constants";
 
 export function createBattleStage(scene: Phaser.Scene): void {
   const bg = scene.add.graphics();

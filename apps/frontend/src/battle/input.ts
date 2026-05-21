@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 
 import type { BattleInputState } from "@repo/raid-logic";
-import { GAME_HEIGHT, GAME_WIDTH } from "./constants";
+import { GAME_HEIGHT, GAME_WIDTH } from "@repo/constants";
 
 export interface BattleInputBundle extends BattleInputState {
   readonly pointerX: number;

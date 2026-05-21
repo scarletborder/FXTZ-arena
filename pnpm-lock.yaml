@@ -220,6 +220,9 @@ importers:
       '@noble/hashes':
         specifier: ^2.2.0
         version: 2.2.0
+      '@repo/constants':
+        specifier: workspace:*
+        version: link:../constants
       '@repo/content':
         specifier: workspace:*
         version: link:../content

@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-import { PLAYER_CORE_RADIUS } from "../constants";
+import { PLAYER_CORE_RADIUS } from "@repo/constants";
 import type { FighterKey, FighterState } from "@repo/raid-logic";
 
 interface FighterVisual {

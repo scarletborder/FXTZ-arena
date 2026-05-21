@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import type { BattleOutputState } from "@repo/raid-logic";
 
-import { END_OVERLAY_HEIGHT, END_OVERLAY_WIDTH, GAME_HEIGHT, GAME_WIDTH, HUD_TOP, SIDEBAR_LEFT } from "../constants";
+import { END_OVERLAY_HEIGHT, END_OVERLAY_WIDTH, GAME_HEIGHT, GAME_WIDTH, HUD_TOP, SIDEBAR_LEFT } from "@repo/constants";
 
 export class InfoDisplayView {
   private readonly sidebarBody: Phaser.GameObjects.Text;

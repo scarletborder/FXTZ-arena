@@ -9,7 +9,7 @@ import {
   type RaidLogicRuntime,
 } from "@repo/raid-logic";
 
-import { FIXED_STEP_MS } from "./battle/constants";
+import { FIXED_STEP_MS } from "@repo/constants";
 import { createBattleInput, getBattlePointerWorld, type BattleKeyMap } from "./battle/input";
 import { BattleDebugLogger } from "./battle/logger";
 import type { BattleSceneData } from "./battle/loadout";
@@ -364,9 +364,8 @@ export class BattleScene extends Phaser.Scene {
 
     const rows = this.debugLogger.getConfirmedRows(authoritativeFrame);
 
-    const label = `FXTZ Debug Hash Bundle (mode=${
-      this.sceneData.mode ?? "offline"
-    }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${localConfirmedFrame}, serverConfirmedFrame=${targetFrame}, authoritativeFrame=${authoritativeFrame}, cachedRows=${rows.length})`;
+    const label = `FXTZ Debug Hash Bundle (mode=${this.sceneData.mode ?? "offline"
+      }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${localConfirmedFrame}, serverConfirmedFrame=${targetFrame}, authoritativeFrame=${authoritativeFrame}, cachedRows=${rows.length})`;
 
     console.group(label);
     console.log(`finalGlobalHash(BLAKE3)\t${hashComplete ? this.debugConfirmedHash.digestHex(targetFrame) : "<incomplete>"}`);
