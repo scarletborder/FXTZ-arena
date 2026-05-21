@@ -10,8 +10,21 @@ import {
   bodyStyle,
   headingStyle,
 } from "./ui";
-import { connectionManager, uiSettings, type SceneKey, type TextFieldControl } from "./shared";
+import { connectionManager, type SceneKey, type TextFieldControl } from "./shared";
+import {
+  setDebug,
+  setMusicVolume,
+  setServerAddress,
+  setSoundVolume,
+  setUsername,
+  uiSettings,
+} from "../store/settings";
 import type { ConnectionStatus } from "../network";
+
+interface SliderControl {
+  readonly container: Phaser.GameObjects.Container;
+  setValue(value: number): void;
+}
 
 export class SettingsScene extends Phaser.Scene {
   private activeField: TextFieldControl | undefined;
@@ -52,13 +65,19 @@ export class SettingsScene extends Phaser.Scene {
     this.add.text(104, 214, "用户名", bodyStyle("#f6f1e6", 18));
     this.createField(104, 252, 276, "username");
 
-    const debugText = this.add.text(104, 358, "", bodyStyle("#d7e3ef", 18));
+    this.add.text(104, 310, "音乐", bodyStyle("#f6f1e6", 18));
+    this.createVolumeSlider(104, 344, 276, uiSettings.music, setMusicVolume);
+
+    this.add.text(104, 386, "音效", bodyStyle("#f6f1e6", 18));
+    this.createVolumeSlider(104, 420, 276, uiSettings.sound, setSoundVolume);
+
+    const debugText = this.add.text(104, 476, "", bodyStyle("#d7e3ef", 18));
     const updateDebug = () => {
       debugText.setText(uiSettings.debug ? "debug 模式：开启" : "debug 模式：关闭");
     };
     updateDebug();
-    createFightButton(this, 242, 432, 250, 54, "切换 debug", () => {
-      uiSettings.debug = !uiSettings.debug;
+    createFightButton(this, 242, 534, 250, 54, "切换 debug", () => {
+      setDebug(!uiSettings.debug);
       updateDebug();
     }, { accent: 0xf7b733 });
 
@@ -134,11 +153,10 @@ export class SettingsScene extends Phaser.Scene {
       value: uiSettings[key],
       maxLength: key === "serverAddress" ? 160 : 32,
       onChange: (value) => {
-        uiSettings[key] = value;
         if (key === "username") {
-          localStorage.setItem("fxtz_username", value);
+          setUsername(value);
         } else if (key === "serverAddress") {
-          localStorage.setItem("fxtz_server_address", value);
+          setServerAddress(value);
         }
       },
     });
@@ -148,4 +166,105 @@ export class SettingsScene extends Phaser.Scene {
       field.setActive(true);
     });
   }
+
+  private createVolumeSlider(
+    x: number,
+    y: number,
+    width: number,
+    value: number,
+    onChange: (value: number) => void,
+  ): SliderControl {
+    const height = 28;
+    const container = this.add.container(x, y);
+    const track = this.add.graphics();
+    const valueText = this.add.text(width, -2, "0", bodyStyle("#9fd8ff", 17)).setOrigin(1, 0);
+    const hitArea = this.add.rectangle(0, 0, width, height, 0xffffff, 0.001)
+      .setOrigin(0, 0)
+      .setInteractive({ useHandCursor: true });
+    let currentValue = clampVolume(value);
+    let hovering = false;
+    let dragging = false;
+
+    const draw = () => {
+      const ratio = currentValue / 100;
+      const fillWidth = Math.max(0, Math.round(width * ratio));
+      const handleX = Math.round(fillWidth);
+
+      track.clear();
+      track.lineStyle(2, dragging || hovering ? 0xffcf6e : 0x5c7185, 1);
+      track.strokeRect(0, 12, width, 10);
+      track.fillStyle(0x101820, 1);
+      track.fillRect(1, 13, width - 2, 8);
+      track.fillStyle(0x34d399, 0.9);
+      track.fillRect(1, 13, Math.max(0, fillWidth - 2), 8);
+      track.fillStyle(0xf6f1e6, dragging || hovering ? 1 : 0.88);
+      track.fillCircle(handleX, 17, dragging || hovering ? 9 : 8);
+
+      valueText.setText(String(currentValue));
+      valueText.setColor(dragging || hovering ? "#ffcf6e" : "#9fd8ff");
+    };
+
+    const updateFromPointer = (pointer: Phaser.Input.Pointer) => {
+      const localX = Phaser.Math.Clamp(pointer.x - x, 0, width);
+      const nextValue = Math.round((localX / width) * 100);
+      if (nextValue !== currentValue) {
+        currentValue = nextValue;
+        onChange(currentValue);
+        draw();
+      }
+    };
+
+    hitArea.on("pointerover", () => {
+      hovering = true;
+      draw();
+    });
+    hitArea.on("pointerout", () => {
+      hovering = false;
+      if (!dragging) {
+        draw();
+      }
+    });
+    hitArea.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      dragging = true;
+      updateFromPointer(pointer);
+      draw();
+    });
+
+    const onPointerMove = (pointer: Phaser.Input.Pointer) => {
+      if (dragging && pointer.isDown) {
+        updateFromPointer(pointer);
+      }
+    };
+    const onPointerUp = () => {
+      if (!dragging) {
+        return;
+      }
+      dragging = false;
+      draw();
+    };
+
+    this.input.on("pointermove", onPointerMove);
+    this.input.on("pointerup", onPointerUp);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.off("pointermove", onPointerMove);
+      this.input.off("pointerup", onPointerUp);
+    });
+
+    container.add([track, valueText, hitArea]);
+    draw();
+    onChange(currentValue);
+
+    return {
+      container,
+      setValue(nextValue: number): void {
+        currentValue = clampVolume(nextValue);
+        onChange(currentValue);
+        draw();
+      },
+    };
+  }
+}
+
+function clampVolume(value: number): number {
+  return Math.max(0, Math.min(100, Math.round(value)));
 }

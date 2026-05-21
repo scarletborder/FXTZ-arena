@@ -8,7 +8,8 @@ import {
   drawFightingBackdrop,
   drawPanel,
 } from "./ui";
-import { connectionManager, uiSettings, type SceneKey, type SelectionData } from "./shared";
+import { connectionManager, type SceneKey, type SelectionData } from "./shared";
+import { uiSettings } from "../store/settings";
 import type { ConnectionStatus } from "../network";
 import type { PlayerId } from "@repo/types";
 

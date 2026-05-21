@@ -15,9 +15,9 @@ import { BattleDebugLogger } from "./battle/logger";
 import type { BattleSceneData } from "./battle/loadout";
 import { BattleView } from "./battle/view";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
-import { uiSettings } from "./menu/shared";
 import { connectionManager } from "./menu/shared";
 import { CombatSyncManager } from "./network/combat";
+import { uiSettings } from "./store/settings";
 
 interface DebugFrameRecord {
   readonly frame: number;

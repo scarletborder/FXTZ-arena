@@ -9,12 +9,6 @@ export type SceneKey = "home" | "battle-start" | "lobby" | "settings" | "codex" 
 export type SelectionMode = "ai" | "training" | "online";
 export type CodexTab = "characters" | "cards";
 
-export interface UiSettings {
-  username: string;
-  debug: boolean;
-  serverAddress: string;
-}
-
 export interface SelectionData {
   readonly mode: SelectionMode;
   /** Set when mode === "online" — the room this client is in. */
@@ -71,19 +65,6 @@ export interface CharacterTileControl {
   setSelected(selected: boolean): void;
   setHovered(hovered: boolean): void;
 }
-
-const savedUsername = typeof localStorage !== "undefined"
-  ? localStorage.getItem("fxtz_username")
-  : null;
-const savedServerAddress = typeof localStorage !== "undefined"
-  ? localStorage.getItem("fxtz_server_address")
-  : null;
-
-export const uiSettings: UiSettings = {
-  username: savedUsername ?? "Player",
-  debug: false,
-  serverAddress: savedServerAddress ?? "ws://localhost:22334",
-};
 
 export function roleLabel(role: CharacterDefinition["roleClass"]): string {
   return {

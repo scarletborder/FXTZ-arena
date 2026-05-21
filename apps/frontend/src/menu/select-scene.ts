@@ -24,10 +24,10 @@ import {
   connectionManager,
   getCardById,
   getCharacterById,
-  uiSettings,
   type SceneKey,
   type SelectionData,
 } from "./shared";
+import { uiSettings } from "../store/settings";
 
 const COST_LIMIT = 10;
 

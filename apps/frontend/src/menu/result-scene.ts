@@ -1,7 +1,8 @@
 import Phaser from "phaser";
 
 import { createFightButton, drawFightingBackdrop, drawPanel, bodyStyle, headingStyle } from "./ui";
-import { uiSettings, type ResultData, type SceneKey } from "./shared";
+import { type ResultData, type SceneKey } from "./shared";
+import { uiSettings } from "../store/settings";
 
 export class ResultScene extends Phaser.Scene {
   constructor() {
@@ -21,4 +22,3 @@ export class ResultScene extends Phaser.Scene {
     createFightButton(this, 810, 558, 220, 58, "再战", undefined, { enabled: false, subLabel: "后续加入" });
   }
 }
-
