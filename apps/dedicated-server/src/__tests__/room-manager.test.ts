@@ -69,25 +69,25 @@ describe("RoomManager", () => {
     expect(mgr.getOpenSlotIndex(room)).toBe(0);
   });
 
-  it("assigns player-1 to the first slot", () => {
+  it("assigns Player1 to the first slot", () => {
     const mgr = new RoomManager();
     const room = mgr.create(defaultParams);
     const result = mgr.assignSlot(room, "conn-1");
 
-    expect(result).toEqual({ slotIndex: 0, playerId: "player-1" });
+    expect(result).toEqual({ slotIndex: 0, playerId: "Player1" });
     expect(room.connectionIds[0]).toBe("conn-1");
-    expect(room.playerSlots[0]).toBe("player-1");
+    expect(room.playerSlots[0]).toBe("Player1");
   });
 
-  it("assigns player-2 to the second slot", () => {
+  it("assigns Player2 to the second slot", () => {
     const mgr = new RoomManager();
     const room = mgr.create(defaultParams);
     mgr.assignSlot(room, "conn-1");
     const result = mgr.assignSlot(room, "conn-2");
 
-    expect(result).toEqual({ slotIndex: 1, playerId: "player-2" });
+    expect(result).toEqual({ slotIndex: 1, playerId: "Player2" });
     expect(room.connectionIds[1]).toBe("conn-2");
-    expect(room.playerSlots[1]).toBe("player-2");
+    expect(room.playerSlots[1]).toBe("Player2");
   });
 
   it("returns null when room is full", () => {

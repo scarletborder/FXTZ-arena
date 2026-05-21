@@ -1,3 +1,4 @@
+import type { NeutralMobState } from "@repo/types";
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
 
 import { getAbilityCard, getCharacter } from "../content";
@@ -9,8 +10,10 @@ export interface BattleModelSnapshot {
   readonly gameOver: boolean;
   readonly nextProjectileId: number;
   readonly nextEffectId: number;
+  readonly nextNeutralMobId: number;
   readonly player: FighterSnapshot;
   readonly target: FighterSnapshot;
+  readonly neutralMobs: readonly NeutralMobSnapshot[];
   readonly projectiles: readonly ProjectileSnapshot[];
   readonly effects: readonly EffectSnapshot[];
   readonly stats: TrainingStats;
@@ -50,6 +53,8 @@ export type EffectSnapshot = Omit<EffectState, "expireAt"> & {
   readonly expireIn: number;
 };
 
+export type NeutralMobSnapshot = NeutralMobState;
+
 export function createBattleModelSnapshot(params: {
   readonly frame: number;
   readonly gameOver: boolean;
@@ -60,6 +65,8 @@ export function createBattleModelSnapshot(params: {
   readonly stats: TrainingStats;
   readonly nextProjectileId: number;
   readonly nextEffectId: number;
+  readonly nextNeutralMobId: number;
+  readonly neutralMobs: readonly NeutralMobState[];
 }): BattleModelSnapshot {
   return {
     version: 1,
@@ -67,8 +74,10 @@ export function createBattleModelSnapshot(params: {
     gameOver: params.gameOver,
     nextProjectileId: params.nextProjectileId,
     nextEffectId: params.nextEffectId,
+    nextNeutralMobId: params.nextNeutralMobId,
     player: serializeFighter(params.player, params.frame),
     target: serializeFighter(params.target, params.frame),
+    neutralMobs: params.neutralMobs.map((mob) => ({ ...mob })),
     projectiles: params.projectiles.map((projectile) => serializeProjectile(projectile, params.frame)),
     effects: params.effects.map((effect) => serializeEffect(effect, params.frame)),
     stats: { ...params.stats },

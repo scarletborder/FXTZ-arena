@@ -12,6 +12,13 @@ import { createLaserProjectile, stepLaserProjectile } from "./laser";
 export type BulletProjectileParams = Omit<Parameters<typeof createBulletProjectile>[0], "id">;
 export type LaserProjectileParams = Omit<Parameters<typeof createLaserProjectile>[0], "id">;
 
+export interface ProjectileHitTarget {
+  readonly key: FighterKey;
+  readonly x: number;
+  readonly y: number;
+  readonly hitRadius: number;
+}
+
 export class ProjectileSystem {
   private nextProjectileId = 1;
 
@@ -47,8 +54,9 @@ export class ProjectileSystem {
     readonly projectiles: ProjectileState[];
     readonly player: FighterState;
     readonly target: FighterState;
+    readonly hitTargets?: readonly ProjectileHitTarget[];
     readonly shields?: readonly ShieldState[];
-    readonly onHit: (ctx: ProjectileCollisionContext<ProjectileState, FighterState, FighterKey>) => boolean;
+    readonly onHit: (ctx: ProjectileCollisionContext<ProjectileState, ProjectileHitTarget, FighterKey>) => boolean;
     readonly computeRapierHits?: (projectiles: readonly ProjectileState[]) => readonly CollisionResult[] | undefined;
   }): void {
     const remaining: ProjectileState[] = [];
@@ -80,8 +88,11 @@ export class ProjectileSystem {
       }
     }
 
+    const hitTargets = params.hitTargets ?? [
+      fighterHitTarget(params.player),
+      fighterHitTarget(params.target),
+    ];
     for (const projectile of params.projectiles) {
-      const victim = projectile.owner === "Player1" ? params.target : params.player;
       const visible = params.frame >= projectile.visibleFrom;
       const canInteract = visible && projectile.damage > 0;
       if (canInteract && canShieldBlockProjectile(projectile) && rapierHitMap?.get(projectile.id) === "blocked") {
@@ -91,12 +102,8 @@ export class ProjectileSystem {
         continue;
       }
       if (canInteract) {
-        const rapierVictim = rapierHitMap?.get(projectile.id);
-        const isHit = rapierHitMap !== undefined && canUseRapierHitTest(projectile)
-          ? rapierVictim === victim.key
-          : hitTest(projectile, victim);
-
-        if (isHit) {
+        const victim = firstHitTarget(projectile, hitTargets, rapierHitMap);
+        if (victim) {
           const accepted = params.onHit({
             projectile,
             owner: projectile.owner,
@@ -117,6 +124,35 @@ export class ProjectileSystem {
 
     params.projectiles.splice(0, params.projectiles.length, ...remaining);
   }
+}
+
+function fighterHitTarget(fighter: FighterState): ProjectileHitTarget {
+  return {
+    key: fighter.key,
+    x: fighter.x,
+    y: fighter.y,
+    hitRadius: PLAYER_CORE_RADIUS,
+  };
+}
+
+function firstHitTarget(
+  projectile: ProjectileState,
+  targets: readonly ProjectileHitTarget[],
+  rapierHitMap: Map<number, FighterKey | "blocked"> | undefined,
+): ProjectileHitTarget | undefined {
+  const rapierVictim = rapierHitMap?.get(projectile.id);
+  for (const target of targets) {
+    if (projectile.owner === target.key) {
+      continue;
+    }
+    const isHit = rapierHitMap !== undefined && canUseRapierHitTest(projectile) && target.key !== "Neutral"
+      ? rapierVictim === target.key
+      : hitTest(projectile, target);
+    if (isHit) {
+      return target;
+    }
+  }
+  return undefined;
 }
 
 export function clearProjectilesAround(
@@ -142,7 +178,7 @@ export function clearProjectilesAround(
   return before - projectiles.length;
 }
 
-function hitTest(projectile: ProjectileState, victim: FighterState): boolean {
+function hitTest(projectile: ProjectileState, victim: ProjectileHitTarget): boolean {
   if (projectile.kind === "laser" || projectile.kind === "spark") {
     if (!Number.isFinite(projectile.width)) {
       // Infinite-width beam: ray vs circle
@@ -158,13 +194,13 @@ function hitTest(projectile: ProjectileState, victim: FighterState): boolean {
       const fpForward = fp.add(fp.mul(fpDx, fpCos), fp.mul(fpDy, fpSin));
       const fpSide = fp.abs(fp.add(fp.mul(fp.negate(fpDx), fpSin), fp.mul(fpDy, fpCos)));
       const fpHalfH = fp.div(fp.fromFloat(projectile.height), fp.fromInt(2));
-      const fpRadius = fp.fromFloat(PLAYER_CORE_RADIUS);
+      const fpRadius = fp.fromFloat(victim.hitRadius);
       const fpSideMax = fp.add(fpHalfH, fpRadius);
       const fpNegRadius = fp.negate(fpRadius);
       return fp.gte(fpForward, fpNegRadius) && fp.lte(fpSide, fpSideMax);
     }
   }
-  return rotatedRectIntersectsCircle(projectile, victim.x, victim.y, PLAYER_CORE_RADIUS);
+  return rotatedRectIntersectsCircle(projectile, victim.x, victim.y, victim.hitRadius);
 }
 
 function canUseRapierHitTest(projectile: ProjectileState): boolean {

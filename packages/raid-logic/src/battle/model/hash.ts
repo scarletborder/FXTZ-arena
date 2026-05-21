@@ -1,4 +1,5 @@
 import type { BattleModel } from ".";
+import type { NeutralMobState } from "@repo/types";
 import type { EffectState, FighterState, ProjectileState, TrainingStats } from "@repo/content";
 
 class DeterministicHasher {
@@ -33,12 +34,32 @@ export function hashBattleModel(model: BattleModel): number {
   const hasher = new DeterministicHasher();
   hasher.writeNumber(model.frame);
   hasher.writeNumber(model.gameOver ? 1 : 0);
+  hasher.writeNumber(model.getNextNeutralMobId());
   writeFighter(hasher, model.player);
   writeFighter(hasher, model.target);
+  writeNeutralMobs(hasher, model.neutralMobStates());
   writeProjectiles(hasher, model.projectiles);
   writeEffects(hasher, model.effects);
   writeStats(hasher, model.stats);
   return hasher.digest();
+}
+
+function writeNeutralMobs(hasher: DeterministicHasher, neutralMobs: readonly NeutralMobState[]): void {
+  hasher.writeNumber(neutralMobs.length);
+  for (const mob of [...neutralMobs].sort((left, right) => left.id - right.id)) {
+    hasher.writeNumber(mob.id);
+    hasher.writeString(mob.key);
+    hasher.writeString(mob.kind);
+    writeFixed(hasher, mob.x);
+    writeFixed(hasher, mob.y);
+    writeFixed(hasher, mob.previousX);
+    writeFixed(hasher, mob.previousY);
+    writeFixed(hasher, mob.hitRadius);
+    hasher.writeString(mob.form);
+    hasher.writeNumber(mob.hp);
+    hasher.writeNumber(mob.active ? 1 : 0);
+    hasher.writeNumber(mob.ageTicks);
+  }
 }
 
 export function hashToHex(hash: number): string {

@@ -45,12 +45,12 @@ describe("findQuickMatchRoom", () => {
     const partial = createRoom({
       id: "partial",
       connectionIds: ["conn-1", null],
-      playerSlots: ["player-1", null],
+      playerSlots: ["Player1", null],
     });
     const full = createRoom({
       id: "full",
       connectionIds: ["conn-1", "conn-2"],
-      playerSlots: ["player-1", "player-2"],
+      playerSlots: ["Player1", "Player2"],
     });
 
     const result = findQuickMatchRoom([empty, partial, full]);
@@ -79,7 +79,7 @@ describe("findQuickMatchRoom", () => {
   it("excludes full rooms", () => {
     const full = createRoom({
       connectionIds: ["conn-1", "conn-2"],
-      playerSlots: ["player-1", "player-2"],
+      playerSlots: ["Player1", "Player2"],
     });
     const result = findQuickMatchRoom([full]);
     expect(result).toBeNull();
@@ -100,7 +100,7 @@ describe("findQuickMatchRoom", () => {
     const full = createRoom({
       id: "full",
       connectionIds: ["conn-1", "conn-2"],
-      playerSlots: ["player-1", "player-2"],
+      playerSlots: ["Player1", "Player2"],
     });
 
     const result = findQuickMatchRoom([locked, available, full]);

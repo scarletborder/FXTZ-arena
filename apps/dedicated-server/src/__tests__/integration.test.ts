@@ -84,7 +84,7 @@ describe("Full Game Lifecycle Integration", () => {
     });
 
     const joined = p2.findSentMessage("room_joined");
-    expect(joined?.playerId).toBe("player-2");
+    expect(joined?.playerId).toBe("Player2");
 
     const p2State = p2.findSentMessage("room_state");
     expect(p2State?.playerCount).toBe(2);
@@ -190,7 +190,7 @@ describe("Full Game Lifecycle Integration", () => {
 
     const p2Input = p2.findSentMessage("input_frame");
     expect(p2Input).toBeDefined();
-    expect(p2Input?.playerId).toBe("player-1");
+    expect(p2Input?.playerId).toBe("Player1");
     expect(p2Input?.shootPressed).toBe(true);
 
     handler.handle(p2, {
@@ -210,7 +210,7 @@ describe("Full Game Lifecycle Integration", () => {
 
     const p1Input = p1.findSentMessage("input_frame");
     expect(p1Input).toBeDefined();
-    expect(p1Input?.playerId).toBe("player-2");
+    expect(p1Input?.playerId).toBe("Player2");
     expect(p1Input?.bombPressed).toBe(true);
   });
 
@@ -244,7 +244,7 @@ describe("Full Game Lifecycle Integration", () => {
 
     // P1 should get disconnect notification
     const peerStatus = p1.findSentMessage("peer_status");
-    expect(peerStatus?.playerId).toBe("player-2");
+    expect(peerStatus?.playerId).toBe("Player2");
     expect(peerStatus?.status).toBe("disconnected");
 
     // Room should still exist (P1 is still there)

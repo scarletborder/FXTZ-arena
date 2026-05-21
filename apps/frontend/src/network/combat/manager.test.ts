@@ -43,13 +43,13 @@ describe("CombatSyncManager rollback integration", () => {
     expect(getAbilityCardDefinition("spirit_strike_card")).toBeDefined();
 
     const harness = new DedicatedServerHarness({
-      "player-1": { clientToServer: 2, serverToClient: 6 },
-      "player-2": { clientToServer: 8, serverToClient: 3 },
+      "Player1": { clientToServer: 2, serverToClient: 6 },
+      "Player2": { clientToServer: 8, serverToClient: 3 },
     });
 
     const config = harness.setupBattle();
-    const clientA = await createClient("player-1", config, harness.endpoint("player-1"));
-    const clientB = await createClient("player-2", config, harness.endpoint("player-2"));
+    const clientA = await createClient("Player1", config, harness.endpoint("Player1"));
+    const clientB = await createClient("Player2", config, harness.endpoint("Player2"));
 
     let tick = 0;
     for (; tick < 900 && (!clientA.serverConfirmedFrame || !clientB.serverConfirmedFrame); tick += 1) {
@@ -204,17 +204,19 @@ function expectFrameHashesMatch(left: SimulatedClient, right: SimulatedClient, f
 
     const leftSampledHash = left.sampledHashAt(frame);
     if (leftSampledHash && leftHash !== leftSampledHash) {
-      mismatches.push(`${frame}: player-1 sampled ${leftSampledHash}, final ${leftHash ?? "<missing>"}`);
+      mismatches.push(`${frame}: Player1 sampled ${leftSampledHash}, final ${leftHash ?? "<missing>"}`);
     }
 
     const rightSampledHash = right.sampledHashAt(frame);
     if (rightSampledHash && rightHash !== rightSampledHash) {
-      mismatches.push(`${frame}: player-2 sampled ${rightSampledHash}, final ${rightHash ?? "<missing>"}`);
+      mismatches.push(`${frame}: Player2 sampled ${rightSampledHash}, final ${rightHash ?? "<missing>"}`);
     }
   }
 
   expect(mismatches).toEqual([]);
 }
+
+type TestPlayerId = "Player1" | "Player2";
 
 class DedicatedServerHarness {
   private readonly handler = new MessageHandler(
@@ -229,29 +231,29 @@ class DedicatedServerHarness {
       serverVersion: "test",
     },
   );
-  private readonly endpoints: Record<PlayerId, ClientEndpoint>;
+  private readonly endpoints: Record<TestPlayerId, ClientEndpoint>;
   private readonly queue: ScheduledMessage[] = [];
   private tick = 0;
 
-  constructor(private readonly latency: Record<PlayerId, LatencyProfile>) {
+  constructor(private readonly latency: Record<TestPlayerId, LatencyProfile>) {
     this.endpoints = {
-      "player-1": new ClientEndpoint("player-1", this),
-      "player-2": new ClientEndpoint("player-2", this),
+      "Player1": new ClientEndpoint("Player1", this),
+      "Player2": new ClientEndpoint("Player2", this),
     };
-    this.handler.registerConnection(this.endpoints["player-1"].serverConnection);
-    this.handler.registerConnection(this.endpoints["player-2"].serverConnection);
+    this.handler.registerConnection(this.endpoints["Player1"].serverConnection);
+    this.handler.registerConnection(this.endpoints["Player2"].serverConnection);
   }
 
-  endpoint(playerId: PlayerId): ClientEndpoint {
+  endpoint(playerId: TestPlayerId): ClientEndpoint {
     return this.endpoints[playerId];
   }
 
   setupBattle(): BattleConfig {
-    this.send("player-1", { type: "hello", username: "A", clientVersion: "test", debug: true });
-    this.send("player-2", { type: "hello", username: "B", clientVersion: "test", debug: true });
+    this.send("Player1", { type: "hello", username: "A", clientVersion: "test", debug: true });
+    this.send("Player2", { type: "hello", username: "B", clientVersion: "test", debug: true });
     this.deliverAll();
 
-    this.send("player-1", {
+    this.send("Player1", {
       type: "create_room",
       name: "sync",
       mapId: "arena_standard",
@@ -259,38 +261,38 @@ class DedicatedServerHarness {
       costLimit: 12,
     });
     this.deliverAll();
-    const roomId = this.endpoint("player-1").latest("room_created")?.roomId;
+    const roomId = this.endpoint("Player1").latest("room_created")?.roomId;
     if (!roomId) throw new Error("Room was not created");
 
-    this.send("player-2", { type: "join_room", roomId });
+    this.send("Player2", { type: "join_room", roomId });
     this.deliverAll();
-    this.send("player-2", { type: "lobby_ready", ready: true });
+    this.send("Player2", { type: "lobby_ready", ready: true });
     this.deliverAll();
-    this.send("player-1", { type: "start_game" });
+    this.send("Player1", { type: "start_game" });
     this.deliverAll();
 
-    this.send("player-1", { type: "ready", loadout: playerOneLoadout });
-    this.send("player-2", { type: "ready", loadout: playerTwoLoadout });
+    this.send("Player1", { type: "ready", loadout: playerOneLoadout });
+    this.send("Player2", { type: "ready", loadout: playerTwoLoadout });
     this.deliverAll();
-    const config = this.endpoint("player-1").latest("battle_start")?.config;
+    const config = this.endpoint("Player1").latest("battle_start")?.config;
     if (!config) throw new Error("Battle did not start");
 
-    this.send("player-1", { type: "loading_done" });
-    this.send("player-2", { type: "loading_done" });
+    this.send("Player1", { type: "loading_done" });
+    this.send("Player2", { type: "loading_done" });
     this.deliverAll();
-    this.endpoint("player-1").clearMessages();
-    this.endpoint("player-2").clearMessages();
+    this.endpoint("Player1").clearMessages();
+    this.endpoint("Player2").clearMessages();
     return config;
   }
 
-  send(from: PlayerId, msg: ClientMessage): void {
+  send(from: TestPlayerId, msg: ClientMessage): void {
     this.queue.push({
       deliverAt: this.tick + this.latency[from].clientToServer,
       run: () => this.handler.handle(this.endpoints[from].serverConnection, msg),
     });
   }
 
-  sendToClient(to: PlayerId, msg: ServerMessage): void {
+  sendToClient(to: TestPlayerId, msg: ServerMessage): void {
     this.queue.push({
       deliverAt: this.tick + this.latency[to].serverToClient,
       run: () => this.endpoints[to].receive(msg),
@@ -328,7 +330,7 @@ class ClientEndpoint {
   readonly serverConnection: TransportConnection;
 
   constructor(
-    readonly playerId: PlayerId,
+    readonly playerId: TestPlayerId,
     private readonly network: DedicatedServerHarness,
   ) {
     this.serverConnection = {
@@ -413,9 +415,9 @@ function loadoutsFromConfig(config: BattleConfig) {
 }
 
 function inputFromFrontend(playerId: PlayerId, tick: number): BattleInputState {
-  const sign = playerId === "player-1" ? 1 : -1;
+  const sign = playerId === "Player1" ? 1 : -1;
   const pointer = {
-    x: playerId === "player-1" ? 900 - (tick % 55) : 360 + (tick % 55),
+    x: playerId === "Player1" ? 900 - (tick % 55) : 360 + (tick % 55),
     y: 300 + ((tick * 9) % 150),
     leftButtonDown: () => tick % 17 === 3 || tick % 29 === 11,
     rightButtonDown: () => tick === 180 || tick === 330,

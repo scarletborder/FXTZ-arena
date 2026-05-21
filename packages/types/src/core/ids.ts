@@ -9,4 +9,5 @@ export type AbilityCardId =
   | "multi_shot"
   | "spirit_strike_card";
 export type MapId = "arena_standard";
-export type PlayerId = "Player1" | "Player2";
+export type BattlePlayerId = "Player1" | "Player2" | "Neutral";
+export type PlayerId = BattlePlayerId;

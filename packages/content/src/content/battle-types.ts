@@ -1,8 +1,8 @@
 import type { AbilityCardDefinition } from "./ability-cards/types";
 import type { CharacterDefinition } from "./characters/types";
-import type { PlayerId } from "@repo/types";
+import type { BattlePlayerId, NeutralMobState } from "@repo/types";
 
-export type FighterKey = PlayerId;
+export type FighterKey = BattlePlayerId;
 export type ProjectileKind = "orb" | "knife" | "laser" | "spark";
 
 export interface ShieldState {
@@ -118,6 +118,7 @@ export interface BattleOutputState {
   readonly gameOver: boolean;
   readonly player: FighterState;
   readonly target: FighterState;
+  readonly neutralMobs: readonly NeutralMobState[];
   readonly projectiles: readonly ProjectileState[];
   readonly effects: readonly EffectState[];
   readonly shields: readonly ShieldState[];

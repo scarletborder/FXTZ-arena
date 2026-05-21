@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { BattleInputState } from "@repo/types";
+import { NeutralMob, type BattleInputState, type NeutralMobState } from "@repo/types";
 import type { BattleLoadouts } from "../loadout";
 import { BattleModel } from ".";
 import { BattlePhysics } from "./physics-adapter";
+import type { BulletProjectileParams, LaserProjectileParams } from "./projectile";
 
 describe("BattleModel rollback snapshots", () => {
   it("restores frame-relative timers without changing replay results", async () => {
@@ -418,6 +419,48 @@ describe("BattleModel character bombs", () => {
 
     expect(model.hashHex()).toBe(originalHash);
   });
+
+  it("drives neutral mobs after Player1 and Player2 in stable mob id order", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+    model.addNeutralMob(new TestNeutralMob(2, 640, 240));
+    model.addNeutralMob(new TestNeutralMob(1, 640, 200));
+
+    model.stepVersus(
+      input({ shootPressed: true, aimX: model.target.x, aimY: model.target.y }),
+      input({ shootPressed: true, aimX: model.player.x, aimY: model.player.y }),
+    );
+
+    expect(model.projectiles.map((projectile) => [projectile.id, projectile.owner, projectile.y])).toEqual([
+      [1, "Player1", model.player.y],
+      [2, "Player1", model.player.y],
+      [3, "Player1", model.player.y],
+      [4, "Player2", model.target.y],
+      [5, "Player2", model.target.y],
+      [6, "Player2", model.target.y],
+      [7, "Neutral", 200],
+      [8, "Neutral", 240],
+    ]);
+  });
+
+  it("includes neutral mob state and id allocation in rollback snapshots and hashes", async () => {
+    const model = await createBattleModel();
+    const mob = new TestNeutralMob(model.allocateNeutralMobId(), 500, 120);
+    model.addNeutralMob(mob);
+
+    model.step(input());
+    const snapshot = model.serialize();
+    const snapshotHash = model.hashHex();
+
+    model.step(input());
+    const originalHash = model.hashHex();
+
+    model.deserialize(snapshot);
+    expect(model.hashHex()).toBe(snapshotHash);
+    expect(model.getNextNeutralMobId()).toBe(2);
+
+    model.step(input());
+    expect(model.hashHex()).toBe(originalHash);
+  });
 });
 
 describe("BattlePhysics projectile collisions", () => {
@@ -531,6 +574,64 @@ function testProjectile(overrides: Partial<BattleModel["projectiles"][number]> &
     angle: 0,
     ...overrides,
   };
+}
+
+class TestNeutralMob extends NeutralMob<NeutralMobState, BulletProjectileParams, LaserProjectileParams> {
+  readonly state: NeutralMobState;
+
+  constructor(id: number, x: number, y: number) {
+    super();
+    this.state = {
+      id,
+      key: "Neutral",
+      kind: "test_mob",
+      x,
+      y,
+      previousX: x,
+      previousY: y,
+      hitRadius: 10,
+      form: "idle",
+      hp: 3,
+      active: true,
+      ageTicks: 0,
+    };
+  }
+
+  move(): void {
+    this.state.x += 1;
+  }
+
+  fire(ctx: { spawnBullet(params: BulletProjectileParams): void }): void {
+    ctx.spawnBullet({
+      owner: "Neutral",
+      kind: "orb",
+      x: this.state.x,
+      y: this.state.y,
+      angle: 0,
+      frame: 0,
+      speedRank: "low",
+      width: 8,
+      height: 8,
+      homingTicks: 0,
+    });
+  }
+
+  switchForm(): void {
+    if (this.state.ageTicks === 2) {
+      this.state.form = "armed";
+    }
+  }
+
+  die(): void {
+    if (this.state.hp <= 0) {
+      this.state.active = false;
+    }
+  }
+
+  onProjectileHit(damage: number): "accepted" | "ignored" {
+    this.state.hp -= damage;
+    return "accepted";
+  }
 }
 
 function hitPlayer(model: BattleModel): void {

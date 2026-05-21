@@ -32,8 +32,8 @@ describe("SessionStore", () => {
   it("sets playerId on a session", () => {
     const store = new SessionStore();
     store.create("conn-1", "Player1", "1.0.0", false);
-    store.setPlayerId("conn-1", "player-1");
-    expect(store.get("conn-1")?.playerId).toBe("player-1");
+    store.setPlayerId("conn-1", "Player1");
+    expect(store.get("conn-1")?.playerId).toBe("Player1");
   });
 
   it("sets roomId on a session", () => {
@@ -61,7 +61,7 @@ describe("SessionStore", () => {
   it("does nothing when setting fields on non-existent session", () => {
     const store = new SessionStore();
     expect(() => {
-      store.setPlayerId("nonexistent", "player-1");
+      store.setPlayerId("nonexistent", "Player1");
       store.setRoomId("nonexistent", "room-1");
       store.setConnected("nonexistent", false);
     }).not.toThrow();

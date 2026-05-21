@@ -1,9 +1,9 @@
 import { fp } from "@shaisrc/fixed-point";
 
-import type { ProjectileCollisionContext } from "@repo/types";
+import type { NeutralMob, NeutralMobState, ProjectileCollisionContext } from "@repo/types";
 
 import { getAbilityCard, getCharacter } from "../content";
-import { PLAYER_SPAWN, TARGET_SPAWN } from "../constants";
+import { PLAYER_CORE_RADIUS, PLAYER_SPAWN, TARGET_SPAWN } from "../constants";
 import type { BattleLoadouts, FighterLoadout } from "../loadout";
 import type { BattleInputState } from "@repo/types";
 import type { BattleOutputState, EffectState, FighterKey, FighterState, ProjectileState, ShieldState, TrainingStats } from "@repo/content";
@@ -12,7 +12,7 @@ import { CpuPlayer } from "../aicpu";
 import { EffectSystem } from "./effects";
 import { hashBattleModel, hashToHex } from "./hash";
 import { BattlePhysics } from "./physics-adapter";
-import { clearProjectilesAround, ProjectileSystem } from "./projectile";
+import { clearProjectilesAround, ProjectileSystem, type BulletProjectileParams, type LaserProjectileParams, type ProjectileHitTarget } from "./projectile";
 import {
   createBattleModelSnapshot,
   restoreEffectSnapshot,
@@ -29,6 +29,8 @@ export class BattleModel {
   readonly stats: TrainingStats = { shots: 0, hits: 0, bombUses: 0, damage: 0, elapsedTicks: 0 };
   frame = 0;
   gameOver = false;
+  private readonly neutralMobs: NeutralMob<NeutralMobState, BulletProjectileParams, LaserProjectileParams>[] = [];
+  private nextNeutralMobId = 1;
   private readonly loadouts: BattleLoadouts;
   private readonly projectileSystem = new ProjectileSystem();
   private readonly effectSystem = new EffectSystem();
@@ -72,6 +74,8 @@ export class BattleModel {
   reset(): void {
     this.projectileSystem.reset();
     this.effectSystem.reset();
+    this.neutralMobs.length = 0;
+    this.nextNeutralMobId = 1;
     this.projectiles.length = 0;
     this.effects.length = 0;
     this.stats.shots = 0;
@@ -99,6 +103,27 @@ export class BattleModel {
       this.loadouts.target.activeCardId ? getAbilityCard(this.loadouts.target.activeCardId) : undefined,
       loadoutCards(this.loadouts.target),
     );
+  }
+
+  allocateNeutralMobId(): number {
+    return this.nextNeutralMobId++;
+  }
+
+  addNeutralMob(mob: NeutralMob<NeutralMobState, BulletProjectileParams, LaserProjectileParams>): void {
+    if (this.neutralMobs.some((existing) => existing.id === mob.id)) {
+      throw new Error(`Duplicate neutral mob id: ${mob.id}`);
+    }
+    this.neutralMobs.push(mob);
+    this.nextNeutralMobId = Math.max(this.nextNeutralMobId, mob.id + 1);
+    this.sortNeutralMobs();
+  }
+
+  neutralMobStates(): readonly NeutralMobState[] {
+    return this.neutralMobs.map((mob) => mob.state);
+  }
+
+  getNextNeutralMobId(): number {
+    return this.nextNeutralMobId;
   }
 
   step(input: BattleInputState): void {
@@ -141,6 +166,7 @@ export class BattleModel {
       this.processFighterActions(this.targetFighter, firstInput);
       this.processFighterActions(this.playerFighter, secondInput);
     }
+    this.stepNeutralMobs();
 
     // --- Phase 3: Post-update ---
     this.resolveProjectileClashes();
@@ -149,6 +175,7 @@ export class BattleModel {
       projectiles: this.projectiles,
       player: this.player,
       target: this.target,
+      hitTargets: this.currentHitTargets(),
       shields: this.currentShields(),
       onHit: (ctx) => this.onProjectileHit(ctx),
     });
@@ -170,6 +197,7 @@ export class BattleModel {
       gameOver: this.gameOver,
       player: this.player,
       target: this.target,
+      neutralMobs: this.neutralMobStates(),
       projectiles: this.projectiles,
       effects: this.effects,
       shields: this.currentShields(),
@@ -188,6 +216,8 @@ export class BattleModel {
       stats: this.stats,
       nextProjectileId: this.projectileSystem.getNextId(),
       nextEffectId: this.effectSystem.getNextId(),
+      nextNeutralMobId: this.nextNeutralMobId,
+      neutralMobs: this.neutralMobStates(),
     });
   }
 
@@ -201,9 +231,11 @@ export class BattleModel {
     restoreFighterSnapshot(this.target, snapshot.target, this.frame);
     this.projectiles.splice(0, this.projectiles.length, ...snapshot.projectiles.map((projectile) => restoreProjectileSnapshot(projectile, this.frame)));
     this.effects.splice(0, this.effects.length, ...snapshot.effects.map((effect) => restoreEffectSnapshot(effect, this.frame)));
+    this.restoreNeutralMobSnapshots(snapshot.neutralMobs);
     Object.assign(this.stats, snapshot.stats);
     this.projectileSystem.restoreNextId(this.projectiles, snapshot.nextProjectileId);
     this.effectSystem.restoreNextId(this.effects, snapshot.nextEffectId);
+    this.nextNeutralMobId = Math.max(snapshot.nextNeutralMobId, 1 + Math.max(0, ...snapshot.neutralMobs.map((mob) => mob.id)));
     this.physics?.reset();
   }
 
@@ -311,26 +343,36 @@ export class BattleModel {
     }
   }
 
-  private onProjectileHit(ctx: ProjectileCollisionContext<ProjectileState, FighterState, FighterKey>): boolean {
+  private onProjectileHit(ctx: ProjectileCollisionContext<ProjectileState, ProjectileHitTarget, FighterKey>): boolean {
     const { owner, victim, damage } = ctx;
+    if (victim.key === "Neutral") {
+      const mob = this.neutralMobs.find((candidate) => candidate.id === neutralMobIdFromHitTarget(victim));
+      const result = mob?.onProjectileHit(damage) ?? "ignored";
+      return result !== "ignored";
+    }
+    const fighterState = victim.key === "Player1" ? this.player : this.target;
     const victimFighter = victim.key === "Player1" ? this.playerFighter : this.targetFighter;
-    const attackerFighter = owner === "Player1" ? this.playerFighter : this.targetFighter;
+    const attackerCards = owner === "Player1"
+      ? this.playerFighter.cardDefinitions()
+      : owner === "Player2"
+        ? this.targetFighter.cardDefinitions()
+        : [];
     const result = victimFighter.onProjectileHit({
       owner,
-      victim,
+      victim: fighterState,
       player: this.player,
       target: this.target,
       stats: this.stats,
       frame: this.frame,
       damage,
-      actionContext: this.fighterActionContext(victim),
-      attackerCards: attackerFighter.cardDefinitions(),
+      actionContext: this.fighterActionContext(fighterState),
+      attackerCards,
     });
     if (result === "ignored") {
       return false;
     }
-    if (victim.timeStopUntil > 0) {
-      this.cancelTimeStop(victim);
+    if (fighterState.timeStopUntil > 0) {
+      this.cancelTimeStop(fighterState);
     }
     if (result === "game-over") {
       this.gameOver = true;
@@ -393,6 +435,62 @@ export class BattleModel {
     };
   }
 
+  private neutralMobActionContext(): {
+    readonly frame: number;
+    spawnBullet(params: BulletProjectileParams): void;
+    spawnLaser(params: LaserProjectileParams): void;
+  } {
+    const frame = this.frame;
+    return {
+      frame,
+      spawnBullet: (params) => {
+        const spawnParams = {
+          ...params,
+          owner: "Neutral" as const,
+          frame: params.frame ?? frame,
+        };
+        this.pendingSpawns.push(() => {
+          this.projectileSystem.spawnBullet(this.projectiles, spawnParams);
+        });
+      },
+      spawnLaser: (params) => {
+        const spawnParams = {
+          ...params,
+          owner: "Neutral" as const,
+          frame: params.frame ?? frame,
+        };
+        this.pendingSpawns.push(() => {
+          this.projectileSystem.spawnLaser(this.projectiles, spawnParams);
+        });
+      },
+    };
+  }
+
+  private stepNeutralMobs(): void {
+    this.sortNeutralMobs();
+    for (const mob of this.neutralMobs) {
+      mob.step(this.neutralMobActionContext());
+    }
+    this.neutralMobs.splice(0, this.neutralMobs.length, ...this.neutralMobs.filter((mob) => mob.state.active));
+  }
+
+  private sortNeutralMobs(): void {
+    this.neutralMobs.sort((left, right) => left.id - right.id);
+  }
+
+  private restoreNeutralMobSnapshots(snapshots: readonly NeutralMobState[]): void {
+    const ids = new Set(snapshots.map((snapshot) => snapshot.id));
+    this.neutralMobs.splice(0, this.neutralMobs.length, ...this.neutralMobs.filter((mob) => ids.has(mob.id)));
+    for (const snapshot of snapshots) {
+      const mob = this.neutralMobs.find((candidate) => candidate.id === snapshot.id);
+      if (!mob) {
+        throw new Error(`Cannot restore missing neutral mob id: ${snapshot.id}`);
+      }
+      mob.restore(snapshot);
+    }
+    this.sortNeutralMobs();
+  }
+
   private flushDeferredSpawns(): void {
     for (const spawn of this.pendingSpawns) {
       spawn();
@@ -438,6 +536,27 @@ export class BattleModel {
     }
     return shields;
   }
+
+  private currentHitTargets(): readonly ProjectileHitTarget[] {
+    return [
+      { key: this.player.key, x: this.player.x, y: this.player.y, hitRadius: PLAYER_CORE_RADIUS },
+      { key: this.target.key, x: this.target.x, y: this.target.y, hitRadius: PLAYER_CORE_RADIUS },
+      ...this.neutralMobs
+        .filter((mob) => mob.state.active)
+        .sort((left, right) => left.id - right.id)
+        .map((mob) => ({
+          key: mob.state.key,
+          x: mob.state.x,
+          y: mob.state.y,
+          hitRadius: mob.state.hitRadius,
+          mobId: mob.id,
+        })),
+    ];
+  }
+}
+
+function neutralMobIdFromHitTarget(target: ProjectileHitTarget): number | undefined {
+  return (target as ProjectileHitTarget & { readonly mobId?: number }).mobId;
 }
 
 const DEFAULT_BATTLE_LOADOUTS: BattleLoadouts = {

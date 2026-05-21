@@ -15,7 +15,7 @@ function createTestRoom(overrides?: Partial<InternalRoom>): InternalRoom {
     costLimit: 10,
     status: "selecting",
     connectionIds: ["conn-1", "conn-2"],
-    playerSlots: ["player-1", "player-2"],
+    playerSlots: ["Player1", "Player2"],
     loadouts: [null, null],
     loadingDone: [false, false],
     lobbyReady: [false, false],
@@ -42,7 +42,7 @@ describe("RoomLifecycle", () => {
       const lifecycle = new RoomLifecycle();
       const room = createTestRoom();
 
-      const result = lifecycle.setReady(room, "player-1", sampleLoadout);
+      const result = lifecycle.setReady(room, "Player1", sampleLoadout);
 
       expect(result.bothReady).toBe(false);
       expect(room.loadouts[0]).toEqual(sampleLoadout);
@@ -54,8 +54,8 @@ describe("RoomLifecycle", () => {
       const lifecycle = new RoomLifecycle();
       const room = createTestRoom();
 
-      lifecycle.setReady(room, "player-1", sampleLoadout);
-      const result = lifecycle.setReady(room, "player-2", sampleLoadout);
+      lifecycle.setReady(room, "Player1", sampleLoadout);
+      const result = lifecycle.setReady(room, "Player2", sampleLoadout);
 
       expect(result.bothReady).toBe(true);
       expect(room.status).toBe("loading");
@@ -65,8 +65,8 @@ describe("RoomLifecycle", () => {
       if (result.bothReady) {
         expect(result.battleConfig.mapId).toBe("arena_standard");
         expect(result.battleConfig.players).toHaveLength(2);
-        expect(result.battleConfig.players[0].playerId).toBe("player-1");
-        expect(result.battleConfig.players[1].playerId).toBe("player-2");
+        expect(result.battleConfig.players[0].playerId).toBe("Player1");
+        expect(result.battleConfig.players[1].playerId).toBe("Player2");
         expect(result.battleConfig.fps).toBe(60);
         expect(result.battleConfig.lifeCount).toBe(2);
         expect(result.battleConfig.costLimit).toBe(10);
@@ -77,7 +77,7 @@ describe("RoomLifecycle", () => {
       const lifecycle = new RoomLifecycle();
       const room = createTestRoom();
 
-      expect(() => lifecycle.setReady(room, "player-1", sampleLoadout)).not.toThrow();
+      expect(() => lifecycle.setReady(room, "Player1", sampleLoadout)).not.toThrow();
       expect(() => lifecycle.setReady(room, "nonexistent" as any, sampleLoadout)).toThrow(
         "Player nonexistent is not in this room",
       );
@@ -89,7 +89,7 @@ describe("RoomLifecycle", () => {
       const lifecycle = new RoomLifecycle();
       const room = createTestRoom({ status: "loading" });
 
-      const result = lifecycle.setLoadingDone(room, "player-1");
+      const result = lifecycle.setLoadingDone(room, "Player1");
 
       expect(result).toBe(false);
       expect(room.loadingDone[0]).toBe(true);
@@ -101,8 +101,8 @@ describe("RoomLifecycle", () => {
       const lifecycle = new RoomLifecycle();
       const room = createTestRoom({ status: "loading" });
 
-      lifecycle.setLoadingDone(room, "player-1");
-      const result = lifecycle.setLoadingDone(room, "player-2");
+      lifecycle.setLoadingDone(room, "Player1");
+      const result = lifecycle.setLoadingDone(room, "Player2");
 
       expect(result).toBe(true);
       expect(room.status).toBe("fighting");

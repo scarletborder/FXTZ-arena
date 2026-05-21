@@ -118,7 +118,7 @@ describe("MessageHandler", () => {
   });
 
   describe("create room", () => {
-    it("creates a room and assigns player-1", () => {
+    it("creates a room and assigns Player1", () => {
       const { handler, roomManager } = createHandler();
       const conn = new MockConnection();
 
@@ -137,7 +137,7 @@ describe("MessageHandler", () => {
       expect(conn.findSentMessage("room_state")).toBeDefined();
 
       const joined = conn.findSentMessage("room_joined");
-      expect(joined?.playerId).toBe("player-1");
+      expect(joined?.playerId).toBe("Player1");
 
       const roomCreated = conn.findSentMessage("room_created");
       const room = roomManager.get(roomCreated!.roomId);
@@ -203,7 +203,7 @@ describe("MessageHandler", () => {
       });
 
       const joined = conn2.findSentMessage("room_joined");
-      expect(joined?.playerId).toBe("player-2");
+      expect(joined?.playerId).toBe("Player2");
 
       // Host should get notified about room state change
       const hostState = conn1.findSentMessage("room_state");
@@ -345,7 +345,7 @@ describe("MessageHandler", () => {
 
       const joined = conn2.findSentMessage("room_joined");
       expect(joined).toBeDefined();
-      expect(joined?.playerId).toBe("player-2");
+      expect(joined?.playerId).toBe("Player2");
     });
 
     it("fails quick match when no rooms available", () => {
@@ -531,7 +531,7 @@ describe("MessageHandler", () => {
       const newRoomId = conn1.findSentMessage("room_created")!.roomId;
       const newRoom = roomManager.get(newRoomId);
       expect(newRoom?.connectionIds).toEqual(["conn-1", null]);
-      expect(newRoom?.playerSlots).toEqual(["player-1", null]);
+      expect(newRoom?.playerSlots).toEqual(["Player1", null]);
       expect(conn1.findAllSentMessages("room_state").pop()?.playerCount).toBe(1);
     });
   });
@@ -616,8 +616,8 @@ describe("MessageHandler", () => {
       expect(battle2).toBeDefined();
       expect(battle1?.config.battleId).toBe(battle2?.config.battleId);
       expect(battle1?.config.players).toHaveLength(2);
-      expect(battle1?.config.players[0].playerId).toBe("player-1");
-      expect(battle1?.config.players[1].playerId).toBe("player-2");
+      expect(battle1?.config.players[0].playerId).toBe("Player1");
+      expect(battle1?.config.players[1].playerId).toBe("Player2");
     });
 
     it("rejects ready when not in a room", () => {
@@ -803,7 +803,7 @@ describe("MessageHandler", () => {
 
       const relayed = conn2.findSentMessage("input_frame");
       expect(relayed).toBeDefined();
-      expect(relayed?.playerId).toBe("player-1");
+      expect(relayed?.playerId).toBe("Player1");
       expect(relayed?.frame).toBe(1);
       expect(relayed?.ackFrame).toBe(7);
       expect(relayed?.moveX).toBe(1);
@@ -922,7 +922,7 @@ describe("MessageHandler", () => {
         type: "game_over",
         frame: 120,
         ackFrame: 120,
-        winnerPlayerId: "player-1",
+        winnerPlayerId: "Player1",
       });
 
       expect(conn1.findSentMessage("battle_finished")).toBeUndefined();
@@ -933,10 +933,10 @@ describe("MessageHandler", () => {
         type: "game_over",
         frame: 122,
         ackFrame: 122,
-        winnerPlayerId: "player-1",
+        winnerPlayerId: "Player1",
       });
 
-      expect(conn1.findSentMessage("battle_finished")?.winnerPlayerId).toBe("player-1");
+      expect(conn1.findSentMessage("battle_finished")?.winnerPlayerId).toBe("Player1");
       expect(conn2.findSentMessage("battle_finished")?.frame).toBe(122);
       expect(conn2.findSentMessage("battle_finished")?.confirmedFrame).toBe(120);
       // Room is cleaned up after both verdicts (players freed for new rooms)
@@ -954,13 +954,13 @@ describe("MessageHandler", () => {
         type: "game_over",
         frame: 2392,
         ackFrame: 2394,
-        winnerPlayerId: "player-2",
+        winnerPlayerId: "Player2",
       });
       handler.handle(conn2, {
         type: "game_over",
         frame: 2394,
         ackFrame: 2392,
-        winnerPlayerId: "player-2",
+        winnerPlayerId: "Player2",
       });
 
       expect(conn1.findSentMessage("battle_finished")?.frame).toBe(2394);
@@ -976,13 +976,13 @@ describe("MessageHandler", () => {
         type: "game_over",
         frame: 120,
         ackFrame: 120,
-        winnerPlayerId: "player-1",
+        winnerPlayerId: "Player1",
       });
       handler.handle(conn2, {
         type: "game_over",
         frame: 120,
         ackFrame: 120,
-        winnerPlayerId: "player-2",
+        winnerPlayerId: "Player2",
       });
 
       expect(conn1.findSentMessage("battle_finished")).toBeUndefined();
@@ -1055,7 +1055,7 @@ describe("MessageHandler", () => {
       // Player 1 should get notified
       const peerStatus = conn1.findSentMessage("peer_status");
       expect(peerStatus).toBeDefined();
-      expect(peerStatus?.playerId).toBe("player-2");
+      expect(peerStatus?.playerId).toBe("Player2");
       expect(peerStatus?.status).toBe("disconnected");
     });
 
@@ -1096,7 +1096,7 @@ describe("MessageHandler", () => {
       handler.handleDisconnect(conn2.id);
       expect(conn1.findSentMessage("peer_status")?.status).toBe("disconnected");
       expect(room.connectionIds[1]).toBeNull();
-      expect(room.playerSlots[1]).toBe("player-2");
+      expect(room.playerSlots[1]).toBe("Player2");
 
       const reconnect = new MockConnection("conn-2b");
       handler.registerConnection(reconnect);
@@ -1105,7 +1105,7 @@ describe("MessageHandler", () => {
         username: "P2",
         clientVersion: "1.0.0",
         debug: false,
-        reconnect: { roomId, playerId: "player-2", battleId },
+        reconnect: { roomId, playerId: "Player2", battleId },
       });
 
       expect(room.connectionIds[1]).toBe("conn-2b");
