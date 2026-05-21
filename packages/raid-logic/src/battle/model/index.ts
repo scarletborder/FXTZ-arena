@@ -6,7 +6,7 @@ import { getAbilityCard, getCharacter } from "../content";
 import { PLAYER_SPAWN, RESPAWN_DELAY_TICKS, TARGET_SPAWN } from "../constants";
 import type { BattleLoadouts, FighterLoadout } from "../loadout";
 import type { BattleInputState } from "@repo/types";
-import type { BattleOutputState, EffectState, FighterState, ProjectileState, ShieldState, TrainingStats } from "@repo/content";
+import type { BattleOutputState, EffectState, FighterKey, FighterState, ProjectileState, ShieldState, TrainingStats } from "@repo/content";
 import { BattleFighter } from "./battle-fighter";
 import { CpuPlayer } from "../aicpu";
 import { EffectSystem } from "./effects";
@@ -43,7 +43,7 @@ export class BattleModel {
     this.loadouts = loadouts;
     this.endOnTargetDefeat = params.endOnTargetDefeat ?? false;
     this.playerFighter = new BattleFighter(
-      "player",
+      "Player1",
       getCharacter(loadouts.player.primaryCharacterId),
       getCharacter(loadouts.player.alternateCharacterId),
       PLAYER_SPAWN.x,
@@ -52,7 +52,7 @@ export class BattleModel {
       loadoutCards(loadouts.player),
     );
     this.targetFighter = new BattleFighter(
-      "target",
+      "Player2",
       getCharacter(loadouts.target.primaryCharacterId),
       getCharacter(loadouts.target.alternateCharacterId),
       TARGET_SPAWN.x,
@@ -234,7 +234,7 @@ export class BattleModel {
     if (state.deadUntil > 0) return;
 
     if (!input) {
-      if (state.key === "target") {
+      if (state.key === "Player2") {
         if (this.cpuPlayer) {
           this.stepTargetAi();
         } else {
@@ -321,10 +321,10 @@ export class BattleModel {
     }
   }
 
-  private onProjectileHit(ctx: ProjectileCollisionContext<ProjectileState, FighterState, "player" | "target">): boolean {
+  private onProjectileHit(ctx: ProjectileCollisionContext<ProjectileState, FighterState, FighterKey>): boolean {
     const { owner, victim, damage } = ctx;
-    const victimFighter = victim.key === "player" ? this.playerFighter : this.targetFighter;
-    const attackerFighter = owner === "player" ? this.playerFighter : this.targetFighter;
+    const victimFighter = victim.key === "Player1" ? this.playerFighter : this.targetFighter;
+    const attackerFighter = owner === "Player1" ? this.playerFighter : this.targetFighter;
     const result = victimFighter.onProjectileHit({
       owner,
       victim,
@@ -346,7 +346,7 @@ export class BattleModel {
       this.gameOver = true;
       return true;
     }
-    if (victim.key === "target" && victim.lives <= 0) {
+    if (victim.key === "Player2" && victim.lives <= 0) {
       if (this.endOnTargetDefeat) {
         this.gameOver = true;
         return true;
@@ -368,7 +368,7 @@ export class BattleModel {
   }
 
   private cancelTimeStop(caster: FighterState): void {
-    const opponent = caster.key === "player" ? this.target : this.player;
+    const opponent = caster.key === "Player1" ? this.target : this.player;
     caster.timeStopUntil = 0;
     caster.projectilePauseUntil = 0;
     caster.nonFireActionLockedUntil = 0;
@@ -386,7 +386,7 @@ export class BattleModel {
     return {
       frame,
       self,
-      opponent: self.key === "player" ? this.target : this.player,
+      opponent: self.key === "Player1" ? this.target : this.player,
       projectiles: this.projectiles,
       effects: this.effects,
       stats: this.stats,

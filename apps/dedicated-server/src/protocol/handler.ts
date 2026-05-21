@@ -1,4 +1,5 @@
-import { validateLoadout, type BattleConfig, type PlayerId } from "@repo/types";
+import { validateLoadout } from "@repo/raid-logic";
+import type { BattleConfig, PlayerId } from "@repo/types";
 
 import type { ServerConfig } from "../config";
 import { findQuickMatchRoom } from "../matchmaking";
@@ -49,7 +50,7 @@ export class MessageHandler {
     private roomManager: RoomManager,
     private roomLifecycle: RoomLifecycle,
     private config: ServerConfig,
-  ) {}
+  ) { }
 
   registerConnection(conn: TransportConnection): void {
     this.connections.set(conn.id, conn);
@@ -645,7 +646,7 @@ export class MessageHandler {
     const room = this.roomManager.get(session.roomId);
     if (!room) return;
 
-    if (session.playerId !== "player-1") {
+    if (session.playerId !== "Player1") {
       this.send(connection, {
         type: "error",
         code: ErrorCodes.INVALID_STATE,
@@ -723,7 +724,7 @@ export class MessageHandler {
       return;
     }
 
-    if (session.playerId !== "player-2") {
+    if (session.playerId !== "Player2") {
       return; // host doesn't use lobby ready
     }
 
@@ -798,7 +799,7 @@ export class MessageHandler {
 
     // Notify opponent that this player is ready
     const otherIdx = room.playerSlots.indexOf(
-      session.playerId === "player-1" ? "player-2" : "player-1",
+      session.playerId === "Player1" ? "Player2" : "Player1",
     );
     if (otherIdx !== -1) {
       const otherConnId = room.connectionIds[otherIdx];
@@ -887,7 +888,7 @@ export class MessageHandler {
 
     // Relay to the other player
     const otherIdx = room.playerSlots.indexOf(
-      session.playerId === "player-1" ? "player-2" : "player-1",
+      session.playerId === "Player1" ? "Player2" : "Player1",
     );
     if (otherIdx === -1) return;
 
@@ -1058,10 +1059,10 @@ export class MessageHandler {
   private withUsernames(room: import("../room/types").InternalRoom, config: BattleConfig): BattleConfig {
     const firstSession = room.connectionIds[0]
       ? this.sessionStore.get(room.connectionIds[0]!)
-      : this.sessionStore.findByRoomAndPlayer(room.id, "player-1");
+      : this.sessionStore.findByRoomAndPlayer(room.id, "Player1");
     const secondSession = room.connectionIds[1]
       ? this.sessionStore.get(room.connectionIds[1]!)
-      : this.sessionStore.findByRoomAndPlayer(room.id, "player-2");
+      : this.sessionStore.findByRoomAndPlayer(room.id, "Player2");
     return {
       ...config,
       players: [
@@ -1081,7 +1082,7 @@ export class MessageHandler {
     const hostConnectionId = room.connectionIds[0];
     return hostConnectionId
       ? this.sessionStore.get(hostConnectionId)?.username ?? ""
-      : this.sessionStore.findByRoomAndPlayer(room.id, "player-1")?.username ?? "";
+      : this.sessionStore.findByRoomAndPlayer(room.id, "Player1")?.username ?? "";
   }
 
   private opponentName(room: import("../room/types").InternalRoom, ownSlotIndex: number): string {

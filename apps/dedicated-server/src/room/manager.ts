@@ -4,6 +4,7 @@ import type { MapId, RoomStatus, RoomSummary } from "@repo/types";
 
 import type { InternalRoom } from "./types";
 import { MAX_PLAYERS_PER_ROOM } from "./types";
+import { PlayerId } from "@repo/types";
 
 export interface CreateRoomParams {
   name: string;
@@ -58,11 +59,11 @@ export class RoomManager {
   assignSlot(
     room: InternalRoom,
     connectionId: string,
-  ): { slotIndex: number; playerId: "player-1" | "player-2" } | null {
+  ): { slotIndex: number; playerId: PlayerId } | null {
     const slotIndex = this.getOpenSlotIndex(room);
     if (slotIndex === -1) return null;
     room.connectionIds[slotIndex] = connectionId;
-    const playerId = slotIndex === 0 ? "player-1" : "player-2";
+    const playerId = slotIndex === 0 ? "Player1" : "Player2";
     room.playerSlots[slotIndex] = playerId;
     room.disconnectedAt[slotIndex] = null;
     const timer = room.disconnectTimers[slotIndex];
@@ -74,7 +75,7 @@ export class RoomManager {
     return { slotIndex, playerId };
   }
 
-  reconnectSlot(room: InternalRoom, slotIndex: number, connectionId: string): { playerId: "player-1" | "player-2" } | null {
+  reconnectSlot(room: InternalRoom, slotIndex: number, connectionId: string): { playerId: PlayerId } | null {
     if (slotIndex < 0 || slotIndex >= room.connectionIds.length) return null;
     const playerId = room.playerSlots[slotIndex];
     if (!playerId) return null;

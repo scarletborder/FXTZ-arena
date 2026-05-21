@@ -3,7 +3,7 @@ import type { BattleInputState, BattleModelSnapshot } from "@repo/raid-logic";
 
 import type { BattleSceneData } from "../../battle/loadout";
 
-export type CanonicalFighterKey = "player" | "target";
+export type CanonicalFighterKey = "Player1" | "Player2";
 
 export interface CombatRollbackRecord {
   readonly frame: number;

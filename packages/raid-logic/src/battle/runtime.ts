@@ -10,21 +10,21 @@ export type RaidLogicMode = "training" | "ai" | "online";
 
 export type RaidLogicStepInput =
   | {
-      readonly mode: "training" | "ai";
-      readonly player: BattleInputState;
-    }
+    readonly mode: "training" | "ai";
+    readonly player: BattleInputState;
+  }
   | {
-      readonly mode: "online";
-      readonly player: BattleInputState;
-      readonly target: BattleInputState;
-      /**
-       * Priority order for simultaneous actions.
-       * When true (default), the "player" fighter (player-1 / host) is processed first.
-       * When false, the "target" fighter (player-2) is processed first.
-       * Determined by playerId: lower playerId → higher priority.
-       */
-      readonly hostIsPlayer?: boolean;
-    };
+    readonly mode: "online";
+    readonly player: BattleInputState;
+    readonly target: BattleInputState;
+    /**
+     * Priority order for simultaneous actions.
+     * When true (default), the "player" fighter (Player1 / host) is processed first.
+     * When false, the "target" fighter (Player2) is processed first.
+     * Determined by playerId: lower playerId → higher priority.
+     */
+    readonly hostIsPlayer?: boolean;
+  };
 
 export interface RaidLogicRuntimeOptions {
   readonly mode: RaidLogicMode;

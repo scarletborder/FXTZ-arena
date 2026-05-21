@@ -12,7 +12,7 @@ export class ProjectileView {
 
   constructor(private readonly scene: Phaser.Scene) {}
 
-  render(projectiles: readonly ProjectileState[], frame: number, localFighterKey: FighterKey = "player", alpha = 1): void {
+  render(projectiles: readonly ProjectileState[], frame: number, localFighterKey: FighterKey = "Player1", alpha = 1): void {
     const active = new Set<number>();
     for (const projectile of projectiles) {
       if (frame < projectile.visibleFrom) {
@@ -127,16 +127,16 @@ function projectileTexture(projectile: ProjectileState): string {
 }
 
 function projectileTint(projectile: ProjectileState): number {
-  if ((projectile.kind === "laser" || projectile.kind === "spark") && projectile.owner === "player" && projectile.damage === 0) {
+  if ((projectile.kind === "laser" || projectile.kind === "spark") && projectile.owner === "Player1" && projectile.damage === 0) {
     return 0x64b7ff;
   }
   if ((projectile.kind === "laser" || projectile.kind === "spark") && projectile.damage === 0) {
     return 0xff5a5a;
   }
   if (projectile.kind === "laser" || projectile.kind === "spark") {
-    return projectile.owner === "player" ? 0xffead4 : 0xffc0c0;
+    return projectile.owner === "Player1" ? 0xffead4 : 0xffc0c0;
   }
-  return projectile.owner === "player" ? 0xdff0ff : 0xffe0e0;
+  return projectile.owner === "Player1" ? 0xdff0ff : 0xffe0e0;
 }
 
 function lerp(from: number, to: number, alpha: number): number {

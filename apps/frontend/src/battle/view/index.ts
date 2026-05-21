@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-import type { BattleInputState, BattleOutputState, BodyDebugData } from "@repo/raid-logic";
+import type { BattleInputState, BattleOutputState, BodyDebugData, FighterKey } from "@repo/raid-logic";
 import { CrosshairView } from "./crosshair";
 import { EffectsView } from "./effects";
 import { FighterView } from "./fighter";
@@ -32,8 +32,8 @@ export class BattleView {
     this.debugGraphics.setDepth(999);
   }
 
-  render(state: BattleOutputState, input: BattleInputState, localFighterKey: "player" | "target" = "player", alpha = 1): void {
-    const localFighter = localFighterKey === "player" ? state.player : state.target;
+  render(state: BattleOutputState, input: BattleInputState, localFighterKey: FighterKey = "Player1", alpha = 1): void {
+    const localFighter = localFighterKey === "Player1" ? state.player : state.target;
     this.fighters.render(state.player, state.target, state.frame, state.gameOver, input.infoHeld, localFighterKey, alpha);
     this.projectiles.render(state.projectiles, state.frame, localFighterKey, alpha);
     this.effects.render(state.effects, state.shields);

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@repo/constants": "workspace:*",
+    "@repo/raid-logic": "workspace:*",
     "@repo/types": "workspace:*",
     "ws": "^8.18.2"
   },

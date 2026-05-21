@@ -1,7 +1,5 @@
 import { getAbilityCardDefinition, getCharacterDefinition } from "@repo/content";
-import { DEFAULT_COST_LIMIT } from "../core";
-import type { BattleMode } from "../core";
-import type { PlayerLoadout } from "../battle";
+import { DEFAULT_COST_LIMIT, type BattleMode, type PlayerLoadout } from "@repo/types";
 
 export interface LoadoutValidationOptions {
   readonly mode?: BattleMode;

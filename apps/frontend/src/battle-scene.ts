@@ -129,7 +129,7 @@ export class BattleScene extends Phaser.Scene {
       pointerX: pointerWorld.x,
       pointerY: pointerWorld.y,
     };
-    this.view.render(this.currentOutput.state, this.lastInput, this.combatSync?.localFighterKey() ?? "player", this.accumulator / FIXED_STEP_MS);
+    this.view.render(this.currentOutput.state, this.lastInput, this.combatSync?.localFighterKey() ?? "Player1", this.accumulator / FIXED_STEP_MS);
     if (this.debugPhysicsEnabled) {
       this.renderDebugPhysics();
     }

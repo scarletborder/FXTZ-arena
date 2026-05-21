@@ -36,9 +36,9 @@ rollback snapshot 不能只保存当前还存在的实体。所有会影响未�
 
 ## 输入消费顺序
 
-用户输入按帧进入 `CombatSyncManager`，每个模拟帧使用该帧的 `player-1` 与 `player-2` 输入。双方操作应以 canonical player 顺序进入 `BattleModel.stepVersus()`，不要根据本地玩家身份改变处理优先级。
+用户输入按帧进入 `CombatSyncManager`，每个模拟帧使用该帧的 `Player1` 与 `Player2` 输入。双方操作应以 canonical player 顺序进入 `BattleModel.stepVersus()`，不要根据本地玩家身份改变处理优先级。
 
-同帧动作顺序必须固定。目前 `player-1` 优先于 `player-2`。如果未来改优先级，需要同步改测试和文档，并确认双方客户端不会因为 local/remote 身份产生不同顺序。
+同帧动作顺序必须固定。目前 `Player1` 优先于 `Player2`。如果未来改优先级，需要同步改测试和文档，并确认双方客户端不会因为 local/remote 身份产生不同顺序。
 
 缺失远端输入时可以预测，但真实输入抵达后如果与预测不同，必须从 `changedFrame - 1` 的 snapshot rollback，然后逐帧重放到当前帧。
 

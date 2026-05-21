@@ -3,17 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   ARENA_WIDTH,
   DEFAULT_BOMBS,
-  DEFAULT_COST_LIMIT,
   DEFAULT_LIVES,
   HIT_CIRCLE_DIAMETER,
-  calculateLoadoutCost,
   bulletSpeedRankToPixelsPerTick,
   getDefaultBombs,
   getInitialLives,
   hitCircleUnits,
   secondsToTicks,
   speedRankToPixelsPerTick,
-  validateLoadout,
   type PlayerLoadout,
 } from "./index";
 import { getAllAbilityCardDefinitions, getAllCharacterDefinitions } from "@repo/content";
@@ -59,99 +56,6 @@ describe("@repo/types static content", () => {
       "multi_shot",
       "spirit_strike_card",
     ]);
-  });
-});
-
-describe("@repo/types loadout validation", () => {
-  it("calculates total character and ability card cost", () => {
-    const loadout: PlayerLoadout = {
-      primaryCharacterId: "reimu",
-      alternateCharacterId: "sakuya",
-      abilityCardIds: ["backdoor"],
-    };
-
-    expect(calculateLoadoutCost(loadout)).toBe(9);
-  });
-
-  it("accepts a legal standard loadout below the cost limit", () => {
-    const result = validateLoadout({
-      primaryCharacterId: "reimu",
-      alternateCharacterId: "sakuya",
-      abilityCardIds: ["backdoor"],
-    });
-
-    expect(result).toEqual({
-      valid: true,
-      totalCost: 9,
-      errors: [],
-    });
-  });
-
-  it("accepts standard loadouts at the cost limit", () => {
-    const result = validateLoadout({
-      primaryCharacterId: "reimu",
-      alternateCharacterId: "sakuya",
-      abilityCardIds: ["multi_shot", "spirit_strike_card"],
-      activeAbilityCardId: "spirit_strike_card",
-    });
-
-    expect(result.totalCost).toBe(DEFAULT_COST_LIMIT);
-    expect(result.valid).toBe(true);
-    expect(result.errors).toEqual([]);
-  });
-
-  it("rejects standard loadouts that exceed the cost limit", () => {
-    const result = validateLoadout({
-      primaryCharacterId: "reimu",
-      alternateCharacterId: "sakuya",
-      abilityCardIds: ["multi_shot", "spirit_strike_card", "extra_life"],
-      activeAbilityCardId: "spirit_strike_card",
-    });
-
-    expect(result.totalCost).toBe(DEFAULT_COST_LIMIT + 3);
-    expect(result.errors).toContain("cost_limit_reached");
-    expect(result.valid).toBe(false);
-  });
-
-  it("skips the cost cap in training mode", () => {
-    const result = validateLoadout(
-      {
-        primaryCharacterId: "reimu",
-        alternateCharacterId: "sakuya",
-        abilityCardIds: ["extra_life", "ember"],
-      },
-      { mode: "training" },
-    );
-
-    expect(result.totalCost).toBe(13);
-    expect(result.valid).toBe(true);
-  });
-
-  it("rejects duplicate characters", () => {
-    const result = validateLoadout({
-      primaryCharacterId: "reimu",
-      alternateCharacterId: "reimu",
-      abilityCardIds: [],
-    });
-
-    expect(result.errors).toContain("duplicate_characters");
-  });
-
-  it("requires the selected active card id to match the active card", () => {
-    const missingActiveId = validateLoadout({
-      primaryCharacterId: "reimu",
-      alternateCharacterId: "sakuya",
-      abilityCardIds: ["spirit_strike_card"],
-    });
-    const invalidActiveId = validateLoadout({
-      primaryCharacterId: "reimu",
-      alternateCharacterId: "sakuya",
-      abilityCardIds: ["backdoor"],
-      activeAbilityCardId: "spirit_strike_card",
-    });
-
-    expect(missingActiveId.errors).toContain("active_card_id_required");
-    expect(invalidActiveId.errors).toContain("active_card_id_invalid");
   });
 });
 

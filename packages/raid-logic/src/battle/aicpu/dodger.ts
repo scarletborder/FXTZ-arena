@@ -321,7 +321,7 @@ export class Dodger {
     const fpLaserRadiusSq = fp.fromInt(LOCAL_SCAN_RADIUS_LASER * LOCAL_SCAN_RADIUS_LASER);
 
     for (const projectile of projectiles) {
-      if (projectile.owner === "target") continue;
+      if (projectile.owner === "Player2") continue;
       if (projectile.damage <= 0) continue;
       if (frame < projectile.visibleFrom) continue;
       if (projectile.pausedUntil > frame) continue;

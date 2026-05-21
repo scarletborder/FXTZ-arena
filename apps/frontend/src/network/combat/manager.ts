@@ -13,8 +13,8 @@ export class CombatSyncManager {
   private readonly inputs = new Map<PlayerId, Map<number, BattleInputState>>();
   private readonly predictedInputs = new Map<string, BattleInputState>();
   private readonly lastKnownInputs = new Map<PlayerId, BattleInputState>([
-    ["player-1", neutralInput()],
-    ["player-2", neutralInput()],
+    ["Player1", neutralInput()],
+    ["Player2", neutralInput()],
   ]);
   private lastReceivedRemoteFrame = 0;
   private lastPeerAckFrame = 0;
@@ -27,10 +27,10 @@ export class CombatSyncManager {
     private readonly connectionManager: ConnectionManager,
     private readonly options: CombatSyncManagerOptions,
   ) {
-    this.localPlayerId = options.sceneData.localPlayerId ?? "player-1";
-    this.remotePlayerId = this.localPlayerId === "player-1" ? "player-2" : "player-1";
-    this.inputs.set("player-1", new Map());
-    this.inputs.set("player-2", new Map());
+    this.localPlayerId = options.sceneData.localPlayerId ?? "Player1";
+    this.remotePlayerId = this.localPlayerId === "Player1" ? "Player2" : "Player1";
+    this.inputs.set("Player1", new Map());
+    this.inputs.set("Player2", new Map());
     this.connectionManager.setMessageHandler((msg) => this.handleServerMessage(msg));
   }
 
@@ -39,7 +39,7 @@ export class CombatSyncManager {
   }
 
   localFighterKey(): CanonicalFighterKey {
-    return this.localPlayerId === "player-1" ? "player" : "target";
+    return this.localPlayerId === "Player1" ? "Player1" : "Player2";
   }
 
   step(localInput: BattleInputState): void {
@@ -67,8 +67,8 @@ export class CombatSyncManager {
   }
 
   private stepRuntimeFrame(frame: number): void {
-    const playerInput = this.getInputForFrame("player-1", frame);
-    const targetInput = this.getInputForFrame("player-2", frame);
+    const playerInput = this.getInputForFrame("Player1", frame);
+    const targetInput = this.getInputForFrame("Player2", frame);
     this.options.callbacks.recordStepInputs?.({
       frame,
       player: cloneInput(playerInput),
@@ -78,7 +78,7 @@ export class CombatSyncManager {
       mode: "online",
       player: playerInput,
       target: targetInput,
-      // player-1 (host / lower playerId) has priority over player-2
+      // Player1 (host / lower playerId) has priority over Player2
       hostIsPlayer: true,
     });
   }
@@ -216,7 +216,7 @@ export class CombatSyncManager {
   }
 
   private winnerPlayerId(): PlayerId {
-    return this.runtime.state.target.lives <= 0 ? "player-1" : "player-2";
+    return this.runtime.state.target.lives <= 0 ? "Player1" : "Player2";
   }
 
   private storeInput(playerId: PlayerId, frame: number, input: BattleInputState): void {

@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 
 import { PLAYER_CORE_RADIUS } from "../constants";
-import type { FighterState } from "@repo/raid-logic";
+import type { FighterKey, FighterState } from "@repo/raid-logic";
 
 interface FighterVisual {
   readonly body: Phaser.GameObjects.Image;
@@ -27,11 +27,11 @@ export class FighterView {
     frame: number,
     gameOver: boolean,
     infoHeld: boolean,
-    localFighterKey: "player" | "target",
+    localFighterKey: FighterKey,
     alpha: number,
   ): void {
-    this.updateFighter(this.visuals.player, player, frame, gameOver, infoHeld, localFighterKey === "player", alpha);
-    this.updateFighter(this.visuals.target, target, frame, gameOver, infoHeld, localFighterKey === "target", alpha);
+    this.updateFighter(this.visuals.player, player, frame, gameOver, infoHeld, localFighterKey === "Player1", alpha);
+    this.updateFighter(this.visuals.target, target, frame, gameOver, infoHeld, localFighterKey === "Player2", alpha);
   }
 
   private createFighterVisual(

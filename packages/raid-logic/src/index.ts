@@ -21,6 +21,7 @@ export * from "./battle/model/physics-adapter";
 export * from "./battle/model/snapshot";
 export * from "./battle/output";
 export * from "./battle/runtime";
+export * from "./battle/utils/validation";
 export type {
   BattleOutputState,
   EffectState,
@@ -47,7 +48,7 @@ export interface RaidState {
 export function createDefaultRaidBattleConfig(): BattleConfig {
   return createDefaultBattleConfig("battle-m2", [
     {
-      playerId: "player-1",
+      playerId: "Player1",
       username: "Player 1",
       spawnPointId: "left",
       loadout: {
@@ -58,7 +59,7 @@ export function createDefaultRaidBattleConfig(): BattleConfig {
       },
     },
     {
-      playerId: "player-2",
+      playerId: "Player2",
       username: "Player 2",
       spawnPointId: "right",
       loadout: {
@@ -89,7 +90,7 @@ export function advanceFixedTick(
     fighters: stateOrBattle.fighters.map((fighter) => ({
       kind: "fighter",
       data: {
-        playerId: fighter.playerId as "player-1" | "player-2",
+        playerId: fighter.playerId as "Player1" | "Player2",
         x: fighter.x,
         y: fighter.y,
         vx: 0,
@@ -123,7 +124,7 @@ export function runFixedTickExample(frames = TICK_RATE): RaidState {
     advanceBattleFixedTick(battle, [
       {
         frame,
-        playerId: "player-1",
+        playerId: "Player1",
         moveX: 1,
         moveY: 0,
         aimRadians: 0,
@@ -144,12 +145,12 @@ function toLegacyState(battle: RaidBattle): RaidState {
     frame: battle.frame,
     fighters: [
       {
-        playerId: players[0]?.playerId ?? "player-1",
+        playerId: players[0]?.playerId ?? "Player1",
         x: players[0]?.x ?? 0,
         y: players[0]?.y ?? 0,
       },
       {
-        playerId: players[1]?.playerId ?? "player-2",
+        playerId: players[1]?.playerId ?? "Player2",
         x: players[1]?.x ?? 0,
         y: players[1]?.y ?? 0,
       },

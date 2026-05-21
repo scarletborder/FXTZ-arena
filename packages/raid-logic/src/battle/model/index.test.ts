@@ -254,7 +254,7 @@ describe("BattleModel ability cards", () => {
 
   it("clears nearby bullets with spirit strike", async () => {
     const model = await createBattleModel("reimu", "marisa", ["spirit_strike_card"], "spirit_strike_card");
-    model.projectiles.push(testProjectile({ id: 1, owner: "target", x: model.player.x, y: model.player.y }));
+    model.projectiles.push(testProjectile({ id: 1, owner: "Player2", x: model.player.x, y: model.player.y }));
 
     model.step(input({ activeCardPressed: true }));
 
@@ -266,7 +266,7 @@ describe("BattleModel ability cards", () => {
     const model = await createBattleModel("reimu", "marisa", ["backdoor"]);
     model.player.facing = 0;
     const shield = model.toOutputState().shields[0]!;
-    model.projectiles.push(testProjectile({ id: 1, owner: "target", x: shield.x, y: shield.y }));
+    model.projectiles.push(testProjectile({ id: 1, owner: "Player2", x: shield.x, y: shield.y }));
 
     model.step(input({ aimX: model.player.x + 100, aimY: model.player.y }));
 
@@ -279,11 +279,11 @@ describe("BattleModel ability cards", () => {
     model.player.facing = 0;
     const shield = model.toOutputState().shields[0]!;
     model.projectiles.push(
-      testProjectile({ id: 1, owner: "target", x: shield.x, y: shield.y }),
-      testProjectile({ id: 2, owner: "player", x: shield.x, y: shield.y }),
-      testProjectile({ id: 3, owner: "target", kind: "spark", x: shield.x, y: shield.y }),
-      testProjectile({ id: 4, owner: "target", x: shield.x, y: shield.y, visibleFrom: 999 }),
-      testProjectile({ id: 5, owner: "target", x: shield.x, y: shield.y, damage: 0 }),
+      testProjectile({ id: 1, owner: "Player2", x: shield.x, y: shield.y }),
+      testProjectile({ id: 2, owner: "Player1", x: shield.x, y: shield.y }),
+      testProjectile({ id: 3, owner: "Player2", kind: "spark", x: shield.x, y: shield.y }),
+      testProjectile({ id: 4, owner: "Player2", x: shield.x, y: shield.y, visibleFrom: 999 }),
+      testProjectile({ id: 5, owner: "Player2", x: shield.x, y: shield.y, damage: 0 }),
     );
 
     model.step(input({ aimX: model.player.x + 100, aimY: model.player.y }));
@@ -295,7 +295,7 @@ describe("BattleModel ability cards", () => {
     const model = await createBattleModel("reimu", "marisa", ["backdoor"]);
     model.player.facing = 0;
     const shield = model.toOutputState().shields[0]!;
-    model.projectiles.push(testProjectile({ id: 1, owner: "target", x: shield.x, y: shield.y }));
+    model.projectiles.push(testProjectile({ id: 1, owner: "Player2", x: shield.x, y: shield.y }));
     const snapshot = model.serialize();
     const action = input({ aimX: model.player.x + 100, aimY: model.player.y });
 
@@ -315,8 +315,8 @@ describe("BattleModel character bombs", () => {
   it("reimu bomb clears nearby projectiles and leaves distant projectiles deterministic", async () => {
     const model = await createBattleModel("reimu", "marisa");
     model.projectiles.push(
-      testProjectile({ id: 100, owner: "target", x: model.player.x + 8, y: model.player.y }),
-      testProjectile({ id: 101, owner: "target", x: model.player.x + 200, y: model.player.y, vx: 1 }),
+      testProjectile({ id: 100, owner: "Player2", x: model.player.x + 8, y: model.player.y }),
+      testProjectile({ id: 101, owner: "Player2", x: model.player.x + 200, y: model.player.y, vx: 1 }),
     );
 
     model.step(input({ bombPressed: true }));
@@ -330,7 +330,7 @@ describe("BattleModel character bombs", () => {
     const model = await createBattleModel("marisa", "reimu");
     model.projectiles.push(testProjectile({
       id: 1,
-      owner: "target",
+      owner: "Player2",
       x: model.player.x + 200,
       y: model.player.y,
       vx: 1,
@@ -343,7 +343,7 @@ describe("BattleModel character bombs", () => {
     expect(existing?.pausedUntil).toBe(0);
     expect(existing?.x).toBe(model.player.x + 201);
 
-    const masterSpark = model.projectiles.find((projectile) => projectile.kind === "spark" && projectile.owner === "player");
+    const masterSpark = model.projectiles.find((projectile) => projectile.kind === "spark" && projectile.owner === "Player1");
     expect(masterSpark?.visibleFrom).toBe(model.frame + 60);
     expect(masterSpark?.pausedUntil).toBe(model.frame + 60);
   });
@@ -351,8 +351,8 @@ describe("BattleModel character bombs", () => {
   it("sakuya bomb clears nearby projectiles and pauses remaining projectiles deterministically", async () => {
     const model = await createBattleModel("sakuya", "reimu");
     model.projectiles.push(
-      testProjectile({ id: 100, owner: "target", x: model.player.x + 8, y: model.player.y }),
-      testProjectile({ id: 101, owner: "target", x: model.player.x + 200, y: model.player.y, vx: 1 }),
+      testProjectile({ id: 100, owner: "Player2", x: model.player.x + 8, y: model.player.y }),
+      testProjectile({ id: 101, owner: "Player2", x: model.player.x + 200, y: model.player.y, vx: 1 }),
     );
 
     model.step(input({ bombPressed: true }));
@@ -375,7 +375,7 @@ describe("BattlePhysics projectile collisions", () => {
     model.target.y = model.player.y;
     const projectile = testProjectile({
       id: 1,
-      owner: "player",
+      owner: "Player1",
       x: model.player.x,
       y: model.player.y,
       width: 120,
@@ -384,7 +384,7 @@ describe("BattlePhysics projectile collisions", () => {
 
     const hits = physics.computeCollisions([projectile], model.player, model.target);
 
-    expect(hits).toEqual([{ projectileId: 1, victimKey: "target" }]);
+    expect(hits).toEqual([{ projectileId: 1, victimKey: "Player2" }]);
   });
 });
 
@@ -450,7 +450,7 @@ async function createBattleModel(
   return model;
 }
 
-function testProjectile(overrides: Partial<BattleModel["projectiles"][number]> & { readonly id: number; readonly owner: "player" | "target" }) {
+function testProjectile(overrides: Partial<BattleModel["projectiles"][number]> & { readonly id: number; readonly owner: "Player1" | "Player2" }) {
   return {
     kind: "orb" as const,
     x: 0,
@@ -480,7 +480,7 @@ function testProjectile(overrides: Partial<BattleModel["projectiles"][number]> &
 
 function hitPlayer(model: BattleModel): void {
   const hit = model as unknown as {
-    onProjectileHit(ctx: { readonly owner: "player" | "target"; readonly victim: BattleModel["player"]; readonly damage: number }): boolean;
+    onProjectileHit(ctx: { readonly owner: "Player1" | "Player2"; readonly victim: BattleModel["player"]; readonly damage: number }): boolean;
   };
-  hit.onProjectileHit({ owner: "target", victim: model.player, damage: 1 });
+  hit.onProjectileHit({ owner: "Player2", victim: model.player, damage: 1 });
 }

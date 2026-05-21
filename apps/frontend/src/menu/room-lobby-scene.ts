@@ -96,7 +96,7 @@ export class RoomLobbyScene extends Phaser.Scene {
           : connectionManager.roomStatus ?? "",
     );
 
-    const isHost = connectionManager.playerId === "player-1";
+    const isHost = connectionManager.playerId === "Player1";
     const opponentName = connectionManager.opponentUsername;
     const myName = uiSettings.username;
 
@@ -145,7 +145,7 @@ export class RoomLobbyScene extends Phaser.Scene {
 
       const hint = !opponentName ? "等待对手加入…"
         : !connectionManager.opponentReady ? "等待对手准备…"
-        : "";
+          : "";
       if (hint) {
         this.contentContainer.add(
           this.add.text(640, 610, hint, {

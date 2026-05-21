@@ -26,6 +26,9 @@ importers:
       '@repo/constants':
         specifier: workspace:*
         version: link:../../packages/constants
+      '@repo/raid-logic':
+        specifier: workspace:*
+        version: link:../../packages/raid-logic
       '@repo/types':
         specifier: workspace:*
         version: link:../../packages/types

@@ -7,6 +7,7 @@
     "paths": {
       "@repo/constants": ["../../packages/constants/src/index.ts"],
       "@repo/content": ["../../packages/content/src/index.ts"],
+      "@repo/raid-logic": ["../../packages/raid-logic/src/index.ts"],
       "@repo/types": ["../../packages/types/src/index.ts"]
     },
     "types": ["node", "vitest"]

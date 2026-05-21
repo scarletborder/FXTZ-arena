@@ -61,7 +61,7 @@ export class ProjectileSystem {
         if (projectile.kind === "laser" || projectile.kind === "spark") {
           stepLaserProjectile(projectile);
         } else {
-          const target = projectile.owner === "player" ? params.target : params.player;
+          const target = projectile.owner === "Player1" ? params.target : params.player;
           stepBulletProjectile(projectile, params.frame, target);
         }
       }
@@ -81,7 +81,7 @@ export class ProjectileSystem {
     }
 
     for (const projectile of params.projectiles) {
-      const victim = projectile.owner === "player" ? params.target : params.player;
+      const victim = projectile.owner === "Player1" ? params.target : params.player;
       const visible = params.frame >= projectile.visibleFrom;
       const canInteract = visible && projectile.damage > 0;
       if (canInteract && canShieldBlockProjectile(projectile) && rapierHitMap?.get(projectile.id) === "blocked") {

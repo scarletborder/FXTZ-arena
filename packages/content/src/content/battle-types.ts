@@ -1,7 +1,8 @@
 import type { AbilityCardDefinition } from "./ability-cards/types";
 import type { CharacterDefinition } from "./characters/types";
+import type { PlayerId } from "@repo/types";
 
-export type FighterKey = "player" | "target";
+export type FighterKey = PlayerId;
 export type ProjectileKind = "orb" | "knife" | "laser" | "spark";
 
 export interface ShieldState {

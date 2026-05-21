@@ -3,7 +3,7 @@ import { PhysicsWorld, ensureRapierInit, type BodyDebugData } from "../../physic
 import { fp } from "@shaisrc/fixed-point";
 
 import { PLAYER_CORE_RADIUS } from "../constants";
-import type { FighterState, ProjectileState, ShieldState } from "@repo/content";
+import type { FighterKey, FighterState, ProjectileState, ShieldState } from "@repo/content";
 
 /**
  * Result of a Rapier collision query — maps a projectile to the fighter
@@ -11,7 +11,7 @@ import type { FighterState, ProjectileState, ShieldState } from "@repo/content";
  */
 export interface CollisionResult {
   readonly projectileId: number;
-  readonly victimKey?: "player" | "target";
+  readonly victimKey?: FighterKey;
   readonly blockedByShield?: true;
 }
 
@@ -69,8 +69,8 @@ export class BattlePhysics {
     if (!this.ready || !this.world) return [];
 
     // -- 1. Ensure fighter bodies exist and positions are current ----------
-    this.syncFighter("player", player);
-    this.syncFighter("target", target);
+    this.syncFighter("Player1", player);
+    this.syncFighter("Player2", target);
 
     // -- 2. Remove previous frame's projectile bodies ----------------------
     for (const id of Array.from(this.projBodyIds)) {
@@ -173,7 +173,7 @@ export class BattlePhysics {
     return this.world?.debugRender() ?? null;
   }
 
-  private syncFighter(key: "player" | "target", fighter: FighterState): void {
+  private syncFighter(key: "Player1" | "Player2", fighter: FighterState): void {
     const bodyId = `fighter:${key}`;
     // Remove and re-add every frame so body.translation() is always exact
     // without depending on Rapier's world.step() to apply a kinematic move.
@@ -221,7 +221,7 @@ function resolveCollision(
     return { projectileId: projectileNum, blockedByShield: true };
   }
 
-  const victimKey = fighterId === "fighter:player" ? "player" : "target";
+  const victimKey = fighterId === "fighter:Player1" ? "Player1" : "Player2";
   if (projectileMap.get(projectileNum)?.owner === victimKey) {
     return null;
   }

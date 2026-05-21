@@ -8,8 +8,8 @@ export interface InternalRoom {
   lifeCount: number;
   costLimit: number;
   status: RoomStatus;
-  connectionIds: (string | null)[]; // [player-1 connectionId, player-2 connectionId]
-  playerSlots: (PlayerId | null)[]; // ["player-1" | "player-2" | null]
+  connectionIds: (string | null)[]; // [Player1 connectionId, Player2 connectionId]
+  playerSlots: (PlayerId | null)[]; // ["Player1" | "Player2" | null]
   loadouts: (PlayerLoadout | null)[];
   loadingDone: boolean[];
   lobbyReady: boolean[];

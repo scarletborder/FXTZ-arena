@@ -26,7 +26,7 @@ export function applyHit(params: {
   params.stats.hits += 1;
   params.stats.damage += params.damage;
 
-  if (params.owner === "player") {
+  if (params.owner === "Player1") {
     params.player.hits += 1;
   } else {
     params.target.hits += 1;
@@ -34,7 +34,7 @@ export function applyHit(params: {
 
   if (isFatal) {
     params.victim.deaths += 1;
-    return params.victim.key === "target" ? "accepted" : "game-over";
+    return params.victim.key === "Player2" ? "accepted" : "game-over";
   }
 
   params.victim.lives -= 1;

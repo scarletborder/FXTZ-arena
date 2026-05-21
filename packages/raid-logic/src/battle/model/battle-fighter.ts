@@ -241,7 +241,7 @@ export class BattleFighter {
     readonly actionContext: CharacterActionContext;
     readonly attackerCards: readonly AbilityCardDefinition[];
   }): BattleHitContext {
-    const attacker = params.owner === "player" ? params.player : params.target;
+    const attacker = params.owner === "Player1" ? params.player : params.target;
     return {
       ...params.actionContext,
       owner: params.owner,
