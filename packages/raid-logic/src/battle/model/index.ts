@@ -3,7 +3,7 @@ import { fp } from "@shaisrc/fixed-point";
 import type { ProjectileCollisionContext } from "@repo/types";
 
 import { getAbilityCard, getCharacter } from "../content";
-import { PLAYER_SPAWN, RESPAWN_DELAY_TICKS, TARGET_SPAWN } from "../constants";
+import { PLAYER_SPAWN, TARGET_SPAWN } from "../constants";
 import type { BattleLoadouts, FighterLoadout } from "../loadout";
 import type { BattleInputState } from "@repo/types";
 import type { BattleOutputState, EffectState, FighterKey, FighterState, ProjectileState, ShieldState, TrainingStats } from "@repo/content";
@@ -30,7 +30,6 @@ export class BattleModel {
   frame = 0;
   gameOver = false;
   private readonly loadouts: BattleLoadouts;
-  private readonly endOnTargetDefeat: boolean;
   private readonly projectileSystem = new ProjectileSystem();
   private readonly effectSystem = new EffectSystem();
   private readonly playerFighter: BattleFighter;
@@ -39,9 +38,8 @@ export class BattleModel {
   private physics: BattlePhysics | undefined;
   private pendingSpawns: Array<() => void> = [];
 
-  constructor(loadouts: BattleLoadouts = DEFAULT_BATTLE_LOADOUTS, params: { readonly endOnTargetDefeat?: boolean } = {}) {
+  constructor(loadouts: BattleLoadouts = DEFAULT_BATTLE_LOADOUTS, params: { readonly enableCpuTarget?: boolean } = {}) {
     this.loadouts = loadouts;
-    this.endOnTargetDefeat = params.endOnTargetDefeat ?? false;
     this.playerFighter = new BattleFighter(
       "Player1",
       getCharacter(loadouts.player.primaryCharacterId),
@@ -60,7 +58,7 @@ export class BattleModel {
       loadouts.target.activeCardId ? getAbilityCard(loadouts.target.activeCardId) : undefined,
       loadoutCards(loadouts.target),
     );
-    this.cpuPlayer = this.endOnTargetDefeat ? new CpuPlayer() : undefined;
+    this.cpuPlayer = params.enableCpuTarget ? new CpuPlayer() : undefined;
   }
 
   get player(): FighterState {
@@ -132,14 +130,6 @@ export class BattleModel {
     this.pendingSpawns = [];
     this.playerFighter.tickTimers();
     this.targetFighter.tickTimers();
-
-    // Handle target death countdown (outside action processing)
-    if (this.target.deadUntil > 0) {
-      this.target.deadUntil -= 1;
-      if (this.target.deadUntil === 0) {
-        this.respawnTarget();
-      }
-    }
 
     if (this.gameOver) return;
 
@@ -346,25 +336,7 @@ export class BattleModel {
       this.gameOver = true;
       return true;
     }
-    if (victim.key === "Player2" && victim.lives <= 0) {
-      if (this.endOnTargetDefeat) {
-        this.gameOver = true;
-        return true;
-      }
-      victim.deadUntil = RESPAWN_DELAY_TICKS;
-    }
     return true;
-  }
-
-  private respawnTarget(): void {
-    this.targetFighter.reset(
-      getCharacter(this.loadouts.target.primaryCharacterId),
-      getCharacter(this.loadouts.target.alternateCharacterId),
-      TARGET_SPAWN.x,
-      TARGET_SPAWN.y,
-      this.loadouts.target.activeCardId ? getAbilityCard(this.loadouts.target.activeCardId) : undefined,
-      loadoutCards(this.loadouts.target),
-    );
   }
 
   private cancelTimeStop(caster: FighterState): void {

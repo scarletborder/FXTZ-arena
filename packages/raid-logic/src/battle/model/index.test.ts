@@ -240,6 +240,43 @@ describe("BattleModel hit recovery", () => {
     expect(model.player.lives).toBe(1);
     expect(model.player.bombs).toBe(4);
   });
+
+  it("does not end the battle when Player1 drops from 1 life to 0", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+    model.player.lives = 1;
+
+    hitPlayer(model);
+
+    expect(model.player.lives).toBe(0);
+    expect(model.player.deaths).toBe(0);
+    expect(model.gameOver).toBe(false);
+
+    model.player.invulnerableUntil = 0;
+    hitPlayer(model);
+
+    expect(model.player.lives).toBe(0);
+    expect(model.player.deaths).toBe(1);
+    expect(model.gameOver).toBe(true);
+  });
+
+  it("uses the same 0-life defeat timing for Player2", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+    model.target.lives = 1;
+
+    hitTarget(model);
+
+    expect(model.target.lives).toBe(0);
+    expect(model.target.deaths).toBe(0);
+    expect(model.target.deadUntil).toBe(0);
+    expect(model.gameOver).toBe(false);
+
+    model.target.invulnerableUntil = 0;
+    hitTarget(model);
+
+    expect(model.target.lives).toBe(0);
+    expect(model.target.deaths).toBe(1);
+    expect(model.gameOver).toBe(true);
+  });
 });
 
 describe("BattleModel ability cards", () => {
@@ -483,4 +520,11 @@ function hitPlayer(model: BattleModel): void {
     onProjectileHit(ctx: { readonly owner: "Player1" | "Player2"; readonly victim: BattleModel["player"]; readonly damage: number }): boolean;
   };
   hit.onProjectileHit({ owner: "Player2", victim: model.player, damage: 1 });
+}
+
+function hitTarget(model: BattleModel): void {
+  const hit = model as unknown as {
+    onProjectileHit(ctx: { readonly owner: "Player1" | "Player2"; readonly victim: BattleModel["target"]; readonly damage: number }): boolean;
+  };
+  hit.onProjectileHit({ owner: "Player1", victim: model.target, damage: 1 });
 }

@@ -34,7 +34,7 @@ export function applyHit(params: {
 
   if (isFatal) {
     params.victim.deaths += 1;
-    return params.victim.key === "Player2" ? "accepted" : "game-over";
+    return "game-over";
   }
 
   params.victim.lives -= 1;

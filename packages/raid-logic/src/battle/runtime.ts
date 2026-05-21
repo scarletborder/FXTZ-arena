@@ -59,7 +59,7 @@ class BattleRuntime implements RaidLogicRuntime {
     loadouts: BattleLoadouts | undefined,
   ) {
     this.model = new BattleModel(loadouts, {
-      endOnTargetDefeat: mode === "ai" || mode === "online",
+      enableCpuTarget: mode === "ai",
     });
     this.enqueueOutput([{ type: "snapshot_restored", frame: this.model.frame }]);
   }

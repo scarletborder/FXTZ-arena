@@ -107,7 +107,7 @@ export function stepBulletProjectile(
 }
 
 function canHomeTo(target: FighterState): boolean {
-  return target.lives > 0 && target.deadUntil <= 0 && target.invulnerableUntil <= 0;
+  return target.deadUntil <= 0 && target.invulnerableUntil <= 0;
 }
 
 export function isProjectileOutOfWorld(projectile: ProjectileState): boolean {

@@ -15,6 +15,5 @@ export const TARGET_SPAWN = { x: 760, y: 280 };
 export const PLAYER_CORE_RADIUS = 4.5;
 export const PROJECTILE_RADIUS = 5;
 export const HIT_FLASH_MS = 140;
-export const RESPAWN_DELAY_TICKS = 90;
 export const END_OVERLAY_WIDTH = 540;
 export const END_OVERLAY_HEIGHT = 200;
