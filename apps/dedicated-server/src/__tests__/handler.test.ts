@@ -946,6 +946,28 @@ describe("MessageHandler", () => {
       expect(p1RoomState?.status).toBe("finished");
     });
 
+    it("does not confirm frames beyond a client that already stopped at local game over", () => {
+      const { handler } = createHandler();
+      const { conn1, conn2 } = setupFightingRoom(handler);
+
+      handler.handle(conn1, {
+        type: "game_over",
+        frame: 2392,
+        ackFrame: 2394,
+        winnerPlayerId: "player-2",
+      });
+      handler.handle(conn2, {
+        type: "game_over",
+        frame: 2394,
+        ackFrame: 2392,
+        winnerPlayerId: "player-2",
+      });
+
+      expect(conn1.findSentMessage("battle_finished")?.frame).toBe(2394);
+      expect(conn1.findSentMessage("battle_finished")?.confirmedFrame).toBe(2392);
+      expect(conn2.findSentMessage("battle_finished")?.confirmedFrame).toBe(2392);
+    });
+
     it("does not finish when the two verdicts disagree", () => {
       const { handler, roomManager } = createHandler();
       const { conn1, conn2, roomId } = setupFightingRoom(handler);

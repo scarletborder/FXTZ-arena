@@ -944,7 +944,7 @@ export class MessageHandler {
 
     room.status = "finished";
     const finishedFrame = Math.max(left.frame, right.frame);
-    const confirmedFrame = Math.min(finishedFrame, left.ackFrame, right.ackFrame);
+    const confirmedFrame = Math.min(left.frame, right.frame, left.ackFrame, right.ackFrame);
     this.notifyAllConnected(room, {
       type: "battle_finished",
       roomId: room.id,

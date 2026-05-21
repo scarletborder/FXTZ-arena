@@ -83,6 +83,7 @@ export class BattleModel {
     this.stats.elapsedTicks = 0;
     this.frame = 0;
     this.gameOver = false;
+    this.physics?.reset();
     this.cpuPlayer?.reset();
     this.playerFighter.reset(
       getCharacter(this.loadouts.player.primaryCharacterId),
@@ -211,6 +212,7 @@ export class BattleModel {
     Object.assign(this.stats, snapshot.stats);
     this.projectileSystem.restoreNextId(this.projectiles);
     this.effectSystem.restoreNextId(this.effects);
+    this.physics?.reset();
   }
 
   setPhysics(physics: BattlePhysics): void {

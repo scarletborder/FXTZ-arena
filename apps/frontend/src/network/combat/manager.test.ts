@@ -1,0 +1,460 @@
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("phaser", () => ({
+  default: {
+    Input: {
+      Keyboard: {
+        JustDown: (key: { _justDown?: boolean }) => {
+          const justDown = key._justDown === true;
+          key._justDown = false;
+          return justDown;
+        },
+      },
+    },
+    Math: {
+      Clamp: (value: number, min: number, max: number) => Math.max(min, Math.min(max, value)),
+    },
+  },
+}));
+
+import { getAbilityCardDefinition, getCharacterDefinition } from "@repo/content";
+import {
+  ConfirmedFrameHashAccumulator,
+  createRaidLogicRuntime,
+  type BattleModelSnapshot,
+  type RaidLogicRuntime,
+} from "@repo/raid-logic";
+import type { BattleConfig, BattleInputState, ClientMessage, PlayerId, PlayerLoadout, ServerMessage } from "@repo/types";
+
+import { MessageHandler } from "../../../../dedicated-server/src/protocol/handler";
+import { RoomLifecycle } from "../../../../dedicated-server/src/room/lifecycle";
+import { RoomManager } from "../../../../dedicated-server/src/room/manager";
+import { SessionStore } from "../../../../dedicated-server/src/session/store";
+import type { TransportConnection } from "../../../../dedicated-server/src/transport/interface";
+import { createBattleInput, type BattleKeyMap } from "../../battle/input";
+import type { BattleSceneData } from "../../battle/loadout";
+import type { ConnectionManager } from "../client";
+import { CombatSyncManager } from "./manager";
+import type { CombatRollbackRecord } from "./types";
+
+describe("CombatSyncManager rollback integration", () => {
+  it("matches final frame and global BLAKE3 hashes through the dedicated server with asymmetric latency", async () => {
+    expect(getCharacterDefinition("reimu")).toBeDefined();
+    expect(getAbilityCardDefinition("spirit_strike_card")).toBeDefined();
+
+    const harness = new DedicatedServerHarness({
+      "player-1": { clientToServer: 2, serverToClient: 6 },
+      "player-2": { clientToServer: 8, serverToClient: 3 },
+    });
+
+    const config = harness.setupBattle();
+    const clientA = await createClient("player-1", config, harness.endpoint("player-1"));
+    const clientB = await createClient("player-2", config, harness.endpoint("player-2"));
+
+    let tick = 0;
+    for (; tick < 900 && (!clientA.serverConfirmedFrame || !clientB.serverConfirmedFrame); tick += 1) {
+      harness.deliverDue(tick);
+      clientA.step(tick);
+      clientB.step(tick);
+    }
+
+    harness.deliverAll();
+    for (; tick < 960 && (!clientA.serverConfirmedFrame || !clientB.serverConfirmedFrame); tick += 1) {
+      clientA.step(tick);
+      clientB.step(tick);
+      harness.deliverDue(tick);
+    }
+    harness.deliverAll();
+
+    clientA.expectNoSampledHashMutations();
+    clientB.expectNoSampledHashMutations();
+
+    const finalFrame = clientA.serverConfirmedFrame ?? Math.min(clientA.manager.getConfirmedFrame(), clientB.manager.getConfirmedFrame());
+    expect(clientB.serverConfirmedFrame ?? finalFrame).toBe(finalFrame);
+    expect(finalFrame).toBeGreaterThan(120);
+    expectFrameHashesMatch(clientA, clientB, finalFrame);
+    expect(clientA.hashAt(finalFrame)).toBe(clientB.hashAt(finalFrame));
+    expect(clientA.globalHashAt(finalFrame)).toBe(clientB.globalHashAt(finalFrame));
+  });
+});
+
+async function createClient(
+  localPlayerId: PlayerId,
+  config: BattleConfig,
+  endpoint: ClientEndpoint,
+): Promise<SimulatedClient> {
+  const runtime = createRaidLogicRuntime({
+    mode: "online",
+    loadouts: loadoutsFromConfig(config),
+  });
+  await runtime.initialize();
+
+  const snapshotHistory = new Map<number, BattleModelSnapshot>();
+  const hashHistory = new Map<number, string>();
+  const hashBacklog = new Map<number, string>();
+  const sampledFrameHashes = new Map<number, string>();
+  const sampledHashMutations: string[] = [];
+  const globalHash = new ConfirmedFrameHashAccumulator();
+
+  const sampleConfirmedThrough = (frame: number) => {
+    for (let nextFrame = globalHash.lastSampledFrame + 1; nextFrame <= frame; nextFrame += 1) {
+      const hash = hashBacklog.get(nextFrame) ?? hashHistory.get(nextFrame);
+      if (!hash) {
+        throw new Error(`Missing hash for confirmed frame ${nextFrame}`);
+      }
+      globalHash.addSample({ frame: nextFrame, hashHex: hash });
+      sampledFrameHashes.set(nextFrame, hash);
+      hashBacklog.delete(nextFrame);
+    }
+  };
+
+  const recordFrame = () => {
+    for (const output of runtime.outputQueue.drainAll()) {
+      const sampledHash = sampledFrameHashes.get(output.frame);
+      if (sampledHash && sampledHash !== output.hashHex) {
+        sampledHashMutations.push(`${output.frame}: sampled=${sampledHash}, replayed=${output.hashHex}`);
+      }
+      snapshotHistory.set(output.frame, output.snapshot);
+      hashHistory.set(output.frame, output.hashHex);
+      if (output.frame > globalHash.lastSampledFrame) {
+        hashBacklog.set(output.frame, output.hashHex);
+      }
+    }
+  };
+  recordFrame();
+
+  const manager = new CombatSyncManager(runtime, endpoint as unknown as ConnectionManager, {
+    sceneData: {
+      mode: "online",
+      localPlayerId,
+      loadouts: loadoutsFromConfig(config),
+      battleConfig: config,
+    } satisfies BattleSceneData,
+    callbacks: {
+      recordFrame,
+      getRollbackRecord: (frame) => {
+        const snapshot = snapshotHistory.get(frame);
+        return snapshot ? ({ frame, snapshot } satisfies CombatRollbackRecord) : null;
+      },
+      pruneRollbackHistoryAfter: (frame) => {
+        for (const key of snapshotHistory.keys()) {
+          if (key > frame) snapshotHistory.delete(key);
+        }
+        for (const key of hashHistory.keys()) {
+          if (key > frame) hashHistory.delete(key);
+        }
+        for (const key of hashBacklog.keys()) {
+          if (key > frame) hashBacklog.delete(key);
+        }
+      },
+      pruneRollbackHistoryBefore: (frame) => {
+        sampleConfirmedThrough(frame);
+        for (const key of snapshotHistory.keys()) {
+          if (key < frame) snapshotHistory.delete(key);
+        }
+      },
+      onRollback: () => undefined,
+      setStatusText: () => undefined,
+      hideStatusText: () => undefined,
+      delay: (_ms, callback) => callback(),
+      finishBattle: (_winner, serverConfirmedFrame) => {
+        client.serverConfirmedFrame = serverConfirmedFrame;
+      },
+    },
+  });
+
+  const client: SimulatedClient = {
+    manager,
+    runtime,
+    serverConfirmedFrame: undefined,
+    step: (tick) => manager.step(inputFromFrontend(localPlayerId, tick)),
+    hashAt: (frame) => hashHistory.get(frame),
+    sampledHashAt: (frame) => sampledFrameHashes.get(frame),
+    globalHashAt: (frame) => {
+      sampleConfirmedThrough(frame);
+      return globalHash.digestHex(frame);
+    },
+    expectNoSampledHashMutations: () => {
+      expect(sampledHashMutations).toEqual([]);
+    },
+  };
+
+  return client;
+}
+
+interface SimulatedClient {
+  readonly manager: CombatSyncManager;
+  readonly runtime: RaidLogicRuntime;
+  serverConfirmedFrame: number | undefined;
+  step(tick: number): void;
+  hashAt(frame: number): string | undefined;
+  sampledHashAt(frame: number): string | undefined;
+  globalHashAt(frame: number): string;
+  expectNoSampledHashMutations(): void;
+}
+
+function expectFrameHashesMatch(left: SimulatedClient, right: SimulatedClient, finalFrame: number): void {
+  const mismatches: string[] = [];
+  for (let frame = 0; frame <= finalFrame; frame += 1) {
+    const leftHash = left.hashAt(frame);
+    const rightHash = right.hashAt(frame);
+    if (leftHash !== rightHash) {
+      mismatches.push(`${frame}: ${leftHash ?? "<missing>"} != ${rightHash ?? "<missing>"}`);
+    }
+
+    const leftSampledHash = left.sampledHashAt(frame);
+    if (leftSampledHash && leftHash !== leftSampledHash) {
+      mismatches.push(`${frame}: player-1 sampled ${leftSampledHash}, final ${leftHash ?? "<missing>"}`);
+    }
+
+    const rightSampledHash = right.sampledHashAt(frame);
+    if (rightSampledHash && rightHash !== rightSampledHash) {
+      mismatches.push(`${frame}: player-2 sampled ${rightSampledHash}, final ${rightHash ?? "<missing>"}`);
+    }
+  }
+
+  expect(mismatches).toEqual([]);
+}
+
+class DedicatedServerHarness {
+  private readonly handler = new MessageHandler(
+    new SessionStore(),
+    new RoomManager(),
+    new RoomLifecycle(),
+    {
+      port: 22334,
+      host: "127.0.0.1",
+      maxPlayersPerRoom: 2,
+      maxRooms: 8,
+      serverVersion: "test",
+    },
+  );
+  private readonly endpoints: Record<PlayerId, ClientEndpoint>;
+  private readonly queue: ScheduledMessage[] = [];
+  private tick = 0;
+
+  constructor(private readonly latency: Record<PlayerId, LatencyProfile>) {
+    this.endpoints = {
+      "player-1": new ClientEndpoint("player-1", this),
+      "player-2": new ClientEndpoint("player-2", this),
+    };
+    this.handler.registerConnection(this.endpoints["player-1"].serverConnection);
+    this.handler.registerConnection(this.endpoints["player-2"].serverConnection);
+  }
+
+  endpoint(playerId: PlayerId): ClientEndpoint {
+    return this.endpoints[playerId];
+  }
+
+  setupBattle(): BattleConfig {
+    this.send("player-1", { type: "hello", username: "A", clientVersion: "test", debug: true });
+    this.send("player-2", { type: "hello", username: "B", clientVersion: "test", debug: true });
+    this.deliverAll();
+
+    this.send("player-1", {
+      type: "create_room",
+      name: "sync",
+      mapId: "arena_standard",
+      lifeCount: 2,
+      costLimit: 12,
+    });
+    this.deliverAll();
+    const roomId = this.endpoint("player-1").latest("room_created")?.roomId;
+    if (!roomId) throw new Error("Room was not created");
+
+    this.send("player-2", { type: "join_room", roomId });
+    this.deliverAll();
+    this.send("player-2", { type: "lobby_ready", ready: true });
+    this.deliverAll();
+    this.send("player-1", { type: "start_game" });
+    this.deliverAll();
+
+    this.send("player-1", { type: "ready", loadout: playerOneLoadout });
+    this.send("player-2", { type: "ready", loadout: playerTwoLoadout });
+    this.deliverAll();
+    const config = this.endpoint("player-1").latest("battle_start")?.config;
+    if (!config) throw new Error("Battle did not start");
+
+    this.send("player-1", { type: "loading_done" });
+    this.send("player-2", { type: "loading_done" });
+    this.deliverAll();
+    this.endpoint("player-1").clearMessages();
+    this.endpoint("player-2").clearMessages();
+    return config;
+  }
+
+  send(from: PlayerId, msg: ClientMessage): void {
+    this.queue.push({
+      deliverAt: this.tick + this.latency[from].clientToServer,
+      run: () => this.handler.handle(this.endpoints[from].serverConnection, msg),
+    });
+  }
+
+  sendToClient(to: PlayerId, msg: ServerMessage): void {
+    this.queue.push({
+      deliverAt: this.tick + this.latency[to].serverToClient,
+      run: () => this.endpoints[to].receive(msg),
+    });
+  }
+
+  deliverDue(tick: number): void {
+    this.tick = tick;
+    this.deliver((item) => item.deliverAt <= tick);
+  }
+
+  deliverAll(): void {
+    while (this.queue.length > 0) {
+      const nextTick = Math.min(...this.queue.map((item) => item.deliverAt));
+      this.deliverDue(nextTick);
+    }
+  }
+
+  private deliver(predicate: (item: ScheduledMessage) => boolean): void {
+    for (let index = 0; index < this.queue.length;) {
+      const item = this.queue[index]!;
+      if (!predicate(item)) {
+        index += 1;
+        continue;
+      }
+      this.queue.splice(index, 1);
+      item.run();
+    }
+  }
+}
+
+class ClientEndpoint {
+  private handler: ((msg: ServerMessage) => void) | null = null;
+  readonly messages: ServerMessage[] = [];
+  readonly serverConnection: TransportConnection;
+
+  constructor(
+    readonly playerId: PlayerId,
+    private readonly network: DedicatedServerHarness,
+  ) {
+    this.serverConnection = {
+      id: `conn-${playerId}`,
+      send: (message) => this.network.sendToClient(playerId, message),
+      close: () => undefined,
+      onMessage: () => undefined,
+      onClose: () => undefined,
+      onError: () => undefined,
+    };
+  }
+
+  send(msg: ClientMessage): void {
+    this.network.send(this.playerId, msg);
+  }
+
+  setMessageHandler(handler: ((msg: ServerMessage) => void) | null): void {
+    this.handler = handler;
+  }
+
+  receive(msg: ServerMessage): void {
+    this.messages.push(msg);
+    this.handler?.(msg);
+  }
+
+  latest<T extends ServerMessage["type"]>(type: T): Extract<ServerMessage, { type: T }> | undefined {
+    for (let index = this.messages.length - 1; index >= 0; index -= 1) {
+      const msg = this.messages[index]!;
+      if (msg.type === type) {
+        return msg as Extract<ServerMessage, { type: T }>;
+      }
+    }
+    return undefined;
+  }
+
+  clearMessages(): void {
+    this.messages.length = 0;
+  }
+}
+
+interface LatencyProfile {
+  readonly clientToServer: number;
+  readonly serverToClient: number;
+}
+
+interface ScheduledMessage {
+  readonly deliverAt: number;
+  run(): void;
+}
+
+const playerOneLoadout = {
+  primaryCharacterId: "reimu",
+  alternateCharacterId: "marisa",
+  abilityCardIds: ["spirit_strike_card", "multi_shot"],
+  activeAbilityCardId: "spirit_strike_card",
+} satisfies PlayerLoadout;
+
+const playerTwoLoadout = {
+  primaryCharacterId: "sakuya",
+  alternateCharacterId: "reimu",
+  abilityCardIds: ["spirit_strike_card", "backdoor"],
+  activeAbilityCardId: "spirit_strike_card",
+} satisfies PlayerLoadout;
+
+function loadoutsFromConfig(config: BattleConfig) {
+  const player = config.players[0].loadout;
+  const target = config.players[1].loadout;
+  return {
+    player: {
+      primaryCharacterId: player.primaryCharacterId,
+      alternateCharacterId: player.alternateCharacterId,
+      cardIds: player.abilityCardIds,
+      activeCardId: player.activeAbilityCardId,
+    },
+    target: {
+      primaryCharacterId: target.primaryCharacterId,
+      alternateCharacterId: target.alternateCharacterId,
+      cardIds: target.abilityCardIds,
+      activeCardId: target.activeAbilityCardId,
+    },
+  };
+}
+
+function inputFromFrontend(playerId: PlayerId, tick: number): BattleInputState {
+  const sign = playerId === "player-1" ? 1 : -1;
+  const pointer = {
+    x: playerId === "player-1" ? 900 - (tick % 55) : 360 + (tick % 55),
+    y: 300 + ((tick * 9) % 150),
+    leftButtonDown: () => tick % 17 === 3 || tick % 29 === 11,
+    rightButtonDown: () => tick === 180 || tick === 330,
+    positionToCamera: () => ({
+      x: pointer.x,
+      y: pointer.y,
+    }),
+  };
+  const input = createBattleInput(
+    {
+      input: { activePointer: pointer },
+      cameras: { main: {} },
+    } as never,
+    createKeys({
+      d: sign > 0 && tick % 80 < 24,
+      a: sign < 0 && tick % 80 < 24,
+      s: tick % 90 < 30,
+      w: tick % 90 >= 30 && tick % 90 < 60,
+      r: tick % 71 === 20,
+      shift: tick % 130 >= 70,
+      tab: false,
+      enter: false,
+      e: tick === 260,
+    }),
+  );
+  return input;
+}
+
+function createKeys(state: Record<keyof BattleKeyMap, boolean>): BattleKeyMap {
+  const key = (isDown: boolean) => ({ isDown, _justDown: isDown });
+  return {
+    w: key(state.w),
+    a: key(state.a),
+    s: key(state.s),
+    d: key(state.d),
+    shift: key(state.shift),
+    r: key(state.r),
+    tab: key(state.tab),
+    enter: key(state.enter),
+    e: key(state.e),
+  } as unknown as BattleKeyMap;
+}

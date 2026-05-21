@@ -22,8 +22,15 @@ export interface PendingSceneInput {
   readonly input: BattleInputState;
 }
 
+export interface CombatFrameInputRecord {
+  readonly frame: number;
+  readonly player: BattleInputState;
+  readonly target: BattleInputState;
+}
+
 export interface CombatSyncCallbacks {
   recordFrame(): void;
+  recordStepInputs?(record: CombatFrameInputRecord): void;
   getRollbackRecord(frame: number): CombatRollbackRecord | null;
   pruneRollbackHistoryAfter(frame: number): void;
   pruneRollbackHistoryBefore(frame: number): void;

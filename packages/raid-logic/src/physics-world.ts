@@ -214,6 +214,18 @@ export class PhysicsWorld {
     this.bodyKind.clear();
   }
 
+  resetEmpty(): void {
+    this.clear();
+    this.world = new RAPIER.World({ x: 0, y: 0 });
+    this.world.timestep = 1 / 60;
+    this.eventQueue = new RAPIER.EventQueue(true);
+    this.bodies.clear();
+    this.handleToId.clear();
+    this.idToHandle.clear();
+    this.bodyIsBall.clear();
+    this.bodyKind.clear();
+  }
+
   // ------------------------------------------------------------------
   // Position / velocity / rotation setters
   // ------------------------------------------------------------------

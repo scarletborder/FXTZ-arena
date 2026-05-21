@@ -11,6 +11,7 @@ import {
 
 import { FIXED_STEP_MS } from "./battle/constants";
 import { createBattleInput, getBattlePointerWorld, type BattleKeyMap } from "./battle/input";
+import { BattleDebugLogger } from "./battle/logger";
 import type { BattleSceneData } from "./battle/loadout";
 import { BattleView } from "./battle/view";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
@@ -43,6 +44,7 @@ export class BattleScene extends Phaser.Scene {
   private debugConfirmedHash = new ConfirmedFrameHashAccumulator();
   private readonly debugHashBacklog = new Map<number, string>();
   private readonly debugHistory = new Map<number, DebugFrameRecord>();
+  private readonly debugLogger = new BattleDebugLogger();
   private lastInput!: BattleInputState & {
     readonly pointerX: number;
     readonly pointerY: number;
@@ -60,6 +62,7 @@ export class BattleScene extends Phaser.Scene {
     this.debugConfirmedHash = new ConfirmedFrameHashAccumulator();
     this.debugHashBacklog.clear();
     this.debugHistory.clear();
+    this.debugLogger.reset();
     this.accumulator = 0;
     this.input.setDefaultCursor("none");
     this.input.mouse?.disableContextMenu();
@@ -215,6 +218,7 @@ export class BattleScene extends Phaser.Scene {
       sceneData: data,
       callbacks: {
         recordFrame: () => this.recordDebugFrame(),
+        recordStepInputs: (record) => this.debugLogger.recordStepInputs(record, this.shouldRecordDebugLog()),
         getRollbackRecord: (frame) => this.debugHistory.get(frame) ?? null,
         pruneRollbackHistoryAfter: (frame) => this.pruneDebugHistoryAfter(frame),
         pruneRollbackHistoryBefore: (frame) => this.pruneDebugHistoryBefore(frame),
@@ -234,7 +238,7 @@ export class BattleScene extends Phaser.Scene {
   private goToOnlineResult(winnerPlayerId: PlayerId, serverConfirmedFrame?: number): void {
     if (this.resultScheduled) return;
     this.resultScheduled = true;
-    if (uiSettings.debug) {
+    if (uiSettings.debug || this.debugLiveHashEnabled) {
       this.printDebugHashBundle(winnerPlayerId, serverConfirmedFrame);
     }
     this.scene.start("result", {
@@ -254,6 +258,10 @@ export class BattleScene extends Phaser.Scene {
     const outputs = this.runtime.outputQueue.drainAll();
     for (const output of outputs) {
       this.currentOutput = output;
+      const logRecord = this.debugLogger.recordFrame(output, {
+        enabled: this.shouldRecordDebugLog(),
+        localConfirmedFrame: this.combatSync?.getConfirmedFrame() ?? output.frame,
+      });
       this.debugHistory.set(output.frame, {
         frame: output.frame,
         hash: output.hashHex,
@@ -263,10 +271,19 @@ export class BattleScene extends Phaser.Scene {
         this.debugHashBacklog.set(output.frame, output.hashHex);
       }
       if (this.debugLiveHashEnabled) {
-        console.log(`${output.frame} - ${output.hashHex}`);
+        console.log(`${output.frame} - ${output.hashHex}`, {
+          events: logRecord?.events ?? output.events.map((event) => event.type),
+          localConfirmedFrame: logRecord?.localConfirmedFrame ?? this.combatSync?.getConfirmedFrame() ?? output.frame,
+          player1Input: logRecord?.player1Input ?? null,
+          player2Input: logRecord?.player2Input ?? null,
+        });
       }
     }
     this.pruneOldDebugHistory();
+  }
+
+  private shouldRecordDebugLog(): boolean {
+    return uiSettings.debug || this.debugLiveHashEnabled;
   }
 
   private pruneDebugHistoryAfter(frame: number): void {
@@ -280,6 +297,7 @@ export class BattleScene extends Phaser.Scene {
         this.debugHashBacklog.delete(key);
       }
     }
+    this.debugLogger.pruneAfter(frame);
   }
 
   private pruneDebugHistoryBefore(frame: number): void {
@@ -304,7 +322,7 @@ export class BattleScene extends Phaser.Scene {
     if (!this.runtime.gameOver) {
       return;
     }
-    if (uiSettings.debug) {
+    if (uiSettings.debug || this.debugLiveHashEnabled) {
       this.printDebugHashBundle(null);
     }
     this.scene.start("result", {
@@ -339,30 +357,34 @@ export class BattleScene extends Phaser.Scene {
   private printDebugHashBundle(winnerPlayerId: PlayerId | null, serverConfirmedFrame = this.runtime.frame): void {
     const localConfirmedFrame = this.combatSync?.getConfirmedFrame() ?? serverConfirmedFrame;
     const targetFrame = this.sceneData.mode === "online" ? serverConfirmedFrame : localConfirmedFrame;
-    const hashComplete = this.recordConfirmedDebugHashesThrough(targetFrame);
+    const authoritativeFrame = this.sceneData.mode === "online"
+      ? Math.min(targetFrame, localConfirmedFrame)
+      : targetFrame;
+    const hashComplete = this.recordConfirmedDebugHashesThrough(authoritativeFrame) && authoritativeFrame >= targetFrame;
 
-    const rows: DebugHashRow[] = [];
-    for (const record of this.debugHistory.values()) {
-      if (record.frame >= 0 && record.frame <= targetFrame) {
-        rows.push({ frame: record.frame, hash: record.hash });
-      }
-    }
-    rows.sort((left, right) => left.frame - right.frame);
+    const rows = this.debugLogger.getConfirmedRows(authoritativeFrame);
 
     const label = `FXTZ Debug Hash Bundle (mode=${
       this.sceneData.mode ?? "offline"
-    }, winner=${winnerPlayerId ?? "local"}, localConfirmedFrame=${localConfirmedFrame}, serverConfirmedFrame=${targetFrame}, cachedRows=${rows.length})`;
+    }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${localConfirmedFrame}, serverConfirmedFrame=${targetFrame}, authoritativeFrame=${authoritativeFrame}, cachedRows=${rows.length})`;
 
     console.group(label);
     console.log(`finalGlobalHash(BLAKE3)\t${hashComplete ? this.debugConfirmedHash.digestHex(targetFrame) : "<incomplete>"}`);
     console.log(`sampledConfirmedFrames\t0-${this.debugConfirmedHash.lastSampledFrame} (${this.debugConfirmedHash.samples})`);
     if (!hashComplete) {
-      console.warn(`Unable to sample every frame through ${targetFrame}; cached frame history starts after the missing frame.`);
+      console.warn(`Unable to sample authoritative frames through ${targetFrame}; local authoritative frame is ${authoritativeFrame}.`);
     }
     for (const row of rows) {
       console.log(`${row.frame}\t${row.hash}`);
     }
     console.groupEnd();
+    this.writeDebugHashLogFile({
+      winnerPlayerId,
+      targetFrame,
+      authoritativeFrame,
+      localConfirmedFrame,
+      hashComplete,
+    });
   }
 
   private recordConfirmedDebugHashesThrough(frame: number): boolean {
@@ -375,9 +397,57 @@ export class BattleScene extends Phaser.Scene {
         frame: nextFrame,
         hashHex: hash,
       });
+      this.debugLogger.recordConfirmedFrame({
+        enabled: this.shouldRecordDebugLog(),
+        frame: nextFrame,
+        hash,
+        confirmedThrough: frame,
+      });
       this.debugHashBacklog.delete(nextFrame);
     }
     return true;
+  }
+
+  saveDebugLog(targetFrame = this.runtime.frame): string | null {
+    const localConfirmedFrame = this.combatSync?.getConfirmedFrame() ?? targetFrame;
+    const authoritativeFrame = this.sceneData.mode === "online"
+      ? Math.min(targetFrame, localConfirmedFrame)
+      : targetFrame;
+    return this.writeDebugHashLogFile({
+      winnerPlayerId: null,
+      targetFrame,
+      authoritativeFrame,
+      localConfirmedFrame,
+      hashComplete: this.recordConfirmedDebugHashesThrough(authoritativeFrame) && authoritativeFrame >= targetFrame,
+    });
+  }
+
+  private writeDebugHashLogFile(params: {
+    readonly winnerPlayerId: PlayerId | null;
+    readonly targetFrame: number;
+    readonly authoritativeFrame: number;
+    readonly localConfirmedFrame: number;
+    readonly hashComplete: boolean;
+  }): string | null {
+    const finalGlobalHash = params.hashComplete
+      ? this.debugConfirmedHash.digestHex(params.targetFrame)
+      : null;
+    return this.debugLogger.writeFile({
+      sceneData: this.sceneData,
+      winnerPlayerId: params.winnerPlayerId,
+      localPlayerId: this.combatSync?.localPlayerId ?? this.sceneData.localPlayerId ?? null,
+      runtimeFrame: this.runtime.frame,
+      targetFrame: params.targetFrame,
+      authoritativeFrame: params.authoritativeFrame,
+      localConfirmedFrame: params.localConfirmedFrame,
+      finalGlobalHash,
+      sampledConfirmedFrames: {
+        from: 0,
+        to: this.debugConfirmedHash.lastSampledFrame,
+        count: this.debugConfirmedHash.samples,
+        complete: params.hashComplete,
+      },
+    });
   }
 }
 

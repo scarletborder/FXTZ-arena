@@ -232,6 +232,29 @@ describe("BattleModel ability cards", () => {
   });
 });
 
+describe("BattlePhysics projectile collisions", () => {
+  it("ignores projectile collisions with the owner fighter", async () => {
+    const model = await createBattleModel();
+    const physics = new BattlePhysics();
+    await physics.init();
+
+    model.target.x = model.player.x + 4;
+    model.target.y = model.player.y;
+    const projectile = testProjectile({
+      id: 1,
+      owner: "player",
+      x: model.player.x,
+      y: model.player.y,
+      width: 120,
+      height: 120,
+    });
+
+    const hits = physics.computeCollisions([projectile], model.player, model.target);
+
+    expect(hits).toEqual([{ projectileId: 1, victimKey: "target" }]);
+  });
+});
+
 function createInputs(frames: number): BattleInputState[] {
   return Array.from({ length: frames }, (_, frame) => ({
     moveX: frame % 5 === 0 ? 1 : 0,

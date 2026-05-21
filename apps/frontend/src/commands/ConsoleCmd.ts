@@ -6,6 +6,7 @@ export interface DebugConsoleCommands {
   hashes: (count?: number) => DebugHashRow[] | null;
   hash: (frame: number) => DebugHashRow | null;
   live: (enabled?: boolean) => boolean | null;
+  log: (frame?: number) => string | null;
   script: () => DebugHashRow[] | null;
   physics: (enabled?: boolean) => boolean | null;
   help: () => void;
@@ -47,6 +48,7 @@ function createCommands(): DebugConsoleCommands {
       hashes,
       hash,
       live,
+      log,
       script,
       physics,
       help,
@@ -119,6 +121,18 @@ function live(enabled?: boolean): boolean | null {
     return nextEnabled;
 }
 
+function log(targetFrame?: number): string | null {
+    const scene = getScene();
+    if (!scene) {
+      return null;
+    }
+    const frameId = targetFrame === undefined ? scene.getDebugFrame() : normalizeFrame(targetFrame);
+    if (frameId === null) {
+      return printBlocked(`Invalid frame: ${targetFrame}`);
+    }
+    return scene.saveDebugLog(frameId);
+}
+
 function script(): DebugHashRow[] | null {
     const scene = getScene();
     if (!scene) {
@@ -151,6 +165,7 @@ function help(): void {
     console.log("FXTZ.hashes(count = 50)   打印过去若干帧 hash");
     console.log("FXTZ.hash(frame)          打印某帧 hash");
     console.log("FXTZ.live(enabled?)       切换实时 frame-hash 打印，默认关闭");
+    console.log("FXTZ.log(frame?)          导出每帧 hash 与双方输入日志");
     console.log("FXTZ.script()             回滚到 frame=30 并执行边界输入脚本，打印期间每帧 hash");
     console.log("FXTZ.physics(enabled?)    切换碰撞体可视化");
 }

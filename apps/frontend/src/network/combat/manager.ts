@@ -60,16 +60,27 @@ export class CombatSyncManager {
     });
     this.consumeSendSceneQueue();
 
-    this.runtime.step({
-      mode: "online",
-      player: this.getInputForFrame("player-1", frame),
-      target: this.getInputForFrame("player-2", frame),
-      // player-1 (host / lower playerId) has priority over player-2
-      hostIsPlayer: true,
-    });
+    this.stepRuntimeFrame(frame);
     this.options.callbacks.recordFrame();
     this.pruneOnlineHistory();
     this.trySendGameOverVerdict();
+  }
+
+  private stepRuntimeFrame(frame: number): void {
+    const playerInput = this.getInputForFrame("player-1", frame);
+    const targetInput = this.getInputForFrame("player-2", frame);
+    this.options.callbacks.recordStepInputs?.({
+      frame,
+      player: cloneInput(playerInput),
+      target: cloneInput(targetInput),
+    });
+    this.runtime.step({
+      mode: "online",
+      player: playerInput,
+      target: targetInput,
+      // player-1 (host / lower playerId) has priority over player-2
+      hostIsPlayer: true,
+    });
   }
 
   private handleServerMessage(msg: ServerMessage): void {
@@ -84,6 +95,7 @@ export class CombatSyncManager {
     }
 
     if (msg.type === "battle_finished") {
+      this.markServerConfirmedFrame(msg.confirmedFrame);
       this.finishedByServer = true;
       this.options.callbacks.setStatusText("双方裁决完成，进入结算…");
       this.options.callbacks.delay(450, () => this.options.callbacks.finishBattle(msg.winnerPlayerId, msg.confirmedFrame));
@@ -162,12 +174,7 @@ export class CombatSyncManager {
     this.options.callbacks.recordFrame();
 
     for (let frame = restoreFrame + 1; frame <= currentFrame; frame += 1) {
-      this.runtime.step({
-        mode: "online",
-        player: this.getInputForFrame("player-1", frame),
-        target: this.getInputForFrame("player-2", frame),
-        hostIsPlayer: true,
-      });
+      this.stepRuntimeFrame(frame);
       this.options.callbacks.recordFrame();
     }
   }
@@ -175,6 +182,16 @@ export class CombatSyncManager {
   /** Returns the highest frame number that both peers have acknowledged. */
   getConfirmedFrame(): number {
     return Math.min(this.lastReceivedRemoteFrame, this.lastPeerAckFrame);
+  }
+
+  private markServerConfirmedFrame(frame: number): void {
+    if (!Number.isInteger(frame) || frame <= 0) {
+      return;
+    }
+
+    this.lastReceivedRemoteFrame = Math.max(this.lastReceivedRemoteFrame, frame);
+    this.lastPeerAckFrame = Math.max(this.lastPeerAckFrame, frame);
+    this.pruneOnlineHistory();
   }
 
   private trySendGameOverVerdict(): void {

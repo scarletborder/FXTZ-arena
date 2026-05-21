@@ -152,6 +152,13 @@ export class BattlePhysics {
     this.ready = false;
   }
 
+  /** Clear transient Rapier bodies after a logic rollback/reset. */
+  reset(): void {
+    this.projBodyIds.clear();
+    this.shieldBodyIds.clear();
+    this.world?.resetEmpty();
+  }
+
   // ------------------------------------------------------------------
   // Private helpers
   // ------------------------------------------------------------------
@@ -215,5 +222,8 @@ function resolveCollision(
   }
 
   const victimKey = fighterId === "fighter:player" ? "player" : "target";
+  if (projectileMap.get(projectileNum)?.owner === victimKey) {
+    return null;
+  }
   return { projectileId: projectileNum, victimKey };
 }
