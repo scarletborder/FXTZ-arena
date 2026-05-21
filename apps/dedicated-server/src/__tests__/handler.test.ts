@@ -938,6 +938,7 @@ describe("MessageHandler", () => {
 
       expect(conn1.findSentMessage("battle_finished")?.winnerPlayerId).toBe("player-1");
       expect(conn2.findSentMessage("battle_finished")?.frame).toBe(122);
+      expect(conn2.findSentMessage("battle_finished")?.confirmedFrame).toBe(120);
       // Room is cleaned up after both verdicts (players freed for new rooms)
       expect(roomManager.get(roomId)).toBeUndefined();
       // Final room_state sent before cleanup has "finished" status

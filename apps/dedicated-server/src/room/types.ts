@@ -16,7 +16,7 @@ export interface InternalRoom {
   disconnectedAt: (number | null)[];
   disconnectTimers: (ReturnType<typeof setTimeout> | null)[];
   lastAckFrameIds: number[];
-  gameOverVerdicts: ({ frame: number; winnerPlayerId: PlayerId } | null)[];
+  gameOverVerdicts: ({ frame: number; ackFrame: number; winnerPlayerId: PlayerId } | null)[];
   createdAt: number;
   battleId: string | null;
   seed: number | null;

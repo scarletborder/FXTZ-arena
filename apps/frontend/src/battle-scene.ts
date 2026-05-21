@@ -5,6 +5,7 @@ import {
   type BattleInputState,
   type BattleOutputFrame,
   type BattleModelSnapshot,
+  ConfirmedFrameHashAccumulator,
   type RaidLogicRuntime,
 } from "@repo/raid-logic";
 
@@ -39,6 +40,8 @@ export class BattleScene extends Phaser.Scene {
   private debugPhysicsEnabled = false;
   private resultScheduled = false;
   private sceneData: BattleSceneData = {};
+  private debugConfirmedHash = new ConfirmedFrameHashAccumulator();
+  private readonly debugHashBacklog = new Map<number, string>();
   private readonly debugHistory = new Map<number, DebugFrameRecord>();
   private lastInput!: BattleInputState & {
     readonly pointerX: number;
@@ -54,6 +57,9 @@ export class BattleScene extends Phaser.Scene {
   create(data: BattleSceneData = {}): void {
     this.sceneData = data;
     this.resultScheduled = false;
+    this.debugConfirmedHash = new ConfirmedFrameHashAccumulator();
+    this.debugHashBacklog.clear();
+    this.debugHistory.clear();
     this.accumulator = 0;
     this.input.setDefaultCursor("none");
     this.input.mouse?.disableContextMenu();
@@ -220,16 +226,16 @@ export class BattleScene extends Phaser.Scene {
         delay: (ms, callback) => {
           this.time.delayedCall(ms, callback);
         },
-        finishBattle: (winnerPlayerId) => this.goToOnlineResult(winnerPlayerId),
+        finishBattle: (winnerPlayerId, serverConfirmedFrame) => this.goToOnlineResult(winnerPlayerId, serverConfirmedFrame),
       },
     });
   }
 
-  private goToOnlineResult(winnerPlayerId: PlayerId): void {
+  private goToOnlineResult(winnerPlayerId: PlayerId, serverConfirmedFrame?: number): void {
     if (this.resultScheduled) return;
     this.resultScheduled = true;
     if (uiSettings.debug) {
-      this.printDebugHashBundle(winnerPlayerId);
+      this.printDebugHashBundle(winnerPlayerId, serverConfirmedFrame);
     }
     this.scene.start("result", {
       winnerName: winnerPlayerId === this.combatSync?.localPlayerId
@@ -253,6 +259,9 @@ export class BattleScene extends Phaser.Scene {
         hash: output.hashHex,
         snapshot: output.snapshot,
       });
+      if (output.frame > this.debugConfirmedHash.lastSampledFrame) {
+        this.debugHashBacklog.set(output.frame, output.hashHex);
+      }
       if (this.debugLiveHashEnabled) {
         console.log(`${output.frame} - ${output.hashHex}`);
       }
@@ -266,9 +275,15 @@ export class BattleScene extends Phaser.Scene {
         this.debugHistory.delete(key);
       }
     }
+    for (const key of this.debugHashBacklog.keys()) {
+      if (key > frame) {
+        this.debugHashBacklog.delete(key);
+      }
+    }
   }
 
   private pruneDebugHistoryBefore(frame: number): void {
+    this.recordConfirmedDebugHashesThrough(frame);
     for (const key of this.debugHistory.keys()) {
       if (key < frame) {
         this.debugHistory.delete(key);
@@ -321,12 +336,14 @@ export class BattleScene extends Phaser.Scene {
     this.view.renderDebug(this.runtime.readDebugBodies());
   }
 
-  private printDebugHashBundle(winnerPlayerId: PlayerId | null): void {
-    const confirmedFrame = this.combatSync?.getConfirmedFrame() ?? this.runtime.frame;
+  private printDebugHashBundle(winnerPlayerId: PlayerId | null, serverConfirmedFrame = this.runtime.frame): void {
+    const localConfirmedFrame = this.combatSync?.getConfirmedFrame() ?? serverConfirmedFrame;
+    const targetFrame = this.sceneData.mode === "online" ? serverConfirmedFrame : localConfirmedFrame;
+    const hashComplete = this.recordConfirmedDebugHashesThrough(targetFrame);
 
     const rows: DebugHashRow[] = [];
     for (const record of this.debugHistory.values()) {
-      if (record.frame >= 0 && record.frame <= confirmedFrame) {
+      if (record.frame >= 0 && record.frame <= targetFrame) {
         rows.push({ frame: record.frame, hash: record.hash });
       }
     }
@@ -334,13 +351,33 @@ export class BattleScene extends Phaser.Scene {
 
     const label = `FXTZ Debug Hash Bundle (mode=${
       this.sceneData.mode ?? "offline"
-    }, winner=${winnerPlayerId ?? "local"}, confirmedFrames=0-${confirmedFrame}, totalFrames=${rows.length})`;
+    }, winner=${winnerPlayerId ?? "local"}, localConfirmedFrame=${localConfirmedFrame}, serverConfirmedFrame=${targetFrame}, cachedRows=${rows.length})`;
 
     console.group(label);
+    console.log(`finalGlobalHash(BLAKE3)\t${hashComplete ? this.debugConfirmedHash.digestHex(targetFrame) : "<incomplete>"}`);
+    console.log(`sampledConfirmedFrames\t0-${this.debugConfirmedHash.lastSampledFrame} (${this.debugConfirmedHash.samples})`);
+    if (!hashComplete) {
+      console.warn(`Unable to sample every frame through ${targetFrame}; cached frame history starts after the missing frame.`);
+    }
     for (const row of rows) {
       console.log(`${row.frame}\t${row.hash}`);
     }
     console.groupEnd();
+  }
+
+  private recordConfirmedDebugHashesThrough(frame: number): boolean {
+    for (let nextFrame = this.debugConfirmedHash.lastSampledFrame + 1; nextFrame <= frame; nextFrame += 1) {
+      const hash = this.debugHashBacklog.get(nextFrame) ?? this.debugHistory.get(nextFrame)?.hash;
+      if (!hash) {
+        return false;
+      }
+      this.debugConfirmedHash.addSample({
+        frame: nextFrame,
+        hashHex: hash,
+      });
+      this.debugHashBacklog.delete(nextFrame);
+    }
+    return true;
   }
 }
 

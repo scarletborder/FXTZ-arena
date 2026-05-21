@@ -1,4 +1,6 @@
 import type { BattleConfig } from "@repo/types";
+import { blake3 } from "@noble/hashes/blake3.js";
+import { bytesToHex, hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 
 import {
   fromLegacyFrameInput,
@@ -22,6 +24,57 @@ export interface RollbackGameAdapter {
   deserialize(data: Uint8Array): void;
   step(inputs: Map<string, Uint8Array>): void;
   hash(): number;
+}
+
+export interface ConfirmedFrameHashSample {
+  readonly frame: number;
+  readonly hashHex: string;
+}
+
+export class ConfirmedFrameHashAccumulator {
+  private readonly hasher = blake3.create();
+  private readonly digestHexByFrame = new Map<number, string>();
+  private lastFrame = -1;
+  private sampleCount = 0;
+
+  constructor() {
+    this.hasher.update(utf8ToBytes("fxtz-arena:confirmed-frame-hash:v1"));
+  }
+
+  get lastSampledFrame(): number {
+    return this.lastFrame;
+  }
+
+  get samples(): number {
+    return this.sampleCount;
+  }
+
+  addSample(sample: ConfirmedFrameHashSample): void {
+    if (!Number.isInteger(sample.frame) || sample.frame < 0) {
+      throw new Error(`Invalid confirmed frame hash sample frame: ${sample.frame}`);
+    }
+    if (sample.frame !== this.lastFrame + 1) {
+      throw new Error(`Confirmed frame hash samples must be contiguous: expected ${this.lastFrame + 1}, got ${sample.frame}`);
+    }
+
+    this.hasher.update(frameToBytes(sample.frame));
+    this.hasher.update(hexToBytes(sample.hashHex));
+    this.lastFrame = sample.frame;
+    this.sampleCount += 1;
+    this.digestHexByFrame.set(sample.frame, bytesToHex(this.hasher.clone().digest()));
+  }
+
+  digestHex(frame = this.lastFrame): string {
+    if (frame === this.lastFrame) {
+      return bytesToHex(this.hasher.clone().digest());
+    }
+
+    const digest = this.digestHexByFrame.get(frame);
+    if (!digest) {
+      throw new Error(`No confirmed frame hash digest available for frame ${frame}`);
+    }
+    return digest;
+  }
 }
 
 export class RaidBattle {
@@ -144,4 +197,12 @@ export function advanceFixedTick(
 
 export function createRollbackAdapter(battle: RaidBattle): RollbackGameAdapter {
   return battle.createRollbackAdapter();
+}
+
+function frameToBytes(frame: number): Uint8Array {
+  const bytes = new Uint8Array(8);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(0, frame >>> 0, true);
+  view.setUint32(4, Math.floor(frame / 0x100000000), true);
+  return bytes;
 }

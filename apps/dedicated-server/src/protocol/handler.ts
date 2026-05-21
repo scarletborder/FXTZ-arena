@@ -930,6 +930,7 @@ export class MessageHandler {
     room.lastAckFrameIds[ownIdx] = Math.max(room.lastAckFrameIds[ownIdx] ?? 0, msg.ackFrame);
     room.gameOverVerdicts[ownIdx] = {
       frame: msg.frame,
+      ackFrame: msg.ackFrame,
       winnerPlayerId: msg.winnerPlayerId,
     };
 
@@ -943,11 +944,13 @@ export class MessageHandler {
 
     room.status = "finished";
     const finishedFrame = Math.max(left.frame, right.frame);
+    const confirmedFrame = Math.min(finishedFrame, left.ackFrame, right.ackFrame);
     this.notifyAllConnected(room, {
       type: "battle_finished",
       roomId: room.id,
       battleId: room.battleId,
       frame: finishedFrame,
+      confirmedFrame,
       winnerPlayerId: left.winnerPlayerId,
     });
     this.notifyAllConnected(room, {

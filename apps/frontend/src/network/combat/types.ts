@@ -31,7 +31,7 @@ export interface CombatSyncCallbacks {
   setStatusText(text: string): void;
   hideStatusText(): void;
   delay(ms: number, callback: () => void): void;
-  finishBattle(winnerPlayerId: PlayerId): void;
+  finishBattle(winnerPlayerId: PlayerId, serverConfirmedFrame?: number): void;
 }
 
 export interface CombatSyncManagerOptions {

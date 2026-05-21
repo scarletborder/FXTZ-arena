@@ -185,6 +185,7 @@ export interface BattleFinishedMessage {
   roomId: string;
   battleId: string;
   frame: number;
+  confirmedFrame: number;
   winnerPlayerId: PlayerId;
 }
 

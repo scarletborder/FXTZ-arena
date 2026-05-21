@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   createDefaultRaidBattleConfig,
   createInitialState,
+  ConfirmedFrameHashAccumulator,
   createRaidBattle,
   encodeInput,
   ensureRapierInit,
@@ -59,6 +60,26 @@ describe("@repo/raid-logic", () => {
     const second = runHashSequence();
 
     expect(second).toEqual(first);
+  });
+
+  it("builds a deterministic BLAKE3 hash for confirmed frame hashes", () => {
+    const first = new ConfirmedFrameHashAccumulator();
+    const second = new ConfirmedFrameHashAccumulator();
+
+    for (const sample of [
+      { frame: 0, hashHex: "00000000" },
+      { frame: 1, hashHex: "89abcdef" },
+      { frame: 2, hashHex: "12345678" },
+    ]) {
+      first.addSample(sample);
+      second.addSample(sample);
+    }
+
+    expect(first.digestHex()).toBe(second.digestHex());
+    expect(first.digestHex(1)).toHaveLength(64);
+    expect(first.digestHex(1)).not.toBe(first.digestHex(2));
+    expect(first.samples).toBe(3);
+    expect(first.lastSampledFrame).toBe(2);
   });
 
   it("restores a snapshot and replays to the same current hash", () => {

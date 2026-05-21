@@ -86,7 +86,7 @@ export class CombatSyncManager {
     if (msg.type === "battle_finished") {
       this.finishedByServer = true;
       this.options.callbacks.setStatusText("双方裁决完成，进入结算…");
-      this.options.callbacks.delay(450, () => this.options.callbacks.finishBattle(msg.winnerPlayerId));
+      this.options.callbacks.delay(450, () => this.options.callbacks.finishBattle(msg.winnerPlayerId, msg.confirmedFrame));
       return;
     }
 
