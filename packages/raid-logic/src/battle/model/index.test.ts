@@ -400,6 +400,24 @@ describe("BattleModel character bombs", () => {
     expect(distant?.pausedUntil).toBe(model.frame + 60);
     expect(model.effects.some((effect) => effect.kind === "ring")).toBe(true);
   });
+
+  it("sakuya bomb pauses same-frame multi-shot projectiles through the shared spawn interface", async () => {
+    const model = await createBattleModel("sakuya", "reimu", ["multi_shot"]);
+    const action = input({ bombPressed: true, shootPressed: true });
+
+    model.step(action);
+
+    const extraShot = model.projectiles.find((projectile) => projectile.kind === "orb" && projectile.owner === "Player1");
+    expect(extraShot?.pausedUntil).toBe(model.frame + 60);
+    expect(model.projectiles.filter((projectile) => projectile.owner === "Player1")).toHaveLength(7);
+
+    const snapshot = model.serialize();
+    const originalHash = model.hashHex();
+
+    model.deserialize(snapshot);
+
+    expect(model.hashHex()).toBe(originalHash);
+  });
 });
 
 describe("BattlePhysics projectile collisions", () => {

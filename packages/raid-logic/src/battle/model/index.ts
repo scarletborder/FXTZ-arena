@@ -363,13 +363,25 @@ export class BattleModel {
       effects: this.effects,
       stats: this.stats,
       spawnBullet: (params) => {
-        const spawnParams = { ...params, frame: params.frame ?? frame };
+        const spawnFrame = params.frame ?? frame;
+        const owner = params.owner === "Player1" ? this.player : this.target;
+        const spawnParams = {
+          ...params,
+          frame: spawnFrame,
+          pausedUntil: params.pausedUntil ?? spawnFrame + owner.projectilePauseUntil,
+        };
         this.pendingSpawns.push(() => {
           this.projectileSystem.spawnBullet(this.projectiles, spawnParams);
         });
       },
       spawnLaser: (params) => {
-        const spawnParams = { ...params, frame: params.frame ?? frame };
+        const spawnFrame = params.frame ?? frame;
+        const owner = params.owner === "Player1" ? this.player : this.target;
+        const spawnParams = {
+          ...params,
+          frame: spawnFrame,
+          pausedUntil: params.pausedUntil ?? spawnFrame + owner.projectilePauseUntil,
+        };
         this.pendingSpawns.push(() => {
           this.projectileSystem.spawnLaser(this.projectiles, spawnParams);
         });

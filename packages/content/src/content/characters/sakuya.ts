@@ -35,14 +35,13 @@ export class SakuyaBattleCharacter extends BattleCharacter {
     const fpPI2 = fp.fromFloat(Math.PI / 2);
     const fpSideX = fp.mul(fp.cos(fp.add(fpAngle, fpPI2)), fp.fromFloat(halfBulletGap));
     const fpSideY = fp.mul(fp.sin(fp.add(fpAngle, fpPI2)), fp.fromFloat(halfBulletGap));
-    const pausedUntil = ctx.frame + fighter.projectilePauseUntil;
     for (const side of [-1, 1]) {
       this.spawnKnife(ctx, fighter,
         fp.toFloat(fp.add(fp.fromFloat(fighter.x), fp.mul(fpSideX, fp.fromInt(side)))),
         fp.toFloat(fp.add(fp.fromFloat(fighter.y), fp.mul(fpSideY, fp.fromInt(side)))),
         fp.toFloat(fpAngle),
         "medium",
-        pausedUntil,
+        undefined,
         {
           width: hitCircleUnits(3),
           height: hitCircleUnits(1),
@@ -104,7 +103,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
     y: number,
     angle: number,
     speedRank: "medium" | "high",
-    pausedUntil: number,
+    pausedUntil: number | undefined,
     size: {
       readonly width: number;
       readonly height: number;
@@ -121,7 +120,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
       height: size.height,
       homingTicks: 0,
       spawnOffset: 0,
-      pausedUntil,
+      ...(pausedUntil === undefined ? {} : { pausedUntil }),
     });
   }
 }
