@@ -1,1 +1,1 @@
-export const OWN_PROJECTILE_ALPHA = 0.01;
+export const OWN_PROJECTILE_ALPHA = 0.4;
