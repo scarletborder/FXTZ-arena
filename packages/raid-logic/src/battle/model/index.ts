@@ -159,8 +159,8 @@ export class BattleModel {
       projectiles: this.projectiles,
       player: this.player,
       target: this.target,
+      shields: this.currentShields(),
       onHit: (ctx) => this.onProjectileHit(ctx),
-      computeRapierHits: (projectiles) => this.physics!.computeCollisions(projectiles, this.player, this.target, this.currentShields()),
     });
     this.flushDeferredSpawns();
     this.effectSystem.stepEffects(this.effects, this.frame);
@@ -196,6 +196,8 @@ export class BattleModel {
       projectiles: this.projectiles,
       effects: this.effects,
       stats: this.stats,
+      nextProjectileId: this.projectileSystem.getNextId(),
+      nextEffectId: this.effectSystem.getNextId(),
     });
   }
 
@@ -210,8 +212,8 @@ export class BattleModel {
     this.projectiles.splice(0, this.projectiles.length, ...snapshot.projectiles.map((projectile) => restoreProjectileSnapshot(projectile, this.frame)));
     this.effects.splice(0, this.effects.length, ...snapshot.effects.map((effect) => restoreEffectSnapshot(effect, this.frame)));
     Object.assign(this.stats, snapshot.stats);
-    this.projectileSystem.restoreNextId(this.projectiles);
-    this.effectSystem.restoreNextId(this.effects);
+    this.projectileSystem.restoreNextId(this.projectiles, snapshot.nextProjectileId);
+    this.effectSystem.restoreNextId(this.effects, snapshot.nextEffectId);
     this.physics?.reset();
   }
 

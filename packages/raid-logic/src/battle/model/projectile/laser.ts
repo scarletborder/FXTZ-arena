@@ -27,6 +27,7 @@ export function createLaserProjectile(params: {
   readonly anchored?: boolean;
   readonly rayLike?: boolean;
   readonly visibleFrom?: number;
+  readonly pausedUntil?: number;
 }): ProjectileState {
   const speed = bulletSpeedRankToPixelsPerTick(params.speedRank ?? "high");
   const spawnOffset = params.spawnOffset ?? 28;
@@ -67,7 +68,7 @@ export function createLaserProjectile(params: {
     expireAt: params.expireTicks === undefined ? undefined : params.frame + params.expireTicks,
     homingStartAt: 0,
     homingUntil: 0,
-    pausedUntil: params.frame,
+    pausedUntil: params.pausedUntil ?? params.frame,
     widthGrowthPerTick: params.lengthGrowthPerTick ?? 0,
     maxWidth: params.maxLength,
     damage: params.damage ?? 1,

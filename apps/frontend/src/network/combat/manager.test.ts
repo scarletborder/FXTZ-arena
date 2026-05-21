@@ -381,7 +381,7 @@ interface ScheduledMessage {
 
 const playerOneLoadout = {
   primaryCharacterId: "reimu",
-  alternateCharacterId: "marisa",
+  alternateCharacterId: "sakuya",
   abilityCardIds: ["spirit_strike_card", "multi_shot"],
   activeAbilityCardId: "spirit_strike_card",
 } satisfies PlayerLoadout;

@@ -7,8 +7,13 @@ export class EffectSystem {
     this.nextEffectId = 1;
   }
 
-  restoreNextId(effects: readonly EffectState[]): void {
-    this.nextEffectId = Math.max(0, ...effects.map((effect) => effect.id)) + 1;
+  getNextId(): number {
+    return this.nextEffectId;
+  }
+
+  restoreNextId(effects: readonly EffectState[], nextEffectId?: number): void {
+    const nextIdFromEffects = Math.max(0, ...effects.map((effect) => effect.id)) + 1;
+    this.nextEffectId = Math.max(nextEffectId ?? nextIdFromEffects, nextIdFromEffects);
   }
 
   spawnRing(

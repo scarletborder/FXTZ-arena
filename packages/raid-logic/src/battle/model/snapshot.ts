@@ -7,6 +7,8 @@ export interface BattleModelSnapshot {
   readonly version: 1;
   readonly frame: number;
   readonly gameOver: boolean;
+  readonly nextProjectileId: number;
+  readonly nextEffectId: number;
   readonly player: FighterSnapshot;
   readonly target: FighterSnapshot;
   readonly projectiles: readonly ProjectileSnapshot[];
@@ -56,11 +58,15 @@ export function createBattleModelSnapshot(params: {
   readonly projectiles: readonly ProjectileState[];
   readonly effects: readonly EffectState[];
   readonly stats: TrainingStats;
+  readonly nextProjectileId: number;
+  readonly nextEffectId: number;
 }): BattleModelSnapshot {
   return {
     version: 1,
     frame: params.frame,
     gameOver: params.gameOver,
+    nextProjectileId: params.nextProjectileId,
+    nextEffectId: params.nextEffectId,
     player: serializeFighter(params.player, params.frame),
     target: serializeFighter(params.target, params.frame),
     projectiles: params.projectiles.map((projectile) => serializeProjectile(projectile, params.frame)),

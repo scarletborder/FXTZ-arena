@@ -3,7 +3,7 @@ import { fp } from "@shaisrc/fixed-point";
 import type { ProjectileCollisionContext } from "@repo/types";
 
 import { PLAYER_CORE_RADIUS } from "../../constants";
-import type { FighterKey, FighterState, ProjectileState } from "@repo/content";
+import type { FighterKey, FighterState, ProjectileState, ShieldState } from "@repo/content";
 import type { CollisionResult } from "../physics-adapter";
 import { fpHypotFp, fpClamp, fpMin, fpMax } from "@repo/content";
 import { createBulletProjectile, isProjectileOutOfWorld, stepBulletProjectile } from "./bullet";
@@ -19,8 +19,13 @@ export class ProjectileSystem {
     this.nextProjectileId = 1;
   }
 
-  restoreNextId(projectiles: readonly ProjectileState[]): void {
-    this.nextProjectileId = Math.max(0, ...projectiles.map((projectile) => projectile.id)) + 1;
+  getNextId(): number {
+    return this.nextProjectileId;
+  }
+
+  restoreNextId(projectiles: readonly ProjectileState[], nextProjectileId?: number): void {
+    const nextIdFromProjectiles = Math.max(0, ...projectiles.map((projectile) => projectile.id)) + 1;
+    this.nextProjectileId = Math.max(nextProjectileId ?? nextIdFromProjectiles, nextIdFromProjectiles);
   }
 
   spawnBullet(
@@ -42,6 +47,7 @@ export class ProjectileSystem {
     readonly projectiles: ProjectileState[];
     readonly player: FighterState;
     readonly target: FighterState;
+    readonly shields?: readonly ShieldState[];
     readonly onHit: (ctx: ProjectileCollisionContext<ProjectileState, FighterState, FighterKey>) => boolean;
     readonly computeRapierHits?: (projectiles: readonly ProjectileState[]) => readonly CollisionResult[] | undefined;
   }): void {
@@ -75,12 +81,16 @@ export class ProjectileSystem {
     }
 
     for (const projectile of params.projectiles) {
-      if (rapierHitMap?.get(projectile.id) === "blocked") {
-        continue;
-      }
       const victim = projectile.owner === "player" ? params.target : params.player;
       const visible = params.frame >= projectile.visibleFrom;
-      if (visible && projectile.damage > 0) {
+      const canInteract = visible && projectile.damage > 0;
+      if (canInteract && canShieldBlockProjectile(projectile) && rapierHitMap?.get(projectile.id) === "blocked") {
+        continue;
+      }
+      if (canInteract && isBlockedByShield(projectile, params.shields ?? [])) {
+        continue;
+      }
+      if (canInteract) {
         const rapierVictim = rapierHitMap?.get(projectile.id);
         const isHit = rapierHitMap !== undefined && canUseRapierHitTest(projectile)
           ? rapierVictim === victim.key
@@ -159,6 +169,114 @@ function hitTest(projectile: ProjectileState, victim: FighterState): boolean {
 
 function canUseRapierHitTest(projectile: ProjectileState): boolean {
   return Number.isFinite(projectile.width) && projectile.width > 0 && projectile.height > 0;
+}
+
+function isBlockedByShield(projectile: ProjectileState, shields: readonly ShieldState[]): boolean {
+  if (!canShieldBlockProjectile(projectile)) {
+    return false;
+  }
+
+  for (const shield of shields) {
+    if (projectile.owner === shield.owner) {
+      continue;
+    }
+    if (rotatedRectsIntersect(projectile, shield)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function canShieldBlockProjectile(projectile: ProjectileState): boolean {
+  return (projectile.kind === "orb" || projectile.kind === "knife") && canUseRapierHitTest(projectile);
+}
+
+function rotatedRectsIntersect(projectile: ProjectileState, shield: ShieldState): boolean {
+  const projectileRect = {
+    x: projectile.x,
+    y: projectile.y,
+    halfWidth: fp.div(fp.fromFloat(projectile.width), fp.fromInt(2)),
+    halfHeight: fp.div(fp.fromFloat(projectile.height), fp.fromInt(2)),
+    angle: projectile.angle,
+  };
+  const shieldRect = {
+    x: shield.x,
+    y: shield.y,
+    halfWidth: fp.div(fp.fromFloat(shield.width), fp.fromInt(2)),
+    halfHeight: fp.div(fp.fromFloat(shield.height), fp.fromInt(2)),
+    angle: shield.angle,
+  };
+  const axes = [
+    rectAxis(projectileRect.angle, false),
+    rectAxis(projectileRect.angle, true),
+    rectAxis(shieldRect.angle, false),
+    rectAxis(shieldRect.angle, true),
+  ];
+  const projectileCorners = rectCorners(projectileRect);
+  const shieldCorners = rectCorners(shieldRect);
+
+  for (const axis of axes) {
+    const projectileProjection = projectCorners(projectileCorners, axis);
+    const shieldProjection = projectCorners(shieldCorners, axis);
+    if (fp.lt(projectileProjection.max, shieldProjection.min) || fp.lt(shieldProjection.max, projectileProjection.min)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+interface RectLike {
+  readonly x: number;
+  readonly y: number;
+  readonly halfWidth: number;
+  readonly halfHeight: number;
+  readonly angle: number;
+}
+
+interface Vec2 {
+  readonly x: number;
+  readonly y: number;
+}
+
+function rectAxis(angle: number, perpendicular: boolean): Vec2 {
+  const fpAngle = fp.fromFloat(angle);
+  const fpCos = fp.cos(fpAngle);
+  const fpSin = fp.sin(fpAngle);
+  return perpendicular
+    ? { x: fp.negate(fpSin), y: fpCos }
+    : { x: fpCos, y: fpSin };
+}
+
+function rectCorners(rect: RectLike): readonly Vec2[] {
+  const fpX = fp.fromFloat(rect.x);
+  const fpY = fp.fromFloat(rect.y);
+  const forward = rectAxis(rect.angle, false);
+  const side = rectAxis(rect.angle, true);
+  const corners: Vec2[] = [];
+  for (const sx of [-1, 1]) {
+    for (const sy of [-1, 1]) {
+      corners.push({
+        x: fp.add(fp.add(fpX, fp.mul(forward.x, fp.mul(rect.halfWidth, fp.fromInt(sx)))), fp.mul(side.x, fp.mul(rect.halfHeight, fp.fromInt(sy)))),
+        y: fp.add(fp.add(fpY, fp.mul(forward.y, fp.mul(rect.halfWidth, fp.fromInt(sx)))), fp.mul(side.y, fp.mul(rect.halfHeight, fp.fromInt(sy)))),
+      });
+    }
+  }
+  return corners;
+}
+
+function projectCorners(corners: readonly Vec2[], axis: Vec2): { readonly min: number; readonly max: number } {
+  let min = dot(corners[0]!, axis);
+  let max = min;
+  for (let index = 1; index < corners.length; index += 1) {
+    const projection = dot(corners[index]!, axis);
+    min = fpMin(min, projection);
+    max = fpMax(max, projection);
+  }
+  return { min, max };
+}
+
+function dot(left: Vec2, right: Vec2): number {
+  return fp.add(fp.mul(left.x, right.x), fp.mul(left.y, right.y));
 }
 
 function rotatedRectIntersectsCircle(

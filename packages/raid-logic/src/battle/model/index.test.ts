@@ -34,6 +34,48 @@ describe("BattleModel rollback snapshots", () => {
     expect(model.hash()).toBe(originalHash);
     logSpy.mockRestore();
   });
+
+  it("restores the projectile id allocator after generated projectiles were removed", async () => {
+    const model = await createBattleModel("sakuya", "reimu");
+    model.step(input({ shootPressed: true, aimX: model.player.x - 100, aimY: model.player.y }));
+    expect(model.projectiles.map((projectile) => projectile.id)).toEqual([1, 2]);
+    model.projectiles.length = 0;
+    model.player.fireCooldownUntil = 0;
+    const snapshot = model.serialize();
+    const action = input({ shootPressed: true, aimX: model.player.x - 100, aimY: model.player.y });
+
+    model.step(action);
+    const originalIds = model.projectiles.map((projectile) => projectile.id);
+    const originalHash = model.hashHex();
+
+    model.deserialize(snapshot);
+    model.step(action);
+
+    expect(model.projectiles.map((projectile) => projectile.id)).toEqual(originalIds);
+    expect(originalIds).toEqual([3, 4]);
+    expect(model.hashHex()).toBe(originalHash);
+  });
+
+  it("restores the effect id allocator after generated effects were removed", async () => {
+    const model = await createBattleModel("reimu", "marisa", ["spirit_strike_card"], "spirit_strike_card");
+    model.step(input({ activeCardPressed: true }));
+    expect(model.effects.map((effect) => effect.id)).toEqual([1]);
+    model.effects.length = 0;
+    model.player.activeCardCooldownUntil = 0;
+    const snapshot = model.serialize();
+    const action = input({ activeCardPressed: true });
+
+    model.step(action);
+    const originalIds = model.effects.map((effect) => effect.id);
+    const originalHash = model.hashHex();
+
+    model.deserialize(snapshot);
+    model.step(action);
+
+    expect(model.effects.map((effect) => effect.id)).toEqual(originalIds);
+    expect(originalIds).toEqual([2]);
+    expect(model.hashHex()).toBe(originalHash);
+  });
 });
 
 describe("BattleModel reload timing", () => {
@@ -223,12 +265,103 @@ describe("BattleModel ability cards", () => {
   it("clears ordinary bullets behind the fighter with backdoor", async () => {
     const model = await createBattleModel("reimu", "marisa", ["backdoor"]);
     model.player.facing = 0;
-    model.projectiles.push(testProjectile({ id: 1, owner: "target", x: model.player.x - 28, y: model.player.y }));
+    const shield = model.toOutputState().shields[0]!;
+    model.projectiles.push(testProjectile({ id: 1, owner: "target", x: shield.x, y: shield.y }));
 
     model.step(input({ aimX: model.player.x + 100, aimY: model.player.y }));
 
     expect(model.projectiles).toHaveLength(0);
     expect(model.toOutputState().shields).toHaveLength(1);
+  });
+
+  it("only lets backdoor clear visible damaging ordinary enemy bullets", async () => {
+    const model = await createBattleModel("reimu", "marisa", ["backdoor"]);
+    model.player.facing = 0;
+    const shield = model.toOutputState().shields[0]!;
+    model.projectiles.push(
+      testProjectile({ id: 1, owner: "target", x: shield.x, y: shield.y }),
+      testProjectile({ id: 2, owner: "player", x: shield.x, y: shield.y }),
+      testProjectile({ id: 3, owner: "target", kind: "spark", x: shield.x, y: shield.y }),
+      testProjectile({ id: 4, owner: "target", x: shield.x, y: shield.y, visibleFrom: 999 }),
+      testProjectile({ id: 5, owner: "target", x: shield.x, y: shield.y, damage: 0 }),
+    );
+
+    model.step(input({ aimX: model.player.x + 100, aimY: model.player.y }));
+
+    expect(model.projectiles.map((projectile) => projectile.id).sort((left, right) => left - right)).toEqual([2, 3, 4, 5]);
+  });
+
+  it("replays backdoor shield clears deterministically after rollback", async () => {
+    const model = await createBattleModel("reimu", "marisa", ["backdoor"]);
+    model.player.facing = 0;
+    const shield = model.toOutputState().shields[0]!;
+    model.projectiles.push(testProjectile({ id: 1, owner: "target", x: shield.x, y: shield.y }));
+    const snapshot = model.serialize();
+    const action = input({ aimX: model.player.x + 100, aimY: model.player.y });
+
+    model.step(action);
+    const originalHash = model.hashHex();
+    expect(model.projectiles).toHaveLength(0);
+
+    model.deserialize(snapshot);
+    model.step(action);
+
+    expect(model.projectiles).toHaveLength(0);
+    expect(model.hashHex()).toBe(originalHash);
+  });
+});
+
+describe("BattleModel character bombs", () => {
+  it("reimu bomb clears nearby projectiles and leaves distant projectiles deterministic", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+    model.projectiles.push(
+      testProjectile({ id: 100, owner: "target", x: model.player.x + 8, y: model.player.y }),
+      testProjectile({ id: 101, owner: "target", x: model.player.x + 200, y: model.player.y, vx: 1 }),
+    );
+
+    model.step(input({ bombPressed: true }));
+
+    expect(model.projectiles.some((projectile) => projectile.id === 100)).toBe(false);
+    expect(model.projectiles.find((projectile) => projectile.id === 101)?.x).toBe(model.player.x + 201);
+    expect(model.effects.some((effect) => effect.kind === "ring")).toBe(true);
+  });
+
+  it("marisa bomb does not pause an existing projectile while scheduling master spark", async () => {
+    const model = await createBattleModel("marisa", "reimu");
+    model.projectiles.push(testProjectile({
+      id: 1,
+      owner: "target",
+      x: model.player.x + 200,
+      y: model.player.y,
+      vx: 1,
+      pausedUntil: 0,
+    }));
+
+    model.step(input({ bombPressed: true }));
+
+    const existing = model.projectiles.find((projectile) => projectile.id === 1);
+    expect(existing?.pausedUntil).toBe(0);
+    expect(existing?.x).toBe(model.player.x + 201);
+
+    const masterSpark = model.projectiles.find((projectile) => projectile.kind === "spark" && projectile.owner === "player");
+    expect(masterSpark?.visibleFrom).toBe(model.frame + 60);
+    expect(masterSpark?.pausedUntil).toBe(model.frame + 60);
+  });
+
+  it("sakuya bomb clears nearby projectiles and pauses remaining projectiles deterministically", async () => {
+    const model = await createBattleModel("sakuya", "reimu");
+    model.projectiles.push(
+      testProjectile({ id: 100, owner: "target", x: model.player.x + 8, y: model.player.y }),
+      testProjectile({ id: 101, owner: "target", x: model.player.x + 200, y: model.player.y, vx: 1 }),
+    );
+
+    model.step(input({ bombPressed: true }));
+
+    const distant = model.projectiles.find((projectile) => projectile.id === 101);
+    expect(model.projectiles.some((projectile) => projectile.id === 100)).toBe(false);
+    expect(distant?.x).toBe(model.player.x + 200);
+    expect(distant?.pausedUntil).toBe(model.frame + 60);
+    expect(model.effects.some((effect) => effect.kind === "ring")).toBe(true);
   });
 });
 

@@ -46,6 +46,7 @@ export interface BattleLaserSpawnParams {
   readonly anchored?: boolean;
   readonly rayLike?: boolean;
   readonly visibleFrom?: number;
+  readonly pausedUntil?: number;
   readonly frame?: number;
 }
 

@@ -89,11 +89,8 @@ export class MarisaBattleCharacter extends BattleCharacter {
       anchored: true,
       rayLike: true,
       visibleFrom: ctx.frame + windupTicks,
+      pausedUntil: ctx.frame + windupTicks,
     });
-    const masterSpark = ctx.projectiles[ctx.projectiles.length - 1];
-    if (masterSpark) {
-      masterSpark.pausedUntil = ctx.frame + windupTicks;
-    }
 
     fighter.invulnerableDelayRemaining = windupTicks;
     fighter.invulnerableDelayDuration = durationTicks;
