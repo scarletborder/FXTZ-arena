@@ -5,6 +5,7 @@ import { CrosshairView } from "./crosshair";
 import { EffectsView } from "./effects";
 import { FighterView } from "./fighter";
 import { InfoDisplayView } from "./info-display";
+import { MobView } from "./mobs";
 import { ProjectileView } from "./projectiles";
 import { createBattleStage } from "./stage";
 import { createBattleTextures } from "./textures";
@@ -15,6 +16,7 @@ export class BattleView {
   private readonly projectiles: ProjectileView;
   private readonly effects: EffectsView;
   private readonly infoDisplay: InfoDisplayView;
+  private readonly mobs: MobView;
   private readonly debugGraphics: Phaser.GameObjects.Graphics;
   private debugPhysicsEnabled = false;
 
@@ -22,6 +24,7 @@ export class BattleView {
     createBattleTextures(scene);
     createBattleStage(scene);
     this.fighters = new FighterView(scene);
+    this.mobs = new MobView(scene);
     this.crosshair = new CrosshairView(scene);
     this.projectiles = new ProjectileView(scene);
     this.effects = new EffectsView(scene);
@@ -35,6 +38,7 @@ export class BattleView {
   render(state: BattleOutputState, input: BattleInputState, localFighterKey: FighterKey = "Player1", alpha = 1): void {
     const localFighter = localFighterKey === "Player1" ? state.player : state.target;
     this.fighters.render(state.player, state.target, state.frame, state.gameOver, input.infoHeld, localFighterKey, alpha);
+    this.mobs.render(state.neutralMobs, alpha);
     this.projectiles.render(state.projectiles, state.frame, localFighterKey, alpha);
     this.effects.render(state.effects, state.shields);
     this.infoDisplay.render(state);

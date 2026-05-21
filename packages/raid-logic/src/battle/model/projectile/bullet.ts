@@ -61,7 +61,6 @@ export function createBulletProjectile(params: {
     widthGrowthPerTick: 0,
     maxWidth: undefined,
     damage: 1,
-    pierce: false,
     angle: params.angle,
   };
 }

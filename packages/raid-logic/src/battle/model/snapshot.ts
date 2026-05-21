@@ -198,7 +198,6 @@ function serializeProjectile(projectile: ProjectileState, frame: number): Projec
     widthGrowthPerTick: projectile.widthGrowthPerTick,
     maxWidth: projectile.maxWidth,
     damage: projectile.damage,
-    pierce: projectile.pierce,
     angle: projectile.angle,
   };
 }

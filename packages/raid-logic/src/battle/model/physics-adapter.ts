@@ -3,7 +3,11 @@ import { PhysicsWorld, ensureRapierInit, type BodyDebugData } from "../../physic
 import { fp } from "@shaisrc/fixed-point";
 
 import { PLAYER_CORE_RADIUS } from "../constants";
+
+const MOB_HALF_WIDTH = 8;   // 16px total width
+const MOB_HALF_HEIGHT = 12; // 24px total height
 import type { FighterKey, FighterState, ProjectileState, ShieldState } from "@repo/content";
+import type { NeutralMobState } from "@repo/types";
 
 /**
  * Result of a Rapier collision query — maps a projectile to the fighter
@@ -12,6 +16,7 @@ import type { FighterKey, FighterState, ProjectileState, ShieldState } from "@re
 export interface CollisionResult {
   readonly projectileId: number;
   readonly victimKey?: FighterKey;
+  readonly victimMobId?: number;
   readonly blockedByShield?: true;
 }
 
@@ -31,6 +36,7 @@ export class BattlePhysics {
   /** Track projectile body IDs added this frame so we can remove them. */
   private readonly projBodyIds = new Set<string>();
   private readonly shieldBodyIds = new Set<string>();
+  private readonly mobBodyIds = new Set<string>();
 
   async init(): Promise<void> {
     await ensureRapierInit();
@@ -65,6 +71,7 @@ export class BattlePhysics {
     player: FighterState,
     target: FighterState,
     shields: readonly ShieldState[] = [],
+    neutralMobs: readonly NeutralMobState[] = [],
   ): CollisionResult[] {
     if (!this.ready || !this.world) return [];
 
@@ -72,7 +79,7 @@ export class BattlePhysics {
     this.syncFighter("Player1", player);
     this.syncFighter("Player2", target);
 
-    // -- 2. Remove previous frame's projectile bodies ----------------------
+    // -- 2. Remove previous frame's projectile / shield / mob bodies -------
     for (const id of Array.from(this.projBodyIds)) {
       this.world.removeBody(id);
     }
@@ -81,6 +88,10 @@ export class BattlePhysics {
       this.world.removeBody(id);
     }
     this.shieldBodyIds.clear();
+    for (const id of Array.from(this.mobBodyIds)) {
+      this.world.removeBody(id);
+    }
+    this.mobBodyIds.clear();
 
     // -- 3. Add bodies for current-frame projectiles -----------------------
     const projectileMap = new Map<number, ProjectileState>();
@@ -122,6 +133,25 @@ export class BattlePhysics {
       this.shieldBodyIds.add(bodyId);
     }
 
+    // -- 3b. Add bodies for current-frame neutral mobs ----------------------
+    const mobMap = new Map<number, NeutralMobState>();
+    for (const mob of neutralMobs) {
+      if (!mob.active) continue;
+      const bodyId = `mob:${mob.id}`;
+      this.world.addBody({
+        id: bodyId,
+        kind: "obstacle",
+        x: mob.x,
+        y: mob.y,
+        vx: 0,
+        vy: 0,
+        halfWidth: MOB_HALF_WIDTH,
+        halfHeight: MOB_HALF_HEIGHT,
+      });
+      this.mobBodyIds.add(bodyId);
+      mobMap.set(mob.id, mob);
+    }
+
     // -- 4. Step Rapier and drain collision events ------------------------
     const events = this.world.step();
     const results: CollisionResult[] = [];
@@ -133,8 +163,7 @@ export class BattlePhysics {
       const idB = this.world.getIdByHandle(event.targetHandle);
       if (!idA || !idB) continue;
 
-      // Determine which is the projectile and which is the fighter.
-      const match = resolveCollision(idA, idB, projectileMap);
+      const match = resolveCollision(idA, idB, projectileMap, mobMap);
       if (match) {
         results.push(match);
       }
@@ -147,6 +176,7 @@ export class BattlePhysics {
   destroy(): void {
     this.projBodyIds.clear();
     this.shieldBodyIds.clear();
+    this.mobBodyIds.clear();
     this.world?.clear();
     this.world = null;
     this.ready = false;
@@ -156,6 +186,7 @@ export class BattlePhysics {
   reset(): void {
     this.projBodyIds.clear();
     this.shieldBodyIds.clear();
+    this.mobBodyIds.clear();
     this.world?.resetEmpty();
   }
 
@@ -202,26 +233,35 @@ function resolveCollision(
   idA: string,
   idB: string,
   projectileMap: Map<number, ProjectileState>,
+  mobMap?: Map<number, NeutralMobState>,
 ): CollisionResult | null {
   const aIsProj = idA.startsWith("proj:");
   const bIsProj = idB.startsWith("proj:");
   if (aIsProj === bIsProj) return null; // projectile-projectile or fighter-fighter
 
   const projId = aIsProj ? idA : idB;
-  const fighterId = aIsProj ? idB : idA;
+  const otherId = aIsProj ? idB : idA;
   const projectileNum = Number(projId.slice("proj:".length));
 
   if (!projectileMap.has(projectileNum)) return null;
 
-  if (fighterId.startsWith("shield:")) {
-    const shieldOwner = fighterId.slice("shield:".length);
+  if (otherId.startsWith("shield:")) {
+    const shieldOwner = otherId.slice("shield:".length);
     if (projectileMap.get(projectileNum)?.owner === shieldOwner) {
       return null;
     }
     return { projectileId: projectileNum, blockedByShield: true };
   }
 
-  const victimKey = fighterId === "fighter:Player1" ? "Player1" : "Player2";
+  if (otherId.startsWith("mob:")) {
+    const mobId = Number(otherId.slice("mob:".length));
+    if (mobMap?.has(mobId)) {
+      return { projectileId: projectileNum, victimKey: "Neutral", victimMobId: mobId };
+    }
+    return null;
+  }
+
+  const victimKey = otherId === "fighter:Player1" ? "Player1" : "Player2";
   if (projectileMap.get(projectileNum)?.owner === victimKey) {
     return null;
   }

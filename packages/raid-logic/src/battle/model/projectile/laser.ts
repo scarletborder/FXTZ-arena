@@ -72,7 +72,6 @@ export function createLaserProjectile(params: {
     widthGrowthPerTick: params.lengthGrowthPerTick ?? 0,
     maxWidth: params.maxLength,
     damage: params.damage ?? 1,
-    pierce: true,
     angle: params.angle,
   };
 }

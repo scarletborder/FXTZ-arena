@@ -17,6 +17,8 @@ export interface NeutralMobState {
   CurrentHealth: number;
   active: boolean;
   ageTicks: number;
+  /** Bitmask of SFX flags for the renderer. */
+  sfxFlags: number;
 }
 
 export interface NeutralMobTargetState {
@@ -49,6 +51,14 @@ export abstract class NeutralMob<
   abstract die(ctx: NeutralMobActionContext<TBulletParams, TLaserParams>): void;
   abstract onProjectileHit(damage: number): "accepted" | "ignored";
 
+  /** Flash overlay alpha (0-1). 1 = full white flash for pre-firing telegraph. */
+  abstract get flashAlpha(): number;
+
+  /** Called when the mob becomes inactive (death). Override for death effects. */
+  onDeathEffect(): void {
+    // No-op by default.
+  }
+
   step(ctx: NeutralMobActionContext<TBulletParams, TLaserParams>): void {
     if (!this.state.active) {
       return;
@@ -60,6 +70,7 @@ export abstract class NeutralMob<
     this.fire(ctx);
     this.switchForm(ctx);
     this.die(ctx);
+    this.state.sfxFlags = this.flashAlpha > 0.5 ? (this.state.sfxFlags | 1) : (this.state.sfxFlags & ~1);
   }
 
   snapshot(): TState {

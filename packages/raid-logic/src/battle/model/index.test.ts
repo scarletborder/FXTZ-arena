@@ -570,7 +570,6 @@ function testProjectile(overrides: Partial<BattleModel["projectiles"][number]> &
     widthGrowthPerTick: 0,
     maxWidth: undefined,
     damage: 1,
-    pierce: false,
     angle: 0,
     ...overrides,
   };
@@ -597,8 +596,11 @@ class TestNeutralMob extends NeutralMob<NeutralMobState, BulletProjectileParams,
       CurrentHealth: 3,
       active: true,
       ageTicks: 0,
+      sfxFlags: 0,
     };
   }
+
+  get flashAlpha(): number { return 0; }
 
   move(): void {
     this.state.x += 1;

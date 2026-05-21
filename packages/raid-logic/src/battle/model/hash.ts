@@ -146,7 +146,6 @@ function writeProjectiles(hasher: DeterministicHasher, projectiles: readonly Pro
     writeFixed(hasher, projectile.widthGrowthPerTick);
     writeFixed(hasher, projectile.maxWidth ?? 0);
     hasher.writeNumber(projectile.damage);
-    hasher.writeNumber(projectile.pierce ? 1 : 0);
     writeFixed(hasher, projectile.angle);
   }
 }

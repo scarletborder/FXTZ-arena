@@ -83,7 +83,7 @@ export class DefaultMobSpawnerA extends NeutralMobSpawner<DefaultMobSpawnerAStat
         if (mob.state.kind !== "example_fairy" || mob.state.waveId !== waveId || !mob.state.active) {
           continue;
         }
-        (mob as ExampleFairy).queueVolley();
+        (mob as ExampleFairy).queueVolleyAt(mob.state.ageTicks + secondsToTicks(0.5));
       }
     }
   }

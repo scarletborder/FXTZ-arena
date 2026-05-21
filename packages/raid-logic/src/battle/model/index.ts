@@ -181,6 +181,7 @@ export class BattleModel {
 
     // --- Phase 3: Post-update ---
     this.resolveProjectileClashes();
+    const physics = this.physics;
     this.projectileSystem.stepProjectiles({
       frame: this.frame,
       projectiles: this.projectiles,
@@ -188,6 +189,9 @@ export class BattleModel {
       target: this.target,
       hitTargets: this.currentHitTargets(),
       shields: this.currentShields(),
+      computeRapierHits: physics ? (projectiles) => physics.computeCollisions(
+        projectiles, this.player, this.target, this.currentShields(), this.neutralMobStates(),
+      ) : undefined,
       onHit: (ctx) => this.onProjectileHit(ctx),
     });
     this.flushDeferredSpawns();
@@ -495,6 +499,8 @@ export class BattleModel {
 
   private stepMobSpawner(): void {
     if (!this.mobSpawner) return;
+    // During time stop, freeze spawner (no new mobs, no volley scheduling)
+    if (this.player.timeStopUntil > 0 || this.target.timeStopUntil > 0) return;
     this.mobSpawner.step({
       frame: this.frame,
       player: this.player,
@@ -507,6 +513,15 @@ export class BattleModel {
 
   private stepNeutralMobs(): void {
     this.sortNeutralMobs();
+    const timeStopped = this.player.timeStopUntil > 0 || this.target.timeStopUntil > 0;
+    if (timeStopped) {
+      // During time stop: update previous positions for interpolation, freeze everything else
+      for (const mob of this.neutralMobs) {
+        mob.state.previousX = mob.state.x;
+        mob.state.previousY = mob.state.y;
+      }
+      return;
+    }
     for (const mob of this.neutralMobs) {
       mob.step(this.neutralMobActionContext());
     }
@@ -599,7 +614,7 @@ export class BattleModel {
 }
 
 function neutralMobIdFromHitTarget(target: ProjectileHitTarget): number | undefined {
-  return (target as ProjectileHitTarget & { readonly mobId?: number }).mobId;
+  return target.mobId;
 }
 
 const DEFAULT_BATTLE_LOADOUTS: BattleLoadouts = {

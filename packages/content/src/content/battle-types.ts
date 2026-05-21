@@ -87,7 +87,6 @@ export interface ProjectileState {
   widthGrowthPerTick: number;
   maxWidth: number | undefined;
   readonly damage: number;
-  readonly pierce: boolean;
   angle: number;
 }
 

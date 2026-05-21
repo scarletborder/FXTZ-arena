@@ -17,6 +17,7 @@ export interface ProjectileHitTarget {
   readonly x: number;
   readonly y: number;
   readonly hitRadius: number;
+  readonly mobId?: number;
 }
 
 export class ProjectileSystem {
@@ -76,10 +77,12 @@ export class ProjectileSystem {
     }
 
     let rapierHitMap: Map<number, FighterKey | "blocked"> | undefined;
+    let rapierMobHitMap: Map<number, number> | undefined;
     if (params.computeRapierHits) {
       const results = params.computeRapierHits(params.projectiles);
       if (results) {
         rapierHitMap = new Map(results.filter((r) => r.victimKey).map((r) => [r.projectileId, r.victimKey!]));
+        rapierMobHitMap = new Map(results.filter((r) => r.victimMobId !== undefined).map((r) => [r.projectileId, r.victimMobId!]));
         for (const result of results) {
           if (result.blockedByShield) {
             rapierHitMap.set(result.projectileId, "blocked");
@@ -102,7 +105,7 @@ export class ProjectileSystem {
         continue;
       }
       if (canInteract) {
-        const victim = firstHitTarget(projectile, hitTargets, rapierHitMap);
+        const victim = firstHitTarget(projectile, hitTargets, rapierHitMap, rapierMobHitMap);
         if (victim) {
           const accepted = params.onHit({
             projectile,
@@ -110,7 +113,8 @@ export class ProjectileSystem {
             victim,
             damage: projectile.damage,
           });
-          if (accepted && !projectile.pierce) {
+          // Bullets (orb/knife) are removed on hit; beams (laser/spark) survive and deal frame damage per tick.
+          if (accepted && (projectile.kind === "orb" || projectile.kind === "knife")) {
             continue;
           }
         }
@@ -139,15 +143,24 @@ function firstHitTarget(
   projectile: ProjectileState,
   targets: readonly ProjectileHitTarget[],
   rapierHitMap: Map<number, FighterKey | "blocked"> | undefined,
+  rapierMobHitMap?: Map<number, number>,
 ): ProjectileHitTarget | undefined {
   const rapierVictim = rapierHitMap?.get(projectile.id);
+  const rapierMobVictim = rapierMobHitMap?.get(projectile.id);
   for (const target of targets) {
     if (projectile.owner === target.key) {
       continue;
     }
-    const isHit = rapierHitMap !== undefined && canUseRapierHitTest(projectile) && target.key !== "Neutral"
-      ? rapierVictim === target.key
-      : hitTest(projectile, target);
+    let isHit: boolean;
+    if (target.key === "Neutral" && rapierHitMap !== undefined && canUseRapierHitTest(projectile)) {
+      // For mobs: use Rapier result when available, but always fall back to
+      // manual hit-test so fast/small projectiles don't tunnel through.
+      isHit = (rapierMobVictim !== undefined && target.mobId === rapierMobVictim) || hitTest(projectile, target);
+    } else if (rapierHitMap !== undefined && canUseRapierHitTest(projectile)) {
+      isHit = rapierVictim === target.key;
+    } else {
+      isHit = hitTest(projectile, target);
+    }
     if (isHit) {
       return target;
     }

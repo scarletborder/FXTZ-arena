@@ -37,6 +37,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
       maxLength: hitCircleUnits(16),
       lengthGrowthPerTick: hitCircleUnits(1),
       speedRank: "high",
+      damage: 5,
     });
   }
 

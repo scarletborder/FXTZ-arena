@@ -28,7 +28,8 @@ const RIGHT_EXIT = { x: ARENA_WIDTH + hitCircleUnits(12), y: ARENA_HEIGHT * 0.48
 
 export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpawnParams, BattleLaserSpawnParams> {
   readonly state: ExampleFairyState;
-  private volleyQueued = false;
+  /** ageTicks at which the next volley fires, or -1 if none scheduled. */
+  private volleyFireAge = -1;
 
   constructor(params: {
     readonly id: number;
@@ -52,6 +53,7 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
       CurrentHealth: MAX_HEALTH,
       active: true,
       ageTicks: 0,
+      sfxFlags: 0,
     };
   }
 
@@ -65,8 +67,20 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
     return mob;
   }
 
-  queueVolley(): void {
-    this.volleyQueued = true;
+  /** Schedule a volley to fire at the given ageTicks. */
+  queueVolleyAt(fireAge: number): void {
+    this.volleyFireAge = fireAge;
+  }
+
+  get flashAlpha(): number {
+    if (this.volleyFireAge < 0) return 0;
+    const remaining = this.volleyFireAge - this.state.ageTicks;
+    // Flash white during the 0.5 s (30 ticks) window before firing.
+    return remaining > 0 && remaining <= secondsToTicks(0.5) ? 1 : 0;
+  }
+
+  onDeathEffect(): void {
+    // No-op for ExampleFairy.
   }
 
   move(): void {
@@ -106,10 +120,10 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
   }
 
   fire(ctx: NeutralMobActionContext<BattleBulletSpawnParams, BattleLaserSpawnParams>): void {
-    if (!this.volleyQueued) {
+    if (this.volleyFireAge < 0 || this.state.ageTicks < this.volleyFireAge) {
       return;
     }
-    this.volleyQueued = false;
+    this.volleyFireAge = -1;
     this.spawnAimedBullet(ctx, ctx.player.x, ctx.player.y);
     this.spawnAimedBullet(ctx, ctx.target.x, ctx.target.y);
   }
