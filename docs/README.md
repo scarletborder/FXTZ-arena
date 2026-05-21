@@ -7,6 +7,7 @@
 - [开发路线图](./development-plan.md)：里程碑、任务拆分、验收标准。
 - [游戏规则规格](./rules.md)：战局规则、输入、角色、能力卡、数值单位。
 - [技术架构与网络同步](./architecture-and-netcode.md)：monorepo、Lockstep/Rollback、mock server、确定性约束。
+- [Rollback 同步排查经验](./rollback-sync-lessons.md)：权威帧 hash、snapshot 隐藏状态、消弹碰撞与回归测试清单。
 - [Scene 与 UI 规格](./scenes-and-ui.md)：首页、设置、图鉴、战斗入口、选择、加载、战局、结算。
 - [内容数据规格](./content-data.md)：角色、能力卡、地图、房间等共享数据建模建议。
 
