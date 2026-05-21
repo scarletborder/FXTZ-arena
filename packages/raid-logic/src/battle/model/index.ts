@@ -1,12 +1,14 @@
 import { fp } from "@shaisrc/fixed-point";
 
-import type { NeutralMob, NeutralMobState, ProjectileCollisionContext } from "@repo/types";
+import type { NeutralMob, NeutralMobActionContext, NeutralMobState, ProjectileCollisionContext } from "@repo/types";
 
 import { getAbilityCard, getCharacter } from "../content";
 import { PLAYER_CORE_RADIUS, PLAYER_SPAWN, TARGET_SPAWN } from "../constants";
 import type { BattleLoadouts, FighterLoadout } from "../loadout";
 import type { BattleInputState } from "@repo/types";
 import type { BattleOutputState, EffectState, FighterKey, FighterState, ProjectileState, ShieldState, TrainingStats } from "@repo/content";
+import type { NeutralMobSpawner, NeutralMobSpawnerState } from "@repo/content";
+import { resolveMobSpawner } from "@repo/content";
 import { BattleFighter } from "./battle-fighter";
 import { CpuPlayer } from "../aicpu";
 import { EffectSystem } from "./effects";
@@ -37,10 +39,14 @@ export class BattleModel {
   private readonly playerFighter: BattleFighter;
   private readonly targetFighter: BattleFighter;
   private readonly cpuPlayer: CpuPlayer | undefined;
+  private readonly mobSpawner: NeutralMobSpawner | undefined;
   private physics: BattlePhysics | undefined;
   private pendingSpawns: Array<() => void> = [];
 
-  constructor(loadouts: BattleLoadouts = DEFAULT_BATTLE_LOADOUTS, params: { readonly enableCpuTarget?: boolean } = {}) {
+  constructor(
+    loadouts: BattleLoadouts = DEFAULT_BATTLE_LOADOUTS,
+    params: { readonly enableCpuTarget?: boolean; readonly neutralMobSpawner?: NeutralMobSpawner | null } = {},
+  ) {
     this.loadouts = loadouts;
     this.playerFighter = new BattleFighter(
       "Player1",
@@ -61,6 +67,9 @@ export class BattleModel {
       loadoutCards(loadouts.target),
     );
     this.cpuPlayer = params.enableCpuTarget ? new CpuPlayer() : undefined;
+    this.mobSpawner = params.neutralMobSpawner === undefined
+      ? resolveMobSpawner("default-a") ?? undefined
+      : (params.neutralMobSpawner ?? undefined);
   }
 
   get player(): FighterState {
@@ -74,6 +83,7 @@ export class BattleModel {
   reset(): void {
     this.projectileSystem.reset();
     this.effectSystem.reset();
+    this.mobSpawner?.reset();
     this.neutralMobs.length = 0;
     this.nextNeutralMobId = 1;
     this.projectiles.length = 0;
@@ -166,6 +176,7 @@ export class BattleModel {
       this.processFighterActions(this.targetFighter, firstInput);
       this.processFighterActions(this.playerFighter, secondInput);
     }
+    this.stepMobSpawner();
     this.stepNeutralMobs();
 
     // --- Phase 3: Post-update ---
@@ -218,6 +229,7 @@ export class BattleModel {
       nextEffectId: this.effectSystem.getNextId(),
       nextNeutralMobId: this.nextNeutralMobId,
       neutralMobs: this.neutralMobStates(),
+      mobSpawner: this.mobSpawnerState(),
     });
   }
 
@@ -236,6 +248,9 @@ export class BattleModel {
     this.projectileSystem.restoreNextId(this.projectiles, snapshot.nextProjectileId);
     this.effectSystem.restoreNextId(this.effects, snapshot.nextEffectId);
     this.nextNeutralMobId = Math.max(snapshot.nextNeutralMobId, 1 + Math.max(0, ...snapshot.neutralMobs.map((mob) => mob.id)));
+    if (snapshot.mobSpawner) {
+      this.mobSpawner?.restore(snapshot.mobSpawner);
+    }
     this.physics?.reset();
   }
 
@@ -344,12 +359,14 @@ export class BattleModel {
   }
 
   private onProjectileHit(ctx: ProjectileCollisionContext<ProjectileState, ProjectileHitTarget, FighterKey>): boolean {
-    const { owner, victim, damage } = ctx;
+    const { owner, victim } = ctx;
     if (victim.key === "Neutral") {
       const mob = this.neutralMobs.find((candidate) => candidate.id === neutralMobIdFromHitTarget(victim));
-      const result = mob?.onProjectileHit(damage) ?? "ignored";
+      const mobDamage = this.neutralMobProjectileDamage(ctx.projectile);
+      const result = mob?.onProjectileHit(mobDamage) ?? "ignored";
       return result !== "ignored";
     }
+    const damage = ctx.damage;
     const fighterState = victim.key === "Player1" ? this.player : this.target;
     const victimFighter = victim.key === "Player1" ? this.playerFighter : this.targetFighter;
     const attackerCards = owner === "Player1"
@@ -435,15 +452,13 @@ export class BattleModel {
     };
   }
 
-  private neutralMobActionContext(): {
-    readonly frame: number;
-    spawnBullet(params: BulletProjectileParams): void;
-    spawnLaser(params: LaserProjectileParams): void;
-  } {
+  private neutralMobActionContext(): NeutralMobActionContext<BulletProjectileParams, LaserProjectileParams> {
     const frame = this.frame;
     return {
       frame,
-      spawnBullet: (params) => {
+      player: { x: this.player.x, y: this.player.y },
+      target: { x: this.target.x, y: this.target.y },
+      spawnBullet: (params: BulletProjectileParams) => {
         const spawnParams = {
           ...params,
           owner: "Neutral" as const,
@@ -453,7 +468,7 @@ export class BattleModel {
           this.projectileSystem.spawnBullet(this.projectiles, spawnParams);
         });
       },
-      spawnLaser: (params) => {
+      spawnLaser: (params: LaserProjectileParams) => {
         const spawnParams = {
           ...params,
           owner: "Neutral" as const,
@@ -464,6 +479,30 @@ export class BattleModel {
         });
       },
     };
+  }
+
+  mobSpawnerState(): NeutralMobSpawnerState | undefined {
+    return this.mobSpawner?.snapshot();
+  }
+
+  private neutralMobProjectileDamage(projectile: ProjectileState): number {
+    if (projectile.owner === "Player1" || projectile.owner === "Player2") {
+      if (projectile.kind === "spark") return 10;
+      return 15;
+    }
+    return projectile.damage;
+  }
+
+  private stepMobSpawner(): void {
+    if (!this.mobSpawner) return;
+    this.mobSpawner.step({
+      frame: this.frame,
+      player: this.player,
+      target: this.target,
+      neutralMobs: this.neutralMobs,
+      allocateMobId: () => this.allocateNeutralMobId(),
+      spawnMob: (mob) => this.addNeutralMob(mob),
+    });
   }
 
   private stepNeutralMobs(): void {
@@ -482,11 +521,15 @@ export class BattleModel {
     const ids = new Set(snapshots.map((snapshot) => snapshot.id));
     this.neutralMobs.splice(0, this.neutralMobs.length, ...this.neutralMobs.filter((mob) => ids.has(mob.id)));
     for (const snapshot of snapshots) {
-      const mob = this.neutralMobs.find((candidate) => candidate.id === snapshot.id);
-      if (!mob) {
-        throw new Error(`Cannot restore missing neutral mob id: ${snapshot.id}`);
+      const existing = this.neutralMobs.find((candidate) => candidate.id === snapshot.id);
+      if (existing) {
+        existing.restore(snapshot);
+      } else if (this.mobSpawner) {
+        const created = this.mobSpawner.createMobFromSnapshot(snapshot);
+        if (created) {
+          this.neutralMobs.push(created);
+        }
       }
-      mob.restore(snapshot);
     }
     this.sortNeutralMobs();
   }

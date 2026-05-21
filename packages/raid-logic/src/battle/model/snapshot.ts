@@ -3,6 +3,7 @@ import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
 
 import { getAbilityCard, getCharacter } from "../content";
 import type { EffectState, FighterState, ProjectileState, TrainingStats } from "@repo/content";
+import type { NeutralMobSpawnerState } from "@repo/content";
 
 export interface BattleModelSnapshot {
   readonly version: 1;
@@ -14,6 +15,7 @@ export interface BattleModelSnapshot {
   readonly player: FighterSnapshot;
   readonly target: FighterSnapshot;
   readonly neutralMobs: readonly NeutralMobSnapshot[];
+  readonly mobSpawner: NeutralMobSpawnerState | undefined;
   readonly projectiles: readonly ProjectileSnapshot[];
   readonly effects: readonly EffectSnapshot[];
   readonly stats: TrainingStats;
@@ -67,6 +69,7 @@ export function createBattleModelSnapshot(params: {
   readonly nextEffectId: number;
   readonly nextNeutralMobId: number;
   readonly neutralMobs: readonly NeutralMobState[];
+  readonly mobSpawner: NeutralMobSpawnerState | undefined;
 }): BattleModelSnapshot {
   return {
     version: 1,
@@ -78,6 +81,7 @@ export function createBattleModelSnapshot(params: {
     player: serializeFighter(params.player, params.frame),
     target: serializeFighter(params.target, params.frame),
     neutralMobs: params.neutralMobs.map((mob) => ({ ...mob })),
+    mobSpawner: params.mobSpawner,
     projectiles: params.projectiles.map((projectile) => serializeProjectile(projectile, params.frame)),
     effects: params.effects.map((effect) => serializeEffect(effect, params.frame)),
     stats: { ...params.stats },

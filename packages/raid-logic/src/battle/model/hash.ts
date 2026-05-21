@@ -1,6 +1,7 @@
 import type { BattleModel } from ".";
 import type { NeutralMobState } from "@repo/types";
 import type { EffectState, FighterState, ProjectileState, TrainingStats } from "@repo/content";
+import type { NeutralMobSpawnerState, NeutralMobSpawnerStateValue } from "@repo/content";
 
 class DeterministicHasher {
   private value = 0x811c9dc5;
@@ -38,6 +39,7 @@ export function hashBattleModel(model: BattleModel): number {
   writeFighter(hasher, model.player);
   writeFighter(hasher, model.target);
   writeNeutralMobs(hasher, model.neutralMobStates());
+  writeSpawnerState(hasher, model.mobSpawnerState());
   writeProjectiles(hasher, model.projectiles);
   writeEffects(hasher, model.effects);
   writeStats(hasher, model.stats);
@@ -55,8 +57,11 @@ function writeNeutralMobs(hasher: DeterministicHasher, neutralMobs: readonly Neu
     writeFixed(hasher, mob.previousX);
     writeFixed(hasher, mob.previousY);
     writeFixed(hasher, mob.hitRadius);
+    hasher.writeNumber(mob.waveId);
+    hasher.writeString(mob.movementVariant);
     hasher.writeString(mob.form);
-    hasher.writeNumber(mob.hp);
+    hasher.writeNumber(mob.MaxHealth);
+    hasher.writeNumber(mob.CurrentHealth);
     hasher.writeNumber(mob.active ? 1 : 0);
     hasher.writeNumber(mob.ageTicks);
   }
@@ -169,6 +174,44 @@ function writeStats(hasher: DeterministicHasher, stats: TrainingStats): void {
   hasher.writeNumber(stats.bombUses);
   hasher.writeNumber(stats.damage);
   hasher.writeNumber(stats.elapsedTicks);
+}
+
+function writeSpawnerState(hasher: DeterministicHasher, state: NeutralMobSpawnerState | undefined): void {
+  if (!state) {
+    hasher.writeNumber(0);
+    return;
+  }
+  hasher.writeNumber(1);
+  writeStateValue(hasher, state as NeutralMobSpawnerStateValue);
+}
+
+function writeStateValue(hasher: DeterministicHasher, value: NeutralMobSpawnerStateValue): void {
+  if (value === null) {
+    hasher.writeNumber(0);
+  } else if (typeof value === "boolean") {
+    hasher.writeNumber(value ? 1 : 2);
+  } else if (typeof value === "number") {
+    hasher.writeNumber(3);
+    hasher.writeNumber(value);
+  } else if (typeof value === "string") {
+    hasher.writeNumber(4);
+    hasher.writeString(value);
+  } else if (Array.isArray(value)) {
+    hasher.writeNumber(5);
+    hasher.writeNumber(value.length);
+    for (const item of value) {
+      writeStateValue(hasher, item);
+    }
+  } else {
+    hasher.writeNumber(6);
+    const obj = value as { readonly [key: string]: NeutralMobSpawnerStateValue };
+    const keys = Object.keys(obj).sort();
+    hasher.writeNumber(keys.length);
+    for (const key of keys) {
+      hasher.writeString(key);
+      writeStateValue(hasher, obj[key]!);
+    }
+  }
 }
 
 function writeFixed(hasher: DeterministicHasher, value: number): void {

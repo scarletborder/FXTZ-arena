@@ -16,5 +16,6 @@ export const DEFAULT_MAPS: readonly MapDefinition[] = [
         facingAngleTicks: 30000,
       },
     ],
+    mobSpawnerId: "default-a",
   },
 ];

@@ -1,0 +1,38 @@
+import type { NeutralMob, NeutralMobState } from "@repo/types";
+
+import type { FighterState } from "../battle-types";
+import type { BattleBulletSpawnParams, BattleLaserSpawnParams } from "../characters/base";
+
+export type NeutralMobSpawnerStateValue =
+  | string
+  | number
+  | boolean
+  | null
+  | readonly NeutralMobSpawnerStateValue[]
+  | { readonly [key: string]: NeutralMobSpawnerStateValue };
+
+export interface NeutralMobSpawnerState {
+  readonly spawnerId: string;
+  readonly [key: string]: NeutralMobSpawnerStateValue;
+}
+
+export type BattleNeutralMob = NeutralMob<NeutralMobState, BattleBulletSpawnParams, BattleLaserSpawnParams>;
+
+export interface NeutralMobSpawnerContext {
+  readonly frame: number;
+  readonly player: FighterState;
+  readonly target: FighterState;
+  readonly neutralMobs: readonly BattleNeutralMob[];
+  allocateMobId(): number;
+  spawnMob(mob: BattleNeutralMob): void;
+}
+
+export abstract class NeutralMobSpawner<TState extends NeutralMobSpawnerState = NeutralMobSpawnerState> {
+  abstract readonly id: string;
+
+  abstract step(ctx: NeutralMobSpawnerContext): void;
+  abstract snapshot(): TState;
+  abstract restore(snapshot: TState): void;
+  abstract reset(): void;
+  abstract createMobFromSnapshot(snapshot: NeutralMobState): BattleNeutralMob | undefined;
+}

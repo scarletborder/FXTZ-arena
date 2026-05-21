@@ -590,8 +590,11 @@ class TestNeutralMob extends NeutralMob<NeutralMobState, BulletProjectileParams,
       previousX: x,
       previousY: y,
       hitRadius: 10,
+      waveId: 0,
+      movementVariant: "",
       form: "idle",
-      hp: 3,
+      MaxHealth: 3,
+      CurrentHealth: 3,
       active: true,
       ageTicks: 0,
     };
@@ -623,13 +626,13 @@ class TestNeutralMob extends NeutralMob<NeutralMobState, BulletProjectileParams,
   }
 
   die(): void {
-    if (this.state.hp <= 0) {
+    if (this.state.CurrentHealth <= 0) {
       this.state.active = false;
     }
   }
 
   onProjectileHit(damage: number): "accepted" | "ignored" {
-    this.state.hp -= damage;
+    this.state.CurrentHealth -= damage;
     return "accepted";
   }
 }

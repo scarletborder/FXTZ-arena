@@ -10,14 +10,24 @@ export interface NeutralMobState {
   previousX: number;
   previousY: number;
   hitRadius: number;
+  waveId: number;
+  movementVariant: string;
   form: string;
-  hp: number;
+  MaxHealth: number;
+  CurrentHealth: number;
   active: boolean;
   ageTicks: number;
 }
 
+export interface NeutralMobTargetState {
+  readonly x: number;
+  readonly y: number;
+}
+
 export interface NeutralMobActionContext<TBulletParams, TLaserParams> {
   readonly frame: number;
+  readonly player: NeutralMobTargetState;
+  readonly target: NeutralMobTargetState;
   spawnBullet(params: TBulletParams): void;
   spawnLaser(params: TLaserParams): void;
 }

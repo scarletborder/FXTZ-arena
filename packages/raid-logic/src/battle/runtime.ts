@@ -5,6 +5,8 @@ import type { BattleModelSnapshot } from "./model/snapshot";
 import { BattleOutputQueue, type BattleOutputEvent, type BattleOutputFrame } from "./output";
 import type { BattleInputState } from "@repo/types";
 import type { BattleOutputState } from "@repo/content";
+import { DEFAULT_MAPS, resolveMobSpawner } from "@repo/content";
+import type { NeutralMobSpawner } from "@repo/content";
 
 export type RaidLogicMode = "training" | "ai" | "online";
 
@@ -29,6 +31,7 @@ export type RaidLogicStepInput =
 export interface RaidLogicRuntimeOptions {
   readonly mode: RaidLogicMode;
   readonly loadouts?: BattleLoadouts;
+  readonly mapId?: string;
 }
 
 export interface RaidLogicRuntime {
@@ -57,9 +60,12 @@ class BattleRuntime implements RaidLogicRuntime {
   constructor(
     readonly mode: RaidLogicMode,
     loadouts: BattleLoadouts | undefined,
+    mapId: string | undefined,
   ) {
+    const spawner = resolveSpawner(mode, mapId);
     this.model = new BattleModel(loadouts, {
       enableCpuTarget: mode === "ai",
+      neutralMobSpawner: spawner,
     });
     this.enqueueOutput([{ type: "snapshot_restored", frame: this.model.frame }]);
   }
@@ -145,6 +151,17 @@ class BattleRuntime implements RaidLogicRuntime {
   }
 }
 
+function resolveSpawner(mode: RaidLogicMode, mapId: string | undefined): NeutralMobSpawner | null | undefined {
+  if (mode === "training") return null;
+  if (mapId) {
+    const map = DEFAULT_MAPS.find((m) => m.id === mapId);
+    if (map?.mobSpawnerId) {
+      return resolveMobSpawner(map.mobSpawnerId) ?? undefined;
+    }
+  }
+  return undefined;
+}
+
 export function createRaidLogicRuntime(options: RaidLogicRuntimeOptions): RaidLogicRuntime {
-  return new BattleRuntime(options.mode, options.loadouts);
+  return new BattleRuntime(options.mode, options.loadouts, options.mapId);
 }
