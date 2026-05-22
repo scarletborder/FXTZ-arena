@@ -30,6 +30,7 @@ export class MultiShotBattleCard extends BattleAbilityCard {
       width: 18,
       height: 10,
       homingTicks: secondsToTicks(1.5),
+      damage: 15,
       spawnOffset: 34,
     });
   }

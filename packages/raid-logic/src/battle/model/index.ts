@@ -366,7 +366,7 @@ export class BattleModel {
     const { owner, victim } = ctx;
     if (victim.key === "Neutral") {
       const mob = this.neutralMobs.find((candidate) => candidate.id === neutralMobIdFromHitTarget(victim));
-      const mobDamage = this.neutralMobProjectileDamage(ctx.projectile);
+      const mobDamage = ctx.projectile.damage;
       const result = mob?.onProjectileHit(mobDamage) ?? "ignored";
       return result !== "ignored";
     }
@@ -487,14 +487,6 @@ export class BattleModel {
 
   mobSpawnerState(): NeutralMobSpawnerState | undefined {
     return this.mobSpawner?.snapshot();
-  }
-
-  private neutralMobProjectileDamage(projectile: ProjectileState): number {
-    if (projectile.owner === "Player1" || projectile.owner === "Player2") {
-      if (projectile.kind === "spark") return 10;
-      return 15;
-    }
-    return projectile.damage;
   }
 
   private stepMobSpawner(): void {

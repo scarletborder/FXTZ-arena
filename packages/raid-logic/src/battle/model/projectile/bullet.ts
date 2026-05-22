@@ -19,6 +19,7 @@ export function createBulletProjectile(params: {
   readonly height: number;
   readonly frame: number;
   readonly homingTicks: number;
+  readonly damage?: number;
   readonly spawnOffset?: number;
   readonly pausedUntil?: number;
 }): ProjectileState {
@@ -60,7 +61,7 @@ export function createBulletProjectile(params: {
     pausedUntil: params.pausedUntil ?? params.frame,
     widthGrowthPerTick: 0,
     maxWidth: undefined,
-    damage: 1,
+    damage: params.damage ?? 1,
     angle: params.angle,
   };
 }

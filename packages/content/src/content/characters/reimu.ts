@@ -90,6 +90,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
       width: hitCircleUnits(2),
       height: hitCircleUnits(1),
       homingTicks,
+      damage: 15,
       spawnOffset: 0,
     });
   }

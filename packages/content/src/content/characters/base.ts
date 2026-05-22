@@ -22,6 +22,7 @@ export interface BattleBulletSpawnParams {
   readonly width: number;
   readonly height: number;
   readonly homingTicks: number;
+  readonly damage?: number;
   readonly spawnOffset?: number;
   readonly pausedUntil?: number;
   readonly frame?: number;

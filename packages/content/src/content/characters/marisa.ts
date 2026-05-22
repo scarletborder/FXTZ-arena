@@ -84,6 +84,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
       maxLength: Number.POSITIVE_INFINITY,
       lengthGrowthPerTick: 0,
       speedRank: "low",
+      damage: 10,
       expireTicks: totalTicks,
       spawnOffset: 0,
       pinned: true,

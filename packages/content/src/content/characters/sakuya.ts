@@ -119,6 +119,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
       width: size.width,
       height: size.height,
       homingTicks: 0,
+      damage: 15,
       spawnOffset: 0,
       ...(pausedUntil === undefined ? {} : { pausedUntil }),
     });
