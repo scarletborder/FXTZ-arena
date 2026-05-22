@@ -18,4 +18,20 @@ export const DEFAULT_MAPS: readonly MapDefinition[] = [
     ],
     mobSpawnerId: "default-a",
   },
+  {
+    id: "shooting_range",
+    name: "靶场",
+    width: ARENA_WIDTH,
+    height: ARENA_HEIGHT,
+    spawnPoints: [
+      { id: "left", x: -ARENA_WIDTH / 4, y: 0, facingAngleTicks: 0 },
+      {
+        id: "right",
+        x: ARENA_WIDTH / 4,
+        y: 0,
+        facingAngleTicks: 30000,
+      },
+    ],
+    mobSpawnerId: "shooting_range_spawn",
+  },
 ];

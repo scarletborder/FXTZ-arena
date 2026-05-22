@@ -1,6 +1,6 @@
 import { fp } from "@shaisrc/fixed-point";
 import { ARENA_HEIGHT, ARENA_WIDTH } from "@repo/constants";
-import { NeutralMob, type NeutralMobActionContext, type NeutralMobState } from "@repo/types";
+import { NeutralMob, type NeutralMobActionContext, type NeutralMobDeathSource, type NeutralMobState } from "@repo/types";
 
 import { fpAtan2 } from "../../fp";
 import { hitCircleUnits, secondsToTicks, type BattleBulletSpawnParams, type BattleLaserSpawnParams } from "../../characters/base";
@@ -81,6 +81,10 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
 
   onDeathEffect(): void {
     // No-op for ExampleFairy.
+  }
+
+  onDeath(_source: NeutralMobDeathSource): void {
+    // Rewards will hook in here; ExampleFairy currently has no death reward.
   }
 
   move(): void {

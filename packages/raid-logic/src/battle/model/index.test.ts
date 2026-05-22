@@ -461,6 +461,35 @@ describe("BattleModel character bombs", () => {
     model.step(input());
     expect(model.hashHex()).toBe(originalHash);
   });
+
+  it("attributes neutral mob death using deterministic projectile consumption order", async () => {
+    const model = await createBattleModel();
+    const mob = new TestNeutralMob(model.allocateNeutralMobId(), 500, 120);
+    mob.state.CurrentHealth = 2;
+    model.addNeutralMob(mob);
+    model.projectiles.push(
+      testProjectile({ id: 10, owner: "Player2", x: mob.state.x, y: mob.state.y, damage: 1 }),
+      testProjectile({ id: 11, owner: "Player1", x: mob.state.x, y: mob.state.y, damage: 1 }),
+      testProjectile({ id: 12, owner: "Player2", x: mob.state.x, y: mob.state.y, damage: 1 }),
+    );
+
+    model.step(input());
+
+    expect(mob.deathSources).toEqual(["Player1"]);
+    expect(model.neutralMobStates()).toHaveLength(0);
+  });
+
+  it("attributes neutral mob active self-removal to a null death source", async () => {
+    const model = await createBattleModel();
+    const mob = new TestNeutralMob(model.allocateNeutralMobId(), 500, 120);
+    mob.state.ageTicks = 999;
+    model.addNeutralMob(mob);
+
+    model.step(input());
+
+    expect(mob.deathSources).toEqual([null]);
+    expect(model.neutralMobStates()).toHaveLength(0);
+  });
 });
 
 describe("BattlePhysics projectile collisions", () => {
@@ -577,6 +606,7 @@ function testProjectile(overrides: Partial<BattleModel["projectiles"][number]> &
 
 class TestNeutralMob extends NeutralMob<NeutralMobState, BulletProjectileParams, LaserProjectileParams> {
   readonly state: NeutralMobState;
+  readonly deathSources: Array<"Player1" | "Player2" | "Neutral" | null> = [];
 
   constructor(id: number, x: number, y: number) {
     super();
@@ -628,14 +658,24 @@ class TestNeutralMob extends NeutralMob<NeutralMobState, BulletProjectileParams,
   }
 
   die(): void {
-    if (this.state.CurrentHealth <= 0) {
+    if (this.state.CurrentHealth <= 0 || this.state.ageTicks >= 1000) {
       this.state.active = false;
     }
   }
 
   onProjectileHit(damage: number): "accepted" | "ignored" {
+    if (!this.state.active) {
+      return "ignored";
+    }
     this.state.CurrentHealth -= damage;
+    if (this.state.CurrentHealth <= 0) {
+      this.state.active = false;
+    }
     return "accepted";
+  }
+
+  onDeath(source: "Player1" | "Player2" | "Neutral" | null): void {
+    this.deathSources.push(source);
   }
 }
 

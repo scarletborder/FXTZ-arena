@@ -8,6 +8,6 @@ export type AbilityCardId =
   | "backdoor"
   | "multi_shot"
   | "spirit_strike_card";
-export type MapId = "arena_standard";
+export type MapId = "arena_standard" | "shooting_range";
 export type BattlePlayerId = "Player1" | "Player2" | "Neutral";
 export type PlayerId = BattlePlayerId;

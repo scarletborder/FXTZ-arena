@@ -622,6 +622,7 @@ export class SelectScene extends Phaser.Scene {
       opponentName: this.mode === "training" ? "靶子" : "CPU",
       returnScene: "battle-start",
       loadouts,
+      mapId: this.mode === "training" ? "shooting_range" : "arena_standard",
       debug: uiSettings.debug,
     });
   }

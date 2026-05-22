@@ -81,6 +81,7 @@ export class BattleScene extends Phaser.Scene {
     this.runtime = createRaidLogicRuntime({
       mode: data.mode ?? "training",
       loadouts: data.loadouts,
+      mapId: data.mapId ?? data.battleConfig?.mapId,
     });
     this.logicReady = false;
     this.runtime.initialize().then(() => {

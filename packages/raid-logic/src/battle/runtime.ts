@@ -152,13 +152,13 @@ class BattleRuntime implements RaidLogicRuntime {
 }
 
 function resolveSpawner(mode: RaidLogicMode, mapId: string | undefined): NeutralMobSpawner | null | undefined {
-  if (mode === "training") return null;
   if (mapId) {
     const map = DEFAULT_MAPS.find((m) => m.id === mapId);
     if (map?.mobSpawnerId) {
       return resolveMobSpawner(map.mobSpawnerId) ?? undefined;
     }
   }
+  if (mode === "training") return null;
   return undefined;
 }
 

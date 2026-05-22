@@ -1,5 +1,5 @@
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
-import type { BattleConfig, PlayerId } from "@repo/types";
+import type { BattleConfig, MapId, PlayerId } from "@repo/types";
 
 export interface FighterLoadout {
   readonly primaryCharacterId: CharacterDefinition["id"];
@@ -19,6 +19,7 @@ export interface BattleSceneData {
   readonly opponentName?: string;
   readonly returnScene?: string;
   readonly loadouts?: BattleLoadouts;
+  readonly mapId?: MapId;
   readonly debug?: boolean;
   readonly battleConfig?: BattleConfig;
   readonly localPlayerId?: PlayerId;

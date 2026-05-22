@@ -1,8 +1,11 @@
 export * from "./base";
 export * from "./default-a";
+export * from "./shooting-range-spawn";
 export * from "./mobs/example-fairy";
+export * from "./mobs/immortal-fairy";
 
 import { DefaultMobSpawnerA } from "./default-a";
+import { ShootingRangeSpawn } from "./shooting-range-spawn";
 import type { NeutralMobSpawner } from "./base";
 
 /**
@@ -13,6 +16,8 @@ export function resolveMobSpawner(spawnerId: string): NeutralMobSpawner | undefi
   switch (spawnerId) {
     case "default-a":
       return new DefaultMobSpawnerA();
+    case "shooting_range_spawn":
+      return new ShootingRangeSpawn();
     default:
       return undefined;
   }

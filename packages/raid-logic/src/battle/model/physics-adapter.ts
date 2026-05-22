@@ -4,8 +4,6 @@ import { fp } from "@shaisrc/fixed-point";
 
 import { PLAYER_CORE_RADIUS } from "../constants";
 
-const MOB_HALF_WIDTH = 8;   // 16px total width
-const MOB_HALF_HEIGHT = 12; // 24px total height
 import type { FighterKey, FighterState, ProjectileState, ShieldState } from "@repo/content";
 import type { NeutralMobState } from "@repo/types";
 
@@ -145,8 +143,8 @@ export class BattlePhysics {
         y: mob.y,
         vx: 0,
         vy: 0,
-        halfWidth: MOB_HALF_WIDTH,
-        halfHeight: MOB_HALF_HEIGHT,
+        halfWidth: Math.max(1, (mob.hitWidth ?? 16) / 2),
+        halfHeight: Math.max(1, (mob.hitHeight ?? 24) / 2),
       });
       this.mobBodyIds.add(bodyId);
       mobMap.set(mob.id, mob);

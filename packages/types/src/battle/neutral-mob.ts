@@ -1,5 +1,8 @@
+import type { BattlePlayerId } from "../core";
+
 export type NeutralMobId = number;
 export type NeutralMobBehavior = "move" | "fire" | "switch_form" | "die";
+export type NeutralMobDeathSource = BattlePlayerId | null;
 
 export interface NeutralMobState {
   readonly id: NeutralMobId;
@@ -10,11 +13,14 @@ export interface NeutralMobState {
   previousX: number;
   previousY: number;
   hitRadius: number;
+  hitWidth?: number;
+  hitHeight?: number;
   waveId: number;
   movementVariant: string;
   form: string;
   MaxHealth: number;
   CurrentHealth: number;
+  damageTaken?: number;
   active: boolean;
   ageTicks: number;
   /** Bitmask of SFX flags for the renderer. */
@@ -50,6 +56,7 @@ export abstract class NeutralMob<
   abstract switchForm(ctx: NeutralMobActionContext<TBulletParams, TLaserParams>): void;
   abstract die(ctx: NeutralMobActionContext<TBulletParams, TLaserParams>): void;
   abstract onProjectileHit(damage: number): "accepted" | "ignored";
+  abstract onDeath(source: NeutralMobDeathSource): void;
 
   /** Flash overlay alpha (0-1). 1 = full white flash for pre-firing telegraph. */
   abstract get flashAlpha(): number;

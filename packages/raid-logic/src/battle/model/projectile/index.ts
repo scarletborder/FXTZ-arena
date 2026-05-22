@@ -17,6 +17,8 @@ export interface ProjectileHitTarget {
   readonly x: number;
   readonly y: number;
   readonly hitRadius: number;
+  readonly hitWidth?: number;
+  readonly hitHeight?: number;
   readonly mobId?: number;
 }
 
@@ -192,6 +194,19 @@ export function clearProjectilesAround(
 }
 
 function hitTest(projectile: ProjectileState, victim: ProjectileHitTarget): boolean {
+  if (victim.hitWidth !== undefined && victim.hitHeight !== undefined) {
+    if ((projectile.kind === "laser" || projectile.kind === "spark") && !Number.isFinite(projectile.width)) {
+      return infiniteBeamIntersectsRect(projectile, victim);
+    }
+    return rotatedRectsIntersect(projectile, {
+      owner: victim.key,
+      x: victim.x,
+      y: victim.y,
+      width: victim.hitWidth,
+      height: victim.hitHeight,
+      angle: 0,
+    });
+  }
   if (projectile.kind === "laser" || projectile.kind === "spark") {
     if (!Number.isFinite(projectile.width)) {
       // Infinite-width beam: ray vs circle
@@ -214,6 +229,42 @@ function hitTest(projectile: ProjectileState, victim: ProjectileHitTarget): bool
     }
   }
   return rotatedRectIntersectsCircle(projectile, victim.x, victim.y, victim.hitRadius);
+}
+
+function infiniteBeamIntersectsRect(projectile: ProjectileState, victim: ProjectileHitTarget): boolean {
+  const fpAngle = fp.fromFloat(projectile.angle);
+  const fpCos = fp.cos(fpAngle);
+  const fpSin = fp.sin(fpAngle);
+  const fpPx = fp.fromFloat(projectile.x);
+  const fpPy = fp.fromFloat(projectile.y);
+  const fpHalfW = fp.div(fp.fromFloat(victim.hitWidth ?? 0), fp.fromInt(2));
+  const fpHalfH = fp.div(fp.fromFloat(victim.hitHeight ?? 0), fp.fromInt(2));
+  const fpHalfBeam = fp.div(fp.fromFloat(projectile.height), fp.fromInt(2));
+  const fpCorners = [
+    { x: fp.sub(fp.fromFloat(victim.x), fpHalfW), y: fp.sub(fp.fromFloat(victim.y), fpHalfH) },
+    { x: fp.add(fp.fromFloat(victim.x), fpHalfW), y: fp.sub(fp.fromFloat(victim.y), fpHalfH) },
+    { x: fp.sub(fp.fromFloat(victim.x), fpHalfW), y: fp.add(fp.fromFloat(victim.y), fpHalfH) },
+    { x: fp.add(fp.fromFloat(victim.x), fpHalfW), y: fp.add(fp.fromFloat(victim.y), fpHalfH) },
+  ];
+  let minForward = Number.POSITIVE_INFINITY;
+  let maxForward = Number.NEGATIVE_INFINITY;
+  let minSide = Number.POSITIVE_INFINITY;
+  let maxSide = Number.NEGATIVE_INFINITY;
+
+  for (const corner of fpCorners) {
+    const fpDx = fp.sub(corner.x, fpPx);
+    const fpDy = fp.sub(corner.y, fpPy);
+    const forward = fp.add(fp.mul(fpDx, fpCos), fp.mul(fpDy, fpSin));
+    const side = fp.add(fp.mul(fp.negate(fpDx), fpSin), fp.mul(fpDy, fpCos));
+    minForward = fpMin(minForward, forward);
+    maxForward = fpMax(maxForward, forward);
+    minSide = fpMin(minSide, side);
+    maxSide = fpMax(maxSide, side);
+  }
+
+  return fp.gte(maxForward, fp.negate(fpMax(fpHalfW, fpHalfH))) &&
+    fp.lte(minSide, fpHalfBeam) &&
+    fp.gte(maxSide, fp.negate(fpHalfBeam));
 }
 
 function canUseRapierHitTest(projectile: ProjectileState): boolean {

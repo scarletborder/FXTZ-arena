@@ -194,6 +194,7 @@ export class BattleModel {
       ) : undefined,
       onHit: (ctx) => this.onProjectileHit(ctx),
     });
+    this.removeInactiveNeutralMobs();
     this.flushDeferredSpawns();
     this.effectSystem.stepEffects(this.effects, this.frame);
   }
@@ -367,8 +368,19 @@ export class BattleModel {
     if (victim.key === "Neutral") {
       const mob = this.neutralMobs.find((candidate) => candidate.id === neutralMobIdFromHitTarget(victim));
       const mobDamage = ctx.projectile.damage;
-      const result = mob?.onProjectileHit(mobDamage) ?? "ignored";
-      return result !== "ignored";
+      if (!mob) {
+        return false;
+      }
+      const wasActive = mob.state.active;
+      const result = mob.onProjectileHit(mobDamage);
+      if (result === "ignored") {
+        return false;
+      }
+      if (wasActive && !mob.state.active) {
+        mob.onDeath(owner);
+        mob.onDeathEffect();
+      }
+      return true;
     }
     const damage = ctx.damage;
     const fighterState = victim.key === "Player1" ? this.player : this.target;
@@ -515,13 +527,22 @@ export class BattleModel {
       return;
     }
     for (const mob of this.neutralMobs) {
+      const wasActive = mob.state.active;
       mob.step(this.neutralMobActionContext());
+      if (wasActive && !mob.state.active) {
+        mob.onDeath(null);
+        mob.onDeathEffect();
+      }
     }
-    this.neutralMobs.splice(0, this.neutralMobs.length, ...this.neutralMobs.filter((mob) => mob.state.active));
+    this.removeInactiveNeutralMobs();
   }
 
   private sortNeutralMobs(): void {
     this.neutralMobs.sort((left, right) => left.id - right.id);
+  }
+
+  private removeInactiveNeutralMobs(): void {
+    this.neutralMobs.splice(0, this.neutralMobs.length, ...this.neutralMobs.filter((mob) => mob.state.active));
   }
 
   private restoreNeutralMobSnapshots(snapshots: readonly NeutralMobState[]): void {
@@ -599,6 +620,8 @@ export class BattleModel {
           x: mob.state.x,
           y: mob.state.y,
           hitRadius: mob.state.hitRadius,
+          hitWidth: mob.state.hitWidth,
+          hitHeight: mob.state.hitHeight,
           mobId: mob.id,
         })),
     ];

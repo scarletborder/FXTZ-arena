@@ -43,10 +43,16 @@ export class InfoDisplayView {
       `靶判定点 (${formatCoord(target.x)}, ${formatCoord(target.y)})`,
       `靶命 ${Math.max(0, target.lives)}  bomb ${target.bombs}`,
       `总命中 ${model.stats.hits}  总伤害 ${model.stats.damage}`,
+      `妖精受伤 ${immortalFairyDamage(model)}`,
       `时长 ${(model.stats.elapsedTicks / 60).toFixed(1)}s`,
     ];
     this.sidebarBody.setText(lines.join("\n"));
   }
+}
+
+function immortalFairyDamage(model: BattleOutputState): number {
+  const fairy = model.neutralMobs.find((mob) => mob.kind === "immortal_fairy");
+  return fairy?.damageTaken ?? 0;
 }
 
 function formatCoord(value: number): string {

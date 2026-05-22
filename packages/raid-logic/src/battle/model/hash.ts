@@ -57,11 +57,14 @@ function writeNeutralMobs(hasher: DeterministicHasher, neutralMobs: readonly Neu
     writeFixed(hasher, mob.previousX);
     writeFixed(hasher, mob.previousY);
     writeFixed(hasher, mob.hitRadius);
+    writeFixed(hasher, mob.hitWidth ?? 0);
+    writeFixed(hasher, mob.hitHeight ?? 0);
     hasher.writeNumber(mob.waveId);
     hasher.writeString(mob.movementVariant);
     hasher.writeString(mob.form);
     hasher.writeNumber(mob.MaxHealth);
     hasher.writeNumber(mob.CurrentHealth);
+    hasher.writeNumber(mob.damageTaken ?? 0);
     hasher.writeNumber(mob.active ? 1 : 0);
     hasher.writeNumber(mob.ageTicks);
   }
