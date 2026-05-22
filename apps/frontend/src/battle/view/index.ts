@@ -7,7 +7,7 @@ import { FighterView } from "./fighter";
 import { InfoDisplayView } from "./info-display";
 import { MobView } from "./mobs";
 import { ProjectileView } from "./projectiles";
-import { createBattleStage } from "./stage";
+import { createBattleStage, type BattleViewMode } from "./stage";
 import { createBattleTextures } from "./textures";
 
 export class BattleView {
@@ -20,15 +20,15 @@ export class BattleView {
   private readonly debugGraphics: Phaser.GameObjects.Graphics;
   private debugPhysicsEnabled = false;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, mode: BattleViewMode = "training") {
     createBattleTextures(scene);
-    createBattleStage(scene);
+    createBattleStage(scene, mode);
     this.fighters = new FighterView(scene);
     this.mobs = new MobView(scene);
     this.crosshair = new CrosshairView(scene);
     this.projectiles = new ProjectileView(scene);
     this.effects = new EffectsView(scene);
-    this.infoDisplay = new InfoDisplayView(scene);
+    this.infoDisplay = new InfoDisplayView(scene, mode);
     this.debugGraphics = scene.add.graphics();
     // Use max depth so debug always renders on top of game objects.
     // Other view components use depths in range 2–20, 999 is safely above.
@@ -50,6 +50,7 @@ export class BattleView {
       ammoCount: localFighter.ammo,
       ammoMax: localFighter.ammoCapacity,
       bombs: localFighter.bombs,
+      lives: localFighter.lives,
     });
   }
 

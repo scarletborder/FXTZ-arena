@@ -86,7 +86,7 @@ export class BattleScene extends Phaser.Scene {
       if (!this.scene.isActive()) return;
       this.logicReady = true;
     });
-    this.view = new BattleView(this);
+    this.view = new BattleView(this, data.mode ?? "training");
     this.lastInput = createBattleInput(this, this.keys);
     this.recordDebugFrame();
     this.setupOnlineBattle(data);

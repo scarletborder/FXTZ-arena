@@ -6,6 +6,7 @@ export class CrosshairView {
   private readonly ammoFill: Phaser.GameObjects.Rectangle;
   private readonly ammoOutline: Phaser.GameObjects.Rectangle;
   private readonly ammoText: Phaser.GameObjects.Text;
+  private readonly lifeMarkers: readonly Phaser.GameObjects.Text[];
   private readonly bombIcons: readonly Phaser.GameObjects.Image[];
 
   constructor(scene: Phaser.Scene) {
@@ -18,6 +19,17 @@ export class CrosshairView {
       fontSize: "13px",
       color: "#d7e3ef",
     }).setOrigin(0.5).setDepth(14);
+    this.lifeMarkers = Array.from({ length: 6 }, () =>
+      scene.add.text(0, 0, "♥", {
+        fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+        fontSize: "15px",
+        color: "#ff3131",
+        stroke: "#ffd0d0",
+        strokeThickness: 1,
+      })
+        .setOrigin(0.5)
+        .setDepth(12),
+    );
     this.bombIcons = Array.from({ length: 6 }, () =>
       scene.add.image(0, 0, "bomb").setOrigin(0.5).setScale(0.085).setTint(0xaec7ff).setDepth(12),
     );
@@ -31,6 +43,7 @@ export class CrosshairView {
     readonly ammoCount: number;
     readonly ammoMax: number;
     readonly bombs: number;
+    readonly lives: number;
   }): void {
     const barX = params.pointerX + 44;
     const barY = params.pointerY - 28;
@@ -46,9 +59,16 @@ export class CrosshairView {
     this.ammoText.setPosition(barX, barY + 74);
     this.ammoText.setText(`${Math.floor(params.ammoCount)}/${params.ammoMax}`);
 
+    const statusLeft = params.pointerX - 28;
+    for (let index = 0; index < this.lifeMarkers.length; index += 1) {
+      const marker = this.lifeMarkers[index];
+      marker.setPosition(statusLeft + index * 14, params.pointerY + 58);
+      marker.setVisible(index < params.lives);
+    }
+
     for (let index = 0; index < this.bombIcons.length; index += 1) {
       const icon = this.bombIcons[index];
-      icon.setPosition(params.pointerX - 28 + index * 14, params.pointerY + 58);
+      icon.setPosition(statusLeft + index * 14, params.pointerY + 78);
       icon.setVisible(index < params.bombs);
     }
   }
