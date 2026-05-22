@@ -38,11 +38,17 @@ export class InfoDisplayView {
       `弹夹 ${Math.floor(player.ammo)}/${player.ammoCapacity}`,
       `能力卡 ${player.activeCard?.name ?? "无"} ${player.activeCardUses}`,
       `射击 ${player.shotsFired}  命中 ${player.hits}`,
+      `判定点 (${formatCoord(player.x)}, ${formatCoord(player.y)})`,
       `靶子 ${target.activeCharacter.name}`,
+      `靶判定点 (${formatCoord(target.x)}, ${formatCoord(target.y)})`,
       `靶命 ${Math.max(0, target.lives)}  bomb ${target.bombs}`,
       `总命中 ${model.stats.hits}  总伤害 ${model.stats.damage}`,
       `时长 ${(model.stats.elapsedTicks / 60).toFixed(1)}s`,
     ];
     this.sidebarBody.setText(lines.join("\n"));
   }
+}
+
+function formatCoord(value: number): string {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(2);
 }

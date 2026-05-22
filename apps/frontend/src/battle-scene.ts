@@ -9,7 +9,7 @@ import {
   type RaidLogicRuntime,
 } from "@repo/raid-logic";
 
-import { FIXED_STEP_MS } from "@repo/constants";
+import { ARENA_OFFSET_Y, FIXED_STEP_MS } from "@repo/constants";
 import { createBattleInput, getBattlePointerWorld, type BattleKeyMap } from "./battle/input";
 import { BattleDebugLogger } from "./battle/logger";
 import type { BattleSceneData } from "./battle/loadout";
@@ -64,6 +64,7 @@ export class BattleScene extends Phaser.Scene {
     this.debugHistory.clear();
     this.debugLogger.reset();
     this.accumulator = 0;
+    this.cameras.main.setScroll(0, -ARENA_OFFSET_Y);
     this.input.setDefaultCursor("none");
     this.input.mouse?.disableContextMenu();
     this.keys = this.input.keyboard!.addKeys({
@@ -212,7 +213,7 @@ export class BattleScene extends Phaser.Scene {
       color: "#ffcf6e",
       backgroundColor: "#101820cc",
       padding: { x: 10, y: 6 },
-    }).setDepth(100).setVisible(false);
+    }).setScrollFactor(0).setDepth(100).setVisible(false);
 
     this.combatSync = new CombatSyncManager(this.runtime, connectionManager, {
       sceneData: data,

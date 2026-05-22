@@ -1,6 +1,6 @@
 import { fp } from "@shaisrc/fixed-point";
 
-import { ARENA_WIDTH, bulletSpeedRankToPixelsPerTick, secondsToTicks } from "@repo/types";
+import { ARENA_HEIGHT, ARENA_WIDTH, bulletSpeedRankToPixelsPerTick, secondsToTicks } from "@repo/types";
 
 import type { FighterKey, FighterState, ProjectileState } from "@repo/content";
 import { fpAtan2, fpHypotFp, fpMax } from "@repo/content";
@@ -114,5 +114,5 @@ export function isProjectileOutOfWorld(projectile: ProjectileState): boolean {
   if (!Number.isFinite(projectile.width)) {
     return false;
   }
-  return projectile.x < 0 || projectile.x > ARENA_WIDTH || projectile.y < 0 || projectile.y > 675;
+  return projectile.x < 0 || projectile.x > ARENA_WIDTH || projectile.y < 0 || projectile.y > ARENA_HEIGHT;
 }

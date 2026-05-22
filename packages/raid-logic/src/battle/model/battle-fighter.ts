@@ -1,10 +1,11 @@
 import { fp } from "@shaisrc/fixed-point";
 
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
-import { ARENA_WIDTH, DEFAULT_BOMBS, speedRankToPixelsPerTick } from "@repo/types";
+import { ARENA_HEIGHT, ARENA_WIDTH, DEFAULT_BOMBS, speedRankToPixelsPerTick } from "@repo/types";
 
 import type { BattleInputState } from "@repo/types";
 import type { FighterKey, FighterState, ShieldState, TrainingStats } from "@repo/content";
+import { PLAYER_CORE_RADIUS } from "../constants";
 import { applyHit, getFireCooldown } from "./combat";
 import { createFighter, getCharacterAmmo, resetFighter, setCharacterAmmo, tickFighterTimers } from "./fighter";
 import { applyInitialCardState, createBattleAbilityCard, type BattleAbilityCard, type BattleHitContext } from "@repo/content";
@@ -88,13 +89,13 @@ export class BattleFighter {
     const speed = speedRankToPixelsPerTick(this.state.moveSpeedOverride ?? this.activeCharacter.moveSpeed);
     this.state.x = fp.toFloat(fpClamp(
       fp.add(fp.fromFloat(this.state.x), fp.mul(fp.fromFloat(input.moveX), fp.fromFloat(speed))),
-      fp.fromInt(48),
-      fp.fromInt(ARENA_WIDTH - 48),
+      fp.fromFloat(PLAYER_CORE_RADIUS),
+      fp.fromFloat(ARENA_WIDTH - PLAYER_CORE_RADIUS),
     ));
     this.state.y = fp.toFloat(fpClamp(
       fp.add(fp.fromFloat(this.state.y), fp.mul(fp.fromFloat(input.moveY), fp.fromFloat(speed))),
-      fp.fromInt(48),
-      fp.fromInt(627),
+      fp.fromFloat(PLAYER_CORE_RADIUS),
+      fp.fromFloat(ARENA_HEIGHT - PLAYER_CORE_RADIUS),
     ));
   }
 
