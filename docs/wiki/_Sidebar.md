@@ -1,36 +1,36 @@
 # FXTZ Arena Wiki
 
-- [首页](README.md)
+- [首页](README)
 
 ## 游戏说明
 
-- [操作说明](Button-Control.md)
+- [操作说明](Button-Control)
 - 配装说明
-  - [配装 Cost](Select/Select-Cost.md)
-  - [角色选择](Select/Character.md)
-  - [能力卡选择](Select/Ability-Card.md)
+  - [配装 Cost](Select/Select-Cost)
+  - [角色选择](Select/Character)
+  - [能力卡选择](Select/Ability-Card)
 - 战局机制
-  - [装填](Mechanical/Reload.md)
-  - [中立怪物](Mechanical/Mobs.md)
+  - [装填](Mechanical/Reload)
+  - [中立怪物](Mechanical/Mobs)
 - 游戏数据
-  - [机体说明](Data/PC/index.md)
-    - [博丽灵梦](Data/PC/reimu.md)
-    - [雾雨魔理沙](Data/PC/marisa.md)
-    - [十六夜咲夜](Data/PC/sakuya.md)
-  - [能力卡说明](Data/Ability-Card/index.md)
-    - [Spirit Strike Card](Data/Ability-Card/spirit_strike_card.md)
-    - [Backdoor](Data/Ability-Card/backdoor.md)
-    - [Multi Shot](Data/Ability-Card/multi_shot.md)
-    - [Ember](Data/Ability-Card/ember.md)
-    - [Extra Life](Data/Ability-Card/extra_life.md)
+  - [机体说明](Data/PC/index)
+    - [博丽灵梦](Data/PC/reimu)
+    - [雾雨魔理沙](Data/PC/marisa)
+    - [十六夜咲夜](Data/PC/sakuya)
+  - [能力卡说明](Data/Ability-Card/index)
+    - [Spirit Strike Card](Data/Ability-Card/spirit_strike_card)
+    - [Backdoor](Data/Ability-Card/backdoor)
+    - [Multi Shot](Data/Ability-Card/multi_shot)
+    - [Ember](Data/Ability-Card/ember)
+    - [Extra Life](Data/Ability-Card/extra_life)
 
 ## 开发相关
 
 - 核心机制
-  - [战局循环介绍](Core/Game-Step.md)
-  - [回滚和状态恢复](Core/rollback.md)
-  - [Fixed-point、数学计算和移动处理](Core/Fixed-Point-and-Math.md)
+  - [战局循环介绍](Core/Game-Step)
+  - [回滚和状态恢复](Core/rollback)
+  - [Fixed-point、数学计算和移动处理](Core/Fixed-Point-and-Math)
 - 拓展内容
-  - [如何创建战局 Entity](Expansion/how-to-create-entity.md)
-  - [如何开发新角色](Expansion/how-to-create-new-character.md)
-  - [如何创建和应用 SFX](Expansion/how-to-create-new-sfx.md)
+  - [如何创建战局 Entity](Expansion/how-to-create-entity)
+  - [如何开发新角色](Expansion/how-to-create-new-character)
+  - [如何创建和应用 SFX](Expansion/how-to-create-new-sfx)
