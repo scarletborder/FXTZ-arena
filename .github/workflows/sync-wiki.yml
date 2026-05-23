@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "docs/wiki/**"
+      - ".github/workflows/sync-wiki.yml"
 
 permissions:
   contents: write
@@ -19,6 +20,6 @@ jobs:
 
       - name: 同步文件夹到 Wiki
         uses: Andrew-Chen-Wang/github-wiki-action@v4
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WIKI_DIR: docs/wiki/
+        with:
+          path: docs/wiki/
+          token: ${{ github.token }}
