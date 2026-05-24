@@ -162,7 +162,7 @@ export class BattleFighter {
   }
 
   useBomb(ctx: CharacterActionContext): void {
-    if (this.state.actionLockedUntil > 0 || this.state.nonFireActionLockedUntil > 0 || this.state.bombs <= 0 || this.state.bombCooldownUntil > 0 || this.state.deadUntil > 0) {
+    if (this.state.actionLockedUntil > 0 || this.state.nonFireActionLockedUntil > 0 || !this.activeCharacter.canUseBomb(this.state) || this.state.bombCooldownUntil > 0 || this.state.deadUntil > 0) {
       return;
     }
     this.activeCharacter.useBomb(ctx, this.state);

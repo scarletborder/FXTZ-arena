@@ -463,6 +463,55 @@ describe("BattleModel character bombs", () => {
     expect(model.effects.some((effect) => effect.kind === "ring")).toBe(true);
   });
 
+  it("allows bomb use at the point threshold even with no bombs remaining", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+    model.player.bombs = 0;
+    model.setPlayerPointCount(300);
+
+    model.step(input({ bombPressed: true }));
+
+    expect(model.player.bombs).toBe(0);
+    expect(model.player.pointCount).toBe(100);
+    expect(model.player.bombUses).toBe(1);
+    expect(model.stats.bombUses).toBe(1);
+    expect(model.effects.some((effect) => effect.kind === "ring")).toBe(true);
+  });
+
+  it("spends points instead of a bomb when point count reaches the bomb threshold", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+    model.setPlayerPointCount(300);
+
+    model.step(input({ bombPressed: true }));
+
+    expect(model.player.bombs).toBe(3);
+    expect(model.player.pointCount).toBe(100);
+    expect(model.player.bombUses).toBe(1);
+  });
+
+  it("spends a bomb below the point bomb threshold", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+    model.setPlayerPointCount(299);
+
+    model.step(input({ bombPressed: true }));
+
+    expect(model.player.bombs).toBe(2);
+    expect(model.player.pointCount).toBe(299);
+    expect(model.player.bombUses).toBe(1);
+  });
+
+  it("blocks bomb use below the point bomb threshold when no bombs remain", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+    model.player.bombs = 0;
+    model.setPlayerPointCount(299);
+
+    model.step(input({ bombPressed: true }));
+
+    expect(model.player.bombs).toBe(0);
+    expect(model.player.pointCount).toBe(299);
+    expect(model.player.bombUses).toBe(0);
+    expect(model.stats.bombUses).toBe(0);
+  });
+
   it("marisa bomb does not pause an existing projectile while scheduling master spark", async () => {
     const model = await createBattleModel("marisa", "reimu");
     model.projectiles.push(
@@ -826,7 +875,7 @@ describe("BattleModel point power shooting tiers", () => {
     expect(tier1.projectiles).toHaveLength(3);
     expect(
       tier1.projectiles.filter(
-        (projectile) => projectile.homingUntil === tier1.frame + 30,
+        (projectile) => projectile.homingUntil === projectile.homingStartAt,
       ),
     ).toHaveLength(1);
 
@@ -873,12 +922,12 @@ describe("BattleModel point power shooting tiers", () => {
       HIT_CIRCLE_DIAMETER * 2,
     ]);
     expect(tier2RearBeams.map((projectile) => projectile.x)).toEqual([
-      tier2.player.x - HIT_CIRCLE_DIAMETER * 3,
-      tier2.player.x - HIT_CIRCLE_DIAMETER * 3,
+      tier2.player.previousX - HIT_CIRCLE_DIAMETER * 16,
+      tier2.player.previousX - HIT_CIRCLE_DIAMETER * 16,
     ]);
     expect(tier2RearBeams.map((projectile) => projectile.y)).toEqual([
-      tier2.player.y - HIT_CIRCLE_DIAMETER * 3,
-      tier2.player.y + HIT_CIRCLE_DIAMETER * 3,
+      tier2.player.previousY - HIT_CIRCLE_DIAMETER * 8,
+      tier2.player.previousY + HIT_CIRCLE_DIAMETER * 8,
     ]);
 
     const tier3 = await shootOnceAtPoint("marisa", 200);
@@ -905,17 +954,17 @@ describe("BattleModel point power shooting tiers", () => {
         .filter((projectile) => projectile.y < tier4.player.y)
         .map((projectile) => projectile.angle)
         .sort((left, right) => left - right),
-    ).toEqual([-Math.PI / 9, 0]);
+    ).toEqual([-Math.PI / 18, 0]);
     expect(
       tier4RearBeams
         .filter((projectile) => projectile.y > tier4.player.y)
         .map((projectile) => projectile.angle)
         .sort((left, right) => left - right),
-    ).toEqual([0, Math.PI / 9]);
+    ).toEqual([0, Math.PI / 18]);
     expect(
       tier4RearBeams.every(
         (projectile) =>
-          projectile.x === tier4.player.x - HIT_CIRCLE_DIAMETER * 3,
+          projectile.x === tier4.player.previousX - HIT_CIRCLE_DIAMETER * 16,
       ),
     ).toBe(true);
   });

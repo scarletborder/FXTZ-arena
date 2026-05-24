@@ -15,6 +15,8 @@ import type { BattleHitContext } from "../ability-cards/base";
 import { fpAtan2, fpMax } from "../fp";
 
 const STATUS_VISIBLE_TICKS = secondsToTicks(1.5);
+const DEFAULT_POINT_BOMB_THRESHOLD = 300;
+const DEFAULT_POINT_BOMB_COST = 200;
 
 // Spawn param types matching the shapes from raid-logic's projectile system,
 // defined locally so this package doesn't depend on raid-logic internals.
@@ -87,6 +89,9 @@ export abstract class BattleCharacter {
   abstract readonly reloadCommitPolicy: CharacterDefinition["reloadCommitPolicy"];
   abstract readonly bulletSpeed: CharacterDefinition["bulletSpeed"];
 
+  readonly pointBombThreshold = DEFAULT_POINT_BOMB_THRESHOLD;
+  readonly pointBombCost = DEFAULT_POINT_BOMB_COST;
+
   get definition(): CharacterDefinition {
     return {
       id: this.id,
@@ -115,6 +120,12 @@ export abstract class BattleCharacter {
   ): void;
   abstract useBomb(ctx: CharacterActionContext, fighter: FighterState): void;
   abstract onHit(ctx: BattleHitContext): void;
+
+  canUseBomb(fighter: FighterState): boolean {
+    return (
+      fighter.bombs > 0 || fighter.pointCount >= this.pointBombThreshold
+    );
+  }
 
   protected aimAngle(
     fighter: FighterState,
@@ -173,7 +184,11 @@ export abstract class BattleCharacter {
     fighter: FighterState,
     cooldownTicks = 60,
   ): void {
-    fighter.bombs -= 1;
+    if (fighter.pointCount >= this.pointBombThreshold) {
+      fighter.pointCount = Math.max(0, fighter.pointCount - this.pointBombCost);
+    } else {
+      fighter.bombs -= 1;
+    }
     fighter.bombUses += 1;
     fighter.statusVisibleUntil = ctx.frame + STATUS_VISIBLE_TICKS;
     fighter.bombCooldownUntil = cooldownTicks;
