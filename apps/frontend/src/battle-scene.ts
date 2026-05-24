@@ -9,7 +9,7 @@ import {
   type RaidLogicRuntime,
 } from "@repo/raid-logic";
 
-import { ARENA_OFFSET_Y, FIXED_STEP_MS } from "@repo/constants";
+import { ARENA_HEIGHT_PX, ARENA_WIDTH_PX, FIXED_STEP_MS, GAME_HEIGHT, GAME_WIDTH } from "@repo/constants";
 import { createBattleInput, getBattlePointerWorld, type BattleKeyMap } from "./battle/input";
 import { BattleDebugLogger } from "./battle/logger";
 import type { BattleSceneData } from "./battle/loadout";
@@ -64,7 +64,8 @@ export class BattleScene extends Phaser.Scene {
     this.debugHistory.clear();
     this.debugLogger.reset();
     this.accumulator = 0;
-    this.cameras.main.setScroll(0, -ARENA_OFFSET_Y);
+    this.scale.resize(ARENA_WIDTH_PX, ARENA_HEIGHT_PX);
+    this.cameras.main.setScroll(0, 0);
     this.input.setDefaultCursor("none");
     this.input.mouse?.disableContextMenu();
     this.keys = this.input.keyboard!.addKeys({
@@ -97,6 +98,7 @@ export class BattleScene extends Phaser.Scene {
       this.setDebugPhysicsEnabled(true);
     }
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.resize(GAME_WIDTH, GAME_HEIGHT);
       this.input.setDefaultCursor("auto");
       ConsoleCmd.uninstall(this);
       if (this.sceneData.mode === "online") {

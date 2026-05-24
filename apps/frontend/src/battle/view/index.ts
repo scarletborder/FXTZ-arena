@@ -4,7 +4,6 @@ import type { BattleInputState, BattleOutputState, BodyDebugData, FighterKey } f
 import { CrosshairView } from "./crosshair";
 import { EffectsView } from "./effects";
 import { FighterView } from "./fighter";
-import { InfoDisplayView } from "./info-display";
 import { MobView } from "./mobs";
 import { PointView } from "./points";
 import { ProjectileView } from "./projectiles";
@@ -16,7 +15,6 @@ export class BattleView {
   private readonly crosshair: CrosshairView;
   private readonly projectiles: ProjectileView;
   private readonly effects: EffectsView;
-  private readonly infoDisplay: InfoDisplayView;
   private readonly mobs: MobView;
   private readonly points: PointView;
   private readonly debugGraphics: Phaser.GameObjects.Graphics;
@@ -31,7 +29,6 @@ export class BattleView {
     this.crosshair = new CrosshairView(scene);
     this.projectiles = new ProjectileView(scene);
     this.effects = new EffectsView(scene);
-    this.infoDisplay = new InfoDisplayView(scene, mode);
     this.debugGraphics = scene.add.graphics();
     // Use max depth so debug always renders on top of game objects.
     // Other view components use depths in range 2–20, 999 is safely above.
@@ -45,7 +42,6 @@ export class BattleView {
     this.points.render({ points: state.points, player: state.player, target: state.target, alpha });
     this.projectiles.render(state.projectiles, state.frame, localFighterKey, alpha);
     this.effects.render(state.effects, state.shields);
-    this.infoDisplay.render(state);
     this.crosshair.render({
       pointerX: input.aimX,
       pointerY: input.aimY,

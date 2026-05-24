@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 
 import type { BattleInputState } from "@repo/raid-logic";
-import { GAME_HEIGHT, GAME_WIDTH } from "@repo/constants";
+import { ARENA_HEIGHT_PX, ARENA_WIDTH_PX } from "@repo/constants";
 
 export interface BattleInputBundle extends BattleInputState {
   readonly pointerX: number;
@@ -35,8 +35,8 @@ export function getBattlePointerWorld(scene: Phaser.Scene): { readonly x: number
   const x = Number.isFinite(cameraPoint.x) ? cameraPoint.x : pointer.x;
   const y = Number.isFinite(cameraPoint.y) ? cameraPoint.y : pointer.y;
   return {
-    x: Phaser.Math.Clamp(x, 0, GAME_WIDTH),
-    y: Phaser.Math.Clamp(y, 0, GAME_HEIGHT),
+    x: Phaser.Math.Clamp(x, 0, ARENA_WIDTH_PX),
+    y: Phaser.Math.Clamp(y, 0, ARENA_HEIGHT_PX),
   };
 }
 
