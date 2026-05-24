@@ -1,1 +1,1 @@
-export * from "@repo/constants";
+export * from "@repo/types";

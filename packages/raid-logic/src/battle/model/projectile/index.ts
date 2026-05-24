@@ -1,8 +1,7 @@
 import { fp } from "@shaisrc/fixed-point";
 
-import type { ProjectileCollisionContext } from "@repo/types";
+import { PLAYER_CORE_RADIUS, type ProjectileCollisionContext } from "@repo/types";
 
-import { PLAYER_CORE_RADIUS } from "../../constants";
 import type { FighterKey, FighterState, ProjectileState, ShieldState } from "@repo/content";
 import type { CollisionResult } from "../physics-adapter";
 import { fpHypotFp, fpClamp, fpMin, fpMax } from "@repo/content";

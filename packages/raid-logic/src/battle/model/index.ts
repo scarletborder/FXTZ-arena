@@ -1,9 +1,16 @@
 import { fp } from "@shaisrc/fixed-point";
 
-import type { NeutralMob, NeutralMobActionContext, NeutralMobState, ProjectileCollisionContext } from "@repo/types";
+import {
+  PLAYER_CORE_RADIUS,
+  PLAYER_SPAWN,
+  TARGET_SPAWN,
+  type NeutralMob,
+  type NeutralMobActionContext,
+  type NeutralMobState,
+  type ProjectileCollisionContext,
+} from "@repo/types";
 
 import { getAbilityCard, getCharacter } from "../content";
-import { PLAYER_CORE_RADIUS, PLAYER_SPAWN, TARGET_SPAWN } from "../constants";
 import type { BattleLoadouts, FighterLoadout } from "../loadout";
 import type { BattleInputState } from "@repo/types";
 import type { BattleOutputState, EffectState, FighterKey, FighterState, ProjectileState, ShieldState, TrainingStats } from "@repo/content";

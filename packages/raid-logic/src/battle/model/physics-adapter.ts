@@ -2,7 +2,7 @@ import { PhysicsWorld, ensureRapierInit, type BodyDebugData } from "../../physic
 
 import { fp } from "@shaisrc/fixed-point";
 
-import { PLAYER_CORE_RADIUS } from "../constants";
+import { PLAYER_CORE_RADIUS } from "@repo/types";
 
 import type { FighterKey, FighterState, ProjectileState, ShieldState } from "@repo/content";
 import type { NeutralMobState } from "@repo/types";

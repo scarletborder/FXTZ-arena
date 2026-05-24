@@ -1,6 +1,4 @@
-import type { FrameInput, PlayerFrameInput, PlayerId } from "@repo/types";
-
-import { ANGLE_TICKS_PER_TURN } from "./constants";
+import { ANGLE_TICKS_PER_TURN, type FrameInput, type PlayerFrameInput, type PlayerId } from "@repo/types";
 
 const INPUT_BYTE_LENGTH = 6;
 

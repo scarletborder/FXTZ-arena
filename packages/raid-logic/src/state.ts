@@ -2,6 +2,7 @@ import { DEFAULT_MAPS } from "@repo/content";
 import {
   ARENA_HEIGHT,
   ARENA_WIDTH,
+  PLAYER_RADIUS_UNITS,
   speedRankToPixelsPerTick,
   type BattleConfig,
   type BattleSnapshot,
@@ -11,8 +12,6 @@ import {
   type ProjectileState,
   type TimerState,
 } from "@repo/types";
-
-import { PLAYER_RADIUS_UNITS } from "./constants";
 
 /** Mutable stats used internally; converted to readonly BattleStats on output. */
 interface MutableStats {

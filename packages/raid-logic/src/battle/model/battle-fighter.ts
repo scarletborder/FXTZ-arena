@@ -1,11 +1,10 @@
 import { fp } from "@shaisrc/fixed-point";
 
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
-import { ARENA_HEIGHT, ARENA_WIDTH, DEFAULT_BOMBS, speedRankToPixelsPerTick } from "@repo/types";
+import { ARENA_HEIGHT, ARENA_WIDTH, DEFAULT_BOMBS, PLAYER_CORE_RADIUS, speedRankToPixelsPerTick } from "@repo/types";
 
 import type { BattleInputState } from "@repo/types";
 import type { FighterKey, FighterState, ShieldState, TrainingStats } from "@repo/content";
-import { PLAYER_CORE_RADIUS } from "../constants";
 import { applyHit, getFireCooldown } from "./combat";
 import { createFighter, getCharacterAmmo, resetFighter, setCharacterAmmo, tickFighterTimers } from "./fighter";
 import { applyInitialCardState, createBattleAbilityCard, type BattleAbilityCard, type BattleHitContext } from "@repo/content";

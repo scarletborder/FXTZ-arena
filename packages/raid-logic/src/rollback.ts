@@ -1,4 +1,4 @@
-import { DEFAULT_SNAPSHOT_HISTORY } from "./constants";
+import { DEFAULT_SNAPSHOT_HISTORY } from "@repo/types";
 import type { RaidFrameInput } from "./input";
 import { RaidState, type RaidStateSerialized } from "./state";
 
