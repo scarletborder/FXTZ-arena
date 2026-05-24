@@ -1,11 +1,18 @@
 import { fp } from "@shaisrc/fixed-point";
 
-import { ARENA_HEIGHT, ARENA_WIDTH, bulletSpeedRankToPixelsPerTick, secondsToTicks } from "@repo/types";
+import {
+  ARENA_HEIGHT,
+  ARENA_WIDTH,
+  TICK_RATE,
+  bulletSpeedRankToPixelsPerTick,
+  secondsToTicks,
+} from "@repo/types";
 
 import type { FighterKey, FighterState, ProjectileState } from "@repo/content";
 import { fpAtan2, fpHypotFp, fpMax } from "@repo/content";
 
 const HOMING_START_DELAY_TICKS = secondsToTicks(0.5);
+const HOMING_MAX_TURN_RADIANS_PER_TICK = Math.PI / TICK_RATE;
 
 export function createBulletProjectile(params: {
   readonly id: number;
@@ -71,12 +78,23 @@ export function stepBulletProjectile(
   frame: number,
   target: FighterState,
 ): void {
-  if (projectile.kind === "orb" && frame >= projectile.homingStartAt && frame <= projectile.homingUntil) {
+  if (
+    projectile.kind === "orb" &&
+    frame >= projectile.homingStartAt &&
+    frame <= projectile.homingUntil
+  ) {
     if (!canHomeTo(target)) {
       projectile.homingUntil = frame - 1;
-      projectile.x = fp.toFloat(fp.add(fp.fromFloat(projectile.x), fp.fromFloat(projectile.vx)));
-      projectile.y = fp.toFloat(fp.add(fp.fromFloat(projectile.y), fp.fromFloat(projectile.vy)));
-      projectile.angle = fpAtan2(fp.fromFloat(projectile.vy), fp.fromFloat(projectile.vx));
+      projectile.x = fp.toFloat(
+        fp.add(fp.fromFloat(projectile.x), fp.fromFloat(projectile.vx)),
+      );
+      projectile.y = fp.toFloat(
+        fp.add(fp.fromFloat(projectile.y), fp.fromFloat(projectile.vy)),
+      );
+      projectile.angle = fpAtan2(
+        fp.fromFloat(projectile.vy),
+        fp.fromFloat(projectile.vx),
+      );
       return;
     }
 
@@ -86,33 +104,67 @@ export function stepBulletProjectile(
     const fpPy = fp.fromFloat(projectile.y);
     const fpDx = fp.sub(fpTx, fpPx);
     const fpDy = fp.sub(fpTy, fpPy);
-    const fpLen = fpMax(fp.fromInt(1), fpHypotFp(fpDx, fpDy));
     const fpVx = fp.fromFloat(projectile.vx);
     const fpVy = fp.fromFloat(projectile.vy);
     const fpSpd = fpMax(fp.fromFloat(1.5), fpHypotFp(fpVx, fpVy));
 
-    const fp09 = fp.fromFloat(0.9);
-    const fp01 = fp.fromFloat(0.1);
-    const fpNewVx = fp.add(fp.mul(fpVx, fp09), fp.mul(fp.mul(fp.div(fpDx, fpLen), fpSpd), fp01));
-    const fpNewVy = fp.add(fp.mul(fpVy, fp09), fp.mul(fp.mul(fp.div(fpDy, fpLen), fpSpd), fp01));
+    const currentAngle = fpAtan2(fpVy, fpVx);
+    const targetAngle = fpAtan2(fpDy, fpDx);
+    const nextAngle =
+      currentAngle +
+      clamp(
+        normalizeRadians(targetAngle - currentAngle),
+        -HOMING_MAX_TURN_RADIANS_PER_TICK,
+        HOMING_MAX_TURN_RADIANS_PER_TICK,
+      );
+    const fpNextAngle = fp.fromFloat(nextAngle);
+    const fpNewVx = fp.mul(fp.cos(fpNextAngle), fpSpd);
+    const fpNewVy = fp.mul(fp.sin(fpNextAngle), fpSpd);
 
     projectile.vx = fp.toFloat(fpNewVx);
     projectile.vy = fp.toFloat(fpNewVy);
   }
 
   // Position step (non-homing: simple fp add)
-  projectile.x = fp.toFloat(fp.add(fp.fromFloat(projectile.x), fp.fromFloat(projectile.vx)));
-  projectile.y = fp.toFloat(fp.add(fp.fromFloat(projectile.y), fp.fromFloat(projectile.vy)));
-  projectile.angle = fpAtan2(fp.fromFloat(projectile.vy), fp.fromFloat(projectile.vx));
+  projectile.x = fp.toFloat(
+    fp.add(fp.fromFloat(projectile.x), fp.fromFloat(projectile.vx)),
+  );
+  projectile.y = fp.toFloat(
+    fp.add(fp.fromFloat(projectile.y), fp.fromFloat(projectile.vy)),
+  );
+  projectile.angle = fpAtan2(
+    fp.fromFloat(projectile.vy),
+    fp.fromFloat(projectile.vx),
+  );
 }
 
 function canHomeTo(target: FighterState): boolean {
   return target.deadUntil <= 0 && target.invulnerableUntil <= 0;
 }
 
+function normalizeRadians(angle: number): number {
+  let normalized = angle;
+  while (normalized > Math.PI) {
+    normalized -= Math.PI * 2;
+  }
+  while (normalized < -Math.PI) {
+    normalized += Math.PI * 2;
+  }
+  return normalized;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
 export function isProjectileOutOfWorld(projectile: ProjectileState): boolean {
   if (!Number.isFinite(projectile.width)) {
     return false;
   }
-  return projectile.x < 0 || projectile.x > ARENA_WIDTH || projectile.y < 0 || projectile.y > ARENA_HEIGHT;
+  return (
+    projectile.x < 0 ||
+    projectile.x > ARENA_WIDTH ||
+    projectile.y < 0 ||
+    projectile.y > ARENA_HEIGHT
+  );
 }

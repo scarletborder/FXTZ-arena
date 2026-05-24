@@ -11,6 +11,7 @@ import { POINT_COUNT_MAX } from "../constants";
 import { BattleModel } from ".";
 import { BattlePhysics } from "./physics-adapter";
 import { createPointState } from "./points";
+import { stepBulletProjectile } from "./projectile/bullet";
 import type {
   BulletProjectileParams,
   LaserProjectileParams,
@@ -973,6 +974,30 @@ describe("BattlePhysics projectile collisions", () => {
     );
 
     expect(hits).toEqual([{ projectileId: 1, victimKey: "Player2" }]);
+  });
+});
+
+describe("BattleModel homing projectiles", () => {
+  it("limits homing turn speed to 180 degrees per second", async () => {
+    const model = await createBattleModel();
+    const projectile = testProjectile({
+      id: 1,
+      owner: "Player1",
+      x: 100,
+      y: 100,
+      vx: 10,
+      vy: 0,
+      homingStartAt: 0,
+      homingUntil: 10,
+      angle: 0,
+    });
+    model.target.x = 100;
+    model.target.y = 200;
+
+    stepBulletProjectile(projectile, 0, model.target);
+
+    expect(projectile.angle).toBeGreaterThan(0);
+    expect(projectile.angle).toBeLessThanOrEqual(Math.PI / 60);
   });
 });
 
