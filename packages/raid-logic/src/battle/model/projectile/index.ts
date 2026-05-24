@@ -245,12 +245,18 @@ function infiniteBeamIntersectsRect(projectile: ProjectileState, victim: Project
     { x: fp.sub(fp.fromFloat(victim.x), fpHalfW), y: fp.add(fp.fromFloat(victim.y), fpHalfH) },
     { x: fp.add(fp.fromFloat(victim.x), fpHalfW), y: fp.add(fp.fromFloat(victim.y), fpHalfH) },
   ];
-  let minForward = Number.POSITIVE_INFINITY;
-  let maxForward = Number.NEGATIVE_INFINITY;
-  let minSide = Number.POSITIVE_INFINITY;
-  let maxSide = Number.NEGATIVE_INFINITY;
+  const firstCorner = fpCorners[0]!;
+  const firstDx = fp.sub(firstCorner.x, fpPx);
+  const firstDy = fp.sub(firstCorner.y, fpPy);
+  const firstForward = fp.add(fp.mul(firstDx, fpCos), fp.mul(firstDy, fpSin));
+  const firstSide = fp.add(fp.mul(fp.negate(firstDx), fpSin), fp.mul(firstDy, fpCos));
+  let minForward = firstForward;
+  let maxForward = firstForward;
+  let minSide = firstSide;
+  let maxSide = firstSide;
 
-  for (const corner of fpCorners) {
+  for (let index = 1; index < fpCorners.length; index += 1) {
+    const corner = fpCorners[index]!;
     const fpDx = fp.sub(corner.x, fpPx);
     const fpDy = fp.sub(corner.y, fpPy);
     const forward = fp.add(fp.mul(fpDx, fpCos), fp.mul(fpDy, fpSin));

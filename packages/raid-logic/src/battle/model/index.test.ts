@@ -388,6 +388,20 @@ describe("BattleModel character bombs", () => {
     expect(masterSpark?.pausedUntil).toBe(model.frame + 60);
   });
 
+  it("marisa master spark damages rectangular neutral targets without throwing", async () => {
+    const model = await createBattleModel("marisa", "reimu");
+    model.target.y = 600;
+    const mob = new StaticRectNeutralMob(model.allocateNeutralMobId(), model.player.x + 200, model.player.y);
+    model.addNeutralMob(mob);
+
+    model.step(input({ bombPressed: true, aimX: mob.state.x, aimY: mob.state.y }));
+    for (let index = 0; index < 60; index += 1) {
+      model.step(input({ aimX: mob.state.x, aimY: mob.state.y }));
+    }
+
+    expect(mob.damageTaken).toBeGreaterThan(0);
+  });
+
   it("sakuya bomb clears nearby projectiles and pauses remaining projectiles deterministically", async () => {
     const model = await createBattleModel("sakuya", "reimu");
     model.projectiles.push(
@@ -805,6 +819,66 @@ class TestNeutralMob extends NeutralMob<NeutralMobState, BulletProjectileParams,
 
   onDeath(source: "Player1" | "Player2" | "Neutral" | null): void {
     this.deathSources.push(source);
+  }
+}
+
+class StaticRectNeutralMob extends NeutralMob<NeutralMobState, BulletProjectileParams, LaserProjectileParams> {
+  readonly state: NeutralMobState;
+  damageTaken = 0;
+
+  constructor(id: number, x: number, y: number) {
+    super();
+    this.state = {
+      id,
+      key: "Neutral",
+      kind: "static_rect_mob",
+      x,
+      y,
+      previousX: x,
+      previousY: y,
+      hitRadius: 24,
+      hitWidth: 48,
+      hitHeight: 48,
+      waveId: 0,
+      movementVariant: "",
+      form: "idle",
+      MaxHealth: 999,
+      CurrentHealth: 999,
+      active: true,
+      ageTicks: 0,
+      sfxFlags: 0,
+    };
+  }
+
+  get flashAlpha(): number { return 0; }
+
+  move(): void {
+    this.state.previousX = this.state.x;
+    this.state.previousY = this.state.y;
+  }
+
+  fire(): void {
+    // Static test target does not fire.
+  }
+
+  switchForm(): void {
+    // Static test target keeps one form.
+  }
+
+  die(): void {
+    // Static test target stays active.
+  }
+
+  onProjectileHit(damage: number): "accepted" | "ignored" {
+    if (damage <= 0) {
+      return "ignored";
+    }
+    this.damageTaken += damage;
+    return "accepted";
+  }
+
+  onDeath(): void {
+    // Static test target never dies.
   }
 }
 
