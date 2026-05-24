@@ -6,6 +6,7 @@ export class CrosshairView {
   private readonly ammoFill: Phaser.GameObjects.Rectangle;
   private readonly ammoOutline: Phaser.GameObjects.Rectangle;
   private readonly ammoText: Phaser.GameObjects.Text;
+  private readonly pointText: Phaser.GameObjects.Text;
   private readonly lifeMarkers: readonly Phaser.GameObjects.Text[];
   private readonly bombIcons: readonly Phaser.GameObjects.Image[];
 
@@ -18,6 +19,11 @@ export class CrosshairView {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: "13px",
       color: "#d7e3ef",
+    }).setOrigin(0.5).setDepth(14);
+    this.pointText = scene.add.text(0, 0, "", {
+      fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+      fontSize: "12px",
+      color: "#7fb4ff",
     }).setOrigin(0.5).setDepth(14);
     this.lifeMarkers = Array.from({ length: 6 }, () =>
       scene.add.text(0, 0, "♥", {
@@ -42,6 +48,7 @@ export class CrosshairView {
     readonly ammoDisplay: number;
     readonly ammoCount: number;
     readonly ammoMax: number;
+    readonly pointCount: number;
     readonly bombs: number;
     readonly lives: number;
   }): void {
@@ -58,6 +65,8 @@ export class CrosshairView {
     this.ammoOutline.setPosition(barX, barY);
     this.ammoText.setPosition(barX, barY + 74);
     this.ammoText.setText(`${Math.floor(params.ammoCount)}/${params.ammoMax}`);
+    this.pointText.setPosition(barX, barY + 90);
+    this.pointText.setText(`P ${params.pointCount}`);
 
     const statusLeft = params.pointerX - 28;
     for (let index = 0; index < this.lifeMarkers.length; index += 1) {

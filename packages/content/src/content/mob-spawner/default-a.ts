@@ -63,6 +63,7 @@ export class DefaultMobSpawnerA extends NeutralMobSpawner<DefaultMobSpawnerAStat
       id: ctx.allocateMobId(),
       waveId: waveIndex + 1,
       movementVariant: variant,
+      pointValue: mobIndex === MOB_COUNT - 1 ? 5 : 1,
     }));
   }
 

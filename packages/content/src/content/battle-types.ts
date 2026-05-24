@@ -24,6 +24,7 @@ export interface FighterState {
   previousFacing: number;
   lives: number;
   bombs: number;
+  pointCount: number;
   ammo: number;
   ammoDisplay: number;
   ammoCapacity: number;
@@ -62,6 +63,24 @@ export interface FighterState {
   flashUntil: number;
   statusVisibleUntil: number;
   ammoByCharacterId: Record<string, number>;
+}
+
+export type PointPrefabId = "point_1" | "point_5" | "point_10";
+
+export interface PointState {
+  readonly id: number;
+  readonly prefabId: PointPrefabId;
+  x: number;
+  y: number;
+  previousX: number;
+  previousY: number;
+  vx: number;
+  vy: number;
+  readonly size: number;
+  readonly value: number;
+  active: boolean;
+  collectingBy: FighterKey | undefined;
+  collectTicksRemaining: number;
 }
 
 export interface ProjectileState {
@@ -117,6 +136,7 @@ export interface BattleOutputState {
   readonly gameOver: boolean;
   readonly player: FighterState;
   readonly target: FighterState;
+  readonly points: readonly PointState[];
   readonly neutralMobs: readonly NeutralMobState[];
   readonly projectiles: readonly ProjectileState[];
   readonly effects: readonly EffectState[];

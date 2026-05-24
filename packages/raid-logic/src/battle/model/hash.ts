@@ -1,6 +1,6 @@
 import type { BattleModel } from ".";
 import type { NeutralMobState } from "@repo/types";
-import type { EffectState, FighterState, ProjectileState, TrainingStats } from "@repo/content";
+import type { EffectState, FighterState, PointState, ProjectileState, TrainingStats } from "@repo/content";
 import type { NeutralMobSpawnerState, NeutralMobSpawnerStateValue } from "@repo/content";
 
 class DeterministicHasher {
@@ -36,9 +36,11 @@ export function hashBattleModel(model: BattleModel): number {
   hasher.writeNumber(model.frame);
   hasher.writeNumber(model.gameOver ? 1 : 0);
   hasher.writeNumber(model.getNextNeutralMobId());
+  hasher.writeNumber(model.getNextPointId());
   writeFighter(hasher, model.player);
   writeFighter(hasher, model.target);
   writeNeutralMobs(hasher, model.neutralMobStates());
+  writePoints(hasher, model.pointStates());
   writeSpawnerState(hasher, model.mobSpawnerState());
   writeProjectiles(hasher, model.projectiles);
   writeEffects(hasher, model.effects);
@@ -64,9 +66,29 @@ function writeNeutralMobs(hasher: DeterministicHasher, neutralMobs: readonly Neu
     hasher.writeString(mob.form);
     hasher.writeNumber(mob.MaxHealth);
     hasher.writeNumber(mob.CurrentHealth);
+    hasher.writeNumber(mob.pointValue ?? 0);
     hasher.writeNumber(mob.damageTaken ?? 0);
     hasher.writeNumber(mob.active ? 1 : 0);
     hasher.writeNumber(mob.ageTicks);
+  }
+}
+
+function writePoints(hasher: DeterministicHasher, points: readonly PointState[]): void {
+  hasher.writeNumber(points.length);
+  for (const point of [...points].sort((left, right) => left.id - right.id)) {
+    hasher.writeNumber(point.id);
+    hasher.writeString(point.prefabId);
+    writeFixed(hasher, point.x);
+    writeFixed(hasher, point.y);
+    writeFixed(hasher, point.previousX);
+    writeFixed(hasher, point.previousY);
+    writeFixed(hasher, point.vx);
+    writeFixed(hasher, point.vy);
+    hasher.writeNumber(point.size);
+    hasher.writeNumber(point.value);
+    hasher.writeNumber(point.active ? 1 : 0);
+    hasher.writeString(point.collectingBy ?? "");
+    hasher.writeNumber(point.collectTicksRemaining);
   }
 }
 
@@ -81,6 +103,7 @@ function writeFighter(hasher: DeterministicHasher, fighter: FighterState): void 
   writeFixed(hasher, fighter.facing);
   hasher.writeNumber(fighter.lives);
   hasher.writeNumber(fighter.bombs);
+  hasher.writeNumber(fighter.pointCount);
   writeFixed(hasher, fighter.ammo);
   writeFixed(hasher, fighter.ammoDisplay);
   hasher.writeNumber(fighter.ammoCapacity);

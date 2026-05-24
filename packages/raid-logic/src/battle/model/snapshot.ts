@@ -2,7 +2,7 @@ import type { NeutralMobState } from "@repo/types";
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
 
 import { getAbilityCard, getCharacter } from "../content";
-import type { EffectState, FighterState, ProjectileState, TrainingStats } from "@repo/content";
+import type { EffectState, FighterState, PointState, ProjectileState, TrainingStats } from "@repo/content";
 import type { NeutralMobSpawnerState } from "@repo/content";
 
 export interface BattleModelSnapshot {
@@ -12,9 +12,11 @@ export interface BattleModelSnapshot {
   readonly nextProjectileId: number;
   readonly nextEffectId: number;
   readonly nextNeutralMobId: number;
+  readonly nextPointId: number;
   readonly player: FighterSnapshot;
   readonly target: FighterSnapshot;
   readonly neutralMobs: readonly NeutralMobSnapshot[];
+  readonly points: readonly PointSnapshot[];
   readonly mobSpawner: NeutralMobSpawnerState | undefined;
   readonly projectiles: readonly ProjectileSnapshot[];
   readonly effects: readonly EffectSnapshot[];
@@ -56,6 +58,7 @@ export type EffectSnapshot = Omit<EffectState, "expireAt"> & {
 };
 
 export type NeutralMobSnapshot = NeutralMobState;
+export type PointSnapshot = PointState;
 
 export function createBattleModelSnapshot(params: {
   readonly frame: number;
@@ -68,7 +71,9 @@ export function createBattleModelSnapshot(params: {
   readonly nextProjectileId: number;
   readonly nextEffectId: number;
   readonly nextNeutralMobId: number;
+  readonly nextPointId: number;
   readonly neutralMobs: readonly NeutralMobState[];
+  readonly points: readonly PointState[];
   readonly mobSpawner: NeutralMobSpawnerState | undefined;
 }): BattleModelSnapshot {
   return {
@@ -78,9 +83,11 @@ export function createBattleModelSnapshot(params: {
     nextProjectileId: params.nextProjectileId,
     nextEffectId: params.nextEffectId,
     nextNeutralMobId: params.nextNeutralMobId,
+    nextPointId: params.nextPointId,
     player: serializeFighter(params.player, params.frame),
     target: serializeFighter(params.target, params.frame),
     neutralMobs: params.neutralMobs.map((mob) => ({ ...mob })),
+    points: params.points.map((point) => ({ ...point })),
     mobSpawner: params.mobSpawner,
     projectiles: params.projectiles.map((projectile) => serializeProjectile(projectile, params.frame)),
     effects: params.effects.map((effect) => serializeEffect(effect, params.frame)),
@@ -133,6 +140,7 @@ function serializeFighter(fighter: FighterState, frame: number): FighterSnapshot
     previousFacing: fighter.previousFacing,
     lives: fighter.lives,
     bombs: fighter.bombs,
+    pointCount: fighter.pointCount,
     ammo: fighter.ammo,
     ammoDisplay: fighter.ammoDisplay,
     ammoCapacity: fighter.ammoCapacity,

@@ -201,6 +201,16 @@ export class BattleScene extends Phaser.Scene {
     return rows;
   }
 
+  spawnDebugPoint(value: 1 | 5 | 10): boolean {
+    if (this.sceneData.mode === "online") {
+      return false;
+    }
+    const pointer = getBattlePointerWorld(this);
+    this.runtime.debugSpawnPoint({ value, x: pointer.x, y: pointer.y });
+    this.recordDebugFrame();
+    return true;
+  }
+
   private stepRuntimeWithDebugInput(input: BattleInputState): void {
     this.runtime.step({ mode: this.sceneData.mode === "ai" ? "ai" : "training", player: input });
     this.recordDebugFrame();

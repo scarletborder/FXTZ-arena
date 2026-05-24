@@ -22,6 +22,7 @@ export function createFighter(
     previousFacing: 0,
     lives: 2,
     bombs: DEFAULT_BOMBS,
+    pointCount: 0,
     ammo: primaryCharacter.ammoCapacity,
     ammoDisplay: primaryCharacter.ammoCapacity,
     ammoCapacity: primaryCharacter.ammoCapacity,

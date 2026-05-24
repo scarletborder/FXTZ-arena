@@ -35,6 +35,7 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
     readonly id: number;
     readonly waveId: number;
     readonly movementVariant: ExampleFairyMovementVariant;
+    readonly pointValue?: number;
   }) {
     super();
     this.state = {
@@ -51,6 +52,7 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
       form: "enter",
       MaxHealth: MAX_HEALTH,
       CurrentHealth: MAX_HEALTH,
+      pointValue: params.pointValue,
       active: true,
       ageTicks: 0,
       sfxFlags: 0,

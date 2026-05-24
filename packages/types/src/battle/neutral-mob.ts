@@ -20,6 +20,7 @@ export interface NeutralMobState {
   form: string;
   MaxHealth: number;
   CurrentHealth: number;
+  pointValue?: number;
   damageTaken?: number;
   active: boolean;
   ageTicks: number;

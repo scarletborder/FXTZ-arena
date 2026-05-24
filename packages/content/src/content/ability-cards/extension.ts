@@ -1,0 +1,24 @@
+import type { AbilityCardDefinition } from "./types";
+
+import type { FighterState } from "../battle-types";
+import { BattleAbilityCard } from "./base";
+import { Vanilla } from "../decorators";
+
+@Vanilla.RegisterCard("extension")
+export class ExtensionBattleCard extends BattleAbilityCard {
+  readonly id: AbilityCardDefinition["id"] = "extension";
+  readonly name = "延申";
+  readonly cost = 2;
+  readonly kind = "passive" as AbilityCardDefinition["kind"];
+  readonly useLimit: AbilityCardDefinition["useLimit"] = "infinite";
+  readonly cooldownTicks = 0;
+  readonly description = "吸点范围增加 16 像素。";
+  readonly gallery: AbilityCardDefinition["gallery"] = {
+    iconAsset: "assets/ability-cards/extension/icon.png",
+    previewAsset: "assets/ability-cards/extension/preview.png",
+  };
+
+  getPointCollectRadiusBonus(_fighter: FighterState): number {
+    return 16;
+  }
+}

@@ -4,6 +4,7 @@ import { NeutralMob, type BattleInputState, type NeutralMobState } from "@repo/t
 import type { BattleLoadouts } from "../loadout";
 import { BattleModel } from ".";
 import { BattlePhysics } from "./physics-adapter";
+import { createPointState } from "./points";
 import type { BulletProjectileParams, LaserProjectileParams } from "./projectile";
 
 describe("BattleModel rollback snapshots", () => {
@@ -479,16 +480,119 @@ describe("BattleModel character bombs", () => {
     expect(model.neutralMobStates()).toHaveLength(0);
   });
 
+  it("drops carried points when a neutral mob is killed", async () => {
+    const model = await createBattleModel();
+    const mob = new TestNeutralMob(model.allocateNeutralMobId(), 500, 120);
+    mob.state.CurrentHealth = 1;
+    mob.state.pointValue = 5;
+    model.addNeutralMob(mob);
+    model.projectiles.push(testProjectile({ id: 10, owner: "Player1", x: mob.state.x, y: mob.state.y, damage: 1 }));
+
+    model.step(input());
+
+    expect(model.points).toHaveLength(1);
+    expect(model.points[0]).toMatchObject({ value: 5, size: 12 });
+  });
+
   it("attributes neutral mob active self-removal to a null death source", async () => {
     const model = await createBattleModel();
     const mob = new TestNeutralMob(model.allocateNeutralMobId(), 500, 120);
     mob.state.ageTicks = 999;
+    mob.state.pointValue = 10;
     model.addNeutralMob(mob);
 
     model.step(input());
 
     expect(mob.deathSources).toEqual([null]);
     expect(model.neutralMobStates()).toHaveLength(0);
+    expect(model.points).toHaveLength(0);
+  });
+});
+
+describe("BattleModel point pickups", () => {
+  it("collects a nearby point after the visual collection delay", async () => {
+    const model = await createBattleModel();
+    model.addPoint(createPointState({
+      id: model.allocatePointId(),
+      x: model.player.x + 31,
+      y: model.player.y,
+      value: 1,
+      vx: 0,
+      vy: 0,
+    }));
+
+    model.step(input());
+
+    expect(model.points[0]?.collectingBy).toBe("Player1");
+    expect(model.player.pointCount).toBe(0);
+
+    for (let index = 0; index < 9; index += 1) {
+      model.step(input());
+    }
+    expect(model.player.pointCount).toBe(0);
+
+    model.step(input());
+
+    expect(model.player.pointCount).toBe(1);
+    expect(model.points).toHaveLength(0);
+  });
+
+  it("uses Marisa's larger base point collection radius", async () => {
+    const model = await createBattleModel("marisa", "reimu");
+    model.addPoint(createPointState({
+      id: model.allocatePointId(),
+      x: model.player.x + 47,
+      y: model.player.y,
+      value: 1,
+      vx: 0,
+      vy: 0,
+    }));
+
+    model.step(input());
+
+    expect(model.points[0]?.collectingBy).toBe("Player1");
+  });
+
+  it("extends point collection radius through passive cards", async () => {
+    const model = await createBattleModel("reimu", "marisa", ["extension"]);
+    model.addPoint(createPointState({
+      id: model.allocatePointId(),
+      x: model.player.x + 47,
+      y: model.player.y,
+      value: 1,
+      vx: 0,
+      vy: 0,
+    }));
+
+    model.step(input());
+
+    expect(model.points[0]?.collectingBy).toBe("Player1");
+  });
+
+  it("restores point state and point id allocation in rollback snapshots and hashes", async () => {
+    const model = await createBattleModel();
+    model.addPoint(createPointState({
+      id: model.allocatePointId(),
+      x: 900,
+      y: 200,
+      value: 10,
+      vx: 2,
+      vy: 0,
+    }));
+
+    model.step(input());
+    const snapshot = model.serialize();
+    const snapshotHash = model.hashHex();
+
+    model.step(input());
+    const originalHash = model.hashHex();
+
+    model.deserialize(snapshot);
+    expect(model.hashHex()).toBe(snapshotHash);
+    expect(model.getNextPointId()).toBe(2);
+
+    model.step(input());
+    expect(model.hashHex()).toBe(originalHash);
   });
 });
 

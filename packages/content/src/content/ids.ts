@@ -7,5 +7,6 @@ export type AbilityCardId =
   | "ember"
   | "backdoor"
   | "multi_shot"
-  | "spirit_strike_card";
+  | "spirit_strike_card"
+  | "extension";
 export type MapId = "arena_standard" | "shooting_range";

@@ -1,6 +1,7 @@
 import type { BattleLoadouts } from "./loadout";
 import { BattleModel } from "./model";
 import { BattlePhysics } from "./model/physics-adapter";
+import { createPointState, pointVelocityFromFrame } from "./model/points";
 import type { BattleModelSnapshot } from "./model/snapshot";
 import { BattleOutputQueue, type BattleOutputEvent, type BattleOutputFrame } from "./output";
 import type { BattleInputState } from "@repo/types";
@@ -43,6 +44,7 @@ export interface RaidLogicRuntime {
   readonly physicsReady: boolean;
   initialize(): Promise<void>;
   readDebugBodies(): ReturnType<BattlePhysics["readAllBodies"]>;
+  debugSpawnPoint(params: { readonly value: 1 | 5 | 10; readonly x: number; readonly y: number }): BattleOutputFrame;
   step(input: RaidLogicStepInput): BattleOutputFrame;
   reset(): BattleOutputFrame;
   serialize(): BattleModelSnapshot;
@@ -95,6 +97,20 @@ class BattleRuntime implements RaidLogicRuntime {
 
   readDebugBodies(): ReturnType<BattlePhysics["readAllBodies"]> {
     return this.physics.readAllBodies();
+  }
+
+  debugSpawnPoint(params: { readonly value: 1 | 5 | 10; readonly x: number; readonly y: number }): BattleOutputFrame {
+    const velocity = pointVelocityFromFrame(this.model.frame, "low");
+    this.model.addPoint(createPointState({
+      id: this.model.allocatePointId(),
+      x: params.x,
+      y: params.y,
+      value: params.value,
+      vx: velocity.vx,
+      vy: velocity.vy,
+    }));
+    this.physics.syncPointBodies(this.model.points);
+    return this.enqueueOutput([{ type: "snapshot_restored", frame: this.model.frame }]);
   }
 
   step(input: RaidLogicStepInput): BattleOutputFrame {

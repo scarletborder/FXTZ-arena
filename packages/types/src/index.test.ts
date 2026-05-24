@@ -55,6 +55,7 @@ describe("@repo/types static content", () => {
       "backdoor",
       "multi_shot",
       "spirit_strike_card",
+      "extension",
     ]);
   });
 });

@@ -6,6 +6,7 @@ import { EffectsView } from "./effects";
 import { FighterView } from "./fighter";
 import { InfoDisplayView } from "./info-display";
 import { MobView } from "./mobs";
+import { PointView } from "./points";
 import { ProjectileView } from "./projectiles";
 import { createBattleStage, type BattleViewMode } from "./stage";
 import { createBattleTextures } from "./textures";
@@ -17,6 +18,7 @@ export class BattleView {
   private readonly effects: EffectsView;
   private readonly infoDisplay: InfoDisplayView;
   private readonly mobs: MobView;
+  private readonly points: PointView;
   private readonly debugGraphics: Phaser.GameObjects.Graphics;
   private debugPhysicsEnabled = false;
 
@@ -25,6 +27,7 @@ export class BattleView {
     createBattleStage(scene, mode);
     this.fighters = new FighterView(scene);
     this.mobs = new MobView(scene);
+    this.points = new PointView(scene);
     this.crosshair = new CrosshairView(scene);
     this.projectiles = new ProjectileView(scene);
     this.effects = new EffectsView(scene);
@@ -39,6 +42,7 @@ export class BattleView {
     const localFighter = localFighterKey === "Player1" ? state.player : state.target;
     this.fighters.render(state.player, state.target, state.frame, state.gameOver, input.infoHeld, localFighterKey, alpha);
     this.mobs.render(state.neutralMobs, alpha);
+    this.points.render({ points: state.points, player: state.player, target: state.target, alpha });
     this.projectiles.render(state.projectiles, state.frame, localFighterKey, alpha);
     this.effects.render(state.effects, state.shields);
     this.infoDisplay.render(state);
@@ -49,6 +53,7 @@ export class BattleView {
       ammoDisplay: localFighter.ammoDisplay,
       ammoCount: localFighter.ammo,
       ammoMax: localFighter.ammoCapacity,
+      pointCount: localFighter.pointCount,
       bombs: localFighter.bombs,
       lives: localFighter.lives,
     });

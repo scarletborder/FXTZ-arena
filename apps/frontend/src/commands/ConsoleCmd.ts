@@ -9,6 +9,7 @@ export interface DebugConsoleCommands {
   log: (frame?: number) => string | null;
   script: () => DebugHashRow[] | null;
   physics: (enabled?: boolean) => boolean | null;
+  spawnPoint: (point: 1 | 5 | 10) => boolean | null;
   help: () => void;
 }
 
@@ -51,6 +52,7 @@ function createCommands(): DebugConsoleCommands {
       log,
       script,
       physics,
+      spawnPoint,
       help,
     };
 }
@@ -158,6 +160,22 @@ function physics(enabled?: boolean): boolean | null {
     return nextEnabled;
 }
 
+function spawnPoint(point: 1 | 5 | 10): boolean | null {
+    const scene = getScene();
+    if (!scene) {
+      return null;
+    }
+    const value = normalizePointValue(point);
+    if (value === null) {
+      return printBlocked(`Invalid point value: ${point}. Use 1, 5, or 10.`);
+    }
+    if (!scene.spawnDebugPoint(value)) {
+      return printBlocked("FXTZ.spawnPoint is disabled in online battles.");
+    }
+    printOk(`Spawned ${value}P point at the cursor.`);
+    return true;
+}
+
 function help(): void {
     console.log(`[${BADGE}] Commands`);
     console.log("FXTZ.frame()              当前帧号");
@@ -168,6 +186,7 @@ function help(): void {
     console.log("FXTZ.log(frame?)          导出每帧 hash 与双方输入日志");
     console.log("FXTZ.script()             回滚到 frame=30 并执行边界输入脚本，打印期间每帧 hash");
     console.log("FXTZ.physics(enabled?)    切换碰撞体可视化");
+    console.log("FXTZ.spawnPoint(1|5|10)   Spawn a P point at the cursor");
 }
 
 function getScene(): BattleScene | null {
@@ -181,6 +200,11 @@ function getScene(): BattleScene | null {
 function normalizeFrame(frame: number): number | null {
     const value = Math.floor(Number(frame));
     return Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function normalizePointValue(point: unknown): 1 | 5 | 10 | null {
+    const value = Math.floor(Number(point));
+    return value === 1 || value === 5 || value === 10 ? value : null;
 }
 
 function printBanner(): void {

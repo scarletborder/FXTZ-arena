@@ -13,7 +13,7 @@ import {
 import { getAbilityCard, getCharacter } from "../content";
 import type { BattleLoadouts, FighterLoadout } from "../loadout";
 import type { BattleInputState } from "@repo/types";
-import type { BattleOutputState, EffectState, FighterKey, FighterState, ProjectileState, ShieldState, TrainingStats } from "@repo/content";
+import type { BattleOutputState, EffectState, FighterKey, FighterState, PointState, ProjectileState, ShieldState, TrainingStats } from "@repo/content";
 import type { NeutralMobSpawner, NeutralMobSpawnerState } from "@repo/content";
 import { resolveMobSpawner } from "@repo/content";
 import { BattleFighter } from "./battle-fighter";
@@ -21,6 +21,7 @@ import { CpuPlayer } from "../aicpu";
 import { EffectSystem } from "./effects";
 import { hashBattleModel, hashToHex } from "./hash";
 import { BattlePhysics } from "./physics-adapter";
+import { createPointState, POINT_COLLECT_TICKS, pointIsOutsideArena, pointVelocityFromFrame } from "./points";
 import { clearProjectilesAround, ProjectileSystem, type BulletProjectileParams, type LaserProjectileParams, type ProjectileHitTarget } from "./projectile";
 import {
   createBattleModelSnapshot,
@@ -30,16 +31,18 @@ import {
   type BattleModelSnapshot,
 } from "./snapshot";
 import type { CharacterActionContext } from "@repo/content";
-import { fpClamp, fpAtan2 } from "@repo/content";
+import { fpClamp, fpAtan2, fpHypotFp } from "@repo/content";
 
 export class BattleModel {
   readonly projectiles: ProjectileState[] = [];
   readonly effects: EffectState[] = [];
+  readonly points: PointState[] = [];
   readonly stats: TrainingStats = { shots: 0, hits: 0, bombUses: 0, damage: 0, elapsedTicks: 0 };
   frame = 0;
   gameOver = false;
   private readonly neutralMobs: NeutralMob<NeutralMobState, BulletProjectileParams, LaserProjectileParams>[] = [];
   private nextNeutralMobId = 1;
+  private nextPointId = 1;
   private readonly loadouts: BattleLoadouts;
   private readonly projectileSystem = new ProjectileSystem();
   private readonly effectSystem = new EffectSystem();
@@ -93,6 +96,8 @@ export class BattleModel {
     this.mobSpawner?.reset();
     this.neutralMobs.length = 0;
     this.nextNeutralMobId = 1;
+    this.points.length = 0;
+    this.nextPointId = 1;
     this.projectiles.length = 0;
     this.effects.length = 0;
     this.stats.shots = 0;
@@ -141,6 +146,27 @@ export class BattleModel {
 
   getNextNeutralMobId(): number {
     return this.nextNeutralMobId;
+  }
+
+  allocatePointId(): number {
+    return this.nextPointId++;
+  }
+
+  addPoint(point: PointState): void {
+    if (this.points.some((existing) => existing.id === point.id)) {
+      throw new Error(`Duplicate point id: ${point.id}`);
+    }
+    this.points.push(point);
+    this.nextPointId = Math.max(this.nextPointId, point.id + 1);
+    this.sortPoints();
+  }
+
+  pointStates(): readonly PointState[] {
+    return this.points;
+  }
+
+  getNextPointId(): number {
+    return this.nextPointId;
   }
 
   step(input: BattleInputState): void {
@@ -197,11 +223,13 @@ export class BattleModel {
       hitTargets: this.currentHitTargets(),
       shields: this.currentShields(),
       computeRapierHits: physics ? (projectiles) => physics.computeCollisions(
-        projectiles, this.player, this.target, this.currentShields(), this.neutralMobStates(),
+        projectiles, this.player, this.target, this.currentShields(), this.neutralMobStates(), this.points,
       ) : undefined,
       onHit: (ctx) => this.onProjectileHit(ctx),
     });
     this.removeInactiveNeutralMobs();
+    this.stepPoints();
+    physics?.syncPointBodies(this.points);
     this.flushDeferredSpawns();
     this.effectSystem.stepEffects(this.effects, this.frame);
   }
@@ -220,6 +248,7 @@ export class BattleModel {
       gameOver: this.gameOver,
       player: this.player,
       target: this.target,
+      points: this.points,
       neutralMobs: this.neutralMobStates(),
       projectiles: this.projectiles,
       effects: this.effects,
@@ -240,7 +269,9 @@ export class BattleModel {
       nextProjectileId: this.projectileSystem.getNextId(),
       nextEffectId: this.effectSystem.getNextId(),
       nextNeutralMobId: this.nextNeutralMobId,
+      nextPointId: this.nextPointId,
       neutralMobs: this.neutralMobStates(),
+      points: this.points,
       mobSpawner: this.mobSpawnerState(),
     });
   }
@@ -255,11 +286,13 @@ export class BattleModel {
     restoreFighterSnapshot(this.target, snapshot.target, this.frame);
     this.projectiles.splice(0, this.projectiles.length, ...snapshot.projectiles.map((projectile) => restoreProjectileSnapshot(projectile, this.frame)));
     this.effects.splice(0, this.effects.length, ...snapshot.effects.map((effect) => restoreEffectSnapshot(effect, this.frame)));
+    this.points.splice(0, this.points.length, ...snapshot.points.map((point) => ({ ...point })));
     this.restoreNeutralMobSnapshots(snapshot.neutralMobs);
     Object.assign(this.stats, snapshot.stats);
     this.projectileSystem.restoreNextId(this.projectiles, snapshot.nextProjectileId);
     this.effectSystem.restoreNextId(this.effects, snapshot.nextEffectId);
     this.nextNeutralMobId = Math.max(snapshot.nextNeutralMobId, 1 + Math.max(0, ...snapshot.neutralMobs.map((mob) => mob.id)));
+    this.nextPointId = Math.max(snapshot.nextPointId, 1 + Math.max(0, ...snapshot.points.map((point) => point.id)));
     if (snapshot.mobSpawner) {
       this.mobSpawner?.restore(snapshot.mobSpawner);
     }
@@ -385,6 +418,7 @@ export class BattleModel {
       }
       if (wasActive && !mob.state.active) {
         mob.onDeath(owner);
+        this.dropPointFromMob(mob.state);
         mob.onDeathEffect();
       }
       return true;
@@ -548,8 +582,81 @@ export class BattleModel {
     this.neutralMobs.sort((left, right) => left.id - right.id);
   }
 
+  private sortPoints(): void {
+    this.points.sort((left, right) => left.id - right.id);
+  }
+
   private removeInactiveNeutralMobs(): void {
     this.neutralMobs.splice(0, this.neutralMobs.length, ...this.neutralMobs.filter((mob) => mob.state.active));
+  }
+
+  private stepPoints(): void {
+    this.sortPoints();
+    const timeStopped = this.player.timeStopUntil > 0 || this.target.timeStopUntil > 0;
+    for (const point of this.points) {
+      point.previousX = point.x;
+      point.previousY = point.y;
+      if (point.collectingBy) {
+        point.collectTicksRemaining -= 1;
+        if (point.collectTicksRemaining <= 0) {
+          this.awardPoint(point);
+          point.active = false;
+        }
+        continue;
+      }
+      if (timeStopped) {
+        continue;
+      }
+      point.x = fp.toFloat(fp.add(fp.fromFloat(point.x), fp.fromFloat(point.vx)));
+      point.y = fp.toFloat(fp.add(fp.fromFloat(point.y), fp.fromFloat(point.vy)));
+      if (pointIsOutsideArena(point)) {
+        point.active = false;
+        continue;
+      }
+      this.tryCollectPoint(point);
+    }
+    this.points.splice(0, this.points.length, ...this.points.filter((point) => point.active));
+  }
+
+  private tryCollectPoint(point: PointState): void {
+    for (const fighter of [this.playerFighter, this.targetFighter]) {
+      const state = fighter.state;
+      if (state.deadUntil > 0) {
+        continue;
+      }
+      const fpDistance = fpHypotFp(
+        fp.sub(fp.fromFloat(point.x), fp.fromFloat(state.x)),
+        fp.sub(fp.fromFloat(point.y), fp.fromFloat(state.y)),
+      );
+      if (fp.lte(fpDistance, fp.fromFloat(fighter.pointCollectRadius()))) {
+        point.collectingBy = state.key;
+        point.collectTicksRemaining = POINT_COLLECT_TICKS;
+        return;
+      }
+    }
+  }
+
+  private awardPoint(point: PointState): void {
+    const fighter = point.collectingBy === "Player1" ? this.player : point.collectingBy === "Player2" ? this.target : undefined;
+    if (fighter) {
+      fighter.pointCount += point.value;
+    }
+  }
+
+  private dropPointFromMob(mob: NeutralMobState): void {
+    const value = mob.pointValue ?? 0;
+    if (value <= 0) {
+      return;
+    }
+    const velocity = pointVelocityFromFrame(this.frame, "low");
+    this.addPoint(createPointState({
+      id: this.allocatePointId(),
+      x: mob.x,
+      y: mob.y,
+      value,
+      vx: velocity.vx,
+      vy: velocity.vy,
+    }));
   }
 
   private restoreNeutralMobSnapshots(snapshots: readonly NeutralMobState[]): void {

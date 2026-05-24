@@ -4,7 +4,7 @@ import { fp } from "@shaisrc/fixed-point";
 
 import { PLAYER_CORE_RADIUS } from "@repo/types";
 
-import type { FighterKey, FighterState, ProjectileState, ShieldState } from "@repo/content";
+import type { FighterKey, FighterState, PointState, ProjectileState, ShieldState } from "@repo/content";
 import type { NeutralMobState } from "@repo/types";
 
 /**
@@ -35,6 +35,7 @@ export class BattlePhysics {
   private readonly projBodyIds = new Set<string>();
   private readonly shieldBodyIds = new Set<string>();
   private readonly mobBodyIds = new Set<string>();
+  private readonly pointBodyIds = new Set<string>();
 
   async init(): Promise<void> {
     await ensureRapierInit();
@@ -70,6 +71,7 @@ export class BattlePhysics {
     target: FighterState,
     shields: readonly ShieldState[] = [],
     neutralMobs: readonly NeutralMobState[] = [],
+    points: readonly PointState[] = [],
   ): CollisionResult[] {
     if (!this.ready || !this.world) return [];
 
@@ -90,6 +92,10 @@ export class BattlePhysics {
       this.world.removeBody(id);
     }
     this.mobBodyIds.clear();
+    for (const id of Array.from(this.pointBodyIds)) {
+      this.world.removeBody(id);
+    }
+    this.pointBodyIds.clear();
 
     // -- 3. Add bodies for current-frame projectiles -----------------------
     const projectileMap = new Map<number, ProjectileState>();
@@ -150,6 +156,9 @@ export class BattlePhysics {
       mobMap.set(mob.id, mob);
     }
 
+    // -- 3c. Add bodies for current-frame point pickups ---------------------
+    this.syncPointBodies(points);
+
     // -- 4. Step Rapier and drain collision events ------------------------
     const events = this.world.step();
     const results: CollisionResult[] = [];
@@ -175,6 +184,7 @@ export class BattlePhysics {
     this.projBodyIds.clear();
     this.shieldBodyIds.clear();
     this.mobBodyIds.clear();
+    this.pointBodyIds.clear();
     this.world?.clear();
     this.world = null;
     this.ready = false;
@@ -185,6 +195,7 @@ export class BattlePhysics {
     this.projBodyIds.clear();
     this.shieldBodyIds.clear();
     this.mobBodyIds.clear();
+    this.pointBodyIds.clear();
     this.world?.resetEmpty();
   }
 
@@ -200,6 +211,29 @@ export class BattlePhysics {
   /** Rapier-native debug render output. */
   debugRender(): { vertices: Float32Array; colors: Float32Array } | null {
     return this.world?.debugRender() ?? null;
+  }
+
+  syncPointBodies(points: readonly PointState[]): void {
+    if (!this.ready || !this.world) return;
+    for (const id of Array.from(this.pointBodyIds)) {
+      this.world.removeBody(id);
+    }
+    this.pointBodyIds.clear();
+    for (const point of points) {
+      if (!point.active || point.collectingBy) continue;
+      const bodyId = `point:${point.id}`;
+      this.world.addBody({
+        id: bodyId,
+        kind: "point",
+        x: point.x,
+        y: point.y,
+        vx: 0,
+        vy: 0,
+        halfWidth: Math.max(1, point.size / 2),
+        halfHeight: Math.max(1, point.size / 2),
+      });
+      this.pointBodyIds.add(bodyId);
+    }
   }
 
   private syncFighter(key: "Player1" | "Player2", fighter: FighterState): void {
@@ -256,6 +290,10 @@ function resolveCollision(
     if (mobMap?.has(mobId)) {
       return { projectileId: projectileNum, victimKey: "Neutral", victimMobId: mobId };
     }
+    return null;
+  }
+
+  if (otherId.startsWith("point:")) {
     return null;
   }
 

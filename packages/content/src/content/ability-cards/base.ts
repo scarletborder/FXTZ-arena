@@ -65,6 +65,9 @@ export abstract class BattleAbilityCard {
   onAfterFire(_ctx: BattleCardContext): void {}
   onPostUpdate(_ctx: BattleCardContext): void {}
   onUse(_ctx: BattleCardContext): void {}
+  getPointCollectRadiusBonus(_fighter: FighterState): number {
+    return 0;
+  }
   collectShields(_fighter: FighterState): ShieldState[] {
     return [];
   }

@@ -31,7 +31,7 @@ export function ensureRapierInit(): Promise<void> {
 
 export interface PhysicsBodyDef {
   readonly id: string;
-  readonly kind: "fighter" | "projectile" | "shield" | "obstacle";
+  readonly kind: "fighter" | "projectile" | "shield" | "obstacle" | "point";
   readonly shape?: "cuboid" | "ball";
   readonly x: number;
   readonly y: number;
@@ -316,7 +316,7 @@ export class PhysicsWorld {
 
       bodies.push({
         id,
-        kind: (this.bodyKind.get(id) ?? "obstacle") as "fighter" | "projectile" | "shield" | "obstacle",
+        kind: (this.bodyKind.get(id) ?? "obstacle") as "fighter" | "projectile" | "shield" | "obstacle" | "point",
         shape: isBall ? "ball" : "cuboid",
         x: Math.trunc(t.x),
         y: Math.trunc(t.y),

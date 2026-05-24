@@ -27,6 +27,7 @@ export type {
   EffectState,
   FighterKey,
   FighterState,
+  PointState,
   ProjectileKind,
   ProjectileState,
   ShieldState,
