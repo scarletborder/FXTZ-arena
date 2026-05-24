@@ -13,7 +13,16 @@ import {
 import { getAbilityCard, getCharacter } from "../content";
 import type { BattleLoadouts, FighterLoadout } from "../loadout";
 import type { BattleInputState } from "@repo/types";
-import type { BattleOutputState, EffectState, FighterKey, FighterState, PointState, ProjectileState, ShieldState, TrainingStats } from "@repo/content";
+import type {
+  BattleOutputState,
+  EffectState,
+  FighterKey,
+  FighterState,
+  PointState,
+  ProjectileState,
+  ShieldState,
+  TrainingStats,
+} from "@repo/content";
 import type { NeutralMobSpawner, NeutralMobSpawnerState } from "@repo/content";
 import { resolveMobSpawner } from "@repo/content";
 import { BattleFighter } from "./battle-fighter";
@@ -22,8 +31,19 @@ import { CpuPlayer } from "../aicpu";
 import { EffectSystem } from "./effects";
 import { hashBattleModel, hashToHex } from "./hash";
 import { BattlePhysics } from "./physics-adapter";
-import { createPointState, POINT_COLLECT_TICKS, pointIsOutsideArena, pointVelocityFromFrame } from "./points";
-import { clearProjectilesAround, ProjectileSystem, type BulletProjectileParams, type LaserProjectileParams, type ProjectileHitTarget } from "./projectile";
+import {
+  createPointState,
+  POINT_COLLECT_TICKS,
+  pointIsOutsideArena,
+  pointVelocityFromFrame,
+} from "./points";
+import {
+  clearProjectilesAround,
+  ProjectileSystem,
+  type BulletProjectileParams,
+  type LaserProjectileParams,
+  type ProjectileHitTarget,
+} from "./projectile";
 import {
   createBattleModelSnapshot,
   restoreEffectSnapshot,
@@ -38,10 +58,20 @@ export class BattleModel {
   readonly projectiles: ProjectileState[] = [];
   readonly effects: EffectState[] = [];
   readonly points: PointState[] = [];
-  readonly stats: TrainingStats = { shots: 0, hits: 0, bombUses: 0, damage: 0, elapsedTicks: 0 };
+  readonly stats: TrainingStats = {
+    shots: 0,
+    hits: 0,
+    bombUses: 0,
+    damage: 0,
+    elapsedTicks: 0,
+  };
   frame = 0;
   gameOver = false;
-  private readonly neutralMobs: NeutralMob<NeutralMobState, BulletProjectileParams, LaserProjectileParams>[] = [];
+  private readonly neutralMobs: NeutralMob<
+    NeutralMobState,
+    BulletProjectileParams,
+    LaserProjectileParams
+  >[] = [];
   private nextNeutralMobId = 1;
   private nextPointId = 1;
   private readonly loadouts: BattleLoadouts;
@@ -56,7 +86,10 @@ export class BattleModel {
 
   constructor(
     loadouts: BattleLoadouts = DEFAULT_BATTLE_LOADOUTS,
-    params: { readonly enableCpuTarget?: boolean; readonly neutralMobSpawner?: NeutralMobSpawner | null } = {},
+    params: {
+      readonly enableCpuTarget?: boolean;
+      readonly neutralMobSpawner?: NeutralMobSpawner | null;
+    } = {},
   ) {
     this.loadouts = loadouts;
     this.playerFighter = new BattleFighter(
@@ -65,7 +98,9 @@ export class BattleModel {
       getCharacter(loadouts.player.alternateCharacterId),
       PLAYER_SPAWN.x,
       PLAYER_SPAWN.y,
-      loadouts.player.activeCardId ? getAbilityCard(loadouts.player.activeCardId) : undefined,
+      loadouts.player.activeCardId
+        ? getAbilityCard(loadouts.player.activeCardId)
+        : undefined,
       loadoutCards(loadouts.player),
     );
     this.targetFighter = new BattleFighter(
@@ -74,13 +109,16 @@ export class BattleModel {
       getCharacter(loadouts.target.alternateCharacterId),
       TARGET_SPAWN.x,
       TARGET_SPAWN.y,
-      loadouts.target.activeCardId ? getAbilityCard(loadouts.target.activeCardId) : undefined,
+      loadouts.target.activeCardId
+        ? getAbilityCard(loadouts.target.activeCardId)
+        : undefined,
       loadoutCards(loadouts.target),
     );
     this.cpuPlayer = params.enableCpuTarget ? new CpuPlayer() : undefined;
-    this.mobSpawner = params.neutralMobSpawner === undefined
-      ? resolveMobSpawner("default-a") ?? undefined
-      : (params.neutralMobSpawner ?? undefined);
+    this.mobSpawner =
+      params.neutralMobSpawner === undefined
+        ? (resolveMobSpawner("default-a") ?? undefined)
+        : (params.neutralMobSpawner ?? undefined);
   }
 
   get player(): FighterState {
@@ -115,7 +153,9 @@ export class BattleModel {
       getCharacter(this.loadouts.player.alternateCharacterId),
       PLAYER_SPAWN.x,
       PLAYER_SPAWN.y,
-      this.loadouts.player.activeCardId ? getAbilityCard(this.loadouts.player.activeCardId) : undefined,
+      this.loadouts.player.activeCardId
+        ? getAbilityCard(this.loadouts.player.activeCardId)
+        : undefined,
       loadoutCards(this.loadouts.player),
     );
     this.targetFighter.reset(
@@ -123,7 +163,9 @@ export class BattleModel {
       getCharacter(this.loadouts.target.alternateCharacterId),
       TARGET_SPAWN.x,
       TARGET_SPAWN.y,
-      this.loadouts.target.activeCardId ? getAbilityCard(this.loadouts.target.activeCardId) : undefined,
+      this.loadouts.target.activeCardId
+        ? getAbilityCard(this.loadouts.target.activeCardId)
+        : undefined,
       loadoutCards(this.loadouts.target),
     );
   }
@@ -132,7 +174,13 @@ export class BattleModel {
     return this.nextNeutralMobId++;
   }
 
-  addNeutralMob(mob: NeutralMob<NeutralMobState, BulletProjectileParams, LaserProjectileParams>): void {
+  addNeutralMob(
+    mob: NeutralMob<
+      NeutralMobState,
+      BulletProjectileParams,
+      LaserProjectileParams
+    >,
+  ): void {
     if (this.neutralMobs.some((existing) => existing.id === mob.id)) {
       throw new Error(`Duplicate neutral mob id: ${mob.id}`);
     }
@@ -166,6 +214,10 @@ export class BattleModel {
     return this.points;
   }
 
+  setPlayerPointCount(pointCount: number): void {
+    this.player.pointCount = clampPointCount(pointCount);
+  }
+
   getNextPointId(): number {
     return this.nextPointId;
   }
@@ -174,7 +226,11 @@ export class BattleModel {
     this.stepFrame(input, undefined, true);
   }
 
-  stepVersus(playerInput: BattleInputState, targetInput: BattleInputState, hostIsPlayer = true): void {
+  stepVersus(
+    playerInput: BattleInputState,
+    targetInput: BattleInputState,
+    hostIsPlayer = true,
+  ): void {
     if (hostIsPlayer) {
       this.stepFrame(playerInput, targetInput, true);
     } else {
@@ -223,9 +279,17 @@ export class BattleModel {
       target: this.target,
       hitTargets: this.currentHitTargets(),
       shields: this.currentShields(),
-      computeRapierHits: physics ? (projectiles) => physics.computeCollisions(
-        projectiles, this.player, this.target, this.currentShields(), this.neutralMobStates(), this.points,
-      ) : undefined,
+      computeRapierHits: physics
+        ? (projectiles) =>
+            physics.computeCollisions(
+              projectiles,
+              this.player,
+              this.target,
+              this.currentShields(),
+              this.neutralMobStates(),
+              this.points,
+            )
+        : undefined,
       onHit: (ctx) => this.onProjectileHit(ctx),
     });
     this.removeInactiveNeutralMobs();
@@ -279,21 +343,48 @@ export class BattleModel {
 
   deserialize(snapshot: BattleModelSnapshot): void {
     if (snapshot.version !== 1) {
-      throw new Error(`Unsupported battle model snapshot version: ${snapshot.version}`);
+      throw new Error(
+        `Unsupported battle model snapshot version: ${snapshot.version}`,
+      );
     }
     this.frame = snapshot.frame;
     this.gameOver = snapshot.gameOver;
     restoreFighterSnapshot(this.player, snapshot.player, this.frame);
     restoreFighterSnapshot(this.target, snapshot.target, this.frame);
-    this.projectiles.splice(0, this.projectiles.length, ...snapshot.projectiles.map((projectile) => restoreProjectileSnapshot(projectile, this.frame)));
-    this.effects.splice(0, this.effects.length, ...snapshot.effects.map((effect) => restoreEffectSnapshot(effect, this.frame)));
-    this.points.splice(0, this.points.length, ...snapshot.points.map((point) => ({ ...point })));
+    this.projectiles.splice(
+      0,
+      this.projectiles.length,
+      ...snapshot.projectiles.map((projectile) =>
+        restoreProjectileSnapshot(projectile, this.frame),
+      ),
+    );
+    this.effects.splice(
+      0,
+      this.effects.length,
+      ...snapshot.effects.map((effect) =>
+        restoreEffectSnapshot(effect, this.frame),
+      ),
+    );
+    this.points.splice(
+      0,
+      this.points.length,
+      ...snapshot.points.map((point) => ({ ...point })),
+    );
     this.restoreNeutralMobSnapshots(snapshot.neutralMobs);
     Object.assign(this.stats, snapshot.stats);
-    this.projectileSystem.restoreNextId(this.projectiles, snapshot.nextProjectileId);
+    this.projectileSystem.restoreNextId(
+      this.projectiles,
+      snapshot.nextProjectileId,
+    );
     this.effectSystem.restoreNextId(this.effects, snapshot.nextEffectId);
-    this.nextNeutralMobId = Math.max(snapshot.nextNeutralMobId, 1 + Math.max(0, ...snapshot.neutralMobs.map((mob) => mob.id)));
-    this.nextPointId = Math.max(snapshot.nextPointId, 1 + Math.max(0, ...snapshot.points.map((point) => point.id)));
+    this.nextNeutralMobId = Math.max(
+      snapshot.nextNeutralMobId,
+      1 + Math.max(0, ...snapshot.neutralMobs.map((mob) => mob.id)),
+    );
+    this.nextPointId = Math.max(
+      snapshot.nextPointId,
+      1 + Math.max(0, ...snapshot.points.map((point) => point.id)),
+    );
     if (snapshot.mobSpawner) {
       this.mobSpawner?.restore(snapshot.mobSpawner);
     }
@@ -381,18 +472,28 @@ export class BattleModel {
     if (fighter.movementLockedUntil === 0) {
       // Sinusoidal movement pattern for the simple AI target
       const fpFrame = fp.fromInt(this.frame);
-      const fpSinOffset = fp.mul(fp.sin(fp.div(fpFrame, fp.fromInt(36))), fp.fromFloat(1.6));
-      const fpCosOffset = fp.mul(fp.cos(fp.div(fpFrame, fp.fromInt(50))), fp.fromFloat(1.2));
-      fighter.x = fp.toFloat(fpClamp(
-        fp.add(fp.fromFloat(fighter.x), fpSinOffset),
-        fp.fromInt(780),
-        fp.fromInt(1150),
-      ));
-      fighter.y = fp.toFloat(fpClamp(
-        fp.add(fp.fromFloat(fighter.y), fpCosOffset),
-        fp.fromInt(72),
-        fp.fromInt(600),
-      ));
+      const fpSinOffset = fp.mul(
+        fp.sin(fp.div(fpFrame, fp.fromInt(36))),
+        fp.fromFloat(1.6),
+      );
+      const fpCosOffset = fp.mul(
+        fp.cos(fp.div(fpFrame, fp.fromInt(50))),
+        fp.fromFloat(1.2),
+      );
+      fighter.x = fp.toFloat(
+        fpClamp(
+          fp.add(fp.fromFloat(fighter.x), fpSinOffset),
+          fp.fromInt(780),
+          fp.fromInt(1150),
+        ),
+      );
+      fighter.y = fp.toFloat(
+        fpClamp(
+          fp.add(fp.fromFloat(fighter.y), fpCosOffset),
+          fp.fromInt(72),
+          fp.fromInt(600),
+        ),
+      );
     }
     fighter.facing = fpAtan2(
       fp.fromFloat(this.player.y - fighter.y),
@@ -400,14 +501,26 @@ export class BattleModel {
     );
     this.targetFighter.postUpdate(this.fighterActionContext(fighter));
     if (this.frame % 72 === 0) {
-      this.targetFighter.fire(this.fighterActionContext(fighter), this.player.x, this.player.y);
+      this.targetFighter.fire(
+        this.fighterActionContext(fighter),
+        this.player.x,
+        this.player.y,
+      );
     }
   }
 
-  private onProjectileHit(ctx: ProjectileCollisionContext<ProjectileState, ProjectileHitTarget, FighterKey>): boolean {
+  private onProjectileHit(
+    ctx: ProjectileCollisionContext<
+      ProjectileState,
+      ProjectileHitTarget,
+      FighterKey
+    >,
+  ): boolean {
     const { owner, victim } = ctx;
     if (victim.key === "Neutral") {
-      const mob = this.neutralMobs.find((candidate) => candidate.id === neutralMobIdFromHitTarget(victim));
+      const mob = this.neutralMobs.find(
+        (candidate) => candidate.id === neutralMobIdFromHitTarget(victim),
+      );
       const mobDamage = ctx.projectile.damage;
       if (!mob) {
         return false;
@@ -426,12 +539,14 @@ export class BattleModel {
     }
     const damage = ctx.damage;
     const fighterState = victim.key === "Player1" ? this.player : this.target;
-    const victimFighter = victim.key === "Player1" ? this.playerFighter : this.targetFighter;
-    const attackerCards = owner === "Player1"
-      ? this.playerFighter.cardDefinitions()
-      : owner === "Player2"
-        ? this.targetFighter.cardDefinitions()
-        : [];
+    const victimFighter =
+      victim.key === "Player1" ? this.playerFighter : this.targetFighter;
+    const attackerCards =
+      owner === "Player1"
+        ? this.playerFighter.cardDefinitions()
+        : owner === "Player2"
+          ? this.targetFighter.cardDefinitions()
+          : [];
     const result = victimFighter.onProjectileHit({
       owner,
       victim: fighterState,
@@ -485,7 +600,8 @@ export class BattleModel {
         const spawnParams = {
           ...params,
           frame: spawnFrame,
-          pausedUntil: params.pausedUntil ?? spawnFrame + owner.projectilePauseUntil,
+          pausedUntil:
+            params.pausedUntil ?? spawnFrame + owner.projectilePauseUntil,
         };
         this.pendingSpawns.push(() => {
           this.projectileSystem.spawnBullet(this.projectiles, spawnParams);
@@ -497,20 +613,38 @@ export class BattleModel {
         const spawnParams = {
           ...params,
           frame: spawnFrame,
-          pausedUntil: params.pausedUntil ?? spawnFrame + owner.projectilePauseUntil,
+          pausedUntil:
+            params.pausedUntil ?? spawnFrame + owner.projectilePauseUntil,
         };
         this.pendingSpawns.push(() => {
           this.projectileSystem.spawnLaser(this.projectiles, spawnParams);
         });
       },
-      clearProjectilesAround: (params) => clearProjectilesAround(this.projectiles, params.x, params.y, params.radius),
+      clearProjectilesAround: (params) =>
+        clearProjectilesAround(
+          this.projectiles,
+          params.x,
+          params.y,
+          params.radius,
+        ),
       spawnClearRing: (params) => {
-        this.effectSystem.spawnRing(this.effects, this.frame, params.x, params.y, params.tint, fp.toFloat(fp.div(fp.fromFloat(params.radius), fp.fromInt(100))), params.duration);
+        this.effectSystem.spawnRing(
+          this.effects,
+          this.frame,
+          params.x,
+          params.y,
+          params.tint,
+          fp.toFloat(fp.div(fp.fromFloat(params.radius), fp.fromInt(100))),
+          params.duration,
+        );
       },
     };
   }
 
-  private neutralMobActionContext(): NeutralMobActionContext<BulletProjectileParams, LaserProjectileParams> {
+  private neutralMobActionContext(): NeutralMobActionContext<
+    BulletProjectileParams,
+    LaserProjectileParams
+  > {
     const frame = this.frame;
     return {
       frame,
@@ -559,7 +693,8 @@ export class BattleModel {
 
   private stepNeutralMobs(): void {
     this.sortNeutralMobs();
-    const timeStopped = this.player.timeStopUntil > 0 || this.target.timeStopUntil > 0;
+    const timeStopped =
+      this.player.timeStopUntil > 0 || this.target.timeStopUntil > 0;
     if (timeStopped) {
       // During time stop: update previous positions for interpolation, freeze everything else
       for (const mob of this.neutralMobs) {
@@ -588,12 +723,17 @@ export class BattleModel {
   }
 
   private removeInactiveNeutralMobs(): void {
-    this.neutralMobs.splice(0, this.neutralMobs.length, ...this.neutralMobs.filter((mob) => mob.state.active));
+    this.neutralMobs.splice(
+      0,
+      this.neutralMobs.length,
+      ...this.neutralMobs.filter((mob) => mob.state.active),
+    );
   }
 
   private stepPoints(): void {
     this.sortPoints();
-    const timeStopped = this.player.timeStopUntil > 0 || this.target.timeStopUntil > 0;
+    const timeStopped =
+      this.player.timeStopUntil > 0 || this.target.timeStopUntil > 0;
     for (const point of this.points) {
       point.previousX = point.x;
       point.previousY = point.y;
@@ -608,15 +748,23 @@ export class BattleModel {
       if (timeStopped) {
         continue;
       }
-      point.x = fp.toFloat(fp.add(fp.fromFloat(point.x), fp.fromFloat(point.vx)));
-      point.y = fp.toFloat(fp.add(fp.fromFloat(point.y), fp.fromFloat(point.vy)));
+      point.x = fp.toFloat(
+        fp.add(fp.fromFloat(point.x), fp.fromFloat(point.vx)),
+      );
+      point.y = fp.toFloat(
+        fp.add(fp.fromFloat(point.y), fp.fromFloat(point.vy)),
+      );
       if (pointIsOutsideArena(point)) {
         point.active = false;
         continue;
       }
       this.tryCollectPoint(point);
     }
-    this.points.splice(0, this.points.length, ...this.points.filter((point) => point.active));
+    this.points.splice(
+      0,
+      this.points.length,
+      ...this.points.filter((point) => point.active),
+    );
   }
 
   private tryCollectPoint(point: PointState): void {
@@ -638,9 +786,17 @@ export class BattleModel {
   }
 
   private awardPoint(point: PointState): void {
-    const fighter = point.collectingBy === "Player1" ? this.player : point.collectingBy === "Player2" ? this.target : undefined;
+    const fighter =
+      point.collectingBy === "Player1"
+        ? this.player
+        : point.collectingBy === "Player2"
+          ? this.target
+          : undefined;
     if (fighter) {
-      fighter.pointCount = Math.min(POINT_COUNT_MAX, fighter.pointCount + point.value);
+      fighter.pointCount = Math.min(
+        POINT_COUNT_MAX,
+        fighter.pointCount + point.value,
+      );
     }
   }
 
@@ -650,21 +806,31 @@ export class BattleModel {
       return;
     }
     const velocity = pointVelocityFromFrame(this.frame, "low");
-    this.addPoint(createPointState({
-      id: this.allocatePointId(),
-      x: mob.x,
-      y: mob.y,
-      value,
-      vx: velocity.vx,
-      vy: velocity.vy,
-    }));
+    this.addPoint(
+      createPointState({
+        id: this.allocatePointId(),
+        x: mob.x,
+        y: mob.y,
+        value,
+        vx: velocity.vx,
+        vy: velocity.vy,
+      }),
+    );
   }
 
-  private restoreNeutralMobSnapshots(snapshots: readonly NeutralMobState[]): void {
+  private restoreNeutralMobSnapshots(
+    snapshots: readonly NeutralMobState[],
+  ): void {
     const ids = new Set(snapshots.map((snapshot) => snapshot.id));
-    this.neutralMobs.splice(0, this.neutralMobs.length, ...this.neutralMobs.filter((mob) => ids.has(mob.id)));
+    this.neutralMobs.splice(
+      0,
+      this.neutralMobs.length,
+      ...this.neutralMobs.filter((mob) => ids.has(mob.id)),
+    );
     for (const snapshot of snapshots) {
-      const existing = this.neutralMobs.find((candidate) => candidate.id === snapshot.id);
+      const existing = this.neutralMobs.find(
+        (candidate) => candidate.id === snapshot.id,
+      );
       if (existing) {
         existing.restore(snapshot);
       } else if (this.mobSpawner) {
@@ -694,7 +860,11 @@ export class BattleModel {
 
   private resolveProjectileClashes(): void {
     const masters = this.projectiles.filter(
-      (projectile) => projectile.kind === "spark" && projectile.height >= 36 && projectile.damage > 0 && this.frame >= projectile.pausedUntil,
+      (projectile) =>
+        projectile.kind === "spark" &&
+        projectile.height >= 36 &&
+        projectile.damage >= 10 &&
+        this.frame >= projectile.pausedUntil,
     );
     if (masters.length === 0) {
       return;
@@ -707,7 +877,11 @@ export class BattleModel {
         if (projectile.kind === "laser") {
           return true;
         }
-        return !masters.some((master) => master.owner !== projectile.owner && hitsBeam(master, projectile.x, projectile.y));
+        return !masters.some(
+          (master) =>
+            master.owner !== projectile.owner &&
+            hitsBeam(master, projectile.x, projectile.y),
+        );
       }),
     );
   }
@@ -725,8 +899,18 @@ export class BattleModel {
 
   private currentHitTargets(): readonly ProjectileHitTarget[] {
     return [
-      { key: this.player.key, x: this.player.x, y: this.player.y, hitRadius: PLAYER_CORE_RADIUS },
-      { key: this.target.key, x: this.target.x, y: this.target.y, hitRadius: PLAYER_CORE_RADIUS },
+      {
+        key: this.player.key,
+        x: this.player.x,
+        y: this.player.y,
+        hitRadius: PLAYER_CORE_RADIUS,
+      },
+      {
+        key: this.target.key,
+        x: this.target.x,
+        y: this.target.y,
+        hitRadius: PLAYER_CORE_RADIUS,
+      },
       ...this.neutralMobs
         .filter((mob) => mob.state.active)
         .sort((left, right) => left.id - right.id)
@@ -743,7 +927,9 @@ export class BattleModel {
   }
 }
 
-function neutralMobIdFromHitTarget(target: ProjectileHitTarget): number | undefined {
+function neutralMobIdFromHitTarget(
+  target: ProjectileHitTarget,
+): number | undefined {
   return target.mobId;
 }
 
@@ -770,13 +956,22 @@ function hitsBeam(beam: ProjectileState, x: number, y: number): boolean {
   const fpSin = fp.sin(fpAngle);
 
   const fpForward = fp.add(fp.mul(fpDx, fpCos), fp.mul(fpDy, fpSin));
-  const fpSide = fp.abs(fp.add(fp.mul(fp.negate(fpDx), fpSin), fp.mul(fpDy, fpCos)));
+  const fpSide = fp.abs(
+    fp.add(fp.mul(fp.negate(fpDx), fpSin), fp.mul(fpDy, fpCos)),
+  );
 
   if (!Number.isFinite(beam.width)) {
-    return fp.gte(fpForward, fp.fromInt(0)) && fp.lte(fpSide, fp.div(fp.fromFloat(beam.height), fp.fromInt(2)));
+    return (
+      fp.gte(fpForward, fp.fromInt(0)) &&
+      fp.lte(fpSide, fp.div(fp.fromFloat(beam.height), fp.fromInt(2)))
+    );
   }
-  return fp.lte(fp.abs(fpForward), fp.div(fp.fromFloat(beam.width), fp.fromInt(2))) &&
-    fp.lte(fpSide, fp.div(fp.fromFloat(beam.height), fp.fromInt(2)));
+  return (
+    fp.lte(
+      fp.abs(fpForward),
+      fp.div(fp.fromFloat(beam.width), fp.fromInt(2)),
+    ) && fp.lte(fpSide, fp.div(fp.fromFloat(beam.height), fp.fromInt(2)))
+  );
 }
 
 function loadoutCards(loadout: FighterLoadout) {
@@ -787,3 +982,9 @@ function loadoutCards(loadout: FighterLoadout) {
   return Array.from(ids).map((id) => getAbilityCard(id));
 }
 
+function clampPointCount(pointCount: number): number {
+  if (!Number.isFinite(pointCount)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(POINT_COUNT_MAX, Math.floor(pointCount)));
+}

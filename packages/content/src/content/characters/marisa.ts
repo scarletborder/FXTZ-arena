@@ -2,8 +2,15 @@ import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 
 import type { FighterState } from "../battle-types";
 import type { BattleHitContext } from "../ability-cards/base";
-import { BattleCharacter, hitCircleUnits, secondsToTicks, type CharacterActionContext } from "./base";
+import {
+  BattleCharacter,
+  hitCircleUnits,
+  secondsToTicks,
+  type CharacterActionContext,
+} from "./base";
 import { Vanilla } from "../decorators";
+
+const REAR_BEAM_DIAGONAL_ANGLE = Math.PI / 18;
 
 @Vanilla.RegisterCharacter("marisa")
 export class MarisaBattleCharacter extends BattleCharacter {
@@ -15,8 +22,10 @@ export class MarisaBattleCharacter extends BattleCharacter {
   readonly fireRate = "low" as CharacterDefinition["fireRate"];
   readonly ammoCapacity = 2;
   readonly reloadTicksPerAmmo = secondsToTicks(1.5);
-  readonly reloadStartPolicy = "reset_to_zero" as CharacterDefinition["reloadStartPolicy"];
-  readonly reloadCommitPolicy = "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
+  readonly reloadStartPolicy =
+    "reset_to_zero" as CharacterDefinition["reloadStartPolicy"];
+  readonly reloadCommitPolicy =
+    "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = "high" as CharacterDefinition["bulletSpeed"];
   readonly description = "高速激光与长前摇魔炮，爆发强但动作约束明显。";
   readonly gallery: CharacterGalleryAssets = {
@@ -26,19 +35,30 @@ export class MarisaBattleCharacter extends BattleCharacter {
   readonly normalAttackId = "marisa_laser";
   readonly bombId = "marisa_master_spark";
 
-  shoot(ctx: CharacterActionContext, fighter: FighterState, aimX: number, aimY: number): void {
-    ctx.spawnLaser({
-      owner: fighter.key,
-      x: fighter.x,
-      y: fighter.y,
-      angle: this.aimAngle(fighter, aimX, aimY),
-      height: hitCircleUnits(3),
-      initialLength: hitCircleUnits(3),
-      maxLength: hitCircleUnits(16),
-      lengthGrowthPerTick: hitCircleUnits(1),
-      speedRank: "high",
-      damage: 5,
-    });
+  shoot(
+    ctx: CharacterActionContext,
+    fighter: FighterState,
+    aimX: number,
+    aimY: number,
+  ): void {
+    const angle = this.aimAngle(fighter, aimX, aimY);
+    const tier = this.pointPowerTier(fighter);
+    const centerOffsets =
+      tier >= 3 ? [-hitCircleUnits(2.5), hitCircleUnits(2.5)] : [0];
+    for (const offset of centerOffsets) {
+      const position = this.offsetPosition(
+        fighter.x,
+        fighter.y,
+        angle,
+        0,
+        offset,
+      );
+      this.spawnNormalLaser(ctx, fighter, position.x, position.y, angle);
+    }
+
+    if (tier >= 2) {
+      this.spawnRearBeams(ctx, fighter, angle, tier);
+    }
   }
 
   useBomb(ctx: CharacterActionContext, fighter: FighterState): void {
@@ -100,5 +120,131 @@ export class MarisaBattleCharacter extends BattleCharacter {
 
   onHit(_ctx: BattleHitContext): void {
     // Marisa has no hit-time modifier by default.
+  }
+
+  private spawnNormalLaser(
+    ctx: CharacterActionContext,
+    fighter: FighterState,
+    x: number,
+    y: number,
+    angle: number,
+  ): void {
+    ctx.spawnLaser({
+      owner: fighter.key,
+      x,
+      y,
+      angle,
+      height: hitCircleUnits(3),
+      initialLength: hitCircleUnits(3),
+      maxLength: hitCircleUnits(16),
+      lengthGrowthPerTick: hitCircleUnits(1),
+      speedRank: "high",
+      damage: 5,
+    });
+  }
+
+  private spawnRearBeams(
+    ctx: CharacterActionContext,
+    fighter: FighterState,
+    angle: number,
+    tier: number,
+  ): void {
+    const windupTicks = 24;
+    const durationTicks = 30;
+    const sideOffset = hitCircleUnits(8);
+    const rearOffset = -hitCircleUnits(16);
+    const beamOffsets = [-sideOffset, sideOffset];
+
+    for (const side of beamOffsets) {
+      const position = this.offsetPosition(
+        fighter.x,
+        fighter.y,
+        angle,
+        rearOffset,
+        side,
+      );
+      const angleOffsets =
+        tier >= 4
+          ? [0, side < 0 ? -REAR_BEAM_DIAGONAL_ANGLE : REAR_BEAM_DIAGONAL_ANGLE]
+          : [0];
+      for (const angleOffset of angleOffsets) {
+        const beamAngle = angle + angleOffset;
+        this.spawnRearBeamPreview(
+          ctx,
+          fighter,
+          position.x,
+          position.y,
+          beamAngle,
+          windupTicks,
+        );
+        this.spawnRearBeam(
+          ctx,
+          fighter,
+          position.x,
+          position.y,
+          beamAngle,
+          windupTicks,
+          durationTicks,
+        );
+      }
+    }
+  }
+
+  private spawnRearBeamPreview(
+    ctx: CharacterActionContext,
+    fighter: FighterState,
+    x: number,
+    y: number,
+    angle: number,
+    expireTicks: number,
+  ): void {
+    ctx.spawnLaser({
+      owner: fighter.key,
+      x,
+      y,
+      angle,
+      height: hitCircleUnits(2),
+      initialLength: Number.POSITIVE_INFINITY,
+      maxLength: Number.POSITIVE_INFINITY,
+      lengthGrowthPerTick: 0,
+      speedRank: "low",
+      expireTicks,
+      damage: 0,
+      spawnOffset: 0,
+      pinned: true,
+      anchored: true,
+      rayLike: true,
+    });
+  }
+
+  private spawnRearBeam(
+    ctx: CharacterActionContext,
+    fighter: FighterState,
+    x: number,
+    y: number,
+    angle: number,
+    frameDelay: number,
+    expireTicks: number,
+  ): void {
+    ctx.spawnLaser({
+      owner: fighter.key,
+      x,
+      y,
+      angle,
+      height: hitCircleUnits(2),
+      initialLength: Number.POSITIVE_INFINITY,
+      maxLength: Number.POSITIVE_INFINITY,
+      lengthGrowthPerTick: 0,
+      speedRank: "low",
+      expireTicks,
+      damage: 5,
+      spawnOffset: 0,
+      pinned: true,
+      anchored: true,
+      rayLike: true,
+      visibleFrom: ctx.frame + frameDelay,
+      pausedUntil: ctx.frame + frameDelay,
+      frame: ctx.frame + frameDelay,
+    });
   }
 }

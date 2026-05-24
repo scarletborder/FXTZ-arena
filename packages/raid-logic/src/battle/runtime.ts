@@ -3,7 +3,11 @@ import { BattleModel } from "./model";
 import { BattlePhysics } from "./model/physics-adapter";
 import { createPointState, pointVelocityFromFrame } from "./model/points";
 import type { BattleModelSnapshot } from "./model/snapshot";
-import { BattleOutputQueue, type BattleOutputEvent, type BattleOutputFrame } from "./output";
+import {
+  BattleOutputQueue,
+  type BattleOutputEvent,
+  type BattleOutputFrame,
+} from "./output";
 import type { BattleInputState } from "@repo/types";
 import type { BattleOutputState } from "@repo/content";
 import { DEFAULT_MAPS, resolveMobSpawner } from "@repo/content";
@@ -13,21 +17,21 @@ export type RaidLogicMode = "training" | "ai" | "online";
 
 export type RaidLogicStepInput =
   | {
-    readonly mode: "training" | "ai";
-    readonly player: BattleInputState;
-  }
+      readonly mode: "training" | "ai";
+      readonly player: BattleInputState;
+    }
   | {
-    readonly mode: "online";
-    readonly player: BattleInputState;
-    readonly target: BattleInputState;
-    /**
-     * Priority order for simultaneous actions.
-     * When true (default), the "player" fighter (Player1 / host) is processed first.
-     * When false, the "target" fighter (Player2) is processed first.
-     * Determined by playerId: lower playerId → higher priority.
-     */
-    readonly hostIsPlayer?: boolean;
-  };
+      readonly mode: "online";
+      readonly player: BattleInputState;
+      readonly target: BattleInputState;
+      /**
+       * Priority order for simultaneous actions.
+       * When true (default), the "player" fighter (Player1 / host) is processed first.
+       * When false, the "target" fighter (Player2) is processed first.
+       * Determined by playerId: lower playerId → higher priority.
+       */
+      readonly hostIsPlayer?: boolean;
+    };
 
 export interface RaidLogicRuntimeOptions {
   readonly mode: RaidLogicMode;
@@ -44,7 +48,12 @@ export interface RaidLogicRuntime {
   readonly physicsReady: boolean;
   initialize(): Promise<void>;
   readDebugBodies(): ReturnType<BattlePhysics["readAllBodies"]>;
-  debugSpawnPoint(params: { readonly value: 1 | 5 | 10; readonly x: number; readonly y: number }): BattleOutputFrame;
+  debugSpawnPoint(params: {
+    readonly value: 1 | 5 | 10;
+    readonly x: number;
+    readonly y: number;
+  }): BattleOutputFrame;
+  debugSetPoint(pointCount: number): BattleOutputFrame;
   step(input: RaidLogicStepInput): BattleOutputFrame;
   reset(): BattleOutputFrame;
   serialize(): BattleModelSnapshot;
@@ -69,7 +78,9 @@ class BattleRuntime implements RaidLogicRuntime {
       enableCpuTarget: mode === "ai",
       neutralMobSpawner: spawner,
     });
-    this.enqueueOutput([{ type: "snapshot_restored", frame: this.model.frame }]);
+    this.enqueueOutput([
+      { type: "snapshot_restored", frame: this.model.frame },
+    ]);
   }
 
   get state(): BattleOutputState {
@@ -99,18 +110,33 @@ class BattleRuntime implements RaidLogicRuntime {
     return this.physics.readAllBodies();
   }
 
-  debugSpawnPoint(params: { readonly value: 1 | 5 | 10; readonly x: number; readonly y: number }): BattleOutputFrame {
+  debugSpawnPoint(params: {
+    readonly value: 1 | 5 | 10;
+    readonly x: number;
+    readonly y: number;
+  }): BattleOutputFrame {
     const velocity = pointVelocityFromFrame(this.model.frame, "low");
-    this.model.addPoint(createPointState({
-      id: this.model.allocatePointId(),
-      x: params.x,
-      y: params.y,
-      value: params.value,
-      vx: velocity.vx,
-      vy: velocity.vy,
-    }));
+    this.model.addPoint(
+      createPointState({
+        id: this.model.allocatePointId(),
+        x: params.x,
+        y: params.y,
+        value: params.value,
+        vx: velocity.vx,
+        vy: velocity.vy,
+      }),
+    );
     this.physics.syncPointBodies(this.model.points);
-    return this.enqueueOutput([{ type: "snapshot_restored", frame: this.model.frame }]);
+    return this.enqueueOutput([
+      { type: "snapshot_restored", frame: this.model.frame },
+    ]);
+  }
+
+  debugSetPoint(pointCount: number): BattleOutputFrame {
+    this.model.setPlayerPointCount(pointCount);
+    return this.enqueueOutput([
+      { type: "snapshot_restored", frame: this.model.frame },
+    ]);
   }
 
   step(input: RaidLogicStepInput): BattleOutputFrame {
@@ -119,21 +145,31 @@ class BattleRuntime implements RaidLogicRuntime {
     }
 
     if (input.mode !== this.mode) {
-      throw new Error(`Cannot step ${this.mode} runtime with ${input.mode} input`);
+      throw new Error(
+        `Cannot step ${this.mode} runtime with ${input.mode} input`,
+      );
     }
 
     if (input.mode === "online") {
-      this.model.stepVersus(input.player, input.target, input.hostIsPlayer ?? true);
+      this.model.stepVersus(
+        input.player,
+        input.target,
+        input.hostIsPlayer ?? true,
+      );
     } else {
       this.model.step(input.player);
     }
 
-    return this.enqueueOutput([{ type: "frame_advanced", frame: this.model.frame }]);
+    return this.enqueueOutput([
+      { type: "frame_advanced", frame: this.model.frame },
+    ]);
   }
 
   reset(): BattleOutputFrame {
     this.model.reset();
-    return this.enqueueOutput([{ type: "snapshot_restored", frame: this.model.frame }]);
+    return this.enqueueOutput([
+      { type: "snapshot_restored", frame: this.model.frame },
+    ]);
   }
 
   serialize(): BattleModelSnapshot {
@@ -142,7 +178,9 @@ class BattleRuntime implements RaidLogicRuntime {
 
   deserialize(snapshot: BattleModelSnapshot): BattleOutputFrame {
     this.model.deserialize(snapshot);
-    return this.enqueueOutput([{ type: "snapshot_restored", frame: this.model.frame }]);
+    return this.enqueueOutput([
+      { type: "snapshot_restored", frame: this.model.frame },
+    ]);
   }
 
   hash(): number {
@@ -153,7 +191,9 @@ class BattleRuntime implements RaidLogicRuntime {
     return this.model.hashHex();
   }
 
-  private enqueueOutput(events: readonly BattleOutputEvent[]): BattleOutputFrame {
+  private enqueueOutput(
+    events: readonly BattleOutputEvent[],
+  ): BattleOutputFrame {
     const frame = {
       frame: this.model.frame,
       hash: this.model.hash(),
@@ -167,7 +207,10 @@ class BattleRuntime implements RaidLogicRuntime {
   }
 }
 
-function resolveSpawner(mode: RaidLogicMode, mapId: string | undefined): NeutralMobSpawner | null | undefined {
+function resolveSpawner(
+  mode: RaidLogicMode,
+  mapId: string | undefined,
+): NeutralMobSpawner | null | undefined {
   if (mapId) {
     const map = DEFAULT_MAPS.find((m) => m.id === mapId);
     if (map?.mobSpawnerId) {
@@ -178,6 +221,8 @@ function resolveSpawner(mode: RaidLogicMode, mapId: string | undefined): Neutral
   return undefined;
 }
 
-export function createRaidLogicRuntime(options: RaidLogicRuntimeOptions): RaidLogicRuntime {
+export function createRaidLogicRuntime(
+  options: RaidLogicRuntimeOptions,
+): RaidLogicRuntime {
   return new BattleRuntime(options.mode, options.loadouts, options.mapId);
 }

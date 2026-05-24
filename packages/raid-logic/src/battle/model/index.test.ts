@@ -1,12 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { NeutralMob, type BattleInputState, type NeutralMobState } from "@repo/types";
+import {
+  NeutralMob,
+  type BattleInputState,
+  type NeutralMobState,
+} from "@repo/types";
+import { HIT_CIRCLE_DIAMETER } from "@repo/constants";
 import type { BattleLoadouts } from "../loadout";
 import { POINT_COUNT_MAX } from "../constants";
 import { BattleModel } from ".";
 import { BattlePhysics } from "./physics-adapter";
 import { createPointState } from "./points";
-import type { BulletProjectileParams, LaserProjectileParams } from "./projectile";
+import type {
+  BulletProjectileParams,
+  LaserProjectileParams,
+} from "./projectile";
 
 describe("BattleModel rollback snapshots", () => {
   it("restores frame-relative timers without changing replay results", async () => {
@@ -40,12 +48,24 @@ describe("BattleModel rollback snapshots", () => {
 
   it("restores the projectile id allocator after generated projectiles were removed", async () => {
     const model = await createBattleModel("sakuya", "reimu");
-    model.step(input({ shootPressed: true, aimX: model.player.x - 100, aimY: model.player.y }));
-    expect(model.projectiles.map((projectile) => projectile.id)).toEqual([1, 2]);
+    model.step(
+      input({
+        shootPressed: true,
+        aimX: model.player.x - 100,
+        aimY: model.player.y,
+      }),
+    );
+    expect(model.projectiles.map((projectile) => projectile.id)).toEqual([
+      1, 2,
+    ]);
     model.projectiles.length = 0;
     model.player.fireCooldownUntil = 0;
     const snapshot = model.serialize();
-    const action = input({ shootPressed: true, aimX: model.player.x - 100, aimY: model.player.y });
+    const action = input({
+      shootPressed: true,
+      aimX: model.player.x - 100,
+      aimY: model.player.y,
+    });
 
     model.step(action);
     const originalIds = model.projectiles.map((projectile) => projectile.id);
@@ -54,13 +74,20 @@ describe("BattleModel rollback snapshots", () => {
     model.deserialize(snapshot);
     model.step(action);
 
-    expect(model.projectiles.map((projectile) => projectile.id)).toEqual(originalIds);
+    expect(model.projectiles.map((projectile) => projectile.id)).toEqual(
+      originalIds,
+    );
     expect(originalIds).toEqual([3, 4]);
     expect(model.hashHex()).toBe(originalHash);
   });
 
   it("restores the effect id allocator after generated effects were removed", async () => {
-    const model = await createBattleModel("reimu", "marisa", ["spirit_strike_card"], "spirit_strike_card");
+    const model = await createBattleModel(
+      "reimu",
+      "marisa",
+      ["spirit_strike_card"],
+      "spirit_strike_card",
+    );
     model.step(input({ activeCardPressed: true }));
     expect(model.effects.map((effect) => effect.id)).toEqual([1]);
     model.effects.length = 0;
@@ -98,7 +125,11 @@ describe("BattleModel reload timing", () => {
     expect(model.player.reloadRemaining).toBe(96);
     expect(model.player.ammo).toBe(3);
 
-    for (let index = 0; index < 500 && model.player.reloadRemaining > 0; index += 1) {
+    for (
+      let index = 0;
+      index < 500 && model.player.reloadRemaining > 0;
+      index += 1
+    ) {
       model.step(input());
     }
 
@@ -117,7 +148,11 @@ describe("BattleModel reload timing", () => {
     expect(model.player.reloadRemaining).toBe(180);
     expect(model.player.ammo).toBe(0);
 
-    for (let index = 0; index < 500 && model.player.reloadRemaining > 0; index += 1) {
+    for (
+      let index = 0;
+      index < 500 && model.player.reloadRemaining > 0;
+      index += 1
+    ) {
       model.step(input());
     }
 
@@ -136,7 +171,11 @@ describe("BattleModel reload timing", () => {
     expect(model.player.reloadRemaining).toBe(60);
     expect(model.player.ammo).toBe(2);
 
-    for (let index = 0; index < 500 && model.player.reloadRemaining > 0; index += 1) {
+    for (
+      let index = 0;
+      index < 500 && model.player.reloadRemaining > 0;
+      index += 1
+    ) {
       model.step(input());
     }
 
@@ -289,12 +328,28 @@ describe("BattleModel ability cards", () => {
     model.step(input({ shootPressed: true }));
 
     expect(model.projectiles).toHaveLength(4);
-    expect(model.projectiles.some((projectile) => projectile.width === 18 && projectile.height === 10)).toBe(true);
+    expect(
+      model.projectiles.some(
+        (projectile) => projectile.width === 18 && projectile.height === 10,
+      ),
+    ).toBe(true);
   });
 
   it("clears nearby bullets with spirit strike", async () => {
-    const model = await createBattleModel("reimu", "marisa", ["spirit_strike_card"], "spirit_strike_card");
-    model.projectiles.push(testProjectile({ id: 1, owner: "Player2", x: model.player.x, y: model.player.y }));
+    const model = await createBattleModel(
+      "reimu",
+      "marisa",
+      ["spirit_strike_card"],
+      "spirit_strike_card",
+    );
+    model.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Player2",
+        x: model.player.x,
+        y: model.player.y,
+      }),
+    );
 
     model.step(input({ activeCardPressed: true }));
 
@@ -306,7 +361,9 @@ describe("BattleModel ability cards", () => {
     const model = await createBattleModel("reimu", "marisa", ["backdoor"]);
     model.player.facing = 0;
     const shield = model.toOutputState().shields[0]!;
-    model.projectiles.push(testProjectile({ id: 1, owner: "Player2", x: shield.x, y: shield.y }));
+    model.projectiles.push(
+      testProjectile({ id: 1, owner: "Player2", x: shield.x, y: shield.y }),
+    );
 
     model.step(input({ aimX: model.player.x + 100, aimY: model.player.y }));
 
@@ -321,21 +378,45 @@ describe("BattleModel ability cards", () => {
     model.projectiles.push(
       testProjectile({ id: 1, owner: "Player2", x: shield.x, y: shield.y }),
       testProjectile({ id: 2, owner: "Player1", x: shield.x, y: shield.y }),
-      testProjectile({ id: 3, owner: "Player2", kind: "spark", x: shield.x, y: shield.y }),
-      testProjectile({ id: 4, owner: "Player2", x: shield.x, y: shield.y, visibleFrom: 999 }),
-      testProjectile({ id: 5, owner: "Player2", x: shield.x, y: shield.y, damage: 0 }),
+      testProjectile({
+        id: 3,
+        owner: "Player2",
+        kind: "spark",
+        x: shield.x,
+        y: shield.y,
+      }),
+      testProjectile({
+        id: 4,
+        owner: "Player2",
+        x: shield.x,
+        y: shield.y,
+        visibleFrom: 999,
+      }),
+      testProjectile({
+        id: 5,
+        owner: "Player2",
+        x: shield.x,
+        y: shield.y,
+        damage: 0,
+      }),
     );
 
     model.step(input({ aimX: model.player.x + 100, aimY: model.player.y }));
 
-    expect(model.projectiles.map((projectile) => projectile.id).sort((left, right) => left - right)).toEqual([2, 3, 4, 5]);
+    expect(
+      model.projectiles
+        .map((projectile) => projectile.id)
+        .sort((left, right) => left - right),
+    ).toEqual([2, 3, 4, 5]);
   });
 
   it("replays backdoor shield clears deterministically after rollback", async () => {
     const model = await createBattleModel("reimu", "marisa", ["backdoor"]);
     model.player.facing = 0;
     const shield = model.toOutputState().shields[0]!;
-    model.projectiles.push(testProjectile({ id: 1, owner: "Player2", x: shield.x, y: shield.y }));
+    model.projectiles.push(
+      testProjectile({ id: 1, owner: "Player2", x: shield.x, y: shield.y }),
+    );
     const snapshot = model.serialize();
     const action = input({ aimX: model.player.x + 100, aimY: model.player.y });
 
@@ -355,35 +436,57 @@ describe("BattleModel character bombs", () => {
   it("reimu bomb clears nearby projectiles and leaves distant projectiles deterministic", async () => {
     const model = await createBattleModel("reimu", "marisa");
     model.projectiles.push(
-      testProjectile({ id: 100, owner: "Player2", x: model.player.x + 8, y: model.player.y }),
-      testProjectile({ id: 101, owner: "Player2", x: model.player.x + 200, y: model.player.y, vx: 1 }),
+      testProjectile({
+        id: 100,
+        owner: "Player2",
+        x: model.player.x + 8,
+        y: model.player.y,
+      }),
+      testProjectile({
+        id: 101,
+        owner: "Player2",
+        x: model.player.x + 200,
+        y: model.player.y,
+        vx: 1,
+      }),
     );
 
     model.step(input({ bombPressed: true }));
 
-    expect(model.projectiles.some((projectile) => projectile.id === 100)).toBe(false);
-    expect(model.projectiles.find((projectile) => projectile.id === 101)?.x).toBe(model.player.x + 201);
+    expect(model.projectiles.some((projectile) => projectile.id === 100)).toBe(
+      false,
+    );
+    expect(
+      model.projectiles.find((projectile) => projectile.id === 101)?.x,
+    ).toBe(model.player.x + 201);
     expect(model.effects.some((effect) => effect.kind === "ring")).toBe(true);
   });
 
   it("marisa bomb does not pause an existing projectile while scheduling master spark", async () => {
     const model = await createBattleModel("marisa", "reimu");
-    model.projectiles.push(testProjectile({
-      id: 1,
-      owner: "Player2",
-      x: model.player.x + 200,
-      y: model.player.y,
-      vx: 1,
-      pausedUntil: 0,
-    }));
+    model.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Player2",
+        x: model.player.x + 200,
+        y: model.player.y,
+        vx: 1,
+        pausedUntil: 0,
+      }),
+    );
 
     model.step(input({ bombPressed: true }));
 
-    const existing = model.projectiles.find((projectile) => projectile.id === 1);
+    const existing = model.projectiles.find(
+      (projectile) => projectile.id === 1,
+    );
     expect(existing?.pausedUntil).toBe(0);
     expect(existing?.x).toBe(model.player.x + 201);
 
-    const masterSpark = model.projectiles.find((projectile) => projectile.kind === "spark" && projectile.owner === "Player1");
+    const masterSpark = model.projectiles.find(
+      (projectile) =>
+        projectile.kind === "spark" && projectile.owner === "Player1",
+    );
     expect(masterSpark?.visibleFrom).toBe(model.frame + 60);
     expect(masterSpark?.pausedUntil).toBe(model.frame + 60);
   });
@@ -391,10 +494,16 @@ describe("BattleModel character bombs", () => {
   it("marisa master spark damages rectangular neutral targets without throwing", async () => {
     const model = await createBattleModel("marisa", "reimu");
     model.target.y = 600;
-    const mob = new StaticRectNeutralMob(model.allocateNeutralMobId(), model.player.x + 200, model.player.y);
+    const mob = new StaticRectNeutralMob(
+      model.allocateNeutralMobId(),
+      model.player.x + 200,
+      model.player.y,
+    );
     model.addNeutralMob(mob);
 
-    model.step(input({ bombPressed: true, aimX: mob.state.x, aimY: mob.state.y }));
+    model.step(
+      input({ bombPressed: true, aimX: mob.state.x, aimY: mob.state.y }),
+    );
     for (let index = 0; index < 60; index += 1) {
       model.step(input({ aimX: mob.state.x, aimY: mob.state.y }));
     }
@@ -405,14 +514,29 @@ describe("BattleModel character bombs", () => {
   it("sakuya bomb clears nearby projectiles and pauses remaining projectiles deterministically", async () => {
     const model = await createBattleModel("sakuya", "reimu");
     model.projectiles.push(
-      testProjectile({ id: 100, owner: "Player2", x: model.player.x + 8, y: model.player.y }),
-      testProjectile({ id: 101, owner: "Player2", x: model.player.x + 200, y: model.player.y, vx: 1 }),
+      testProjectile({
+        id: 100,
+        owner: "Player2",
+        x: model.player.x + 8,
+        y: model.player.y,
+      }),
+      testProjectile({
+        id: 101,
+        owner: "Player2",
+        x: model.player.x + 200,
+        y: model.player.y,
+        vx: 1,
+      }),
     );
 
     model.step(input({ bombPressed: true }));
 
-    const distant = model.projectiles.find((projectile) => projectile.id === 101);
-    expect(model.projectiles.some((projectile) => projectile.id === 100)).toBe(false);
+    const distant = model.projectiles.find(
+      (projectile) => projectile.id === 101,
+    );
+    expect(model.projectiles.some((projectile) => projectile.id === 100)).toBe(
+      false,
+    );
     expect(distant?.x).toBe(model.player.x + 200);
     expect(distant?.pausedUntil).toBe(model.frame + 60);
     expect(model.effects.some((effect) => effect.kind === "ring")).toBe(true);
@@ -424,9 +548,14 @@ describe("BattleModel character bombs", () => {
 
     model.step(action);
 
-    const extraShot = model.projectiles.find((projectile) => projectile.kind === "orb" && projectile.owner === "Player1");
+    const extraShot = model.projectiles.find(
+      (projectile) =>
+        projectile.kind === "orb" && projectile.owner === "Player1",
+    );
     expect(extraShot?.pausedUntil).toBe(model.frame + 60);
-    expect(model.projectiles.filter((projectile) => projectile.owner === "Player1")).toHaveLength(7);
+    expect(
+      model.projectiles.filter((projectile) => projectile.owner === "Player1"),
+    ).toHaveLength(7);
 
     const snapshot = model.serialize();
     const originalHash = model.hashHex();
@@ -446,7 +575,13 @@ describe("BattleModel character bombs", () => {
       input({ shootPressed: true, aimX: model.player.x, aimY: model.player.y }),
     );
 
-    expect(model.projectiles.map((projectile) => [projectile.id, projectile.owner, projectile.y])).toEqual([
+    expect(
+      model.projectiles.map((projectile) => [
+        projectile.id,
+        projectile.owner,
+        projectile.y,
+      ]),
+    ).toEqual([
       [1, "Player1", model.player.y],
       [2, "Player1", model.player.y],
       [3, "Player1", model.player.y],
@@ -484,9 +619,27 @@ describe("BattleModel character bombs", () => {
     mob.state.CurrentHealth = 2;
     model.addNeutralMob(mob);
     model.projectiles.push(
-      testProjectile({ id: 10, owner: "Player2", x: mob.state.x, y: mob.state.y, damage: 1 }),
-      testProjectile({ id: 11, owner: "Player1", x: mob.state.x, y: mob.state.y, damage: 1 }),
-      testProjectile({ id: 12, owner: "Player2", x: mob.state.x, y: mob.state.y, damage: 1 }),
+      testProjectile({
+        id: 10,
+        owner: "Player2",
+        x: mob.state.x,
+        y: mob.state.y,
+        damage: 1,
+      }),
+      testProjectile({
+        id: 11,
+        owner: "Player1",
+        x: mob.state.x,
+        y: mob.state.y,
+        damage: 1,
+      }),
+      testProjectile({
+        id: 12,
+        owner: "Player2",
+        x: mob.state.x,
+        y: mob.state.y,
+        damage: 1,
+      }),
     );
 
     model.step(input());
@@ -501,7 +654,15 @@ describe("BattleModel character bombs", () => {
     mob.state.CurrentHealth = 1;
     mob.state.pointValue = 5;
     model.addNeutralMob(mob);
-    model.projectiles.push(testProjectile({ id: 10, owner: "Player1", x: mob.state.x, y: mob.state.y, damage: 1 }));
+    model.projectiles.push(
+      testProjectile({
+        id: 10,
+        owner: "Player1",
+        x: mob.state.x,
+        y: mob.state.y,
+        damage: 1,
+      }),
+    );
 
     model.step(input());
 
@@ -527,14 +688,16 @@ describe("BattleModel character bombs", () => {
 describe("BattleModel point pickups", () => {
   it("collects a nearby point after the visual collection delay", async () => {
     const model = await createBattleModel();
-    model.addPoint(createPointState({
-      id: model.allocatePointId(),
-      x: model.player.x + 31,
-      y: model.player.y,
-      value: 1,
-      vx: 0,
-      vy: 0,
-    }));
+    model.addPoint(
+      createPointState({
+        id: model.allocatePointId(),
+        x: model.player.x + 31,
+        y: model.player.y,
+        value: 1,
+        vx: 0,
+        vy: 0,
+      }),
+    );
 
     model.step(input());
 
@@ -555,14 +718,16 @@ describe("BattleModel point pickups", () => {
   it("keeps collecting points at the point count limit without increasing the count", async () => {
     const model = await createBattleModel();
     model.player.pointCount = POINT_COUNT_MAX;
-    model.addPoint(createPointState({
-      id: model.allocatePointId(),
-      x: model.player.x + 31,
-      y: model.player.y,
-      value: 5,
-      vx: 0,
-      vy: 0,
-    }));
+    model.addPoint(
+      createPointState({
+        id: model.allocatePointId(),
+        x: model.player.x + 31,
+        y: model.player.y,
+        value: 5,
+        vx: 0,
+        vy: 0,
+      }),
+    );
 
     model.step(input());
 
@@ -578,14 +743,16 @@ describe("BattleModel point pickups", () => {
 
   it("uses Marisa's larger base point collection radius", async () => {
     const model = await createBattleModel("marisa", "reimu");
-    model.addPoint(createPointState({
-      id: model.allocatePointId(),
-      x: model.player.x + 47,
-      y: model.player.y,
-      value: 1,
-      vx: 0,
-      vy: 0,
-    }));
+    model.addPoint(
+      createPointState({
+        id: model.allocatePointId(),
+        x: model.player.x + 47,
+        y: model.player.y,
+        value: 1,
+        vx: 0,
+        vy: 0,
+      }),
+    );
 
     model.step(input());
 
@@ -594,14 +761,16 @@ describe("BattleModel point pickups", () => {
 
   it("extends point collection radius through passive cards", async () => {
     const model = await createBattleModel("reimu", "marisa", ["extension"]);
-    model.addPoint(createPointState({
-      id: model.allocatePointId(),
-      x: model.player.x + 47,
-      y: model.player.y,
-      value: 1,
-      vx: 0,
-      vy: 0,
-    }));
+    model.addPoint(
+      createPointState({
+        id: model.allocatePointId(),
+        x: model.player.x + 47,
+        y: model.player.y,
+        value: 1,
+        vx: 0,
+        vy: 0,
+      }),
+    );
 
     model.step(input());
 
@@ -610,14 +779,16 @@ describe("BattleModel point pickups", () => {
 
   it("restores point state and point id allocation in rollback snapshots and hashes", async () => {
     const model = await createBattleModel();
-    model.addPoint(createPointState({
-      id: model.allocatePointId(),
-      x: 900,
-      y: 200,
-      value: 10,
-      vx: 2,
-      vy: 0,
-    }));
+    model.addPoint(
+      createPointState({
+        id: model.allocatePointId(),
+        x: 900,
+        y: 200,
+        value: 10,
+        vx: 2,
+        vy: 0,
+      }),
+    );
 
     model.step(input());
     const snapshot = model.serialize();
@@ -632,6 +803,149 @@ describe("BattleModel point pickups", () => {
 
     model.step(input());
     expect(model.hashHex()).toBe(originalHash);
+  });
+});
+
+describe("BattleModel point power shooting tiers", () => {
+  it("sets Player1 point directly for debug testing and clamps to the battle limit", async () => {
+    const model = await createBattleModel();
+
+    model.setPlayerPointCount(123.8);
+    expect(model.player.pointCount).toBe(123);
+
+    model.setPlayerPointCount(999);
+    expect(model.player.pointCount).toBe(POINT_COUNT_MAX);
+
+    model.setPlayerPointCount(-10);
+    expect(model.player.pointCount).toBe(0);
+  });
+
+  it("upgrades Reimu shot counts by point tier", async () => {
+    const tier1 = await shootOnceAtPoint("reimu", 0);
+    expect(tier1.projectiles).toHaveLength(3);
+    expect(
+      tier1.projectiles.filter(
+        (projectile) => projectile.homingUntil === tier1.frame + 30,
+      ),
+    ).toHaveLength(1);
+
+    const tier2 = await shootOnceAtPoint("reimu", 100);
+    expect(tier2.projectiles).toHaveLength(4);
+
+    const tier3 = await shootOnceAtPoint("reimu", 200);
+    expect(tier3.projectiles).toHaveLength(6);
+    expect(
+      tier3.projectiles.filter(
+        (projectile) => projectile.visibleFrom === tier3.frame + 8,
+      ),
+    ).toHaveLength(2);
+
+    const tier4 = await shootOnceAtPoint("reimu", 300);
+    expect(tier4.projectiles).toHaveLength(8);
+    expect(
+      tier4.projectiles.filter(
+        (projectile) => projectile.visibleFrom === tier4.frame + 8,
+      ),
+    ).toHaveLength(4);
+  });
+
+  it("adds Marisa rear beams and parallel lasers by point tier", async () => {
+    const tier1 = await shootOnceAtPoint("marisa", 0);
+    expect(tier1.projectiles).toHaveLength(1);
+
+    const tier2 = await shootOnceAtPoint("marisa", 100);
+    expect(tier2.projectiles).toHaveLength(5);
+    expect(
+      tier2.projectiles.filter((projectile) => projectile.damage === 0),
+    ).toHaveLength(2);
+    const tier2RearBeams = tier2.projectiles
+      .filter(
+        (projectile) =>
+          projectile.kind === "laser" &&
+          projectile.damage === 5 &&
+          !Number.isFinite(projectile.width),
+      )
+      .sort((left, right) => left.y - right.y);
+    expect(tier2RearBeams).toHaveLength(2);
+    expect(tier2RearBeams.map((projectile) => projectile.height)).toEqual([
+      HIT_CIRCLE_DIAMETER * 2,
+      HIT_CIRCLE_DIAMETER * 2,
+    ]);
+    expect(tier2RearBeams.map((projectile) => projectile.x)).toEqual([
+      tier2.player.x - HIT_CIRCLE_DIAMETER * 3,
+      tier2.player.x - HIT_CIRCLE_DIAMETER * 3,
+    ]);
+    expect(tier2RearBeams.map((projectile) => projectile.y)).toEqual([
+      tier2.player.y - HIT_CIRCLE_DIAMETER * 3,
+      tier2.player.y + HIT_CIRCLE_DIAMETER * 3,
+    ]);
+
+    const tier3 = await shootOnceAtPoint("marisa", 200);
+    expect(
+      tier3.projectiles.filter((projectile) =>
+        Number.isFinite(projectile.width),
+      ),
+    ).toHaveLength(2);
+
+    const tier4 = await shootOnceAtPoint("marisa", 300);
+    expect(tier4.projectiles).toHaveLength(10);
+    expect(
+      tier4.projectiles.filter((projectile) => projectile.damage === 0),
+    ).toHaveLength(4);
+    const tier4RearBeams = tier4.projectiles.filter(
+      (projectile) =>
+        projectile.kind === "laser" &&
+        projectile.damage === 5 &&
+        !Number.isFinite(projectile.width),
+    );
+    expect(tier4RearBeams).toHaveLength(4);
+    expect(
+      tier4RearBeams
+        .filter((projectile) => projectile.y < tier4.player.y)
+        .map((projectile) => projectile.angle)
+        .sort((left, right) => left - right),
+    ).toEqual([-Math.PI / 9, 0]);
+    expect(
+      tier4RearBeams
+        .filter((projectile) => projectile.y > tier4.player.y)
+        .map((projectile) => projectile.angle)
+        .sort((left, right) => left - right),
+    ).toEqual([0, Math.PI / 9]);
+    expect(
+      tier4RearBeams.every(
+        (projectile) =>
+          projectile.x === tier4.player.x - HIT_CIRCLE_DIAMETER * 3,
+      ),
+    ).toBe(true);
+  });
+
+  it("adds Sakuya side volleys and delayed center volley by point tier", async () => {
+    const tier1 = await shootOnceAtPoint("sakuya", 0);
+    expect(tier1.projectiles).toHaveLength(2);
+
+    const tier2 = await shootOnceAtPoint("sakuya", 100);
+    expect(tier2.projectiles).toHaveLength(6);
+    expect(
+      tier2.projectiles.filter(
+        (projectile) => projectile.visibleFrom === tier2.frame + 6,
+      ),
+    ).toHaveLength(2);
+
+    const tier3 = await shootOnceAtPoint("sakuya", 200);
+    expect(tier3.projectiles).toHaveLength(10);
+    expect(
+      tier3.projectiles.filter(
+        (projectile) => projectile.visibleFrom === tier3.frame + 18,
+      ),
+    ).toHaveLength(2);
+
+    const tier4 = await shootOnceAtPoint("sakuya", 300);
+    expect(tier4.projectiles).toHaveLength(12);
+    expect(
+      tier4.projectiles.filter(
+        (projectile) => projectile.visibleFrom === tier4.frame + 6,
+      ),
+    ).toHaveLength(4);
   });
 });
 
@@ -652,7 +966,11 @@ describe("BattlePhysics projectile collisions", () => {
       height: 120,
     });
 
-    const hits = physics.computeCollisions([projectile], model.player, model.target);
+    const hits = physics.computeCollisions(
+      [projectile],
+      model.player,
+      model.target,
+    );
 
     expect(hits).toEqual([{ projectileId: 1, victimKey: "Player2" }]);
   });
@@ -720,7 +1038,28 @@ async function createBattleModel(
   return model;
 }
 
-function testProjectile(overrides: Partial<BattleModel["projectiles"][number]> & { readonly id: number; readonly owner: "Player1" | "Player2" }) {
+async function shootOnceAtPoint(
+  characterId: BattleLoadouts["player"]["primaryCharacterId"],
+  pointCount: number,
+): Promise<BattleModel> {
+  const model = await createBattleModel(characterId, "reimu");
+  model.setPlayerPointCount(pointCount);
+  model.step(
+    input({
+      shootPressed: true,
+      aimX: model.target.x,
+      aimY: model.target.y,
+    }),
+  );
+  return model;
+}
+
+function testProjectile(
+  overrides: Partial<BattleModel["projectiles"][number]> & {
+    readonly id: number;
+    readonly owner: "Player1" | "Player2";
+  },
+) {
   return {
     kind: "orb" as const,
     x: 0,
@@ -747,7 +1086,11 @@ function testProjectile(overrides: Partial<BattleModel["projectiles"][number]> &
   };
 }
 
-class TestNeutralMob extends NeutralMob<NeutralMobState, BulletProjectileParams, LaserProjectileParams> {
+class TestNeutralMob extends NeutralMob<
+  NeutralMobState,
+  BulletProjectileParams,
+  LaserProjectileParams
+> {
   readonly state: NeutralMobState;
   readonly deathSources: Array<"Player1" | "Player2" | "Neutral" | null> = [];
 
@@ -773,7 +1116,9 @@ class TestNeutralMob extends NeutralMob<NeutralMobState, BulletProjectileParams,
     };
   }
 
-  get flashAlpha(): number { return 0; }
+  get flashAlpha(): number {
+    return 0;
+  }
 
   move(): void {
     this.state.x += 1;
@@ -822,7 +1167,11 @@ class TestNeutralMob extends NeutralMob<NeutralMobState, BulletProjectileParams,
   }
 }
 
-class StaticRectNeutralMob extends NeutralMob<NeutralMobState, BulletProjectileParams, LaserProjectileParams> {
+class StaticRectNeutralMob extends NeutralMob<
+  NeutralMobState,
+  BulletProjectileParams,
+  LaserProjectileParams
+> {
   readonly state: NeutralMobState;
   damageTaken = 0;
 
@@ -850,7 +1199,9 @@ class StaticRectNeutralMob extends NeutralMob<NeutralMobState, BulletProjectileP
     };
   }
 
-  get flashAlpha(): number { return 0; }
+  get flashAlpha(): number {
+    return 0;
+  }
 
   move(): void {
     this.state.previousX = this.state.x;
@@ -884,14 +1235,22 @@ class StaticRectNeutralMob extends NeutralMob<NeutralMobState, BulletProjectileP
 
 function hitPlayer(model: BattleModel): void {
   const hit = model as unknown as {
-    onProjectileHit(ctx: { readonly owner: "Player1" | "Player2"; readonly victim: BattleModel["player"]; readonly damage: number }): boolean;
+    onProjectileHit(ctx: {
+      readonly owner: "Player1" | "Player2";
+      readonly victim: BattleModel["player"];
+      readonly damage: number;
+    }): boolean;
   };
   hit.onProjectileHit({ owner: "Player2", victim: model.player, damage: 1 });
 }
 
 function hitTarget(model: BattleModel): void {
   const hit = model as unknown as {
-    onProjectileHit(ctx: { readonly owner: "Player1" | "Player2"; readonly victim: BattleModel["target"]; readonly damage: number }): boolean;
+    onProjectileHit(ctx: {
+      readonly owner: "Player1" | "Player2";
+      readonly victim: BattleModel["target"];
+      readonly damage: number;
+    }): boolean;
   };
   hit.onProjectileHit({ owner: "Player1", victim: model.target, damage: 1 });
 }

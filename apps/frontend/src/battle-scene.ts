@@ -9,8 +9,18 @@ import {
   type RaidLogicRuntime,
 } from "@repo/raid-logic";
 
-import { ARENA_HEIGHT_PX, ARENA_WIDTH_PX, FIXED_STEP_MS, GAME_HEIGHT, GAME_WIDTH } from "@repo/constants";
-import { createBattleInput, getBattlePointerWorld, type BattleKeyMap } from "./battle/input";
+import {
+  ARENA_HEIGHT_PX,
+  ARENA_WIDTH_PX,
+  FIXED_STEP_MS,
+  GAME_HEIGHT,
+  GAME_WIDTH,
+} from "@repo/constants";
+import {
+  createBattleInput,
+  getBattlePointerWorld,
+  type BattleKeyMap,
+} from "./battle/input";
 import { BattleDebugLogger } from "./battle/logger";
 import type { BattleSceneData } from "./battle/loadout";
 import { BattleView } from "./battle/view";
@@ -111,13 +121,19 @@ export class BattleScene extends Phaser.Scene {
     this.accumulator += delta;
     while (this.accumulator >= FIXED_STEP_MS) {
       if (!this.debugInputLocked) {
-        this.lastInput = createBattleInput(this, this.keys) satisfies BattleInputState & {
+        this.lastInput = createBattleInput(
+          this,
+          this.keys,
+        ) satisfies BattleInputState & {
           readonly pointerX: number;
           readonly pointerY: number;
         };
         if (this.sceneData.mode === "online" && this.logicReady) {
           this.combatSync?.step(this.lastInput);
-        } else if (this.runtime.gameOver && Phaser.Input.Keyboard.JustDown(this.keys.enter)) {
+        } else if (
+          this.runtime.gameOver &&
+          Phaser.Input.Keyboard.JustDown(this.keys.enter)
+        ) {
           this.goToResult();
         } else if (this.logicReady) {
           this.stepRuntimeWithDebugInput(this.lastInput);
@@ -133,11 +149,20 @@ export class BattleScene extends Phaser.Scene {
       pointerX: pointerWorld.x,
       pointerY: pointerWorld.y,
     };
-    this.view.render(this.currentOutput.state, this.lastInput, this.combatSync?.localFighterKey() ?? "Player1", this.accumulator / FIXED_STEP_MS);
+    this.view.render(
+      this.currentOutput.state,
+      this.lastInput,
+      this.combatSync?.localFighterKey() ?? "Player1",
+      this.accumulator / FIXED_STEP_MS,
+    );
     if (this.debugPhysicsEnabled) {
       this.renderDebugPhysics();
     }
-    if (this.sceneData.mode !== "online" && this.runtime.gameOver && !this.resultScheduled) {
+    if (
+      this.sceneData.mode !== "online" &&
+      this.runtime.gameOver &&
+      !this.resultScheduled
+    ) {
       this.time.delayedCall(900, () => this.goToResult());
       this.resultScheduled = true;
     }
@@ -150,7 +175,10 @@ export class BattleScene extends Phaser.Scene {
   getRecentDebugHashes(count = 50): DebugHashRow[] {
     const startFrame = Math.max(0, this.runtime.frame - count + 1);
     return Array.from(this.debugHistory.values())
-      .filter((record) => record.frame >= startFrame && record.frame <= this.runtime.frame)
+      .filter(
+        (record) =>
+          record.frame >= startFrame && record.frame <= this.runtime.frame,
+      )
       .sort((left, right) => left.frame - right.frame)
       .map(toHashRow);
   }
@@ -190,7 +218,11 @@ export class BattleScene extends Phaser.Scene {
     try {
       for (let offset = 0; offset < PRESET_SCRIPT_FRAMES; offset += 1) {
         const input = createPresetScriptInput(offset);
-        this.lastInput = { ...input, pointerX: input.aimX, pointerY: input.aimY };
+        this.lastInput = {
+          ...input,
+          pointerX: input.aimX,
+          pointerY: input.aimY,
+        };
         this.stepRuntimeWithDebugInput(input);
         const row = this.getDebugHash(this.runtime.frame);
         if (row) {
@@ -213,57 +245,87 @@ export class BattleScene extends Phaser.Scene {
     return true;
   }
 
+  setDebugPoint(pointCount: number): boolean {
+    if (this.sceneData.mode === "online") {
+      return false;
+    }
+    this.runtime.debugSetPoint(pointCount);
+    this.recordDebugFrame();
+    return true;
+  }
+
   private stepRuntimeWithDebugInput(input: BattleInputState): void {
-    this.runtime.step({ mode: this.sceneData.mode === "ai" ? "ai" : "training", player: input });
+    this.runtime.step({
+      mode: this.sceneData.mode === "ai" ? "ai" : "training",
+      player: input,
+    });
     this.recordDebugFrame();
   }
 
   private setupOnlineBattle(data: BattleSceneData): void {
     if (data.mode !== "online") return;
-    this.onlineStatusText = this.add.text(24, 24, "", {
-      fontFamily: "Arial",
-      fontSize: "18px",
-      color: "#ffcf6e",
-      backgroundColor: "#101820cc",
-      padding: { x: 10, y: 6 },
-    }).setScrollFactor(0).setDepth(100).setVisible(false);
+    this.onlineStatusText = this.add
+      .text(24, 24, "", {
+        fontFamily: "Arial",
+        fontSize: "18px",
+        color: "#ffcf6e",
+        backgroundColor: "#101820cc",
+        padding: { x: 10, y: 6 },
+      })
+      .setScrollFactor(0)
+      .setDepth(100)
+      .setVisible(false);
 
     this.combatSync = new CombatSyncManager(this.runtime, connectionManager, {
       sceneData: data,
       callbacks: {
         recordFrame: () => this.recordDebugFrame(),
-        recordStepInputs: (record) => this.debugLogger.recordStepInputs(record, this.shouldRecordDebugLog()),
+        recordStepInputs: (record) =>
+          this.debugLogger.recordStepInputs(
+            record,
+            this.shouldRecordDebugLog(),
+          ),
         getRollbackRecord: (frame) => this.debugHistory.get(frame) ?? null,
-        pruneRollbackHistoryAfter: (frame) => this.pruneDebugHistoryAfter(frame),
-        pruneRollbackHistoryBefore: (frame) => this.pruneDebugHistoryBefore(frame),
+        pruneRollbackHistoryAfter: (frame) =>
+          this.pruneDebugHistoryAfter(frame),
+        pruneRollbackHistoryBefore: (frame) =>
+          this.pruneDebugHistoryBefore(frame),
         onRollback: () => {
           this.accumulator = 0;
         },
-        setStatusText: (text) => this.onlineStatusText?.setText(text).setVisible(true),
+        setStatusText: (text) =>
+          this.onlineStatusText?.setText(text).setVisible(true),
         hideStatusText: () => this.onlineStatusText?.setVisible(false),
         delay: (ms, callback) => {
           this.time.delayedCall(ms, callback);
         },
-        finishBattle: (winnerPlayerId, serverConfirmedFrame) => this.goToOnlineResult(winnerPlayerId, serverConfirmedFrame),
+        finishBattle: (winnerPlayerId, serverConfirmedFrame) =>
+          this.goToOnlineResult(winnerPlayerId, serverConfirmedFrame),
       },
     });
   }
 
-  private goToOnlineResult(winnerPlayerId: PlayerId, serverConfirmedFrame?: number): void {
+  private goToOnlineResult(
+    winnerPlayerId: PlayerId,
+    serverConfirmedFrame?: number,
+  ): void {
     if (this.resultScheduled) return;
     this.resultScheduled = true;
     if (uiSettings.debug || this.debugLiveHashEnabled) {
       this.printDebugHashBundle(winnerPlayerId, serverConfirmedFrame);
     }
     this.scene.start("result", {
-      winnerName: winnerPlayerId === this.combatSync?.localPlayerId
-        ? (this.sceneData.playerName ?? "Player")
-        : (this.sceneData.opponentName ?? "Opponent"),
+      winnerName:
+        winnerPlayerId === this.combatSync?.localPlayerId
+          ? (this.sceneData.playerName ?? "Player")
+          : (this.sceneData.opponentName ?? "Opponent"),
       durationSeconds: this.currentOutput.state.stats.elapsedTicks / 60,
       shots: this.currentOutput.state.stats.shots,
       hits: this.currentOutput.state.stats.hits,
       bombUses: this.currentOutput.state.stats.bombUses,
-      deaths: this.currentOutput.state.player.deaths + this.currentOutput.state.target.deaths,
+      deaths:
+        this.currentOutput.state.player.deaths +
+        this.currentOutput.state.target.deaths,
       returnScene: this.sceneData.returnScene ?? "battle-start",
     });
   }
@@ -274,7 +336,8 @@ export class BattleScene extends Phaser.Scene {
       this.currentOutput = output;
       const logRecord = this.debugLogger.recordFrame(output, {
         enabled: this.shouldRecordDebugLog(),
-        localConfirmedFrame: this.combatSync?.getConfirmedFrame() ?? output.frame,
+        localConfirmedFrame:
+          this.combatSync?.getConfirmedFrame() ?? output.frame,
       });
       this.debugHistory.set(output.frame, {
         frame: output.frame,
@@ -287,7 +350,10 @@ export class BattleScene extends Phaser.Scene {
       if (this.debugLiveHashEnabled) {
         console.log(`${output.frame} - ${output.hashHex}`, {
           events: logRecord?.events ?? output.events.map((event) => event.type),
-          localConfirmedFrame: logRecord?.localConfirmedFrame ?? this.combatSync?.getConfirmedFrame() ?? output.frame,
+          localConfirmedFrame:
+            logRecord?.localConfirmedFrame ??
+            this.combatSync?.getConfirmedFrame() ??
+            output.frame,
           player1Input: logRecord?.player1Input ?? null,
           player2Input: logRecord?.player2Input ?? null,
         });
@@ -340,12 +406,17 @@ export class BattleScene extends Phaser.Scene {
       this.printDebugHashBundle(null);
     }
     this.scene.start("result", {
-      winnerName: this.currentOutput.state.target.lives <= 0 ? (this.sceneData.playerName ?? "Player") : (this.sceneData.opponentName ?? "CPU"),
+      winnerName:
+        this.currentOutput.state.target.lives <= 0
+          ? (this.sceneData.playerName ?? "Player")
+          : (this.sceneData.opponentName ?? "CPU"),
       durationSeconds: this.currentOutput.state.stats.elapsedTicks / 60,
       shots: this.currentOutput.state.stats.shots,
       hits: this.currentOutput.state.stats.hits,
       bombUses: this.currentOutput.state.stats.bombUses,
-      deaths: this.currentOutput.state.player.deaths + this.currentOutput.state.target.deaths,
+      deaths:
+        this.currentOutput.state.player.deaths +
+        this.currentOutput.state.target.deaths,
       returnScene: this.sceneData.returnScene ?? "battle-start",
     });
   }
@@ -368,24 +439,41 @@ export class BattleScene extends Phaser.Scene {
     this.view.renderDebug(this.runtime.readDebugBodies());
   }
 
-  private printDebugHashBundle(winnerPlayerId: PlayerId | null, serverConfirmedFrame = this.runtime.frame): void {
-    const localConfirmedFrame = this.combatSync?.getConfirmedFrame() ?? serverConfirmedFrame;
-    const targetFrame = this.sceneData.mode === "online" ? serverConfirmedFrame : localConfirmedFrame;
-    const authoritativeFrame = this.sceneData.mode === "online"
-      ? Math.min(targetFrame, localConfirmedFrame)
-      : targetFrame;
-    const hashComplete = this.recordConfirmedDebugHashesThrough(authoritativeFrame) && authoritativeFrame >= targetFrame;
+  private printDebugHashBundle(
+    winnerPlayerId: PlayerId | null,
+    serverConfirmedFrame = this.runtime.frame,
+  ): void {
+    const localConfirmedFrame =
+      this.combatSync?.getConfirmedFrame() ?? serverConfirmedFrame;
+    const targetFrame =
+      this.sceneData.mode === "online"
+        ? serverConfirmedFrame
+        : localConfirmedFrame;
+    const authoritativeFrame =
+      this.sceneData.mode === "online"
+        ? Math.min(targetFrame, localConfirmedFrame)
+        : targetFrame;
+    const hashComplete =
+      this.recordConfirmedDebugHashesThrough(authoritativeFrame) &&
+      authoritativeFrame >= targetFrame;
 
     const rows = this.debugLogger.getConfirmedRows(authoritativeFrame);
 
-    const label = `FXTZ Debug Hash Bundle (mode=${this.sceneData.mode ?? "offline"
-      }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${localConfirmedFrame}, serverConfirmedFrame=${targetFrame}, authoritativeFrame=${authoritativeFrame}, cachedRows=${rows.length})`;
+    const label = `FXTZ Debug Hash Bundle (mode=${
+      this.sceneData.mode ?? "offline"
+    }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${localConfirmedFrame}, serverConfirmedFrame=${targetFrame}, authoritativeFrame=${authoritativeFrame}, cachedRows=${rows.length})`;
 
     console.group(label);
-    console.log(`finalGlobalHash(BLAKE3)\t${hashComplete ? this.debugConfirmedHash.digestHex(targetFrame) : "<incomplete>"}`);
-    console.log(`sampledConfirmedFrames\t0-${this.debugConfirmedHash.lastSampledFrame} (${this.debugConfirmedHash.samples})`);
+    console.log(
+      `finalGlobalHash(BLAKE3)\t${hashComplete ? this.debugConfirmedHash.digestHex(targetFrame) : "<incomplete>"}`,
+    );
+    console.log(
+      `sampledConfirmedFrames\t0-${this.debugConfirmedHash.lastSampledFrame} (${this.debugConfirmedHash.samples})`,
+    );
     if (!hashComplete) {
-      console.warn(`Unable to sample authoritative frames through ${targetFrame}; local authoritative frame is ${authoritativeFrame}.`);
+      console.warn(
+        `Unable to sample authoritative frames through ${targetFrame}; local authoritative frame is ${authoritativeFrame}.`,
+      );
     }
     for (const row of rows) {
       console.log(`${row.frame}\t${row.hash}`);
@@ -401,8 +489,14 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private recordConfirmedDebugHashesThrough(frame: number): boolean {
-    for (let nextFrame = this.debugConfirmedHash.lastSampledFrame + 1; nextFrame <= frame; nextFrame += 1) {
-      const hash = this.debugHashBacklog.get(nextFrame) ?? this.debugHistory.get(nextFrame)?.hash;
+    for (
+      let nextFrame = this.debugConfirmedHash.lastSampledFrame + 1;
+      nextFrame <= frame;
+      nextFrame += 1
+    ) {
+      const hash =
+        this.debugHashBacklog.get(nextFrame) ??
+        this.debugHistory.get(nextFrame)?.hash;
       if (!hash) {
         return false;
       }
@@ -422,16 +516,20 @@ export class BattleScene extends Phaser.Scene {
   }
 
   saveDebugLog(targetFrame = this.runtime.frame): string | null {
-    const localConfirmedFrame = this.combatSync?.getConfirmedFrame() ?? targetFrame;
-    const authoritativeFrame = this.sceneData.mode === "online"
-      ? Math.min(targetFrame, localConfirmedFrame)
-      : targetFrame;
+    const localConfirmedFrame =
+      this.combatSync?.getConfirmedFrame() ?? targetFrame;
+    const authoritativeFrame =
+      this.sceneData.mode === "online"
+        ? Math.min(targetFrame, localConfirmedFrame)
+        : targetFrame;
     return this.writeDebugHashLogFile({
       winnerPlayerId: null,
       targetFrame,
       authoritativeFrame,
       localConfirmedFrame,
-      hashComplete: this.recordConfirmedDebugHashesThrough(authoritativeFrame) && authoritativeFrame >= targetFrame,
+      hashComplete:
+        this.recordConfirmedDebugHashesThrough(authoritativeFrame) &&
+        authoritativeFrame >= targetFrame,
     });
   }
 
@@ -448,7 +546,8 @@ export class BattleScene extends Phaser.Scene {
     return this.debugLogger.writeFile({
       sceneData: this.sceneData,
       winnerPlayerId: params.winnerPlayerId,
-      localPlayerId: this.combatSync?.localPlayerId ?? this.sceneData.localPlayerId ?? null,
+      localPlayerId:
+        this.combatSync?.localPlayerId ?? this.sceneData.localPlayerId ?? null,
       runtimeFrame: this.runtime.frame,
       targetFrame: params.targetFrame,
       authoritativeFrame: params.authoritativeFrame,
@@ -518,22 +617,7 @@ function presetMoveY(offset: number): -1 | 0 | 1 {
 
 function isPresetShootFrame(offset: number): boolean {
   return [
-    4,
-    10,
-    18,
-    35,
-    78,
-    90,
-    118,
-    146,
-    166,
-    174,
-    182,
-    205,
-    238,
-    274,
-    330,
-    360,
+    4, 10, 18, 35, 78, 90, 118, 146, 166, 174, 182, 205, 238, 274, 330, 360,
     390,
   ].includes(offset);
 }
@@ -572,7 +656,14 @@ function describePresetScriptAction(offset: number): string {
   if (offset === 150) {
     actions.push("marisaBombStart");
   }
-  if (offset > 150 && offset < 390 && (isPresetAlternateHeld(offset) || isPresetShootFrame(offset) || isPresetReloadFrame(offset) || isPresetBombFrame(offset))) {
+  if (
+    offset > 150 &&
+    offset < 390 &&
+    (isPresetAlternateHeld(offset) ||
+      isPresetShootFrame(offset) ||
+      isPresetReloadFrame(offset) ||
+      isPresetBombFrame(offset))
+  ) {
     actions.push("duringMarisaBombLock");
   }
   if (offset === 320) {
