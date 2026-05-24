@@ -21,6 +21,7 @@ const MOVE_STAY_PENALTY = 1.75;
 const SOFT_WALL_MARGIN = 140;
 const WALL_PRESSURE_WEIGHT = 8;
 const CORNER_PRESSURE_WEIGHT = 10;
+const CLEARANCE_UNBOUNDED = 1_000_000;
 const FP_48 = 3145728; // fp.fromInt(48)
 const FP_SOFT_WALL_MARGIN = 9175040; // fp.fromInt(140)
 
@@ -220,7 +221,7 @@ export class Dodger {
     let fpScore = fp.fromInt(0);
     let emergencyBomb = false;
     let worstThreats = threats.length;
-    let minClearance = Number.POSITIVE_INFINITY;
+    let minClearance = CLEARANCE_UNBOUNDED;
 
     const fpSpeed = fp.fromFloat(speed);
 
@@ -405,7 +406,7 @@ export class Dodger {
     let risk = 0;
     let collisions = 0;
     let threats = 0;
-    let minClearance = Number.POSITIVE_INFINITY;
+    let minClearance = CLEARANCE_UNBOUNDED;
 
     for (const projectile of projectiles) {
       const futureFrame = frame + tick - 1;
