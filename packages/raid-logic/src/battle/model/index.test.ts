@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { NeutralMob, type BattleInputState, type NeutralMobState } from "@repo/types";
 import type { BattleLoadouts } from "../loadout";
+import { POINT_COUNT_MAX } from "../constants";
 import { BattleModel } from ".";
 import { BattlePhysics } from "./physics-adapter";
 import { createPointState } from "./points";
@@ -534,6 +535,30 @@ describe("BattleModel point pickups", () => {
     model.step(input());
 
     expect(model.player.pointCount).toBe(1);
+    expect(model.points).toHaveLength(0);
+  });
+
+  it("keeps collecting points at the point count limit without increasing the count", async () => {
+    const model = await createBattleModel();
+    model.player.pointCount = POINT_COUNT_MAX;
+    model.addPoint(createPointState({
+      id: model.allocatePointId(),
+      x: model.player.x + 31,
+      y: model.player.y,
+      value: 5,
+      vx: 0,
+      vy: 0,
+    }));
+
+    model.step(input());
+
+    expect(model.points[0]?.collectingBy).toBe("Player1");
+
+    for (let index = 0; index < 10; index += 1) {
+      model.step(input());
+    }
+
+    expect(model.player.pointCount).toBe(POINT_COUNT_MAX);
     expect(model.points).toHaveLength(0);
   });
 

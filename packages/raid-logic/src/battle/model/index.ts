@@ -17,6 +17,7 @@ import type { BattleOutputState, EffectState, FighterKey, FighterState, PointSta
 import type { NeutralMobSpawner, NeutralMobSpawnerState } from "@repo/content";
 import { resolveMobSpawner } from "@repo/content";
 import { BattleFighter } from "./battle-fighter";
+import { POINT_COUNT_MAX } from "../constants";
 import { CpuPlayer } from "../aicpu";
 import { EffectSystem } from "./effects";
 import { hashBattleModel, hashToHex } from "./hash";
@@ -639,7 +640,7 @@ export class BattleModel {
   private awardPoint(point: PointState): void {
     const fighter = point.collectingBy === "Player1" ? this.player : point.collectingBy === "Player2" ? this.target : undefined;
     if (fighter) {
-      fighter.pointCount += point.value;
+      fighter.pointCount = Math.min(POINT_COUNT_MAX, fighter.pointCount + point.value);
     }
   }
 

@@ -66,7 +66,7 @@ export class CrosshairView {
     this.ammoText.setPosition(barX, barY + 74);
     this.ammoText.setText(`${Math.floor(params.ammoCount)}/${params.ammoMax}`);
     this.pointText.setPosition(barX, barY + 90);
-    this.pointText.setText(`P ${params.pointCount}`);
+    this.pointText.setText(`P ${formatPointDisplay(params.pointCount)}`);
 
     const statusLeft = params.pointerX - 28;
     for (let index = 0; index < this.lifeMarkers.length; index += 1) {
@@ -81,4 +81,8 @@ export class CrosshairView {
       icon.setVisible(index < params.bombs);
     }
   }
+}
+
+function formatPointDisplay(pointCount: number): string {
+  return ((pointCount + 100) / 100).toFixed(2);
 }
