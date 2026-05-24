@@ -1,5 +1,5 @@
 import { DEFAULT_SNAPSHOT_HISTORY } from "@repo/types";
-import type { RaidFrameInput } from "./input";
+import type { RaidFrameInput } from "../input";
 import { RaidState, type RaidStateSerialized } from "./state";
 
 export interface RaidSnapshot {
@@ -11,7 +11,7 @@ export interface RaidSnapshot {
 export class SnapshotHistory {
   private readonly snapshots = new Map<number, RaidSnapshot>();
 
-  constructor(private readonly limit = DEFAULT_SNAPSHOT_HISTORY) {}
+  constructor(private readonly limit = DEFAULT_SNAPSHOT_HISTORY) { }
 
   save(snapshot: RaidSnapshot): void {
     this.snapshots.set(snapshot.frame, snapshot);

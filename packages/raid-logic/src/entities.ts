@@ -8,7 +8,7 @@ import {
   type PlayerId,
 } from "@repo/types";
 
-import { DeterministicHasher } from "./hash";
+import { DeterministicHasher } from "./sync/hash";
 import type { RaidFrameInput } from "./input";
 import type { CollisionEvent } from "./physics-world";
 

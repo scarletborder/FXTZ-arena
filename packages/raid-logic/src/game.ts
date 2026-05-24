@@ -12,12 +12,12 @@ import {
   replayFromSnapshot,
   SnapshotHistory,
   type RaidSnapshot,
-} from "./rollback";
+} from "./sync/rollback";
 import {
   deserializeStateFromBytes,
   RaidState,
   serializeStateToBytes,
-} from "./state";
+} from "./sync/state";
 
 export interface RollbackGameAdapter {
   serialize(): Uint8Array;

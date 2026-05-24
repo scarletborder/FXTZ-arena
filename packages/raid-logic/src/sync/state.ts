@@ -26,10 +26,10 @@ import {
   type AbilityCardSerialized,
   type FighterSerialized,
   type ProjectileSerialized,
-} from "./entities";
+} from "../entities";
 import { DeterministicHasher, stableHash } from "./hash";
-import { createEmptyInput, type RaidFrameInput } from "./input";
-import { PhysicsWorld, type PhysicsWorldSerialized } from "./physics-world";
+import { createEmptyInput, type RaidFrameInput } from "../input";
+import { PhysicsWorld, type PhysicsWorldSerialized } from "../physics-world";
 
 // ---------------------------------------------------------------------------
 // Arena boundaries (shared between entity movement & physics clamping)
