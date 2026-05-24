@@ -74,7 +74,9 @@ export class RaidState {
 
   constructor(config: BattleConfig) {
     this.rngState = config.seed >>> 0;
-    this.stats = createEmptyStats(config.players.map((player) => player.playerId));
+    this.stats = createEmptyStats(
+      config.players.map((player) => player.playerId),
+    );
     const map = DEFAULT_MAPS.find((item) => item.id === config.mapId);
     if (!map) {
       throw new Error(`Unknown map id: ${config.mapId}`);
@@ -110,7 +112,9 @@ export class RaidState {
 
   step(inputs: readonly RaidFrameInput[]): void {
     this.ensurePhysicsSync();
-    const inputsByPlayer = new Map(inputs.map((input) => [input.playerId, input]));
+    const inputsByPlayer = new Map(
+      inputs.map((input) => [input.playerId, input]),
+    );
 
     // ---- Phase 1: Apply fighter inputs & update positions -----------
     for (const fighter of sortedValues(this.fighters)) {
@@ -162,8 +166,10 @@ export class RaidState {
       const idB = this.physics.getIdByHandle(collision.targetHandle);
       if (!idA || !idB) continue;
 
-      const entityA: unknown = this.fighters.get(idA as PlayerId) ?? this.projectiles.get(idA);
-      const entityB: unknown = this.fighters.get(idB as PlayerId) ?? this.projectiles.get(idB);
+      const entityA: unknown =
+        this.fighters.get(idA as PlayerId) ?? this.projectiles.get(idA);
+      const entityB: unknown =
+        this.fighters.get(idB as PlayerId) ?? this.projectiles.get(idB);
 
       // Projectile vs Fighter
       this.handleProjectileFighterCollision(entityA, entityB);
@@ -190,8 +196,10 @@ export class RaidState {
       fighter.activeCharacterId === "marisa" ? "high" : "medium",
     );
     const diagonal = input.moveX !== 0 && input.moveY !== 0;
-    const vx = input.moveX * (diagonal ? Math.trunc(speed * 707 / 1000) : speed);
-    const vy = input.moveY * (diagonal ? Math.trunc(speed * 707 / 1000) : speed);
+    const vx =
+      input.moveX * (diagonal ? Math.trunc((speed * 707) / 1000) : speed);
+    const vy =
+      input.moveY * (diagonal ? Math.trunc((speed * 707) / 1000) : speed);
 
     fighter.vx = vx;
     fighter.vy = vy;
@@ -264,10 +272,7 @@ export class RaidState {
   // Collision dispatch
   // ------------------------------------------------------------------
 
-  private handleProjectileFighterCollision(
-    a: unknown,
-    b: unknown,
-  ): void {
+  private handleProjectileFighterCollision(a: unknown, b: unknown): void {
     const projectile = a instanceof ProjectileEntity ? a : null;
     const fighter = b instanceof FighterEntity ? b : null;
     if (!projectile || !fighter) return;
@@ -299,11 +304,15 @@ export class RaidState {
       frame: this.frame,
       rngState: this.rngState,
       nextEntityId: this.nextEntityId,
-      fighters: sortedValues(this.fighters).map((fighter) => fighter.serialize()),
+      fighters: sortedValues(this.fighters).map((fighter) =>
+        fighter.serialize(),
+      ),
       projectiles: sortedValues(this.projectiles).map((projectile) =>
         projectile.serialize(),
       ),
-      abilityCards: sortedValues(this.abilityCards).map((card) => card.serialize()),
+      abilityCards: sortedValues(this.abilityCards).map((card) =>
+        card.serialize(),
+      ),
       physics: this.physics.serialize(),
       stats: cloneStats(this.stats) as unknown as BattleStats,
     };
@@ -335,7 +344,10 @@ export class RaidState {
     }
 
     for (const projectile of serialized.projectiles) {
-      this.projectiles.set(projectile.data.id, new ProjectileEntity(projectile.data));
+      this.projectiles.set(
+        projectile.data.id,
+        new ProjectileEntity(projectile.data),
+      );
     }
 
     for (const card of serialized.abilityCards) {
@@ -400,7 +412,9 @@ export function serializeStateToBytes(state: RaidStateSerialized): Uint8Array {
   return new TextEncoder().encode(JSON.stringify(state));
 }
 
-export function deserializeStateFromBytes(data: Uint8Array): RaidStateSerialized {
+export function deserializeStateFromBytes(
+  data: Uint8Array,
+): RaidStateSerialized {
   return JSON.parse(new TextDecoder().decode(data)) as RaidStateSerialized;
 }
 
@@ -412,9 +426,9 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function sortedValues<T extends { readonly id?: string; readonly playerId?: PlayerId }>(
-  map: ReadonlyMap<string, T>,
-): T[] {
+function sortedValues<
+  T extends { readonly id?: string; readonly playerId?: PlayerId },
+>(map: ReadonlyMap<string, T>): T[] {
   return Array.from(map.values()).sort((left, right) => {
     const leftId = left.id ?? left.playerId ?? "";
     const rightId = right.id ?? right.playerId ?? "";
@@ -444,9 +458,10 @@ function cloneStats(stats: MutableStats): MutableStats {
   };
 }
 
-
-
-function writeStatsHash(hasher: DeterministicHasher, stats: MutableStats): void {
+function writeStatsHash(
+  hasher: DeterministicHasher,
+  stats: MutableStats,
+): void {
   writeRecord(hasher, stats.damageByPlayerId);
   writeRecord(hasher, stats.bombsUsedByPlayerId);
   writeRecord(hasher, stats.shotsFiredByPlayerId);
@@ -488,6 +503,7 @@ function projectileToSnapshot(projectile: ProjectileEntity): ProjectileState {
     velocityY: projectile.vy,
     angleTicks: projectile.angleTicks,
     remainingTicks: projectile.remainingTicks,
+    couldClear: projectile.couldClear,
     shape: {
       kind: "rect",
       width: projectile.width,
@@ -496,7 +512,9 @@ function projectileToSnapshot(projectile: ProjectileEntity): ProjectileState {
   };
 }
 
-function abilityCardsToTimers(cards: readonly AbilityCardEntity[]): TimerState[] {
+function abilityCardsToTimers(
+  cards: readonly AbilityCardEntity[],
+): TimerState[] {
   return cards
     .filter((card) => card.cooldownRemainingTicks > 0)
     .map((card) => ({

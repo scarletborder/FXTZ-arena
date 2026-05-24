@@ -29,6 +29,11 @@ import { BattleFighter } from "./battle-fighter";
 import { POINT_COUNT_MAX } from "../constants";
 import { CpuPlayer } from "../aicpu";
 import { EffectSystem } from "./effects";
+import {
+  createClearRingState,
+  stepClearRings,
+  type ClearRingState,
+} from "./entities/clear-ring";
 import { hashBattleModel, hashToHex } from "./hash";
 import { BattlePhysics } from "./physics-adapter";
 import {
@@ -38,7 +43,6 @@ import {
   pointVelocityFromFrame,
 } from "./points";
 import {
-  clearProjectilesAround,
   ProjectileSystem,
   type BulletProjectileParams,
   type LaserProjectileParams,
@@ -47,6 +51,7 @@ import {
 import {
   createBattleModelSnapshot,
   restoreEffectSnapshot,
+  restoreClearRingSnapshot,
   restoreFighterSnapshot,
   restoreProjectileSnapshot,
   type BattleModelSnapshot,
@@ -57,6 +62,7 @@ import { fpClamp, fpAtan2, fpHypotFp } from "@repo/content";
 export class BattleModel {
   readonly projectiles: ProjectileState[] = [];
   readonly effects: EffectState[] = [];
+  readonly clearRings: ClearRingState[] = [];
   readonly points: PointState[] = [];
   readonly stats: TrainingStats = {
     shots: 0,
@@ -74,6 +80,7 @@ export class BattleModel {
   >[] = [];
   private nextNeutralMobId = 1;
   private nextPointId = 1;
+  private nextClearRingId = 1;
   private readonly loadouts: BattleLoadouts;
   private readonly projectileSystem = new ProjectileSystem();
   private readonly effectSystem = new EffectSystem();
@@ -137,6 +144,8 @@ export class BattleModel {
     this.nextNeutralMobId = 1;
     this.points.length = 0;
     this.nextPointId = 1;
+    this.clearRings.length = 0;
+    this.nextClearRingId = 1;
     this.projectiles.length = 0;
     this.effects.length = 0;
     this.stats.shots = 0;
@@ -222,6 +231,10 @@ export class BattleModel {
     return this.nextPointId;
   }
 
+  getNextClearRingId(): number {
+    return this.nextClearRingId;
+  }
+
   step(input: BattleInputState): void {
     this.stepFrame(input, undefined, true);
   }
@@ -291,6 +304,7 @@ export class BattleModel {
             )
         : undefined,
       onHit: (ctx) => this.onProjectileHit(ctx),
+      clearProjectiles: (projectiles) => this.stepClearRings(projectiles),
     });
     this.removeInactiveNeutralMobs();
     this.stepPoints();
@@ -335,8 +349,10 @@ export class BattleModel {
       nextEffectId: this.effectSystem.getNextId(),
       nextNeutralMobId: this.nextNeutralMobId,
       nextPointId: this.nextPointId,
+      nextClearRingId: this.nextClearRingId,
       neutralMobs: this.neutralMobStates(),
       points: this.points,
+      clearRings: this.clearRings,
       mobSpawner: this.mobSpawnerState(),
     });
   }
@@ -370,6 +386,13 @@ export class BattleModel {
       this.points.length,
       ...snapshot.points.map((point) => ({ ...point })),
     );
+    this.clearRings.splice(
+      0,
+      this.clearRings.length,
+      ...snapshot.clearRings.map((ring) =>
+        restoreClearRingSnapshot(ring, this.frame),
+      ),
+    );
     this.restoreNeutralMobSnapshots(snapshot.neutralMobs);
     Object.assign(this.stats, snapshot.stats);
     this.projectileSystem.restoreNextId(
@@ -384,6 +407,10 @@ export class BattleModel {
     this.nextPointId = Math.max(
       snapshot.nextPointId,
       1 + Math.max(0, ...snapshot.points.map((point) => point.id)),
+    );
+    this.nextClearRingId = Math.max(
+      snapshot.nextClearRingId,
+      1 + Math.max(0, ...snapshot.clearRings.map((ring) => ring.id)),
     );
     if (snapshot.mobSpawner) {
       this.mobSpawner?.restore(snapshot.mobSpawner);
@@ -620,13 +647,23 @@ export class BattleModel {
           this.projectileSystem.spawnLaser(this.projectiles, spawnParams);
         });
       },
-      clearProjectilesAround: (params) =>
-        clearProjectilesAround(
-          this.projectiles,
-          params.x,
-          params.y,
-          params.radius,
-        ),
+      clearProjectilesAround: (params) => {
+        const before = this.projectiles.length;
+        this.spawnClearRingEntity({
+          owner: self.key,
+          x: params.x,
+          y: params.y,
+          radius: params.radius,
+          duration: 1,
+        });
+        return before - this.projectiles.length;
+      },
+      spawnClearRingEntity: (params) => {
+        this.spawnClearRingEntity({
+          owner: self.key,
+          ...params,
+        });
+      },
       spawnClearRing: (params) => {
         this.effectSystem.spawnRing(
           this.effects,
@@ -848,6 +885,43 @@ export class BattleModel {
       spawn();
     }
     this.pendingSpawns = [];
+  }
+
+  private spawnClearRingEntity(params: {
+    readonly owner: FighterKey;
+    readonly x: number;
+    readonly y: number;
+    readonly radius: number;
+    readonly duration: number;
+    readonly followsOwner?: boolean;
+  }): void {
+    const ring = createClearRingState({
+      id: this.nextClearRingId++,
+      owner: params.owner,
+      x: params.x,
+      y: params.y,
+      radius: params.radius,
+      frame: this.frame,
+      duration: params.duration,
+      followsOwner: params.followsOwner,
+    });
+    this.clearRings.push(ring);
+    this.stepClearRings(this.projectiles);
+  }
+
+  private stepClearRings(
+    projectiles: ProjectileState[] = this.projectiles,
+  ): void {
+    stepClearRings({
+      frame: this.frame,
+      clearRings: this.clearRings,
+      projectiles,
+      fighters: {
+        Player1: this.player,
+        Player2: this.target,
+        Neutral: undefined,
+      },
+    });
   }
 
   private capturePreviousFighterState(): void {

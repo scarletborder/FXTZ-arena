@@ -10,10 +10,14 @@ import {
   secondsToTicks,
   type CharacterActionContext,
 } from "./base";
-import { fpAtan2 } from "../fp";
 import { Vanilla } from "../decorators";
 
 const CLEAR_RING_TICKS = secondsToTicks(2 / 3);
+const BOMB_FORWARD_DELAY_TICKS = secondsToTicks(0.5);
+const BOMB_REAR_DELAY_TICKS = secondsToTicks(0.75);
+const BOMB_ORB_DISTANCE = hitCircleUnits(12);
+const BOMB_ORB_SIZE = hitCircleUnits(8);
+const BOMB_ORB_DAMAGE = 15;
 
 @Vanilla.RegisterCharacter("reimu")
 export class ReimuBattleCharacter extends BattleCharacter {
@@ -60,27 +64,24 @@ export class ReimuBattleCharacter extends BattleCharacter {
   useBomb(ctx: CharacterActionContext, fighter: FighterState): void {
     this.startBomb(ctx, fighter);
     this.setInvulnerable(fighter, secondsToTicks(2));
-    const radius = this.clearProjectiles(ctx, fighter, 6);
+    const radius = this.clearProjectiles(ctx, fighter, 16, CLEAR_RING_TICKS);
     this.spawnClearRing(ctx, fighter, radius, 0xaec7ff, CLEAR_RING_TICKS);
 
-    for (let index = 0; index < 12; index += 1) {
-      const fpAngle = fp.mul(
-        fp.div(fp.fromInt(index), fp.fromInt(12)),
-        fp.mul(fp.fromFloat(Math.PI), fp.fromInt(2)),
+    for (const angleOffset of [-Math.PI / 6, Math.PI / 6]) {
+      this.spawnBombOrb(
+        ctx,
+        fighter,
+        fighter.facing + angleOffset,
+        BOMB_FORWARD_DELAY_TICKS,
       );
-      const fpCos = fp.cos(fpAngle);
-      const fpSin = fp.sin(fpAngle);
-      const x = fp.toFloat(
-        fp.add(fp.fromFloat(fighter.x), fp.mul(fpCos, fp.fromFloat(radius))),
+    }
+    for (const angleOffset of [-Math.PI / 3, 0, Math.PI / 3]) {
+      this.spawnBombOrb(
+        ctx,
+        fighter,
+        fighter.facing + Math.PI + angleOffset,
+        BOMB_REAR_DELAY_TICKS,
       );
-      const y = fp.toFloat(
-        fp.add(fp.fromFloat(fighter.y), fp.mul(fpSin, fp.fromFloat(radius))),
-      );
-      const shotAngle = fpAtan2(
-        fp.fromFloat(ctx.opponent.y - y),
-        fp.fromFloat(ctx.opponent.x - x),
-      );
-      this.spawnHomingOrbAt(ctx, fighter, x, y, shotAngle, secondsToTicks(1.5));
     }
   }
 
@@ -95,15 +96,13 @@ export class ReimuBattleCharacter extends BattleCharacter {
     frameDelay: number,
     parallel: boolean,
   ): void {
-    const offsets = parallel
-      ? [-hitCircleUnits(2), hitCircleUnits(2)]
-      : [0];
+    const offsets = parallel ? [-hitCircleUnits(2), hitCircleUnits(2)] : [0];
     for (const offset of offsets) {
       const position = this.offsetPosition(
         fighter.x,
         fighter.y,
         angle,
-        0,  
+        0,
         offset,
       );
       ctx.spawnBullet({
@@ -169,6 +168,40 @@ export class ReimuBattleCharacter extends BattleCharacter {
       damage,
       spawnOffset: 0,
       frame: ctx.frame + frameDelay,
+    });
+  }
+
+  private spawnBombOrb(
+    ctx: CharacterActionContext,
+    fighter: FighterState,
+    angle: number,
+    frameDelay: number,
+  ): void {
+    const fpAngle = fp.fromFloat(angle);
+    const fpX = fp.add(
+      fp.fromFloat(fighter.x),
+      fp.mul(fp.cos(fpAngle), fp.fromFloat(BOMB_ORB_DISTANCE)),
+    );
+    const fpY = fp.add(
+      fp.fromFloat(fighter.y),
+      fp.mul(fp.sin(fpAngle), fp.fromFloat(BOMB_ORB_DISTANCE)),
+    );
+    ctx.spawnBullet({
+      owner: fighter.key,
+      kind: "orb",
+      x: fp.toFloat(fpX),
+      y: fp.toFloat(fpY),
+      angle,
+      speedRank: "medium",
+      width: BOMB_ORB_SIZE,
+      height: BOMB_ORB_SIZE,
+      homingTicks: 0,
+      damage: BOMB_ORB_DAMAGE,
+      spawnOffset: 0,
+      pausedUntil: ctx.frame + frameDelay,
+      retargetAt: ctx.frame + frameDelay,
+      couldClear: false,
+      clearsProjectiles: true,
     });
   }
 }

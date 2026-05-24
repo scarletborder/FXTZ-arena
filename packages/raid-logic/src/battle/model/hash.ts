@@ -1,7 +1,17 @@
 import type { BattleModel } from ".";
 import type { NeutralMobState } from "@repo/types";
-import type { EffectState, FighterState, PointState, ProjectileState, TrainingStats } from "@repo/content";
-import type { NeutralMobSpawnerState, NeutralMobSpawnerStateValue } from "@repo/content";
+import type { ClearRingState } from "./entities/clear-ring";
+import type {
+  EffectState,
+  FighterState,
+  PointState,
+  ProjectileState,
+  TrainingStats,
+} from "@repo/content";
+import type {
+  NeutralMobSpawnerState,
+  NeutralMobSpawnerStateValue,
+} from "@repo/content";
 
 class DeterministicHasher {
   private value = 0x811c9dc5;
@@ -37,10 +47,12 @@ export function hashBattleModel(model: BattleModel): number {
   hasher.writeNumber(model.gameOver ? 1 : 0);
   hasher.writeNumber(model.getNextNeutralMobId());
   hasher.writeNumber(model.getNextPointId());
+  hasher.writeNumber(model.getNextClearRingId());
   writeFighter(hasher, model.player);
   writeFighter(hasher, model.target);
   writeNeutralMobs(hasher, model.neutralMobStates());
   writePoints(hasher, model.pointStates());
+  writeClearRings(hasher, model.clearRings);
   writeSpawnerState(hasher, model.mobSpawnerState());
   writeProjectiles(hasher, model.projectiles);
   writeEffects(hasher, model.effects);
@@ -48,9 +60,14 @@ export function hashBattleModel(model: BattleModel): number {
   return hasher.digest();
 }
 
-function writeNeutralMobs(hasher: DeterministicHasher, neutralMobs: readonly NeutralMobState[]): void {
+function writeNeutralMobs(
+  hasher: DeterministicHasher,
+  neutralMobs: readonly NeutralMobState[],
+): void {
   hasher.writeNumber(neutralMobs.length);
-  for (const mob of [...neutralMobs].sort((left, right) => left.id - right.id)) {
+  for (const mob of [...neutralMobs].sort(
+    (left, right) => left.id - right.id,
+  )) {
     hasher.writeNumber(mob.id);
     hasher.writeString(mob.key);
     hasher.writeString(mob.kind);
@@ -73,7 +90,10 @@ function writeNeutralMobs(hasher: DeterministicHasher, neutralMobs: readonly Neu
   }
 }
 
-function writePoints(hasher: DeterministicHasher, points: readonly PointState[]): void {
+function writePoints(
+  hasher: DeterministicHasher,
+  points: readonly PointState[],
+): void {
   hasher.writeNumber(points.length);
   for (const point of [...points].sort((left, right) => left.id - right.id)) {
     hasher.writeNumber(point.id);
@@ -92,11 +112,34 @@ function writePoints(hasher: DeterministicHasher, points: readonly PointState[])
   }
 }
 
+function writeClearRings(
+  hasher: DeterministicHasher,
+  clearRings: readonly ClearRingState[],
+): void {
+  hasher.writeNumber(clearRings.length);
+  for (const ring of [...clearRings].sort(
+    (left, right) => left.id - right.id,
+  )) {
+    hasher.writeNumber(ring.id);
+    hasher.writeString(ring.owner);
+    writeFixed(hasher, ring.x);
+    writeFixed(hasher, ring.y);
+    writeFixed(hasher, ring.previousX);
+    writeFixed(hasher, ring.previousY);
+    writeFixed(hasher, ring.radius);
+    hasher.writeNumber(ring.expireAt);
+    hasher.writeNumber(ring.followsOwner ? 1 : 0);
+  }
+}
+
 export function hashToHex(hash: number): string {
   return hash.toString(16).padStart(8, "0");
 }
 
-function writeFighter(hasher: DeterministicHasher, fighter: FighterState): void {
+function writeFighter(
+  hasher: DeterministicHasher,
+  fighter: FighterState,
+): void {
   hasher.writeString(fighter.key);
   writeFixed(hasher, fighter.x);
   writeFixed(hasher, fighter.y);
@@ -144,15 +187,22 @@ function writeFighter(hasher: DeterministicHasher, fighter: FighterState): void 
   hasher.writeNumber(fighter.bombUses);
   hasher.writeNumber(fighter.flashUntil);
   hasher.writeNumber(fighter.statusVisibleUntil);
-  for (const [key, ammo] of Object.entries(fighter.ammoByCharacterId).sort(([left], [right]) => left.localeCompare(right))) {
+  for (const [key, ammo] of Object.entries(fighter.ammoByCharacterId).sort(
+    ([left], [right]) => left.localeCompare(right),
+  )) {
     hasher.writeString(key);
     hasher.writeNumber(ammo);
   }
 }
 
-function writeProjectiles(hasher: DeterministicHasher, projectiles: readonly ProjectileState[]): void {
+function writeProjectiles(
+  hasher: DeterministicHasher,
+  projectiles: readonly ProjectileState[],
+): void {
   hasher.writeNumber(projectiles.length);
-  for (const projectile of [...projectiles].sort((left, right) => left.id - right.id)) {
+  for (const projectile of [...projectiles].sort(
+    (left, right) => left.id - right.id,
+  )) {
     hasher.writeNumber(projectile.id);
     hasher.writeString(projectile.kind);
     hasher.writeString(projectile.owner);
@@ -169,14 +219,20 @@ function writeProjectiles(hasher: DeterministicHasher, projectiles: readonly Pro
     hasher.writeNumber(projectile.homingStartAt);
     hasher.writeNumber(projectile.homingUntil);
     hasher.writeNumber(projectile.pausedUntil);
+    hasher.writeNumber(projectile.retargetAt ?? 0);
     writeFixed(hasher, projectile.widthGrowthPerTick);
     writeFixed(hasher, projectile.maxWidth ?? 0);
     hasher.writeNumber(projectile.damage);
     writeFixed(hasher, projectile.angle);
+    hasher.writeNumber(projectile.couldClear ? 1 : 0);
+    hasher.writeNumber(projectile.clearsProjectiles ? 1 : 0);
   }
 }
 
-function writeEffects(hasher: DeterministicHasher, effects: readonly EffectState[]): void {
+function writeEffects(
+  hasher: DeterministicHasher,
+  effects: readonly EffectState[],
+): void {
   hasher.writeNumber(effects.length);
   for (const effect of [...effects].sort((left, right) => left.id - right.id)) {
     hasher.writeNumber(effect.id);
@@ -201,7 +257,10 @@ function writeStats(hasher: DeterministicHasher, stats: TrainingStats): void {
   hasher.writeNumber(stats.elapsedTicks);
 }
 
-function writeSpawnerState(hasher: DeterministicHasher, state: NeutralMobSpawnerState | undefined): void {
+function writeSpawnerState(
+  hasher: DeterministicHasher,
+  state: NeutralMobSpawnerState | undefined,
+): void {
   if (!state) {
     hasher.writeNumber(0);
     return;
@@ -210,7 +269,10 @@ function writeSpawnerState(hasher: DeterministicHasher, state: NeutralMobSpawner
   writeStateValue(hasher, state as NeutralMobSpawnerStateValue);
 }
 
-function writeStateValue(hasher: DeterministicHasher, value: NeutralMobSpawnerStateValue): void {
+function writeStateValue(
+  hasher: DeterministicHasher,
+  value: NeutralMobSpawnerStateValue,
+): void {
   if (value === null) {
     hasher.writeNumber(0);
   } else if (typeof value === "boolean") {
@@ -229,7 +291,9 @@ function writeStateValue(hasher: DeterministicHasher, value: NeutralMobSpawnerSt
     }
   } else {
     hasher.writeNumber(6);
-    const obj = value as { readonly [key: string]: NeutralMobSpawnerStateValue };
+    const obj = value as {
+      readonly [key: string]: NeutralMobSpawnerStateValue;
+    };
     const keys = Object.keys(obj).sort();
     hasher.writeNumber(keys.length);
     for (const key of keys) {

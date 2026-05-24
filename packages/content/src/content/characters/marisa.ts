@@ -63,8 +63,9 @@ export class MarisaBattleCharacter extends BattleCharacter {
 
   useBomb(ctx: CharacterActionContext, fighter: FighterState): void {
     this.startBomb(ctx, fighter, secondsToTicks(4));
-    const radius = this.clearProjectiles(ctx, fighter, 8);
-    this.spawnClearRing(ctx, fighter, radius, 0xff6b6b, secondsToTicks(1));
+    const clearRingTicks = secondsToTicks(1);
+    const radius = this.clearProjectiles(ctx, fighter, 8, clearRingTicks);
+    this.spawnClearRing(ctx, fighter, radius, 0xff6b6b, clearRingTicks);
 
     const windupTicks = secondsToTicks(1);
     const durationTicks = secondsToTicks(3);
@@ -91,6 +92,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
       pinned: true,
       anchored: true,
       rayLike: true,
+      couldClear: false,
     });
 
     ctx.spawnLaser({
@@ -112,6 +114,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
       rayLike: true,
       visibleFrom: ctx.frame + windupTicks,
       pausedUntil: ctx.frame + windupTicks,
+      couldClear: false,
     });
 
     fighter.invulnerableDelayRemaining = windupTicks;
@@ -140,6 +143,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
       lengthGrowthPerTick: hitCircleUnits(1),
       speedRank: "high",
       damage: 5,
+      couldClear: false,
     });
   }
 
@@ -214,6 +218,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
       pinned: true,
       anchored: true,
       rayLike: true,
+      couldClear: false,
     });
   }
 
@@ -245,6 +250,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
       visibleFrom: ctx.frame + frameDelay,
       pausedUntil: ctx.frame + frameDelay,
       frame: ctx.frame + frameDelay,
+      couldClear: false,
     });
   }
 }

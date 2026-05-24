@@ -442,6 +442,7 @@ export class Dodger {
     const fpWidthFinite = Number.isFinite(projectile.width);
     let fpWidth = fpWidthFinite ? fp.fromFloat(projectile.width) : fp.fromInt(0);
     let fpAngle = fp.fromFloat(projectile.angle);
+    let retargetAt = projectile.retargetAt;
 
     for (let i = 0; i < tick; i += 1) {
       const stepFrame = frame + i;
@@ -469,6 +470,19 @@ export class Dodger {
         fpX = fp.add(fpX, fpVx);
         fpY = fp.add(fpY, fpVy);
         continue;
+      }
+
+      if (
+        retargetAt !== undefined &&
+        stepFrame >= retargetAt
+      ) {
+        const fpDx = fp.sub(fp.fromFloat(targetX), fpX);
+        const fpDy = fp.sub(fp.fromFloat(targetY), fpY);
+        const fpSpd = fpMax(fp.fromFloat(1.5), fpHypotFp(fpVx, fpVy));
+        fpAngle = fp.fromFloat(fpAtan2(fpDy, fpDx));
+        fpVx = fp.mul(fp.cos(fpAngle), fpSpd);
+        fpVy = fp.mul(fp.sin(fpAngle), fpSpd);
+        retargetAt = undefined;
       }
 
       if (projectile.kind === "orb" && stepFrame >= projectile.homingStartAt && stepFrame <= projectile.homingUntil) {

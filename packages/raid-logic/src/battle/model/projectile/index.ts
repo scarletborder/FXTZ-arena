@@ -1,15 +1,33 @@
 import { fp } from "@shaisrc/fixed-point";
 
-import { PLAYER_CORE_RADIUS, type ProjectileCollisionContext } from "@repo/types";
+import {
+  PLAYER_CORE_RADIUS,
+  type ProjectileCollisionContext,
+} from "@repo/types";
 
-import type { FighterKey, FighterState, ProjectileState, ShieldState } from "@repo/content";
+import type {
+  FighterKey,
+  FighterState,
+  ProjectileState,
+  ShieldState,
+} from "@repo/content";
 import type { CollisionResult } from "../physics-adapter";
 import { fpHypotFp, fpClamp, fpMin, fpMax } from "@repo/content";
-import { createBulletProjectile, isProjectileOutOfWorld, stepBulletProjectile } from "./bullet";
+import {
+  createBulletProjectile,
+  isProjectileOutOfWorld,
+  stepBulletProjectile,
+} from "./bullet";
 import { createLaserProjectile, stepLaserProjectile } from "./laser";
 
-export type BulletProjectileParams = Omit<Parameters<typeof createBulletProjectile>[0], "id">;
-export type LaserProjectileParams = Omit<Parameters<typeof createLaserProjectile>[0], "id">;
+export type BulletProjectileParams = Omit<
+  Parameters<typeof createBulletProjectile>[0],
+  "id"
+>;
+export type LaserProjectileParams = Omit<
+  Parameters<typeof createLaserProjectile>[0],
+  "id"
+>;
 
 export interface ProjectileHitTarget {
   readonly key: FighterKey;
@@ -32,23 +50,34 @@ export class ProjectileSystem {
     return this.nextProjectileId;
   }
 
-  restoreNextId(projectiles: readonly ProjectileState[], nextProjectileId?: number): void {
-    const nextIdFromProjectiles = Math.max(0, ...projectiles.map((projectile) => projectile.id)) + 1;
-    this.nextProjectileId = Math.max(nextProjectileId ?? nextIdFromProjectiles, nextIdFromProjectiles);
+  restoreNextId(
+    projectiles: readonly ProjectileState[],
+    nextProjectileId?: number,
+  ): void {
+    const nextIdFromProjectiles =
+      Math.max(0, ...projectiles.map((projectile) => projectile.id)) + 1;
+    this.nextProjectileId = Math.max(
+      nextProjectileId ?? nextIdFromProjectiles,
+      nextIdFromProjectiles,
+    );
   }
 
   spawnBullet(
     projectiles: ProjectileState[],
     params: BulletProjectileParams,
   ): void {
-    projectiles.push(createBulletProjectile({ id: this.nextProjectileId++, ...params }));
+    projectiles.push(
+      createBulletProjectile({ id: this.nextProjectileId++, ...params }),
+    );
   }
 
   spawnLaser(
     projectiles: ProjectileState[],
     params: LaserProjectileParams,
   ): void {
-    projectiles.push(createLaserProjectile({ id: this.nextProjectileId++, ...params }));
+    projectiles.push(
+      createLaserProjectile({ id: this.nextProjectileId++, ...params }),
+    );
   }
 
   stepProjectiles(params: {
@@ -58,8 +87,17 @@ export class ProjectileSystem {
     readonly target: FighterState;
     readonly hitTargets?: readonly ProjectileHitTarget[];
     readonly shields?: readonly ShieldState[];
-    readonly onHit: (ctx: ProjectileCollisionContext<ProjectileState, ProjectileHitTarget, FighterKey>) => boolean;
-    readonly computeRapierHits?: (projectiles: readonly ProjectileState[]) => readonly CollisionResult[] | undefined;
+    readonly onHit: (
+      ctx: ProjectileCollisionContext<
+        ProjectileState,
+        ProjectileHitTarget,
+        FighterKey
+      >,
+    ) => boolean;
+    readonly clearProjectiles?: (projectiles: ProjectileState[]) => void;
+    readonly computeRapierHits?: (
+      projectiles: readonly ProjectileState[],
+    ) => readonly CollisionResult[] | undefined;
   }): void {
     const remaining: ProjectileState[] = [];
     for (const projectile of params.projectiles) {
@@ -71,7 +109,8 @@ export class ProjectileSystem {
         if (projectile.kind === "laser" || projectile.kind === "spark") {
           stepLaserProjectile(projectile);
         } else {
-          const target = projectile.owner === "Player1" ? params.target : params.player;
+          const target =
+            projectile.owner === "Player1" ? params.target : params.player;
           stepBulletProjectile(projectile, params.frame, target);
         }
       }
@@ -82,8 +121,16 @@ export class ProjectileSystem {
     if (params.computeRapierHits) {
       const results = params.computeRapierHits(params.projectiles);
       if (results) {
-        rapierHitMap = new Map(results.filter((r) => r.victimKey).map((r) => [r.projectileId, r.victimKey!]));
-        rapierMobHitMap = new Map(results.filter((r) => r.victimMobId !== undefined).map((r) => [r.projectileId, r.victimMobId!]));
+        rapierHitMap = new Map(
+          results
+            .filter((r) => r.victimKey)
+            .map((r) => [r.projectileId, r.victimKey!]),
+        );
+        rapierMobHitMap = new Map(
+          results
+            .filter((r) => r.victimMobId !== undefined)
+            .map((r) => [r.projectileId, r.victimMobId!]),
+        );
         for (const result of results) {
           if (result.blockedByShield) {
             rapierHitMap.set(result.projectileId, "blocked");
@@ -92,6 +139,9 @@ export class ProjectileSystem {
       }
     }
 
+    resolveProjectileClears(params.projectiles, params.frame);
+    params.clearProjectiles?.(params.projectiles);
+
     const hitTargets = params.hitTargets ?? [
       fighterHitTarget(params.player),
       fighterHitTarget(params.target),
@@ -99,14 +149,23 @@ export class ProjectileSystem {
     for (const projectile of params.projectiles) {
       const visible = params.frame >= projectile.visibleFrom;
       const canInteract = visible && projectile.damage > 0;
-      if (canInteract && canShieldBlockProjectile(projectile) && rapierHitMap?.get(projectile.id) === "blocked") {
+      if (
+        canInteract &&
+        canShieldBlockProjectile(projectile) &&
+        rapierHitMap?.get(projectile.id) === "blocked"
+      ) {
         continue;
       }
       if (canInteract && isBlockedByShield(projectile, params.shields ?? [])) {
         continue;
       }
       if (canInteract) {
-        const victim = firstHitTarget(projectile, hitTargets, rapierHitMap, rapierMobHitMap);
+        const victim = firstHitTarget(
+          projectile,
+          hitTargets,
+          rapierHitMap,
+          rapierMobHitMap,
+        );
         if (victim) {
           const accepted = params.onHit({
             projectile,
@@ -115,13 +174,18 @@ export class ProjectileSystem {
             damage: projectile.damage,
           });
           // Bullets (orb/knife) are removed on hit; beams (laser/spark) survive and deal frame damage per tick.
-          if (accepted && (projectile.kind === "orb" || projectile.kind === "knife")) {
+          if (
+            accepted &&
+            (projectile.kind === "orb" || projectile.kind === "knife")
+          ) {
             continue;
           }
         }
       }
 
-      const expired = projectile.expireAt !== undefined && params.frame >= projectile.expireAt;
+      const expired =
+        projectile.expireAt !== undefined &&
+        params.frame >= projectile.expireAt;
       if (!expired && !isProjectileOutOfWorld(projectile)) {
         remaining.push(projectile);
       }
@@ -153,10 +217,16 @@ function firstHitTarget(
       continue;
     }
     let isHit: boolean;
-    if (target.key === "Neutral" && rapierHitMap !== undefined && canUseRapierHitTest(projectile)) {
+    if (
+      target.key === "Neutral" &&
+      rapierHitMap !== undefined &&
+      canUseRapierHitTest(projectile)
+    ) {
       // For mobs: use Rapier result when available, but always fall back to
       // manual hit-test so fast/small projectiles don't tunnel through.
-      isHit = (rapierMobVictim !== undefined && target.mobId === rapierMobVictim) || hitTest(projectile, target);
+      isHit =
+        (rapierMobVictim !== undefined && target.mobId === rapierMobVictim) ||
+        hitTest(projectile, target);
     } else if (rapierHitMap !== undefined && canUseRapierHitTest(projectile)) {
       isHit = rapierVictim === target.key;
     } else {
@@ -180,21 +250,84 @@ export function clearProjectilesAround(
     0,
     projectiles.length,
     ...projectiles.filter(
-      (projectile) => fp.gt(
-        fpHypotFp(
-          fp.sub(fp.fromFloat(projectile.x), fp.fromFloat(x)),
-          fp.sub(fp.fromFloat(projectile.y), fp.fromFloat(y)),
+      (projectile) =>
+        !projectile.couldClear ||
+        fp.gt(
+          fpHypotFp(
+            fp.sub(fp.fromFloat(projectile.x), fp.fromFloat(x)),
+            fp.sub(fp.fromFloat(projectile.y), fp.fromFloat(y)),
+          ),
+          fp.fromFloat(radius),
         ),
-        fp.fromFloat(radius),
-      ),
     ),
   );
   return before - projectiles.length;
 }
 
-function hitTest(projectile: ProjectileState, victim: ProjectileHitTarget): boolean {
+function resolveProjectileClears(
+  projectiles: ProjectileState[],
+  frame: number,
+): void {
+  const clearers = projectiles.filter(
+    (projectile) =>
+      projectile.clearsProjectiles &&
+      projectile.damage > 0 &&
+      frame >= projectile.visibleFrom,
+  );
+  if (clearers.length === 0) {
+    return;
+  }
+
+  projectiles.splice(
+    0,
+    projectiles.length,
+    ...projectiles.filter((projectile) => {
+      if (!projectile.couldClear) {
+        return true;
+      }
+      return !clearers.some(
+        (clearer) =>
+          clearer.owner !== projectile.owner &&
+          projectileIntersectsClearer(clearer, projectile),
+      );
+    }),
+  );
+}
+
+function projectileIntersectsClearer(
+  clearer: ProjectileState,
+  projectile: ProjectileState,
+): boolean {
+  const clearerRadius = fp.div(
+    fp.fromFloat(Math.max(clearer.width, clearer.height)),
+    fp.fromInt(2),
+  );
+  const projectileRadius = fp.div(
+    fp.fromFloat(
+      Number.isFinite(projectile.width)
+        ? Math.max(projectile.width, projectile.height)
+        : projectile.height,
+    ),
+    fp.fromInt(2),
+  );
+  return fp.lte(
+    fpHypotFp(
+      fp.sub(fp.fromFloat(projectile.x), fp.fromFloat(clearer.x)),
+      fp.sub(fp.fromFloat(projectile.y), fp.fromFloat(clearer.y)),
+    ),
+    fp.add(clearerRadius, projectileRadius),
+  );
+}
+
+function hitTest(
+  projectile: ProjectileState,
+  victim: ProjectileHitTarget,
+): boolean {
   if (victim.hitWidth !== undefined && victim.hitHeight !== undefined) {
-    if ((projectile.kind === "laser" || projectile.kind === "spark") && !Number.isFinite(projectile.width)) {
+    if (
+      (projectile.kind === "laser" || projectile.kind === "spark") &&
+      !Number.isFinite(projectile.width)
+    ) {
       return infiniteBeamIntersectsRect(projectile, victim);
     }
     return rotatedRectsIntersect(projectile, {
@@ -219,7 +352,9 @@ function hitTest(projectile: ProjectileState, victim: ProjectileHitTarget): bool
       const fpCos = fp.cos(fpAngle);
       const fpSin = fp.sin(fpAngle);
       const fpForward = fp.add(fp.mul(fpDx, fpCos), fp.mul(fpDy, fpSin));
-      const fpSide = fp.abs(fp.add(fp.mul(fp.negate(fpDx), fpSin), fp.mul(fpDy, fpCos)));
+      const fpSide = fp.abs(
+        fp.add(fp.mul(fp.negate(fpDx), fpSin), fp.mul(fpDy, fpCos)),
+      );
       const fpHalfH = fp.div(fp.fromFloat(projectile.height), fp.fromInt(2));
       const fpRadius = fp.fromFloat(victim.hitRadius);
       const fpSideMax = fp.add(fpHalfH, fpRadius);
@@ -227,10 +362,18 @@ function hitTest(projectile: ProjectileState, victim: ProjectileHitTarget): bool
       return fp.gte(fpForward, fpNegRadius) && fp.lte(fpSide, fpSideMax);
     }
   }
-  return rotatedRectIntersectsCircle(projectile, victim.x, victim.y, victim.hitRadius);
+  return rotatedRectIntersectsCircle(
+    projectile,
+    victim.x,
+    victim.y,
+    victim.hitRadius,
+  );
 }
 
-function infiniteBeamIntersectsRect(projectile: ProjectileState, victim: ProjectileHitTarget): boolean {
+function infiniteBeamIntersectsRect(
+  projectile: ProjectileState,
+  victim: ProjectileHitTarget,
+): boolean {
   const fpAngle = fp.fromFloat(projectile.angle);
   const fpCos = fp.cos(fpAngle);
   const fpSin = fp.sin(fpAngle);
@@ -240,16 +383,31 @@ function infiniteBeamIntersectsRect(projectile: ProjectileState, victim: Project
   const fpHalfH = fp.div(fp.fromFloat(victim.hitHeight ?? 0), fp.fromInt(2));
   const fpHalfBeam = fp.div(fp.fromFloat(projectile.height), fp.fromInt(2));
   const fpCorners = [
-    { x: fp.sub(fp.fromFloat(victim.x), fpHalfW), y: fp.sub(fp.fromFloat(victim.y), fpHalfH) },
-    { x: fp.add(fp.fromFloat(victim.x), fpHalfW), y: fp.sub(fp.fromFloat(victim.y), fpHalfH) },
-    { x: fp.sub(fp.fromFloat(victim.x), fpHalfW), y: fp.add(fp.fromFloat(victim.y), fpHalfH) },
-    { x: fp.add(fp.fromFloat(victim.x), fpHalfW), y: fp.add(fp.fromFloat(victim.y), fpHalfH) },
+    {
+      x: fp.sub(fp.fromFloat(victim.x), fpHalfW),
+      y: fp.sub(fp.fromFloat(victim.y), fpHalfH),
+    },
+    {
+      x: fp.add(fp.fromFloat(victim.x), fpHalfW),
+      y: fp.sub(fp.fromFloat(victim.y), fpHalfH),
+    },
+    {
+      x: fp.sub(fp.fromFloat(victim.x), fpHalfW),
+      y: fp.add(fp.fromFloat(victim.y), fpHalfH),
+    },
+    {
+      x: fp.add(fp.fromFloat(victim.x), fpHalfW),
+      y: fp.add(fp.fromFloat(victim.y), fpHalfH),
+    },
   ];
   const firstCorner = fpCorners[0]!;
   const firstDx = fp.sub(firstCorner.x, fpPx);
   const firstDy = fp.sub(firstCorner.y, fpPy);
   const firstForward = fp.add(fp.mul(firstDx, fpCos), fp.mul(firstDy, fpSin));
-  const firstSide = fp.add(fp.mul(fp.negate(firstDx), fpSin), fp.mul(firstDy, fpCos));
+  const firstSide = fp.add(
+    fp.mul(fp.negate(firstDx), fpSin),
+    fp.mul(firstDy, fpCos),
+  );
   let minForward = firstForward;
   let maxForward = firstForward;
   let minSide = firstSide;
@@ -267,16 +425,25 @@ function infiniteBeamIntersectsRect(projectile: ProjectileState, victim: Project
     maxSide = fpMax(maxSide, side);
   }
 
-  return fp.gte(maxForward, fp.negate(fpMax(fpHalfW, fpHalfH))) &&
+  return (
+    fp.gte(maxForward, fp.negate(fpMax(fpHalfW, fpHalfH))) &&
     fp.lte(minSide, fpHalfBeam) &&
-    fp.gte(maxSide, fp.negate(fpHalfBeam));
+    fp.gte(maxSide, fp.negate(fpHalfBeam))
+  );
 }
 
 function canUseRapierHitTest(projectile: ProjectileState): boolean {
-  return Number.isFinite(projectile.width) && projectile.width > 0 && projectile.height > 0;
+  return (
+    Number.isFinite(projectile.width) &&
+    projectile.width > 0 &&
+    projectile.height > 0
+  );
 }
 
-function isBlockedByShield(projectile: ProjectileState, shields: readonly ShieldState[]): boolean {
+function isBlockedByShield(
+  projectile: ProjectileState,
+  shields: readonly ShieldState[],
+): boolean {
   if (!canShieldBlockProjectile(projectile)) {
     return false;
   }
@@ -293,10 +460,16 @@ function isBlockedByShield(projectile: ProjectileState, shields: readonly Shield
 }
 
 function canShieldBlockProjectile(projectile: ProjectileState): boolean {
-  return (projectile.kind === "orb" || projectile.kind === "knife") && canUseRapierHitTest(projectile);
+  return (
+    (projectile.kind === "orb" || projectile.kind === "knife") &&
+    canUseRapierHitTest(projectile)
+  );
 }
 
-function rotatedRectsIntersect(projectile: ProjectileState, shield: ShieldState): boolean {
+function rotatedRectsIntersect(
+  projectile: ProjectileState,
+  shield: ShieldState,
+): boolean {
   const projectileRect = {
     x: projectile.x,
     y: projectile.y,
@@ -323,7 +496,10 @@ function rotatedRectsIntersect(projectile: ProjectileState, shield: ShieldState)
   for (const axis of axes) {
     const projectileProjection = projectCorners(projectileCorners, axis);
     const shieldProjection = projectCorners(shieldCorners, axis);
-    if (fp.lt(projectileProjection.max, shieldProjection.min) || fp.lt(shieldProjection.max, projectileProjection.min)) {
+    if (
+      fp.lt(projectileProjection.max, shieldProjection.min) ||
+      fp.lt(shieldProjection.max, projectileProjection.min)
+    ) {
       return false;
     }
   }
@@ -361,15 +537,30 @@ function rectCorners(rect: RectLike): readonly Vec2[] {
   for (const sx of [-1, 1]) {
     for (const sy of [-1, 1]) {
       corners.push({
-        x: fp.add(fp.add(fpX, fp.mul(forward.x, fp.mul(rect.halfWidth, fp.fromInt(sx)))), fp.mul(side.x, fp.mul(rect.halfHeight, fp.fromInt(sy)))),
-        y: fp.add(fp.add(fpY, fp.mul(forward.y, fp.mul(rect.halfWidth, fp.fromInt(sx)))), fp.mul(side.y, fp.mul(rect.halfHeight, fp.fromInt(sy)))),
+        x: fp.add(
+          fp.add(
+            fpX,
+            fp.mul(forward.x, fp.mul(rect.halfWidth, fp.fromInt(sx))),
+          ),
+          fp.mul(side.x, fp.mul(rect.halfHeight, fp.fromInt(sy))),
+        ),
+        y: fp.add(
+          fp.add(
+            fpY,
+            fp.mul(forward.y, fp.mul(rect.halfWidth, fp.fromInt(sx))),
+          ),
+          fp.mul(side.y, fp.mul(rect.halfHeight, fp.fromInt(sy))),
+        ),
       });
     }
   }
   return corners;
 }
 
-function projectCorners(corners: readonly Vec2[], axis: Vec2): { readonly min: number; readonly max: number } {
+function projectCorners(
+  corners: readonly Vec2[],
+  axis: Vec2,
+): { readonly min: number; readonly max: number } {
   let min = dot(corners[0]!, axis);
   let max = min;
   for (let index = 1; index < corners.length; index += 1) {

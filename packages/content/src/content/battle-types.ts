@@ -103,10 +103,13 @@ export interface ProjectileState {
   readonly homingStartAt: number;
   homingUntil: number;
   pausedUntil: number;
+  retargetAt: number | undefined;
   widthGrowthPerTick: number;
   maxWidth: number | undefined;
   readonly damage: number;
   angle: number;
+  readonly couldClear: boolean;
+  readonly clearsProjectiles: boolean;
 }
 
 export interface EffectState {

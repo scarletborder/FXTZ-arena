@@ -28,11 +28,15 @@ export function createLaserProjectile(params: {
   readonly rayLike?: boolean;
   readonly visibleFrom?: number;
   readonly pausedUntil?: number;
+  readonly couldClear?: boolean;
+  readonly clearsProjectiles?: boolean;
 }): ProjectileState {
   const speed = bulletSpeedRankToPixelsPerTick(params.speedRank ?? "high");
   const spawnOffset = params.spawnOffset ?? 28;
   const velocity = params.pinned ? 0 : speed;
-  const width = params.rayLike ? Number.POSITIVE_INFINITY : (params.initialLength ?? 3);
+  const width = params.rayLike
+    ? Number.POSITIVE_INFINITY
+    : (params.initialLength ?? 3);
 
   const fpAngle = fp.fromFloat(params.angle);
   const fpCos = fp.cos(fpAngle);
@@ -65,14 +69,20 @@ export function createLaserProjectile(params: {
     anchorX: params.anchored ? params.x : undefined,
     anchorY: params.anchored ? params.y : undefined,
     visibleFrom: params.visibleFrom ?? params.frame,
-    expireAt: params.expireTicks === undefined ? undefined : params.frame + params.expireTicks,
+    expireAt:
+      params.expireTicks === undefined
+        ? undefined
+        : params.frame + params.expireTicks,
     homingStartAt: 0,
     homingUntil: 0,
     pausedUntil: params.pausedUntil ?? params.frame,
+    retargetAt: undefined,
     widthGrowthPerTick: params.lengthGrowthPerTick ?? 0,
     maxWidth: params.maxLength,
     damage: params.damage ?? 1,
     angle: params.angle,
+    couldClear: params.couldClear ?? true,
+    clearsProjectiles: params.clearsProjectiles ?? false,
   };
 }
 
@@ -81,14 +91,19 @@ export function stepLaserProjectile(projectile: ProjectileState): void {
     // Use fp for width growth
     const fpWidth = fp.fromFloat(projectile.width);
     const fpGrowth = fp.fromFloat(projectile.widthGrowthPerTick);
-    const fpMaxW = projectile.maxWidth !== undefined && Number.isFinite(projectile.maxWidth)
-      ? fp.fromFloat(projectile.maxWidth)
-      : fp.fromInt(9999);
+    const fpMaxW =
+      projectile.maxWidth !== undefined && Number.isFinite(projectile.maxWidth)
+        ? fp.fromFloat(projectile.maxWidth)
+        : fp.fromInt(9999);
     const newWidth = fpMin(fpMaxW, fp.add(fpWidth, fpGrowth));
     projectile.width = fp.toFloat(newWidth);
   }
 
-  if (projectile.anchorX !== undefined && projectile.anchorY !== undefined && Number.isFinite(projectile.width)) {
+  if (
+    projectile.anchorX !== undefined &&
+    projectile.anchorY !== undefined &&
+    Number.isFinite(projectile.width)
+  ) {
     // anchored laser end position: anchor + cos(angle) * (width / 2)
     const fpAnchorX = fp.fromFloat(projectile.anchorX);
     const fpAnchorY = fp.fromFloat(projectile.anchorY);
@@ -102,8 +117,12 @@ export function stepLaserProjectile(projectile: ProjectileState): void {
   }
 
   // Position step (always in world-space for non-anchored lasers)
-  projectile.x = fp.toFloat(fp.add(fp.fromFloat(projectile.x), fp.fromFloat(projectile.vx)));
-  projectile.y = fp.toFloat(fp.add(fp.fromFloat(projectile.y), fp.fromFloat(projectile.vy)));
+  projectile.x = fp.toFloat(
+    fp.add(fp.fromFloat(projectile.x), fp.fromFloat(projectile.vx)),
+  );
+  projectile.y = fp.toFloat(
+    fp.add(fp.fromFloat(projectile.y), fp.fromFloat(projectile.vy)),
+  );
 }
 
 export { isProjectileOutOfWorld };

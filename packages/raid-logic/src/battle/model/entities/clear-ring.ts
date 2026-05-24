@@ -1,0 +1,121 @@
+import { fp } from "@shaisrc/fixed-point";
+
+import type { FighterKey, FighterState, ProjectileState } from "@repo/content";
+import { fpHypotFp } from "@repo/content";
+import type { PhysicsBodyDef } from "../../../physics-world";
+
+export interface ClearRingState {
+  readonly id: number;
+  readonly owner: FighterKey;
+  x: number;
+  y: number;
+  previousX: number;
+  previousY: number;
+  readonly radius: number;
+  readonly expireAt: number;
+  readonly followsOwner: boolean;
+}
+
+export interface SpawnClearRingEntityParams {
+  readonly id: number;
+  readonly owner: FighterKey;
+  readonly x: number;
+  readonly y: number;
+  readonly radius: number;
+  readonly frame: number;
+  readonly duration: number;
+  readonly followsOwner?: boolean;
+}
+
+export function createClearRingState(
+  params: SpawnClearRingEntityParams,
+): ClearRingState {
+  return {
+    id: params.id,
+    owner: params.owner,
+    x: params.x,
+    y: params.y,
+    previousX: params.x,
+    previousY: params.y,
+    radius: params.radius,
+    expireAt: params.frame + params.duration,
+    followsOwner: params.followsOwner ?? false,
+  };
+}
+
+export function stepClearRings(params: {
+  readonly frame: number;
+  readonly clearRings: ClearRingState[];
+  readonly projectiles: ProjectileState[];
+  readonly fighters: Readonly<Record<FighterKey, FighterState | undefined>>;
+}): void {
+  const activeRings: ClearRingState[] = [];
+  for (const ring of params.clearRings) {
+    if (params.frame >= ring.expireAt) {
+      continue;
+    }
+    ring.previousX = ring.x;
+    ring.previousY = ring.y;
+    if (ring.followsOwner) {
+      const owner = params.fighters[ring.owner];
+      if (owner) {
+        ring.x = owner.x;
+        ring.y = owner.y;
+      }
+    }
+    activeRings.push(ring);
+  }
+
+  params.clearRings.splice(0, params.clearRings.length, ...activeRings);
+  if (activeRings.length === 0) {
+    return;
+  }
+
+  params.projectiles.splice(
+    0,
+    params.projectiles.length,
+    ...params.projectiles.filter(
+      (projectile) =>
+        !canClearProjectile(projectile) ||
+        !activeRings.some((ring) => projectileIntersectsRing(projectile, ring)),
+    ),
+  );
+}
+
+export function clearRingToPhysicsBody(ring: ClearRingState): PhysicsBodyDef {
+  return {
+    id: `clear-ring:${ring.id}`,
+    kind: "clear-ring",
+    shape: "ball",
+    x: ring.x,
+    y: ring.y,
+    vx: 0,
+    vy: 0,
+    halfWidth: ring.radius,
+    halfHeight: ring.radius,
+  };
+}
+
+function canClearProjectile(projectile: ProjectileState): boolean {
+  return (
+    projectile.couldClear &&
+    (projectile.kind === "orb" || projectile.kind === "knife")
+  );
+}
+
+function projectileIntersectsRing(
+  projectile: ProjectileState,
+  ring: ClearRingState,
+): boolean {
+  const projectileRadius = fp.div(
+    fp.fromFloat(Math.max(projectile.width, projectile.height)),
+    fp.fromInt(2),
+  );
+  return fp.lte(
+    fpHypotFp(
+      fp.sub(fp.fromFloat(projectile.x), fp.fromFloat(ring.x)),
+      fp.sub(fp.fromFloat(projectile.y), fp.fromFloat(ring.y)),
+    ),
+    fp.add(fp.fromFloat(ring.radius), projectileRadius),
+  );
+}

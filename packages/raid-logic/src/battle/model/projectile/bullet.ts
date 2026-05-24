@@ -29,6 +29,9 @@ export function createBulletProjectile(params: {
   readonly damage?: number;
   readonly spawnOffset?: number;
   readonly pausedUntil?: number;
+  readonly retargetAt?: number;
+  readonly couldClear?: boolean;
+  readonly clearsProjectiles?: boolean;
 }): ProjectileState {
   const speed = bulletSpeedRankToPixelsPerTick(params.speedRank);
   const spawnOffset = params.spawnOffset ?? 28;
@@ -66,10 +69,13 @@ export function createBulletProjectile(params: {
     homingStartAt: params.frame + HOMING_START_DELAY_TICKS,
     homingUntil: params.frame + HOMING_START_DELAY_TICKS + params.homingTicks,
     pausedUntil: params.pausedUntil ?? params.frame,
+    retargetAt: params.retargetAt,
     widthGrowthPerTick: 0,
     maxWidth: undefined,
     damage: params.damage ?? 1,
     angle: params.angle,
+    couldClear: params.couldClear ?? true,
+    clearsProjectiles: params.clearsProjectiles ?? false,
   };
 }
 
@@ -78,6 +84,11 @@ export function stepBulletProjectile(
   frame: number,
   target: FighterState,
 ): void {
+  if (projectile.retargetAt !== undefined && frame >= projectile.retargetAt) {
+    retargetProjectile(projectile, target);
+    projectile.retargetAt = undefined;
+  }
+
   if (
     projectile.kind === "orb" &&
     frame >= projectile.homingStartAt &&
@@ -140,6 +151,29 @@ export function stepBulletProjectile(
 
 function canHomeTo(target: FighterState): boolean {
   return target.deadUntil <= 0 && target.invulnerableUntil <= 0;
+}
+
+function retargetProjectile(
+  projectile: ProjectileState,
+  target: FighterState,
+): void {
+  if (!canHomeTo(target)) {
+    return;
+  }
+
+  const fpDx = fp.sub(fp.fromFloat(target.x), fp.fromFloat(projectile.x));
+  const fpDy = fp.sub(fp.fromFloat(target.y), fp.fromFloat(projectile.y));
+  const fpCurrentSpeed = fpHypotFp(
+    fp.fromFloat(projectile.vx),
+    fp.fromFloat(projectile.vy),
+  );
+  const speed = fpMax(fp.fromFloat(1.5), fpCurrentSpeed);
+  const angle = fpAtan2(fpDy, fpDx);
+  const fpAngle = fp.fromFloat(angle);
+
+  projectile.vx = fp.toFloat(fp.mul(fp.cos(fpAngle), speed));
+  projectile.vy = fp.toFloat(fp.mul(fp.sin(fpAngle), speed));
+  projectile.angle = angle;
 }
 
 function normalizeRadians(angle: number): number {

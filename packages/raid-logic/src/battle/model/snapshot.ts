@@ -2,8 +2,15 @@ import type { NeutralMobState } from "@repo/types";
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
 
 import { getAbilityCard, getCharacter } from "../content";
-import type { EffectState, FighterState, PointState, ProjectileState, TrainingStats } from "@repo/content";
+import type {
+  EffectState,
+  FighterState,
+  PointState,
+  ProjectileState,
+  TrainingStats,
+} from "@repo/content";
 import type { NeutralMobSpawnerState } from "@repo/content";
+import type { ClearRingState } from "./entities/clear-ring";
 
 export interface BattleModelSnapshot {
   readonly version: 1;
@@ -13,10 +20,12 @@ export interface BattleModelSnapshot {
   readonly nextEffectId: number;
   readonly nextNeutralMobId: number;
   readonly nextPointId: number;
+  readonly nextClearRingId: number;
   readonly player: FighterSnapshot;
   readonly target: FighterSnapshot;
   readonly neutralMobs: readonly NeutralMobSnapshot[];
   readonly points: readonly PointSnapshot[];
+  readonly clearRings: readonly ClearRingSnapshot[];
   readonly mobSpawner: NeutralMobSpawnerState | undefined;
   readonly projectiles: readonly ProjectileSnapshot[];
   readonly effects: readonly EffectSnapshot[];
@@ -44,16 +53,26 @@ export type FighterSnapshot = Omit<
 
 export type ProjectileSnapshot = Omit<
   ProjectileState,
-  "visibleFrom" | "expireAt" | "homingStartAt" | "homingUntil" | "pausedUntil"
+  | "visibleFrom"
+  | "expireAt"
+  | "homingStartAt"
+  | "homingUntil"
+  | "pausedUntil"
+  | "retargetAt"
 > & {
   readonly visibleIn: number;
   readonly expireIn: number | undefined;
   readonly homingStartIn: number;
   readonly homingRemaining: number;
   readonly pausedRemaining: number;
+  readonly retargetIn: number | undefined;
 };
 
 export type EffectSnapshot = Omit<EffectState, "expireAt"> & {
+  readonly expireIn: number;
+};
+
+export type ClearRingSnapshot = Omit<ClearRingState, "expireAt"> & {
   readonly expireIn: number;
 };
 
@@ -72,8 +91,10 @@ export function createBattleModelSnapshot(params: {
   readonly nextEffectId: number;
   readonly nextNeutralMobId: number;
   readonly nextPointId: number;
+  readonly nextClearRingId: number;
   readonly neutralMobs: readonly NeutralMobState[];
   readonly points: readonly PointState[];
+  readonly clearRings: readonly ClearRingState[];
   readonly mobSpawner: NeutralMobSpawnerState | undefined;
 }): BattleModelSnapshot {
   return {
@@ -84,24 +105,38 @@ export function createBattleModelSnapshot(params: {
     nextEffectId: params.nextEffectId,
     nextNeutralMobId: params.nextNeutralMobId,
     nextPointId: params.nextPointId,
+    nextClearRingId: params.nextClearRingId,
     player: serializeFighter(params.player, params.frame),
     target: serializeFighter(params.target, params.frame),
     neutralMobs: params.neutralMobs.map((mob) => ({ ...mob })),
     points: params.points.map((point) => ({ ...point })),
+    clearRings: params.clearRings.map((ring) =>
+      serializeClearRing(ring, params.frame),
+    ),
     mobSpawner: params.mobSpawner,
-    projectiles: params.projectiles.map((projectile) => serializeProjectile(projectile, params.frame)),
-    effects: params.effects.map((effect) => serializeEffect(effect, params.frame)),
+    projectiles: params.projectiles.map((projectile) =>
+      serializeProjectile(projectile, params.frame),
+    ),
+    effects: params.effects.map((effect) =>
+      serializeEffect(effect, params.frame),
+    ),
     stats: { ...params.stats },
   };
 }
 
-export function restoreFighterSnapshot(fighter: FighterState, snapshot: FighterSnapshot, frame: number): void {
+export function restoreFighterSnapshot(
+  fighter: FighterState,
+  snapshot: FighterSnapshot,
+  frame: number,
+): void {
   Object.assign(fighter, {
     ...snapshot,
     primaryCharacter: getCharacter(snapshot.primaryCharacterId),
     activeCharacter: getCharacter(snapshot.activeCharacterId),
     alternateCharacter: getCharacter(snapshot.alternateCharacterId),
-    activeCard: snapshot.activeCardId ? getAbilityCard(snapshot.activeCardId) : undefined,
+    activeCard: snapshot.activeCardId
+      ? getAbilityCard(snapshot.activeCardId)
+      : undefined,
     abilityCards: snapshot.abilityCardIds.map((id) => getAbilityCard(id)),
     flashUntil: frame + snapshot.flashRemaining,
     statusVisibleUntil: frame + snapshot.statusVisibleRemaining,
@@ -109,8 +144,19 @@ export function restoreFighterSnapshot(fighter: FighterState, snapshot: FighterS
   deleteSnapshotIds(fighter);
 }
 
-export function restoreProjectileSnapshot(snapshot: ProjectileSnapshot, frame: number): ProjectileState {
-  const { visibleIn, expireIn, homingStartIn, homingRemaining, pausedRemaining, ...projectile } = snapshot;
+export function restoreProjectileSnapshot(
+  snapshot: ProjectileSnapshot,
+  frame: number,
+): ProjectileState {
+  const {
+    visibleIn,
+    expireIn,
+    homingStartIn,
+    homingRemaining,
+    pausedRemaining,
+    retargetIn,
+    ...projectile
+  } = snapshot;
   return {
     ...projectile,
     visibleFrom: frame + visibleIn,
@@ -118,10 +164,14 @@ export function restoreProjectileSnapshot(snapshot: ProjectileSnapshot, frame: n
     homingStartAt: frame + homingStartIn,
     homingUntil: frame + homingRemaining,
     pausedUntil: frame + pausedRemaining,
+    retargetAt: retargetIn === undefined ? undefined : frame + retargetIn,
   };
 }
 
-export function restoreEffectSnapshot(snapshot: EffectSnapshot, frame: number): EffectState {
+export function restoreEffectSnapshot(
+  snapshot: EffectSnapshot,
+  frame: number,
+): EffectState {
   const { expireIn, ...effect } = snapshot;
   return {
     ...effect,
@@ -129,7 +179,21 @@ export function restoreEffectSnapshot(snapshot: EffectSnapshot, frame: number): 
   };
 }
 
-function serializeFighter(fighter: FighterState, frame: number): FighterSnapshot {
+export function restoreClearRingSnapshot(
+  snapshot: ClearRingSnapshot,
+  frame: number,
+): ClearRingState {
+  const { expireIn, ...ring } = snapshot;
+  return {
+    ...ring,
+    expireAt: frame + expireIn,
+  };
+}
+
+function serializeFighter(
+  fighter: FighterState,
+  frame: number,
+): FighterSnapshot {
   return {
     key: fighter.key,
     x: fighter.x,
@@ -182,7 +246,10 @@ function serializeFighter(fighter: FighterState, frame: number): FighterSnapshot
   };
 }
 
-function serializeProjectile(projectile: ProjectileState, frame: number): ProjectileSnapshot {
+function serializeProjectile(
+  projectile: ProjectileState,
+  frame: number,
+): ProjectileSnapshot {
   return {
     id: projectile.id,
     kind: projectile.kind,
@@ -199,14 +266,23 @@ function serializeProjectile(projectile: ProjectileState, frame: number): Projec
     anchorX: projectile.anchorX,
     anchorY: projectile.anchorY,
     visibleIn: projectile.visibleFrom - frame,
-    expireIn: projectile.expireAt === undefined ? undefined : projectile.expireAt - frame,
+    expireIn:
+      projectile.expireAt === undefined
+        ? undefined
+        : projectile.expireAt - frame,
     homingStartIn: projectile.homingStartAt - frame,
     homingRemaining: projectile.homingUntil - frame,
     pausedRemaining: projectile.pausedUntil - frame,
+    retargetIn:
+      projectile.retargetAt === undefined
+        ? undefined
+        : projectile.retargetAt - frame,
     widthGrowthPerTick: projectile.widthGrowthPerTick,
     maxWidth: projectile.maxWidth,
     damage: projectile.damage,
     angle: projectile.angle,
+    couldClear: projectile.couldClear,
+    clearsProjectiles: projectile.clearsProjectiles,
   };
 }
 
@@ -223,6 +299,23 @@ function serializeEffect(effect: EffectState, frame: number): EffectSnapshot {
     width: effect.width,
     height: effect.height,
     angle: effect.angle,
+  };
+}
+
+function serializeClearRing(
+  ring: ClearRingState,
+  frame: number,
+): ClearRingSnapshot {
+  return {
+    id: ring.id,
+    owner: ring.owner,
+    x: ring.x,
+    y: ring.y,
+    previousX: ring.previousX,
+    previousY: ring.previousY,
+    radius: ring.radius,
+    expireIn: ring.expireAt - frame,
+    followsOwner: ring.followsOwner,
   };
 }
 

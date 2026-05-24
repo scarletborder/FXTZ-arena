@@ -12,9 +12,10 @@ import { BattleModel } from ".";
 import { BattlePhysics } from "./physics-adapter";
 import { createPointState } from "./points";
 import { stepBulletProjectile } from "./projectile/bullet";
-import type {
-  BulletProjectileParams,
-  LaserProjectileParams,
+import {
+  clearProjectilesAround,
+  type BulletProjectileParams,
+  type LaserProjectileParams,
 } from "./projectile";
 
 describe("BattleModel rollback snapshots", () => {
@@ -463,6 +464,53 @@ describe("BattleModel character bombs", () => {
     expect(model.effects.some((effect) => effect.kind === "ring")).toBe(true);
   });
 
+  it("keeps bomb clear rings active for later projectiles and rollback", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+
+    model.step(input({ bombPressed: true }));
+
+    expect(model.clearRings).toHaveLength(1);
+    expect(model.clearRings[0]).toMatchObject({
+      owner: "Player1",
+      radius: HIT_CIRCLE_DIAMETER * 16,
+      followsOwner: false,
+    });
+    const snapshot = model.serialize();
+    const snapshotHash = model.hashHex();
+
+    model.projectiles.push(
+      testProjectile({
+        id: 500,
+        owner: "Player2",
+        x: model.player.x + HIT_CIRCLE_DIAMETER * 16 + 20,
+        y: model.player.y,
+        vx: -40,
+      }),
+      testProjectile({
+        id: 501,
+        owner: "Player2",
+        x: model.player.x + HIT_CIRCLE_DIAMETER * 16 + 20,
+        y: model.player.y,
+        vx: -40,
+        couldClear: false,
+      }),
+    );
+
+    model.step(input());
+
+    expect(model.projectiles.some((projectile) => projectile.id === 500)).toBe(
+      false,
+    );
+    expect(model.projectiles.some((projectile) => projectile.id === 501)).toBe(
+      true,
+    );
+
+    model.deserialize(snapshot);
+
+    expect(model.clearRings).toHaveLength(1);
+    expect(model.hashHex()).toBe(snapshotHash);
+  });
+
   it("allows bomb use at the point threshold even with no bombs remaining", async () => {
     const model = await createBattleModel("reimu", "marisa");
     model.player.bombs = 0;
@@ -899,9 +947,148 @@ describe("BattleModel point power shooting tiers", () => {
     ).toHaveLength(4);
   });
 
+  it("spawns Reimu bomb orbs immediately and moves them in delayed waves", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+    model.player.facing = 0;
+
+    model.step(
+      input({
+        bombPressed: true,
+        aimX: model.player.x + 100,
+        aimY: model.player.y,
+      }),
+    );
+
+    const bombOrbs = model.projectiles
+      .filter((projectile) => projectile.clearsProjectiles)
+      .sort((left, right) => left.angle - right.angle);
+    expect(bombOrbs).toHaveLength(5);
+    expect(bombOrbs.every((projectile) => !projectile.couldClear)).toBe(true);
+    expect(
+      bombOrbs.every(
+        (projectile) =>
+          projectile.width === HIT_CIRCLE_DIAMETER * 8 &&
+          projectile.height === HIT_CIRCLE_DIAMETER * 8,
+      ),
+    ).toBe(true);
+    expect(
+      bombOrbs.filter(
+        (projectile) =>
+          projectile.visibleFrom === model.frame &&
+          projectile.pausedUntil === model.frame + 30 &&
+          projectile.retargetAt === model.frame + 30,
+      ),
+    ).toHaveLength(2);
+    expect(
+      bombOrbs.filter(
+        (projectile) =>
+          projectile.visibleFrom === model.frame &&
+          projectile.pausedUntil === model.frame + 45 &&
+          projectile.retargetAt === model.frame + 45,
+      ),
+    ).toHaveLength(3);
+    expect(
+      bombOrbs.map((projectile) =>
+        Math.round((projectile.angle * 180) / Math.PI),
+      ),
+    ).toEqual([-30, 30, 120, 180, 240]);
+    expect(
+      bombOrbs.every(
+        (projectile) =>
+          Math.abs(
+            Math.hypot(
+              projectile.x - model.player.previousX,
+              projectile.y - model.player.previousY,
+            ) -
+              HIT_CIRCLE_DIAMETER * 4,
+          ) < 0.001,
+      ),
+    ).toBe(true);
+  });
+
+  it("aims Reimu bomb orbs once at the enemy when delayed movement starts", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+    model.player.facing = 0;
+    model.target.x = model.player.x;
+    model.target.y = model.player.y + 200;
+
+    model.step(input({ bombPressed: true }));
+
+    const forwardOrb = model.projectiles.find(
+      (projectile) =>
+        projectile.clearsProjectiles &&
+        projectile.pausedUntil === model.frame + 30,
+    );
+    expect(forwardOrb).toBeDefined();
+    const startX = forwardOrb!.x;
+    const startY = forwardOrb!.y;
+    expect(forwardOrb!.visibleFrom).toBe(model.frame);
+
+    for (let index = 0; index < 29; index += 1) {
+      model.step(input());
+    }
+
+    expect(forwardOrb!.x).toBeCloseTo(startX);
+    expect(forwardOrb!.y).toBeCloseTo(startY);
+
+    model.target.x = startX;
+    model.target.y = startY + 240;
+    model.step(input());
+
+    const retargetAngle = Math.atan2(
+      model.target.y - startY,
+      model.target.x - startX,
+    );
+    expect(forwardOrb!.retargetAt).toBeUndefined();
+    expect(forwardOrb!.angle).toBeCloseTo(retargetAngle);
+    const lockedVx = forwardOrb!.vx;
+    const lockedVy = forwardOrb!.vy;
+
+    model.target.x = startX + 240;
+    model.target.y = startY;
+    model.step(input());
+
+    expect(forwardOrb!.vx).toBeCloseTo(lockedVx);
+    expect(forwardOrb!.vy).toBeCloseTo(lockedVy);
+  });
+
+  it("only clears projectiles marked as clearable", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+    model.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Player2",
+        x: model.player.x,
+        y: model.player.y,
+      }),
+      testProjectile({
+        id: 2,
+        owner: "Player2",
+        x: model.player.x,
+        y: model.player.y,
+        couldClear: false,
+      }),
+    );
+
+    clearProjectilesAround(
+      model.projectiles,
+      model.player.x,
+      model.player.y,
+      HIT_CIRCLE_DIAMETER * 16,
+    );
+
+    expect(model.projectiles.some((projectile) => projectile.id === 1)).toBe(
+      false,
+    );
+    expect(model.projectiles.some((projectile) => projectile.id === 2)).toBe(
+      true,
+    );
+  });
+
   it("adds Marisa rear beams and parallel lasers by point tier", async () => {
     const tier1 = await shootOnceAtPoint("marisa", 0);
     expect(tier1.projectiles).toHaveLength(1);
+    expect(tier1.projectiles[0]?.couldClear).toBe(false);
 
     const tier2 = await shootOnceAtPoint("marisa", 100);
     expect(tier2.projectiles).toHaveLength(5);
@@ -1152,10 +1339,13 @@ function testProjectile(
     homingStartAt: 999,
     homingUntil: 999,
     pausedUntil: 0,
+    retargetAt: undefined,
     widthGrowthPerTick: 0,
     maxWidth: undefined,
     damage: 1,
     angle: 0,
+    couldClear: true,
+    clearsProjectiles: false,
     ...overrides,
   };
 }

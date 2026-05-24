@@ -21,6 +21,14 @@ export interface SpawnClearRingParams {
   readonly duration: number;
 }
 
+export interface SpawnClearRingEntityParams {
+  readonly x: number;
+  readonly y: number;
+  readonly radius: number;
+  readonly duration: number;
+  readonly followsOwner?: boolean;
+}
+
 export interface BattleActionContext<
   TFighter,
   TProjectile,
@@ -38,6 +46,7 @@ export interface BattleActionContext<
   spawnBullet(params: TBulletParams): void;
   spawnLaser(params: TLaserParams): void;
   clearProjectilesAround(params: ClearProjectilesAroundParams): number;
+  spawnClearRingEntity(params: SpawnClearRingEntityParams): void;
   spawnClearRing(params: SpawnClearRingParams): void;
 }
 
@@ -50,7 +59,14 @@ export interface BattleHitContext<
   TLaserParams,
   TCard,
   TFighterKey extends string,
-> extends BattleActionContext<TFighter, TProjectile, TEffect, TStats, TBulletParams, TLaserParams> {
+> extends BattleActionContext<
+    TFighter,
+    TProjectile,
+    TEffect,
+    TStats,
+    TBulletParams,
+    TLaserParams
+  > {
   readonly owner: TFighterKey;
   readonly victim: TFighter;
   readonly attacker: TFighter;

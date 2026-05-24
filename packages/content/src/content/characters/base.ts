@@ -33,7 +33,10 @@ export interface BattleBulletSpawnParams {
   readonly damage?: number;
   readonly spawnOffset?: number;
   readonly pausedUntil?: number;
+  readonly retargetAt?: number;
   readonly frame?: number;
+  readonly couldClear?: boolean;
+  readonly clearsProjectiles?: boolean;
 }
 
 export interface BattleLaserSpawnParams {
@@ -57,6 +60,8 @@ export interface BattleLaserSpawnParams {
   readonly visibleFrom?: number;
   readonly pausedUntil?: number;
   readonly frame?: number;
+  readonly couldClear?: boolean;
+  readonly clearsProjectiles?: boolean;
 }
 
 export interface CharacterActionContext
@@ -122,9 +127,7 @@ export abstract class BattleCharacter {
   abstract onHit(ctx: BattleHitContext): void;
 
   canUseBomb(fighter: FighterState): boolean {
-    return (
-      fighter.bombs > 0 || fighter.pointCount >= this.pointBombThreshold
-    );
+    return fighter.bombs > 0 || fighter.pointCount >= this.pointBombThreshold;
   }
 
   protected aimAngle(
@@ -203,9 +206,17 @@ export abstract class BattleCharacter {
     ctx: CharacterActionContext,
     fighter: FighterState,
     hitCircleMultiplier: number,
+    duration = 1,
+    followsOwner = false,
   ): number {
     const radius = hitCircleUnits(hitCircleMultiplier);
-    ctx.clearProjectilesAround({ x: fighter.x, y: fighter.y, radius });
+    ctx.spawnClearRingEntity({
+      x: fighter.x,
+      y: fighter.y,
+      radius,
+      duration,
+      followsOwner,
+    });
     return radius;
   }
 

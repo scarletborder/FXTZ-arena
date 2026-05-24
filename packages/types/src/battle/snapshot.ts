@@ -34,6 +34,7 @@ export interface ProjectileState {
   readonly angleTicks: number;
   readonly remainingTicks: number;
   readonly shape: ProjectileShape;
+  readonly couldClear: boolean;
 }
 
 export interface ProjectileShape {

@@ -31,7 +31,13 @@ export function ensureRapierInit(): Promise<void> {
 
 export interface PhysicsBodyDef {
   readonly id: string;
-  readonly kind: "fighter" | "projectile" | "shield" | "obstacle" | "point";
+  readonly kind:
+    | "fighter"
+    | "projectile"
+    | "shield"
+    | "obstacle"
+    | "point"
+    | "clear-ring";
   readonly shape?: "cuboid" | "ball";
   readonly x: number;
   readonly y: number;
@@ -158,7 +164,10 @@ export class PhysicsWorld {
       this.removeBody(def.id);
     }
 
-    const translation = { x: clamp(def.x, this.minX, this.maxX), y: clamp(def.y, this.minY, this.maxY) };
+    const translation = {
+      x: clamp(def.x, this.minX, this.maxX),
+      y: clamp(def.y, this.minY, this.maxY),
+    };
     const desc = RAPIER.RigidBodyDesc.kinematicVelocityBased()
       .setTranslation(translation.x, translation.y)
       .setCcdEnabled(true);
@@ -178,7 +187,7 @@ export class PhysicsWorld {
       .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS)
       .setActiveCollisionTypes(
         RAPIER.ActiveCollisionTypes.DEFAULT |
-        RAPIER.ActiveCollisionTypes.KINEMATIC_KINEMATIC,
+          RAPIER.ActiveCollisionTypes.KINEMATIC_KINEMATIC,
       );
     this.world!.createCollider(colliderDesc, body);
 
@@ -260,13 +269,20 @@ export class PhysicsWorld {
   // Position / velocity getters (after step)
   // ------------------------------------------------------------------
 
-  readBody(id: string): { x: number; y: number; vx: number; vy: number } | undefined {
+  readBody(
+    id: string,
+  ): { x: number; y: number; vx: number; vy: number } | undefined {
     const body = this.bodies.get(id);
     if (!body) return undefined;
 
     const t = body.translation();
     const v = body.linvel();
-    return { x: Math.trunc(t.x), y: Math.trunc(t.y), vx: Math.trunc(v.x), vy: Math.trunc(v.y) };
+    return {
+      x: Math.trunc(t.x),
+      y: Math.trunc(t.y),
+      vx: Math.trunc(v.x),
+      vy: Math.trunc(v.y),
+    };
   }
 
   getHandle(id: string): number | undefined {
@@ -311,12 +327,20 @@ export class PhysicsWorld {
       const v = body.linvel();
       const isBall = this.bodyIsBall.get(id) ?? false;
       const collider = body.collider(0);
-      const halfWidth = isBall ? (collider?.radius() ?? 1) : (collider?.halfExtents()?.x ?? 1);
+      const halfWidth = isBall
+        ? (collider?.radius() ?? 1)
+        : (collider?.halfExtents()?.x ?? 1);
       const halfHeight = isBall ? 0 : (collider?.halfExtents()?.y ?? 1);
 
       bodies.push({
         id,
-        kind: (this.bodyKind.get(id) ?? "obstacle") as "fighter" | "projectile" | "shield" | "obstacle" | "point",
+        kind: (this.bodyKind.get(id) ?? "obstacle") as
+          | "fighter"
+          | "projectile"
+          | "shield"
+          | "obstacle"
+          | "point"
+          | "clear-ring",
         shape: isBall ? "ball" : "cuboid",
         x: Math.trunc(t.x),
         y: Math.trunc(t.y),
@@ -356,7 +380,9 @@ export class PhysicsWorld {
       const t = body.translation();
       const isBall = this.bodyIsBall.get(id) ?? false;
       const collider = body.collider(0);
-      const halfWidth = isBall ? (collider?.radius() ?? 1) : (collider?.halfExtents()?.x ?? 1);
+      const halfWidth = isBall
+        ? (collider?.radius() ?? 1)
+        : (collider?.halfExtents()?.x ?? 1);
       const halfHeight = isBall ? 0 : (collider?.halfExtents()?.y ?? 1);
 
       result.push({
