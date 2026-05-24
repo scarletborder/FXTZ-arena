@@ -11,7 +11,7 @@ import {
 import type { FighterKey, FighterState, ProjectileState } from "@repo/content";
 import { fpAtan2, fpHypotFp, fpMax } from "@repo/content";
 
-const HOMING_START_DELAY_TICKS = secondsToTicks(0.5);
+const HOMING_START_DELAY_TICKS = secondsToTicks(0.2);
 const HOMING_MAX_TURN_RADIANS_PER_TICK = Math.PI / TICK_RATE;
 
 export function createBulletProjectile(params: {

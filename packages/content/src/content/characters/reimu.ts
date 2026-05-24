@@ -88,22 +88,6 @@ export class ReimuBattleCharacter extends BattleCharacter {
     // Reimu has no hit-time modifier by default.
   }
 
-  private spawnHomingOrb(
-    ctx: CharacterActionContext,
-    fighter: FighterState,
-    angle: number,
-    homingTicks: number,
-  ): void {
-    this.spawnHomingOrbAt(
-      ctx,
-      fighter,
-      fighter.x,
-      fighter.y,
-      angle,
-      homingTicks,
-    );
-  }
-
   private spawnCenterShots(
     ctx: CharacterActionContext,
     fighter: FighterState,
