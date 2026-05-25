@@ -42,6 +42,7 @@ export class SelectScene extends Phaser.Scene {
   private hoverCost = 0;
   private layer!: Phaser.GameObjects.Container;
   private costLayer!: Phaser.GameObjects.Container;
+  private tipLayer!: Phaser.GameObjects.Container;
   private confirmButton!: { setEnabled(enabled: boolean): void; setLabel(label: string): void };
   private statusText!: Phaser.GameObjects.Text;
   private characterScrollOffset = 0;
@@ -93,6 +94,7 @@ export class SelectScene extends Phaser.Scene {
 
     this.layer = this.add.container(0, 0);
     this.costLayer = this.add.container(0, 0);
+    this.tipLayer = this.add.container(0, 0).setDepth(1000).setVisible(false);
 
     // Status text for online waiting state — use space not empty string to
     // avoid zero-width canvas crash in Phaser's Text pipeline (drawImage on null).
@@ -190,6 +192,7 @@ export class SelectScene extends Phaser.Scene {
   private render(): void {
     this.layer.removeAll(true);
     this.costLayer.removeAll(true);
+    this.hideTip();
     this.scrollAreas = [];
     this.hoverCost = 0;
 
@@ -309,11 +312,16 @@ export class SelectScene extends Phaser.Scene {
         this.hoverCost = this.previewCharacterDelta(character.id);
         this.updateCostOnly();
         tile.setHovered(true);
+        this.showCharacterTip(character);
+      });
+      tile.hitArea.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+        this.positionTip(pointer.x, pointer.y);
       });
       tile.hitArea.on("pointerout", () => {
         this.hoverCost = 0;
         this.updateCostOnly();
         tile.setHovered(false);
+        this.hideTip();
       });
       listContainer.add(tile.container);
     });
@@ -388,11 +396,16 @@ export class SelectScene extends Phaser.Scene {
         this.hoverCost = this.previewCardDelta(card);
         this.updateCostOnly();
         tile.setHovered(true);
+        this.showCardTip(card);
+      });
+      tile.hitArea.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+        this.positionTip(pointer.x, pointer.y);
       });
       tile.hitArea.on("pointerout", () => {
         this.hoverCost = 0;
         this.updateCostOnly();
         tile.setHovered(false);
+        this.hideTip();
       });
       listContainer.add(tile.container);
     });
@@ -442,6 +455,7 @@ export class SelectScene extends Phaser.Scene {
     container.y = -offset;
     const scroll = (deltaY: number) => {
       if (maxOffset <= 0) return;
+      this.hideTip();
       offset = Phaser.Math.Clamp(offset + deltaY, 0, maxOffset);
       container.y = -offset;
       if (kind === "characters") {
@@ -512,6 +526,130 @@ export class SelectScene extends Phaser.Scene {
     this.costLayer.removeAll(true);
     this.addCostDisplay();
     this.confirmButton.setEnabled(this.isValid());
+  }
+
+  private showCharacterTip(character: CharacterDefinition): void {
+    this.showTip({
+      title: character.name,
+      meta: `${roleLabel(character.roleClass)}  cost${character.cost}`,
+      description: character.description,
+      detailLines: [
+        `\u5f39\u5bb9: ${character.ammoCapacity}`,
+      ],
+      statBars: [
+        { label: "\u79fb\u52a8", value: character.moveSpeed },
+        { label: "\u5c04\u901f", value: character.fireRate },
+        { label: "\u5f39\u901f", value: character.bulletSpeed },
+      ],
+    });
+  }
+
+  private showCardTip(card: AbilityCardDefinition): void {
+    const cooldown = card.cooldownTicks === 0 ? "\u65e0" : `${(card.cooldownTicks / 60).toFixed(1)}\u79d2`;
+    this.showTip({
+      title: card.name,
+      meta: `${card.kind === "active" ? "\u4e3b\u52a8\u4f7f\u7528" : "\u88ab\u52a8"}  cost${card.cost}`,
+      description: card.description,
+      detailLines: [
+        `\u4f7f\u7528\u6b21\u6570: ${card.useLimit === "infinite" ? "\u65e0\u9650" : card.useLimit}`,
+        `\u51b7\u5374: ${cooldown}`,
+      ],
+    });
+  }
+
+  private showTip(params: {
+    readonly title: string;
+    readonly meta: string;
+    readonly description: string;
+    readonly detailLines?: readonly string[];
+    readonly statBars?: readonly { readonly label: string; readonly value: CharacterDefinition["moveSpeed"] }[];
+  }): void {
+    const width = 330;
+    const padding = 16;
+    const contentWidth = width - padding * 2;
+    const descriptionText = this.add.text(padding, 76, params.description, bodyStyle("#d7e3ef", 15))
+      .setWordWrapWidth(contentWidth)
+      .setLineSpacing(5);
+    const children: Phaser.GameObjects.GameObject[] = [
+      this.add.text(padding, 14, params.title, bodyStyle("#f6f1e6", 18)).setWordWrapWidth(contentWidth),
+      this.add.text(padding, 38, params.meta, bodyStyle("#ffcf6e", 14)).setWordWrapWidth(contentWidth),
+      descriptionText,
+    ];
+
+    let cursorY = 76 + descriptionText.height + 14;
+    for (const line of params.detailLines ?? []) {
+      const detail = this.add.text(padding, cursorY, line, bodyStyle("#9fb4c8", 14))
+        .setWordWrapWidth(contentWidth)
+        .setLineSpacing(5);
+      children.push(detail);
+      cursorY += detail.height + 7;
+    }
+
+    for (const stat of params.statBars ?? []) {
+      children.push(...this.createTipStatRow(padding, cursorY, stat.label, stat.value));
+      cursorY += 22;
+    }
+
+    const height = Math.max(132, cursorY + padding - 4);
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x0d131b, 0.98);
+    graphics.fillRect(0, 0, width, height);
+    graphics.lineStyle(2, 0xffcf6e, 0.95);
+    graphics.strokeRect(0, 0, width, height);
+    graphics.lineStyle(1, 0x34475c, 0.75);
+    graphics.lineBetween(18, 62, width - 22, 62);
+
+    this.tipLayer.removeAll(true);
+    this.tipLayer.add([
+      graphics,
+      ...children,
+    ]);
+    this.tipLayer.setSize(width, height).setVisible(true);
+
+    const pointer = this.input.activePointer;
+    this.positionTip(pointer.x, pointer.y);
+  }
+
+  private createTipStatRow(
+    x: number,
+    y: number,
+    label: string,
+    value: CharacterDefinition["moveSpeed"],
+  ): Phaser.GameObjects.GameObject[] {
+    const text = this.add.text(x, y, `${label}:`, bodyStyle("#9fb4c8", 14));
+    const graphics = this.add.graphics();
+    const count = statLevel(value);
+    const size = 10;
+    const gap = 5;
+    const startX = x + 58;
+    const startY = y + 4;
+    for (let index = 0; index < 3; index += 1) {
+      graphics.fillStyle(index < count ? statColor(value) : 0x243244, index < count ? 1 : 0.92);
+      graphics.fillRect(startX + index * (size + gap), startY, size, size);
+      graphics.lineStyle(1, 0x5c7185, 0.75);
+      graphics.strokeRect(startX + index * (size + gap), startY, size, size);
+    }
+    return [text, graphics];
+  }
+
+  private positionTip(pointerX: number, pointerY: number): void {
+    if (!this.tipLayer.visible) {
+      return;
+    }
+    const margin = 14;
+    const width = this.tipLayer.width;
+    const height = this.tipLayer.height;
+    const x = Phaser.Math.Clamp(pointerX + 18, margin, this.scale.width - width - margin);
+    const y = Phaser.Math.Clamp(pointerY + 18, margin, this.scale.height - height - margin);
+    this.tipLayer.setPosition(x, y);
+  }
+
+  private hideTip(): void {
+    if (!this.tipLayer) {
+      return;
+    }
+    this.tipLayer.removeAll(true);
+    this.tipLayer.setVisible(false);
   }
 
   private pickCharacter(id: CharacterDefinition["id"]): void {
@@ -648,6 +786,31 @@ export class SelectScene extends Phaser.Scene {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function roleLabel(role: CharacterDefinition["roleClass"]): string {
+  return {
+    assault: "\u7a81\u51fb",
+    suppress: "\u538b\u5236",
+    scout: "\u4fa6\u5bdf",
+    sniper: "\u72d9\u51fb",
+  }[role];
+}
+
+function statLevel(speed: CharacterDefinition["moveSpeed"]): number {
+  return {
+    low: 1,
+    medium: 2,
+    high: 3,
+  }[speed];
+}
+
+function statColor(speed: CharacterDefinition["moveSpeed"]): number {
+  return {
+    low: 0x26c6da,
+    medium: 0xffcf6e,
+    high: 0x34d399,
+  }[speed];
 }
 
 function cpuLoadout(): FighterLoadout {
