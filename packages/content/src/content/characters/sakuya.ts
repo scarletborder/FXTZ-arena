@@ -109,7 +109,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
   useBomb(ctx: CharacterActionContext, fighter: FighterState): void {
     this.startBomb(ctx, fighter, secondsToTicks(1));
     const clearRingTicks = secondsToTicks(1);
-    const radius = this.clearProjectiles(ctx, fighter, 8, clearRingTicks);
+    const radius = this.clearProjectiles(ctx, fighter, 32, clearRingTicks);
     this.spawnClearRing(ctx, fighter, radius, 0xb8c9ff, clearRingTicks);
 
     const freezeTicks = secondsToTicks(1);

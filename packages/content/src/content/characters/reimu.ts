@@ -15,8 +15,8 @@ import { Vanilla } from "../decorators";
 const CLEAR_RING_TICKS = secondsToTicks(2 / 3);
 const BOMB_FORWARD_DELAY_TICKS = secondsToTicks(0.5);
 const BOMB_REAR_DELAY_TICKS = secondsToTicks(0.75);
-const BOMB_ORB_DISTANCE = hitCircleUnits(12);
-const BOMB_ORB_SIZE = hitCircleUnits(8);
+const BOMB_ORB_DISTANCE = hitCircleUnits(28);
+const BOMB_ORB_SIZE = hitCircleUnits(16);
 const BOMB_ORB_DAMAGE = 15;
 
 @Vanilla.RegisterCharacter("reimu")
@@ -64,7 +64,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
   useBomb(ctx: CharacterActionContext, fighter: FighterState): void {
     this.startBomb(ctx, fighter);
     this.setInvulnerable(fighter, secondsToTicks(2));
-    const radius = this.clearProjectiles(ctx, fighter, 16, CLEAR_RING_TICKS);
+    const radius = this.clearProjectiles(ctx, fighter, 32, CLEAR_RING_TICKS);
     this.spawnClearRing(ctx, fighter, radius, 0xaec7ff, CLEAR_RING_TICKS);
 
     for (const angleOffset of [-Math.PI / 6, Math.PI / 6]) {
@@ -192,7 +192,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
       x: fp.toFloat(fpX),
       y: fp.toFloat(fpY),
       angle,
-      speedRank: "medium",
+      speedRank: "high",
       width: BOMB_ORB_SIZE,
       height: BOMB_ORB_SIZE,
       homingTicks: 0,

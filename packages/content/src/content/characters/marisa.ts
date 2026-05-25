@@ -64,7 +64,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
   useBomb(ctx: CharacterActionContext, fighter: FighterState): void {
     this.startBomb(ctx, fighter, secondsToTicks(4));
     const clearRingTicks = secondsToTicks(1);
-    const radius = this.clearProjectiles(ctx, fighter, 8, clearRingTicks);
+    const radius = this.clearProjectiles(ctx, fighter, 24, clearRingTicks);
     this.spawnClearRing(ctx, fighter, radius, 0xff6b6b, clearRingTicks);
 
     const windupTicks = secondsToTicks(1);
