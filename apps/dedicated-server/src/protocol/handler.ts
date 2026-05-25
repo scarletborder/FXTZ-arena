@@ -189,35 +189,52 @@ export class MessageHandler {
           return;
         }
 
-        if (slotIdx !== -1 && session.playerId) {
+        if (slotIdx !== -1 && session.playerId && room.status === "waiting" && slotIdx === 1) {
           this.notifyPeerStatus(room, slotIdx, session.playerId, "disconnected");
-          const otherIdx = slotIdx === 0 ? 1 : 0;
-          const otherConnId = room.connectionIds[otherIdx];
-          const remainingSession = otherConnId ? this.sessionStore.get(otherConnId) : undefined;
-          this.sendToSlot(room, otherIdx, {
+          this.roomManager.removePlayer(room, connectionId);
+          this.sessionStore.setRoomId(connectionId, null);
+          this.sessionStore.setPlayerId(connectionId, null!);
+          this.sendToSlot(room, 0, {
             type: "room_state",
             roomId: room.id,
             playerCount: 1,
             status: "waiting",
             roomName: room.name,
-            hostName: remainingSession?.username ?? "",
+            hostName: this.hostName(room),
             lifeCount: room.lifeCount,
             costLimit: room.costLimit,
           });
+        } else {
+          if (slotIdx !== -1 && session.playerId) {
+            this.notifyPeerStatus(room, slotIdx, session.playerId, "disconnected");
+            const otherIdx = slotIdx === 0 ? 1 : 0;
+            const otherConnId = room.connectionIds[otherIdx];
+            const remainingSession = otherConnId ? this.sessionStore.get(otherConnId) : undefined;
+            this.sendToSlot(room, otherIdx, {
+              type: "room_state",
+              roomId: room.id,
+              playerCount: 1,
+              status: "waiting",
+              roomName: room.name,
+              hostName: remainingSession?.username ?? "",
+              lifeCount: room.lifeCount,
+              costLimit: room.costLimit,
+            });
 
-          // Clean up remaining player: remove from room and clear session
-          if (otherConnId) {
-            this.sessionStore.setRoomId(otherConnId, null);
-            this.sessionStore.setPlayerId(otherConnId, null!);
-            this.roomManager.removePlayer(room, otherConnId);
+            // Clean up remaining player: remove from room and clear session
+            if (otherConnId) {
+              this.sessionStore.setRoomId(otherConnId, null);
+              this.sessionStore.setPlayerId(otherConnId, null!);
+              this.roomManager.removePlayer(room, otherConnId);
+            }
           }
-        }
 
-        this.roomManager.removePlayer(room, connectionId);
+          this.roomManager.removePlayer(room, connectionId);
 
-        // Delete empty rooms
-        if (room.connectionIds.every((c) => c === null)) {
-          this.roomManager.delete(room.id);
+          // Delete empty rooms
+          if (room.connectionIds.every((c) => c === null)) {
+            this.roomManager.delete(room.id);
+          }
         }
       }
     }
@@ -610,9 +627,37 @@ export class MessageHandler {
     const room = this.roomManager.get(session.roomId);
     if (!room) return;
 
+    const ownSlotIndex = room.connectionIds.indexOf(connection.id);
+    const guestLeavesWaitingRoom = room.status === "waiting" && ownSlotIndex === 1;
     const exitsActiveBattle = room.status === "loading" || room.status === "fighting";
     if (exitsActiveBattle) {
       room.status = "finished";
+    }
+
+    if (guestLeavesWaitingRoom) {
+      if (session.playerId) {
+        this.sendToSlot(room, 0, {
+          type: "peer_status",
+          playerId: session.playerId,
+          status: "disconnected",
+        });
+      }
+
+      this.roomManager.removePlayer(room, connection.id);
+      this.sessionStore.setRoomId(connection.id, null);
+      this.sessionStore.setPlayerId(connection.id, null!);
+
+      this.sendToSlot(room, 0, {
+        type: "room_state",
+        roomId: room.id,
+        playerCount: 1,
+        status: room.status,
+        roomName: room.name,
+        hostName: this.hostName(room),
+        lifeCount: room.lifeCount,
+        costLimit: room.costLimit,
+      });
+      return;
     }
 
     // Notify other player

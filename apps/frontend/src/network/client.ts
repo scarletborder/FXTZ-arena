@@ -195,7 +195,7 @@ export class ConnectionManager {
           previousStatus === "selecting" ||
           previousStatus === "loading" ||
           previousStatus === "fighting";
-        if (msg.playerCount < 2 && hadOpponent && msg.roomId === this.roomId) {
+        if (msg.playerCount < 2 && hadOpponent && msg.roomId === this.roomId && msg.status !== "waiting") {
           this.resetRoomState();
           break;
         }

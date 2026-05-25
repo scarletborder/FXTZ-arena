@@ -17,6 +17,7 @@ export type {
   InputFrameRelayMessage,
   JoinRoomMessage,
   LeaveRoomMessage,
+  ListRoomsMessage,
   LoadingDoneMessage,
   LobbyReadyMessage,
   OpponentReadyMessage,

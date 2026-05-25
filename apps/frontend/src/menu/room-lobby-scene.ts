@@ -240,7 +240,7 @@ export class RoomLobbyScene extends Phaser.Scene {
     switch (m.type) {
       case "room_state": {
         const rs = m as { playerCount?: number };
-        if (rs.playerCount !== undefined && rs.playerCount < 2) {
+        if (rs.playerCount !== undefined && rs.playerCount < 2 && connectionManager.playerId !== "Player1") {
           this.leaveOnlineRoomView();
           return;
         }
@@ -255,8 +255,8 @@ export class RoomLobbyScene extends Phaser.Scene {
         } satisfies SelectionData);
         break;
       case "peer_status": {
-        const ps = m as { status?: string };
-        if (ps.status === "disconnected") {
+        const ps = m as { playerId?: string; status?: string };
+        if (ps.status === "disconnected" && ps.playerId === "Player1") {
           this.leaveOnlineRoomView();
           return;
         }

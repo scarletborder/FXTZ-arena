@@ -466,8 +466,8 @@ describe("MessageHandler", () => {
       expect(error).toBeUndefined();
     });
 
-    it("notifies other player when someone leaves", () => {
-      const { handler } = createHandler();
+    it("keeps the waiting room open when the guest leaves", () => {
+      const { handler, roomManager, sessionStore } = createHandler();
       const conn1 = new MockConnection("conn-1");
       const conn2 = new MockConnection("conn-2");
 
@@ -496,6 +496,9 @@ describe("MessageHandler", () => {
       const roomState = conn1.findAllSentMessages("room_state").pop();
       expect(roomState?.playerCount).toBe(1);
       expect(roomState?.status).toBe("waiting");
+      expect(roomManager.get(roomCreated.roomId)?.connectionIds).toEqual(["conn-1", null]);
+      expect(sessionStore.get(conn1.id)?.roomId).toBe(roomCreated.roomId);
+      expect(sessionStore.get(conn2.id)?.roomId).toBeNull();
     });
 
     it("finishes an active battle when a player leaves intentionally", () => {
@@ -1075,8 +1078,8 @@ describe("MessageHandler", () => {
       expect(roomManager.get(roomCreated.roomId)).toBeUndefined();
     });
 
-    it("notifies other player on disconnect", () => {
-      const { handler } = createHandler();
+    it("keeps the waiting room open when the guest disconnects", () => {
+      const { handler, roomManager, sessionStore } = createHandler();
       const conn1 = new MockConnection("conn-1");
       const conn2 = new MockConnection("conn-2");
 
@@ -1103,6 +1106,10 @@ describe("MessageHandler", () => {
       expect(peerStatus).toBeDefined();
       expect(peerStatus?.playerId).toBe("Player2");
       expect(peerStatus?.status).toBe("disconnected");
+
+      expect(roomManager.get(roomCreated.roomId)?.connectionIds).toEqual(["conn-1", null]);
+      expect(sessionStore.get(conn1.id)?.roomId).toBe(roomCreated.roomId);
+      expect(sessionStore.get(conn2.id)).toBeUndefined();
     });
 
     it("lets a fighting player reconnect to the same slot during the 1s grace window", () => {
