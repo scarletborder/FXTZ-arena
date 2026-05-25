@@ -4,7 +4,6 @@ import { getAllAbilityCardDefinitions, getAllCharacterDefinitions, type AbilityC
 import {
   createBackButton,
   createCodexTile,
-  createPreviewArena,
   createSmallTab,
   drawCardIcon,
   drawCharacterIcon,
@@ -225,29 +224,121 @@ export class CodexScene extends Phaser.Scene {
   }
 
   private renderCharacterDetail(): void {
-    const character = this.selectedCharacter;
-    const preview = createPreviewArena(this, DETAIL_PANEL.x + 24, 174, character.name, (target) => {
-      drawCharacterIcon(this, target, 254, 110, 2.15);
+    this.renderCharacterStats(this.selectedCharacter);
+  }
+
+  private renderCharacterStats(character: CharacterDefinition): void {
+    const bounds = new Phaser.Geom.Rectangle(
+      DETAIL_PANEL.x + 32,
+      DETAIL_CONTENT_TOP,
+      DETAIL_PANEL.width - 72,
+      DETAIL_PANEL.y + DETAIL_PANEL.height - DETAIL_CONTENT_TOP - 24,
+    );
+    const content = this.add.container(0, 0);
+    const gap = 14;
+    const leftWidth = 170;
+    const rightWidth = bounds.width - leftWidth - gap;
+    const cardHeight = 170;
+
+    content.add(this.createCharacterIdentityCard(bounds.x, bounds.y, leftWidth, cardHeight, character));
+    content.add(this.createCharacterStatCard(bounds.x + leftWidth + gap, bounds.y, rightWidth, cardHeight, character));
+
+    const descriptionY = bounds.y + cardHeight + 18;
+    const description = this.add.text(bounds.x, descriptionY, `\u63cf\u8ff0\uff1a${character.description}`, bodyStyle("#d7e3ef", 18))
+      .setLineSpacing(8)
+      .setWordWrapWidth(bounds.width);
+    content.add(description);
+
+    const mask = this.make.graphics({ x: 0, y: 0 });
+    mask.fillStyle(0xffffff, 1);
+    mask.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+    content.setMask(mask.createGeometryMask());
+
+    this.detailLayer.add(content);
+    this.registerDetailScrollArea(bounds, content, descriptionY - bounds.y + description.height, bounds.height);
+  }
+
+  private createCharacterIdentityCard(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    character: CharacterDefinition,
+  ): Phaser.GameObjects.Container {
+    const card = this.add.container(x, y);
+    const graphics = this.add.graphics();
+    drawStatPanel(graphics, 0, 0, width, height);
+    card.add(graphics);
+
+    const items = [
+      { label: "\u540d\u5b57", value: character.name },
+      { label: "\u804c\u4e1a", value: roleLabel(character.roleClass) },
+    ] as const;
+    items.forEach((item, index) => {
+      const itemY = 20 + index * 82;
+      card.add(this.add.text(18, itemY, item.label, bodyStyle("#9fb4c8", 14)));
+      card.add(this.add.text(18, itemY + 28, item.value, bodyStyle("#f6f1e6", 20)).setWordWrapWidth(width - 36));
+      if (index === 0) {
+        graphics.lineStyle(1, 0x273548, 0.65);
+        graphics.lineBetween(18, itemY + 66, width - 20, itemY + 66);
+      }
     });
-    this.detailLayer.add(preview);
-    const lines = [
-      `名字：${character.name}`,
-      `职业：${roleLabel(character.roleClass)}`,
-      `移速：${speedLabel(character.moveSpeed)}`,
-      `弹容：${character.ammoCapacity}`,
-      `射速：${speedLabel(character.fireRate)}`,
-      `弹速：${speedLabel(character.bulletSpeed)}`,
-      `描述：${character.description}`,
-    ];
-    this.renderDetailText(lines);
+
+    return card;
+  }
+
+  private createCharacterStatCard(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    character: CharacterDefinition,
+  ): Phaser.GameObjects.Container {
+    const card = this.add.container(x, y);
+    const graphics = this.add.graphics();
+    drawStatPanel(graphics, 0, 0, width, height);
+    card.add(graphics);
+
+    const stats = [
+      { label: "\u79fb\u901f", speed: character.moveSpeed },
+      { label: "\u5f39\u901f", speed: character.bulletSpeed },
+      { label: "\u5f39\u5bb9", value: String(character.ammoCapacity) },
+      { label: "\u5c04\u901f", speed: character.fireRate },
+    ] as const;
+
+    stats.forEach((stat, index) => {
+      const itemY = 18 + index * 40;
+      card.add(this.add.text(18, itemY, `${stat.label}\uff1a`, bodyStyle("#9fb4c8", 15)));
+      if ("speed" in stat) {
+        card.add(this.createStatSquares(88, itemY + 4, stat.speed));
+      } else {
+        card.add(this.add.text(88, itemY - 2, stat.value, bodyStyle("#f6f1e6", 18)));
+      }
+    });
+
+    return card;
+  }
+
+  private createStatSquares(
+    x: number,
+    y: number,
+    value: CharacterDefinition["moveSpeed"],
+  ): Phaser.GameObjects.Graphics {
+    const graphics = this.add.graphics();
+    const count = statLevel(value);
+    const size = 10;
+    const gap = 5;
+    for (let index = 0; index < 3; index += 1) {
+      graphics.fillStyle(index < count ? statColor(value) : 0x243244, index < count ? 1 : 0.92);
+      graphics.fillRect(x + index * (size + gap), y, size, size);
+      graphics.lineStyle(1, 0x5c7185, 0.75);
+      graphics.strokeRect(x + index * (size + gap), y, size, size);
+    }
+    return graphics;
   }
 
   private renderCardDetail(): void {
     const card = this.selectedCard;
-    const preview = createPreviewArena(this, DETAIL_PANEL.x + 24, 174, card.name, (target) => {
-      drawCardIcon(this, target, 254, 110, card.kind, 2.5);
-    });
-    this.detailLayer.add(preview);
     const cooldown = card.cooldownTicks === 0 ? "无" : `${(card.cooldownTicks / 60).toFixed(1)} 秒`;
     const lines = [
       `名字：${card.name}`,
@@ -262,9 +353,9 @@ export class CodexScene extends Phaser.Scene {
   private renderDetailText(lines: readonly string[]): void {
     const bounds = new Phaser.Geom.Rectangle(
       DETAIL_PANEL.x + 18,
-      442,
+      DETAIL_CONTENT_TOP,
       DETAIL_PANEL.width - 36,
-      DETAIL_PANEL.y + DETAIL_PANEL.height - 442 - 18,
+      DETAIL_PANEL.y + DETAIL_PANEL.height - DETAIL_CONTENT_TOP - 24,
     );
     const content = this.add.container(0, 0);
     const text = this.add.text(bounds.x, bounds.y, lines.join("\n"), bodyStyle("#d7e3ef", 18))
@@ -325,6 +416,35 @@ export class CodexScene extends Phaser.Scene {
   }
 }
 
+function statLevel(speed: CharacterDefinition["moveSpeed"]): number {
+  return {
+    low: 1,
+    medium: 2,
+    high: 3,
+  }[speed];
+}
+
+function statColor(speed: CharacterDefinition["moveSpeed"]): number {
+  return {
+    low: 0x26c6da,
+    medium: 0xffcf6e,
+    high: 0x34d399,
+  }[speed];
+}
+
+function drawStatPanel(
+  graphics: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): void {
+  graphics.fillStyle(0x0f141d, 0.98);
+  graphics.fillRect(x, y, width, height);
+  graphics.lineStyle(2, 0x34475c, 0.98);
+  graphics.strokeRect(x, y, width, height);
+}
+
 const LIST_PANEL = {
   x: 24,
   y: 116,
@@ -339,6 +459,8 @@ const DETAIL_PANEL = {
   height: 526,
 };
 
+const DETAIL_CONTENT_TOP = DETAIL_PANEL.y + 32;
+
 function roleLabel(role: CharacterDefinition["roleClass"]): string {
   return {
     assault: "突击",
@@ -348,10 +470,3 @@ function roleLabel(role: CharacterDefinition["roleClass"]): string {
   }[role];
 }
 
-function speedLabel(speed: CharacterDefinition["moveSpeed"]): string {
-  return {
-    low: "低",
-    medium: "中",
-    high: "高",
-  }[speed];
-}
