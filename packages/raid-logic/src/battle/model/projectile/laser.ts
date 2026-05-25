@@ -30,6 +30,7 @@ export function createLaserProjectile(params: {
   readonly pausedUntil?: number;
   readonly couldClear?: boolean;
   readonly clearsProjectiles?: boolean;
+  readonly piercesTargets?: boolean;
 }): ProjectileState {
   const speed = bulletSpeedRankToPixelsPerTick(params.speedRank ?? "high");
   const spawnOffset = params.spawnOffset ?? 28;
@@ -83,6 +84,7 @@ export function createLaserProjectile(params: {
     angle: params.angle,
     couldClear: params.couldClear ?? true,
     clearsProjectiles: params.clearsProjectiles ?? false,
+    piercesTargets: params.piercesTargets ?? false,
   };
 }
 

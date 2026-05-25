@@ -963,7 +963,10 @@ describe("BattleModel point power shooting tiers", () => {
       .filter((projectile) => projectile.clearsProjectiles)
       .sort((left, right) => left.angle - right.angle);
     expect(bombOrbs).toHaveLength(5);
-    expect(bombOrbs.every((projectile) => !projectile.couldClear)).toBe(true);
+    expect(bombOrbs.every((projectile) => projectile.couldClear)).toBe(true);
+    expect(bombOrbs.every((projectile) => projectile.piercesTargets)).toBe(
+      true,
+    );
     expect(
       bombOrbs.every(
         (projectile) =>
@@ -1000,7 +1003,7 @@ describe("BattleModel point power shooting tiers", () => {
               projectile.x - model.player.previousX,
               projectile.y - model.player.previousY,
             ) -
-              HIT_CIRCLE_DIAMETER * 4,
+              HIT_CIRCLE_DIAMETER * 12,
           ) < 0.001,
       ),
     ).toBe(true);
@@ -1050,6 +1053,68 @@ describe("BattleModel point power shooting tiers", () => {
 
     expect(forwardOrb!.vx).toBeCloseTo(lockedVx);
     expect(forwardOrb!.vy).toBeCloseTo(lockedVy);
+  });
+
+  it("keeps Reimu bomb orbs after a hit but still allows clearing them", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+    model.step(input({ bombPressed: true }));
+
+    const bombOrb = model.projectiles.find(
+      (projectile) => projectile.clearsProjectiles,
+    );
+    expect(bombOrb).toBeDefined();
+    model.target.x = bombOrb!.x;
+    model.target.y = bombOrb!.y;
+
+    model.step(input());
+
+    expect(
+      model.projectiles.some((projectile) => projectile.id === bombOrb!.id),
+    ).toBe(true);
+
+    clearProjectilesAround(
+      model.projectiles,
+      bombOrb!.x,
+      bombOrb!.y,
+      HIT_CIRCLE_DIAMETER * 16,
+    );
+
+    expect(
+      model.projectiles.some((projectile) => projectile.id === bombOrb!.id),
+    ).toBe(false);
+  });
+
+  it("applies piercing bullet damage every frame while overlapping", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+    const mob = new StaticRectNeutralMob(
+      model.allocateNeutralMobId(),
+      500,
+      240,
+    );
+    model.addNeutralMob(mob);
+    model.projectiles.push(
+      testProjectile({
+        id: 10,
+        owner: "Player1",
+        x: mob.state.x,
+        y: mob.state.y,
+        damage: 5,
+        piercesTargets: true,
+      }),
+    );
+
+    model.step(input());
+    expect(mob.damageTaken).toBe(5);
+    expect(model.projectiles.some((projectile) => projectile.id === 10)).toBe(
+      true,
+    );
+
+    model.step(input());
+
+    expect(mob.damageTaken).toBe(10);
+    expect(model.projectiles.some((projectile) => projectile.id === 10)).toBe(
+      true,
+    );
   });
 
   it("only clears projectiles marked as clearable", async () => {
@@ -1235,6 +1300,52 @@ describe("BattleModel homing projectiles", () => {
     expect(projectile.angle).toBeGreaterThan(0);
     expect(projectile.angle).toBeLessThanOrEqual(Math.PI / 60);
   });
+
+  it("homes toward invulnerable target positions", async () => {
+    const model = await createBattleModel();
+    const projectile = testProjectile({
+      id: 1,
+      owner: "Player1",
+      x: 100,
+      y: 100,
+      vx: 10,
+      vy: 0,
+      homingStartAt: 0,
+      homingUntil: 10,
+      angle: 0,
+    });
+    model.target.x = 100;
+    model.target.y = 200;
+    model.target.invulnerableUntil = 30;
+
+    stepBulletProjectile(projectile, 0, model.target);
+
+    expect(projectile.homingUntil).toBe(10);
+    expect(projectile.angle).toBeGreaterThan(0);
+  });
+
+  it("retargets toward dead target positions", async () => {
+    const model = await createBattleModel();
+    const projectile = testProjectile({
+      id: 1,
+      owner: "Player1",
+      x: 100,
+      y: 100,
+      vx: 10,
+      vy: 0,
+      retargetAt: 0,
+      angle: 0,
+    });
+    model.target.x = 100;
+    model.target.y = 200;
+    model.target.deadUntil = 30;
+
+    stepBulletProjectile(projectile, 0, model.target);
+
+    expect(projectile.retargetAt).toBeUndefined();
+    expect(projectile.angle).toBeGreaterThan(1.5);
+    expect(projectile.angle).toBeLessThan(1.7);
+  });
 });
 
 function createInputs(frames: number): BattleInputState[] {
@@ -1346,6 +1457,7 @@ function testProjectile(
     angle: 0,
     couldClear: true,
     clearsProjectiles: false,
+    piercesTargets: false,
     ...overrides,
   };
 }

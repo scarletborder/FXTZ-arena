@@ -37,6 +37,7 @@ export interface BattleBulletSpawnParams {
   readonly frame?: number;
   readonly couldClear?: boolean;
   readonly clearsProjectiles?: boolean;
+  readonly piercesTargets?: boolean;
 }
 
 export interface BattleLaserSpawnParams {
@@ -62,6 +63,7 @@ export interface BattleLaserSpawnParams {
   readonly frame?: number;
   readonly couldClear?: boolean;
   readonly clearsProjectiles?: boolean;
+  readonly piercesTargets?: boolean;
 }
 
 export interface CharacterActionContext

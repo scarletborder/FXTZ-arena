@@ -226,6 +226,7 @@ function writeProjectiles(
     writeFixed(hasher, projectile.angle);
     hasher.writeNumber(projectile.couldClear ? 1 : 0);
     hasher.writeNumber(projectile.clearsProjectiles ? 1 : 0);
+    hasher.writeNumber(projectile.piercesTargets ? 1 : 0);
   }
 }
 

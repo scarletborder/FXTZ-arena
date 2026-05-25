@@ -283,6 +283,7 @@ function serializeProjectile(
     angle: projectile.angle,
     couldClear: projectile.couldClear,
     clearsProjectiles: projectile.clearsProjectiles,
+    piercesTargets: projectile.piercesTargets,
   };
 }
 

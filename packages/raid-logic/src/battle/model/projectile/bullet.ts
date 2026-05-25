@@ -32,6 +32,7 @@ export function createBulletProjectile(params: {
   readonly retargetAt?: number;
   readonly couldClear?: boolean;
   readonly clearsProjectiles?: boolean;
+  readonly piercesTargets?: boolean;
 }): ProjectileState {
   const speed = bulletSpeedRankToPixelsPerTick(params.speedRank);
   const spawnOffset = params.spawnOffset ?? 28;
@@ -76,6 +77,7 @@ export function createBulletProjectile(params: {
     angle: params.angle,
     couldClear: params.couldClear ?? true,
     clearsProjectiles: params.clearsProjectiles ?? false,
+    piercesTargets: params.piercesTargets ?? false,
   };
 }
 
@@ -94,21 +96,6 @@ export function stepBulletProjectile(
     frame >= projectile.homingStartAt &&
     frame <= projectile.homingUntil
   ) {
-    if (!canHomeTo(target)) {
-      projectile.homingUntil = frame - 1;
-      projectile.x = fp.toFloat(
-        fp.add(fp.fromFloat(projectile.x), fp.fromFloat(projectile.vx)),
-      );
-      projectile.y = fp.toFloat(
-        fp.add(fp.fromFloat(projectile.y), fp.fromFloat(projectile.vy)),
-      );
-      projectile.angle = fpAtan2(
-        fp.fromFloat(projectile.vy),
-        fp.fromFloat(projectile.vx),
-      );
-      return;
-    }
-
     const fpTx = fp.fromFloat(target.x);
     const fpTy = fp.fromFloat(target.y);
     const fpPx = fp.fromFloat(projectile.x);
@@ -149,18 +136,10 @@ export function stepBulletProjectile(
   );
 }
 
-function canHomeTo(target: FighterState): boolean {
-  return target.deadUntil <= 0 && target.invulnerableUntil <= 0;
-}
-
 function retargetProjectile(
   projectile: ProjectileState,
   target: FighterState,
 ): void {
-  if (!canHomeTo(target)) {
-    return;
-  }
-
   const fpDx = fp.sub(fp.fromFloat(target.x), fp.fromFloat(projectile.x));
   const fpDy = fp.sub(fp.fromFloat(target.y), fp.fromFloat(projectile.y));
   const fpCurrentSpeed = fpHypotFp(

@@ -77,7 +77,11 @@ export function stepClearRings(params: {
     ...params.projectiles.filter(
       (projectile) =>
         !canClearProjectile(projectile) ||
-        !activeRings.some((ring) => projectileIntersectsRing(projectile, ring)),
+        !activeRings.some(
+          (ring) =>
+            ring.owner !== projectile.owner &&
+            projectileIntersectsRing(projectile, ring),
+        ),
     ),
   );
 }

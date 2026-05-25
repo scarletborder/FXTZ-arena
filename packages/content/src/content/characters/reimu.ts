@@ -200,8 +200,9 @@ export class ReimuBattleCharacter extends BattleCharacter {
       spawnOffset: 0,
       pausedUntil: ctx.frame + frameDelay,
       retargetAt: ctx.frame + frameDelay,
-      couldClear: false,
+      couldClear: true,
       clearsProjectiles: true,
+      piercesTargets: true,
     });
   }
 }

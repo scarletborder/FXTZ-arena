@@ -176,6 +176,7 @@ export class ProjectileSystem {
           // Bullets (orb/knife) are removed on hit; beams (laser/spark) survive and deal frame damage per tick.
           if (
             accepted &&
+            !projectile.piercesTargets &&
             (projectile.kind === "orb" || projectile.kind === "knife")
           ) {
             continue;
@@ -217,7 +218,9 @@ function firstHitTarget(
       continue;
     }
     let isHit: boolean;
-    if (
+    if (projectile.piercesTargets) {
+      isHit = hitTest(projectile, target);
+    } else if (
       target.key === "Neutral" &&
       rapierHitMap !== undefined &&
       canUseRapierHitTest(projectile)

@@ -110,6 +110,7 @@ export interface ProjectileState {
   angle: number;
   readonly couldClear: boolean;
   readonly clearsProjectiles: boolean;
+  readonly piercesTargets: boolean;
 }
 
 export interface EffectState {
