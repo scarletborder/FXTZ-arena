@@ -76,8 +76,15 @@ export class FighterView {
     visual.core.setPosition(x, y);
     visual.core.setVisible(visible);
     visual.statusTag.setPosition(x, y - 48);
-    visual.statusTag.setText(fighter.deadUntil > 0 ? "重整中" : `命数 ${Math.max(0, fighter.lives)}  bomb ${fighter.bombs}`);
-    visual.statusTag.setAlpha(fighter.statusVisibleUntil > frame || fighter.deadUntil > 0 ? (infoHeld ? 1 : 0.9) : 0);
+    if (fighter.reloadRemaining > 0 && fighter.deadUntil === 0) {
+      visual.statusTag.setText("[Reload]");
+      visual.statusTag.setColor("#ffffff");
+      visual.statusTag.setAlpha(Math.floor(frame / 8) % 2 === 0 ? 1 : 0.25);
+    } else {
+      visual.statusTag.setText(fighter.deadUntil > 0 ? "重整中" : `命数 ${Math.max(0, fighter.lives)}  bomb ${fighter.bombs}`);
+      visual.statusTag.setColor("#f6f1e6");
+      visual.statusTag.setAlpha(fighter.statusVisibleUntil > frame || fighter.deadUntil > 0 ? (infoHeld ? 1 : 0.9) : 0);
+    }
     visual.core.setFillStyle(0xff4242, fighter.flashUntil > frame ? 0.22 : 1);
   }
 }
