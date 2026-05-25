@@ -2,6 +2,7 @@ export * from "./shared";
 export * from "./ui";
 export * from "./home-scene";
 export * from "./battle-start-scene";
+export * from "./room-list-scene";
 export * from "./room-lobby-scene";
 export * from "./settings-scene";
 export * from "./codex-scene";

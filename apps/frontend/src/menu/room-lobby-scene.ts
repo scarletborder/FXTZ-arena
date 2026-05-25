@@ -47,6 +47,16 @@ export class RoomLobbyScene extends Phaser.Scene {
       color: "#b7c7d8",
     });
 
+    this.add.text(356, 92, `#${connectionManager.roomId ?? ""}`, {
+      fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+      fontSize: "16px",
+      color: "#b7c7d8",
+    });
+    createFightButton(this, 520, 96, 86, 34, "复制", () => {
+      void navigator.clipboard?.writeText(connectionManager.roomId ?? "");
+      this.showToast("已复制房间号");
+    }, { accent: 0x5c7185 });
+
     // Content container for all panels and info text
     this.contentContainer = this.add.container(0, 0);
 

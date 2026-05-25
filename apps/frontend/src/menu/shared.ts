@@ -5,7 +5,7 @@ import type { PlayerId } from "@repo/types";
 import type { BattleSceneData } from "../battle/loadout";
 import { ConnectionManager } from "../network";
 
-export type SceneKey = "home" | "battle-start" | "lobby" | "settings" | "codex" | "select" | "loading" | "result";
+export type SceneKey = "home" | "battle-start" | "room-list" | "lobby" | "settings" | "codex" | "select" | "loading" | "result";
 export type SelectionMode = "ai" | "training" | "online";
 export type CodexTab = "characters" | "cards";
 

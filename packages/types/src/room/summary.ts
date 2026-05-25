@@ -10,6 +10,7 @@ export type RoomStatus =
 export interface RoomSummary {
   readonly id: string;
   readonly name: string;
+  readonly hostName?: string;
   readonly hasPassword: boolean;
   readonly mapId: MapId;
   readonly lifeCount: number;

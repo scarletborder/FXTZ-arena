@@ -42,6 +42,12 @@ export interface QuickMatchMessage {
   type: "quick_match";
 }
 
+export interface ListRoomsMessage {
+  type: "list_rooms";
+  page: number;
+  pageSize: number;
+}
+
 export interface LeaveRoomMessage {
   type: "leave_room";
 }
@@ -97,6 +103,7 @@ export type ClientMessage =
   | CreateRoomMessage
   | JoinRoomMessage
   | QuickMatchMessage
+  | ListRoomsMessage
   | LeaveRoomMessage
   | StartGameMessage
   | LobbyReadyMessage
@@ -118,6 +125,10 @@ export interface ServerHelloMessage {
 export interface RoomListMessage {
   type: "room_list";
   rooms: RoomSummary[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
 }
 
 export interface RoomCreatedMessage {

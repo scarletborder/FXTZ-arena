@@ -149,6 +149,13 @@ export class RoomManager {
     return result;
   }
 
+  getListableRooms(): InternalRoom[] {
+    return Array.from(this.rooms.values()).filter((room) => {
+      if (room.status !== "waiting") return false;
+      return this.getOpenSlotIndex(room) !== -1;
+    });
+  }
+
   toSummary(room: InternalRoom): RoomSummary {
     return {
       id: room.id,

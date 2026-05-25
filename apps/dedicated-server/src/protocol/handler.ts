@@ -15,6 +15,7 @@ import type {
   GameOverMessage,
   InputFrameMessage,
   JoinRoomMessage,
+  ListRoomsMessage,
   LobbyReadyMessage,
   PingMessage,
   ReadyMessage,
@@ -101,6 +102,8 @@ export class MessageHandler {
         return this.handleJoinRoom(connection, raw as JoinRoomMessage);
       case "quick_match":
         return this.handleQuickMatch(connection);
+      case "list_rooms":
+        return this.handleListRooms(connection, raw as ListRoomsMessage);
       case "leave_room":
         return this.handleLeaveRoom(connection);
       case "start_game":
@@ -568,6 +571,31 @@ export class MessageHandler {
         costLimit: match.costLimit,
       });
     }
+  }
+
+  private handleListRooms(connection: TransportConnection, msg: ListRoomsMessage): void {
+    const pageSize = Math.max(1, Math.min(24, Math.floor(Number(msg.pageSize) || 12)));
+    const page = Math.max(1, Math.floor(Number(msg.page) || 1));
+    const rooms = this.roomManager
+      .getListableRooms()
+      .sort((a, b) => b.createdAt - a.createdAt);
+    const total = rooms.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const start = (currentPage - 1) * pageSize;
+    const pageRooms = rooms.slice(start, start + pageSize).map((room) => ({
+      ...this.roomManager.toSummary(room),
+      hostName: this.hostName(room),
+    }));
+
+    this.send(connection, {
+      type: "room_list",
+      rooms: pageRooms,
+      page: currentPage,
+      pageSize,
+      total,
+      totalPages,
+    });
   }
 
   // ─── Leave Room ───────────────────────────────────

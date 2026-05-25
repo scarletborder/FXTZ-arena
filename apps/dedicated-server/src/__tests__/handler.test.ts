@@ -322,6 +322,52 @@ describe("MessageHandler", () => {
     });
   });
 
+  describe("room list", () => {
+    it("lists waiting rooms with pagination and locked rooms", () => {
+      const { handler } = createHandler();
+      const host1 = new MockConnection("host-1");
+      const host2 = new MockConnection("host-2");
+      const viewer = new MockConnection("viewer");
+
+      performHello(handler, host1, "Alice");
+      performHello(handler, host2, "Bob");
+      performHello(handler, viewer, "Viewer");
+
+      handler.handle(host1, {
+        type: "create_room",
+        name: "Open",
+        mapId: "arena_standard",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+      handler.handle(host2, {
+        type: "create_room",
+        name: "Locked",
+        password: "secret",
+        mapId: "arena_standard",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+
+      viewer.clearMessages();
+      handler.handle(viewer, { type: "list_rooms", page: 1, pageSize: 1 });
+
+      const list = viewer.findSentMessage("room_list");
+      expect(list?.page).toBe(1);
+      expect(list?.pageSize).toBe(1);
+      expect(list?.total).toBe(2);
+      expect(list?.totalPages).toBe(2);
+      expect(list?.rooms).toHaveLength(1);
+      expect(list?.rooms[0].hostName).toBeDefined();
+      expect(typeof list?.rooms[0].hasPassword).toBe("boolean");
+
+      viewer.clearMessages();
+      handler.handle(viewer, { type: "list_rooms", page: 1, pageSize: 12 });
+      const fullList = viewer.findSentMessage("room_list");
+      expect(fullList?.rooms.some((room) => room.hostName === "Bob" && room.hasPassword)).toBe(true);
+    });
+  });
+
   describe("quick match", () => {
     it("joins an available room via quick match", () => {
       const { handler } = createHandler();
