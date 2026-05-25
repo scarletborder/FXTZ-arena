@@ -32,6 +32,7 @@ function mobTextureConfig(mob: NeutralMobState): { readonly texture: string; rea
 export class MobView {
   private readonly sprites = new Map<number, Phaser.GameObjects.Image>();
   private readonly flashOverlays = new Map<number, Phaser.GameObjects.Image>();
+  private readonly damageTags = new Map<number, Phaser.GameObjects.Text>();
 
   constructor(private readonly scene: Phaser.Scene) {}
 
@@ -61,6 +62,26 @@ export class MobView {
       sprite.setFlipX(config.flipX);
       sprite.setAlpha(alpha);
       sprite.setVisible(true);
+
+      let damageTag = this.damageTags.get(mob.id);
+      if (mob.kind === "immortal_fairy") {
+        if (!damageTag) {
+          damageTag = this.scene.add.text(mob.x, mob.y - 28, "", {
+            fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+            fontSize: "13px",
+            color: "#f6f1e6",
+            stroke: "#15203a",
+            strokeThickness: 3,
+          }).setOrigin(0.5).setDepth(7);
+          this.damageTags.set(mob.id, damageTag);
+        }
+        damageTag.setPosition(mob.x, mob.y - 28);
+        damageTag.setText(`[${Math.max(0, Math.floor(mob.damageTaken ?? 0))}]`);
+        damageTag.setAlpha(alpha);
+        damageTag.setVisible(true);
+      } else if (damageTag) {
+        damageTag.setVisible(false);
+      }
 
       // Flash overlay
       const flashing = (mob.sfxFlags & SFX_FLAG_FLASH) !== 0;
@@ -96,6 +117,12 @@ export class MobView {
       if (!active.has(id)) {
         flash.destroy();
         this.flashOverlays.delete(id);
+      }
+    }
+    for (const [id, damageTag] of this.damageTags) {
+      if (!active.has(id)) {
+        damageTag.destroy();
+        this.damageTags.delete(id);
       }
     }
   }
