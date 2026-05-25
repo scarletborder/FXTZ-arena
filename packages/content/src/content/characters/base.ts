@@ -17,6 +17,7 @@ import { fpAtan2, fpMax } from "../fp";
 const STATUS_VISIBLE_TICKS = secondsToTicks(1.5);
 const DEFAULT_POINT_BOMB_THRESHOLD = 300;
 const DEFAULT_POINT_BOMB_COST = 200;
+export const DEFAULT_POINT_COLLECT_RADIUS = 128;
 
 // Spawn param types matching the shapes from raid-logic's projectile system,
 // defined locally so this package doesn't depend on raid-logic internals.
@@ -97,7 +98,11 @@ export interface CharacterActionContext
 
 export type PointPowerTier = 1 | 2 | 3 | 4;
 
-export abstract class BattleCharacter {
+export abstract class PointCollectRadius {
+  abstract readonly pointCollectRadius: number;
+}
+
+export abstract class BattleCharacter extends PointCollectRadius {
   abstract readonly id: CharacterDefinition["id"];
   abstract readonly name: CharacterDefinition["name"];
   abstract readonly cost: CharacterDefinition["cost"];

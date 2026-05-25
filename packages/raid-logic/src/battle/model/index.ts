@@ -827,7 +827,7 @@ export class BattleModel {
         fp.sub(fp.fromFloat(point.x), fp.fromFloat(state.x)),
         fp.sub(fp.fromFloat(point.y), fp.fromFloat(state.y)),
       );
-      if (fp.lte(fpDistance, fp.fromFloat(fighter.pointCollectRadius()))) {
+      if (fp.lte(fpDistance, fp.fromFloat(fighter.getPointCollectRadius()))) {
         point.collectingBy = state.key;
         point.collectTicksRemaining = POINT_COLLECT_TICKS;
         return;

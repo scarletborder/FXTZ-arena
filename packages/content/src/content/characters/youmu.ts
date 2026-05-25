@@ -11,6 +11,7 @@ import type { FighterState } from "../battle-types";
 import type { BattleHitContext } from "../ability-cards/base";
 import {
   BattleCharacter,
+  DEFAULT_POINT_COLLECT_RADIUS,
   hitCircleUnits,
   secondsToTicks,
   type CharacterActionContext,
@@ -54,6 +55,7 @@ export class YoumuBattleCharacter extends BattleCharacter {
   };
   readonly normalAttackId = "youmu_slash";
   readonly bombId = "youmu_dash_bomb";
+  readonly pointCollectRadius = DEFAULT_POINT_COLLECT_RADIUS;
 
   shoot(
     ctx: CharacterActionContext,

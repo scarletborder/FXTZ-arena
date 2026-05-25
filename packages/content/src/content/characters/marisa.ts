@@ -34,6 +34,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
   };
   readonly normalAttackId = "marisa_laser";
   readonly bombId = "marisa_master_spark";
+  readonly pointCollectRadius = 196;
 
   shoot(
     ctx: CharacterActionContext,

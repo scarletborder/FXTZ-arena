@@ -6,6 +6,7 @@ import type { FighterState, ProjectileState } from "../battle-types";
 import type { BattleHitContext } from "../ability-cards/base";
 import {
   BattleCharacter,
+  DEFAULT_POINT_COLLECT_RADIUS,
   hitCircleUnits,
   secondsToTicks,
   type CharacterActionContext,
@@ -38,6 +39,7 @@ export class CirnoBattleCharacter extends BattleCharacter {
   readonly bulletSpeed = "medium" as CharacterDefinition["bulletSpeed"];
   readonly pointBombThreshold: number = 250;
   readonly pointBombCost: number = 150;
+  readonly pointCollectRadius = DEFAULT_POINT_COLLECT_RADIUS;
   readonly description =
     "背后展开中速冰晶弹幕，并用 bomb 将近身弹幕冻结后反推出去。";
   readonly gallery: CharacterGalleryAssets = {

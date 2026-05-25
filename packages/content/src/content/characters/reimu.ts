@@ -6,6 +6,7 @@ import type { FighterState } from "../battle-types";
 import type { BattleHitContext } from "../ability-cards/base";
 import {
   BattleCharacter,
+  DEFAULT_POINT_COLLECT_RADIUS,
   hitCircleUnits,
   secondsToTicks,
   type CharacterActionContext,
@@ -32,6 +33,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
   };
   readonly normalAttackId = "reimu_homing_shot";
   readonly bombId = "reimu_clear_bomb";
+  readonly pointCollectRadius = DEFAULT_POINT_COLLECT_RADIUS;
   readonly moveSpeed = "medium" as CharacterDefinition["moveSpeed"];
   readonly fireRate = "medium" as CharacterDefinition["fireRate"];
   readonly ammoCapacity = 5;

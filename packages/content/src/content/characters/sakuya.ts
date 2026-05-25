@@ -6,6 +6,7 @@ import type { FighterState } from "../battle-types";
 import type { BattleHitContext } from "../ability-cards/base";
 import {
   BattleCharacter,
+  DEFAULT_POINT_COLLECT_RADIUS,
   hitCircleUnits,
   secondsToTicks,
   type CharacterActionContext,
@@ -35,6 +36,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
   };
   readonly normalAttackId = "sakuya_parallel_knives";
   readonly bombId = "sakuya_time_stop";
+  readonly pointCollectRadius = DEFAULT_POINT_COLLECT_RADIUS;
 
   shoot(
     ctx: CharacterActionContext,

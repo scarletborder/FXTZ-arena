@@ -60,9 +60,9 @@ export class BattleFighter {
     return this.battleCards.map((card) => card.definition);
   }
 
-  pointCollectRadius(): number {
-    const base = this.state.activeCharacter.id === "marisa" ? 48 : 32;
-    return base + this.battleCards.reduce((total, card) => total + card.getPointCollectRadiusBonus(this.state), 0);
+  getPointCollectRadius(): number {
+    return this.activeCharacter.pointCollectRadius
+      + this.battleCards.reduce((total, card) => total + card.getPointCollectRadiusBonus(this.state), 0);
   }
 
   collectShields(): readonly ShieldState[] {
