@@ -17,7 +17,7 @@ const HOMING_MAX_TURN_RADIANS_PER_TICK = Math.PI / TICK_RATE;
 export function createBulletProjectile(params: {
   readonly id: number;
   readonly owner: FighterKey;
-  readonly kind: "orb" | "knife" | "spark";
+  readonly kind: "orb" | "knife" | "diamond" | "spark";
   readonly x: number;
   readonly y: number;
   readonly angle: number;

@@ -1,7 +1,10 @@
 import Phaser from "phaser";
 
 export function createBattleTextures(scene: Phaser.Scene): void {
-  const make = (name: string, draw: (g: Phaser.GameObjects.Graphics) => void): void => {
+  const make = (
+    name: string,
+    draw: (g: Phaser.GameObjects.Graphics) => void,
+  ): void => {
     if (scene.textures.exists(name)) {
       return;
     }
@@ -13,7 +16,14 @@ export function createBattleTextures(scene: Phaser.Scene): void {
 
   make("fighter-player", (g) => {
     g.lineStyle(5, 0xffffff, 1);
-    g.strokePoints([new Phaser.Geom.Point(128, 24), new Phaser.Geom.Point(212, 208), new Phaser.Geom.Point(44, 208)], true);
+    g.strokePoints(
+      [
+        new Phaser.Geom.Point(128, 24),
+        new Phaser.Geom.Point(212, 208),
+        new Phaser.Geom.Point(44, 208),
+      ],
+      true,
+    );
   });
   make("fighter-target", (g) => {
     g.lineStyle(4, 0xffffff, 1);
@@ -32,6 +42,28 @@ export function createBattleTextures(scene: Phaser.Scene): void {
     g.fillRect(18, 8, 220, 240);
     g.lineStyle(12, 0xffffff, 1);
     g.strokeRect(18, 8, 220, 240);
+  });
+  make("bullet-diamond", (g) => {
+    g.fillStyle(0xffffff, 1);
+    g.fillPoints(
+      [
+        new Phaser.Geom.Point(128, 8),
+        new Phaser.Geom.Point(248, 128),
+        new Phaser.Geom.Point(128, 248),
+        new Phaser.Geom.Point(8, 128),
+      ],
+      true,
+    );
+    g.lineStyle(12, 0xffffff, 1);
+    g.strokePoints(
+      [
+        new Phaser.Geom.Point(128, 8),
+        new Phaser.Geom.Point(248, 128),
+        new Phaser.Geom.Point(128, 248),
+        new Phaser.Geom.Point(8, 128),
+      ],
+      true,
+    );
   });
   make("bullet-laser", (g) => {
     g.fillStyle(0xffffff, 1);

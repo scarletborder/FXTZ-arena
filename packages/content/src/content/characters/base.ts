@@ -22,7 +22,7 @@ const DEFAULT_POINT_BOMB_COST = 200;
 // defined locally so this package doesn't depend on raid-logic internals.
 export interface BattleBulletSpawnParams {
   readonly owner: FighterKey;
-  readonly kind: "orb" | "knife" | "spark";
+  readonly kind: "orb" | "knife" | "diamond" | "spark";
   readonly x: number;
   readonly y: number;
   readonly angle: number;
@@ -96,8 +96,8 @@ export abstract class BattleCharacter {
   abstract readonly reloadCommitPolicy: CharacterDefinition["reloadCommitPolicy"];
   abstract readonly bulletSpeed: CharacterDefinition["bulletSpeed"];
 
-  readonly pointBombThreshold = DEFAULT_POINT_BOMB_THRESHOLD;
-  readonly pointBombCost = DEFAULT_POINT_BOMB_COST;
+  readonly pointBombThreshold: number = DEFAULT_POINT_BOMB_THRESHOLD;
+  readonly pointBombCost: number = DEFAULT_POINT_BOMB_COST;
 
   get definition(): CharacterDefinition {
     return {

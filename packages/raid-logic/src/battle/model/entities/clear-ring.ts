@@ -103,7 +103,9 @@ export function clearRingToPhysicsBody(ring: ClearRingState): PhysicsBodyDef {
 function canClearProjectile(projectile: ProjectileState): boolean {
   return (
     projectile.couldClear &&
-    (projectile.kind === "orb" || projectile.kind === "knife")
+    (projectile.kind === "orb" ||
+      projectile.kind === "knife" ||
+      projectile.kind === "diamond")
   );
 }
 

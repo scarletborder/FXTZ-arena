@@ -3,7 +3,7 @@ import type { CharacterDefinition } from "./characters/types";
 import type { BattlePlayerId, NeutralMobState } from "@repo/types";
 
 export type FighterKey = BattlePlayerId;
-export type ProjectileKind = "orb" | "knife" | "laser" | "spark";
+export type ProjectileKind = "orb" | "knife" | "diamond" | "laser" | "spark";
 
 export interface ShieldState {
   readonly owner: FighterKey;

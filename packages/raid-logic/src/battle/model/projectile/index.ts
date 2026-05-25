@@ -177,7 +177,9 @@ export class ProjectileSystem {
           if (
             accepted &&
             !projectile.piercesTargets &&
-            (projectile.kind === "orb" || projectile.kind === "knife")
+            (projectile.kind === "orb" ||
+              projectile.kind === "knife" ||
+              projectile.kind === "diamond")
           ) {
             continue;
           }
@@ -365,6 +367,16 @@ function hitTest(
       return fp.gte(fpForward, fpNegRadius) && fp.lte(fpSide, fpSideMax);
     }
   }
+  if (projectile.kind === "diamond") {
+    return circleIntersectsCircle(
+      projectile.x,
+      projectile.y,
+      Math.max(projectile.width, projectile.height) / 2,
+      victim.x,
+      victim.y,
+      victim.hitRadius,
+    );
+  }
   return rotatedRectIntersectsCircle(
     projectile,
     victim.x,
@@ -437,6 +449,7 @@ function infiniteBeamIntersectsRect(
 
 function canUseRapierHitTest(projectile: ProjectileState): boolean {
   return (
+    projectile.kind !== "diamond" &&
     Number.isFinite(projectile.width) &&
     projectile.width > 0 &&
     projectile.height > 0
@@ -464,8 +477,27 @@ function isBlockedByShield(
 
 function canShieldBlockProjectile(projectile: ProjectileState): boolean {
   return (
-    (projectile.kind === "orb" || projectile.kind === "knife") &&
+    (projectile.kind === "orb" ||
+      projectile.kind === "knife" ||
+      projectile.kind === "diamond") &&
     canUseRapierHitTest(projectile)
+  );
+}
+
+function circleIntersectsCircle(
+  leftX: number,
+  leftY: number,
+  leftRadius: number,
+  rightX: number,
+  rightY: number,
+  rightRadius: number,
+): boolean {
+  return fp.lte(
+    fpHypotFp(
+      fp.sub(fp.fromFloat(leftX), fp.fromFloat(rightX)),
+      fp.sub(fp.fromFloat(leftY), fp.fromFloat(rightY)),
+    ),
+    fp.fromFloat(leftRadius + rightRadius),
   );
 }
 

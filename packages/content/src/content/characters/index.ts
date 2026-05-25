@@ -9,10 +9,13 @@ export type { CharacterActionContext } from "./base";
 import "./reimu";
 import "./marisa";
 import "./sakuya";
+import "./cirno";
 
 import type { BattleCharacter } from "./base";
 import { characterLibrary } from "./character-library";
 
-export function createBattleCharacter(characterId: BattleCharacter["id"]): BattleCharacter {
+export function createBattleCharacter(
+  characterId: BattleCharacter["id"],
+): BattleCharacter {
   return characterLibrary.create(characterId);
 }

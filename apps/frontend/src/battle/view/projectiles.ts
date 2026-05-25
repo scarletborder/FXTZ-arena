@@ -2,17 +2,28 @@ import Phaser from "phaser";
 
 import type { ProjectileState } from "@repo/raid-logic";
 import { OWN_PROJECTILE_ALPHA } from "@repo/constants";
-import { createMasterSparkPreviewSfx, renderMasterSparkPreviewSfx } from "../sfx";
+import {
+  createMasterSparkPreviewSfx,
+  renderMasterSparkPreviewSfx,
+} from "../sfx";
 
 type FighterKey = ProjectileState["owner"];
 
 export class ProjectileView {
   private readonly sprites = new Map<number, Phaser.GameObjects.Image>();
-  private readonly previewLines = new Map<number, Phaser.GameObjects.Graphics>();
+  private readonly previewLines = new Map<
+    number,
+    Phaser.GameObjects.Graphics
+  >();
 
   constructor(private readonly scene: Phaser.Scene) {}
 
-  render(projectiles: readonly ProjectileState[], frame: number, localFighterKey: FighterKey = "Player1", alpha = 1): void {
+  render(
+    projectiles: readonly ProjectileState[],
+    frame: number,
+    localFighterKey: FighterKey = "Player1",
+    alpha = 1,
+  ): void {
     const active = new Set<number>();
     for (const projectile of projectiles) {
       if (frame < projectile.visibleFrom) {
@@ -47,7 +58,10 @@ export class ProjectileView {
       }
       let sprite = this.sprites.get(projectile.id);
       if (!sprite) {
-        sprite = this.scene.add.image(projectile.x, projectile.y, projectileTexture(projectile)).setOrigin(0.5).setDepth(3);
+        sprite = this.scene.add
+          .image(projectile.x, projectile.y, projectileTexture(projectile))
+          .setOrigin(0.5)
+          .setDepth(3);
         this.sprites.set(projectile.id, sprite);
       }
       const display = projectileDisplay(projectile, alpha);
@@ -77,20 +91,29 @@ export class ProjectileView {
 const PROJECTILE_VISUAL_SIZE_BONUS = 4;
 const PROJECTILE_PREVIEW_ALPHA = 0.85;
 
-function projectileAlpha(projectile: ProjectileState, localFighterKey: FighterKey): number {
+function projectileAlpha(
+  projectile: ProjectileState,
+  localFighterKey: FighterKey,
+): number {
   if (projectile.owner === localFighterKey) {
     return OWN_PROJECTILE_ALPHA;
   }
   return projectile.damage === 0 ? PROJECTILE_PREVIEW_ALPHA : 1;
 }
 
-function projectileDisplay(projectile: ProjectileState, alpha: number): {
+function projectileDisplay(
+  projectile: ProjectileState,
+  alpha: number,
+): {
   readonly x: number;
   readonly y: number;
   readonly width: number;
   readonly height: number;
 } {
-  if ((projectile.kind === "laser" || projectile.kind === "spark") && !Number.isFinite(projectile.width)) {
+  if (
+    (projectile.kind === "laser" || projectile.kind === "spark") &&
+    !Number.isFinite(projectile.width)
+  ) {
     const length = 1600;
     return {
       x: projectile.x + Math.cos(projectile.angle) * (length / 2),
@@ -100,9 +123,11 @@ function projectileDisplay(projectile: ProjectileState, alpha: number): {
     };
   }
 
-  const width = Number.isFinite(projectile.previousWidth) && Number.isFinite(projectile.width)
-    ? lerp(projectile.previousWidth, projectile.width, alpha)
-    : projectile.width;
+  const width =
+    Number.isFinite(projectile.previousWidth) &&
+    Number.isFinite(projectile.width)
+      ? lerp(projectile.previousWidth, projectile.width, alpha)
+      : projectile.width;
   return {
     x: lerp(projectile.previousX, projectile.x, alpha),
     y: lerp(projectile.previousY, projectile.y, alpha),
@@ -123,14 +148,29 @@ function projectileTexture(projectile: ProjectileState): string {
   if (projectile.kind === "laser" && projectile.damage === 0) {
     return "bullet-ray-preview";
   }
-  return projectile.kind === "spark" ? "bullet-spark" : projectile.kind === "laser" ? "bullet-laser" : projectile.kind === "knife" ? "bullet-knife" : "bullet-orb";
+  return projectile.kind === "spark"
+    ? "bullet-spark"
+    : projectile.kind === "laser"
+      ? "bullet-laser"
+      : projectile.kind === "knife"
+        ? "bullet-knife"
+        : projectile.kind === "diamond"
+          ? "bullet-diamond"
+          : "bullet-orb";
 }
 
 function projectileTint(projectile: ProjectileState): number {
-  if ((projectile.kind === "laser" || projectile.kind === "spark") && projectile.owner === "Player1" && projectile.damage === 0) {
+  if (
+    (projectile.kind === "laser" || projectile.kind === "spark") &&
+    projectile.owner === "Player1" &&
+    projectile.damage === 0
+  ) {
     return 0x64b7ff;
   }
-  if ((projectile.kind === "laser" || projectile.kind === "spark") && projectile.damage === 0) {
+  if (
+    (projectile.kind === "laser" || projectile.kind === "spark") &&
+    projectile.damage === 0
+  ) {
     return 0xff5a5a;
   }
   if (projectile.kind === "laser" || projectile.kind === "spark") {
