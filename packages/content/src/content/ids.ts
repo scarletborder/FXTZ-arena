@@ -1,4 +1,4 @@
-export type CharacterId = "reimu" | "marisa" | "sakuya" | "cirno";
+export type CharacterId = "reimu" | "marisa" | "sakuya" | "cirno" | "youmu";
 export type AbilityCardId =
   | "extra_life"
   | "ember"

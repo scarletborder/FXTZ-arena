@@ -30,7 +30,11 @@ export class ProjectileView {
         continue;
       }
       active.add(projectile.id);
-      if (projectile.kind === "laser" && projectile.damage === 0) {
+      if (
+        projectile.kind === "laser" &&
+        projectile.damage === 0 &&
+        !Number.isFinite(projectile.width)
+      ) {
         const display = projectileDisplay(projectile, alpha);
         let preview = this.previewLines.get(projectile.id);
         if (!preview) {

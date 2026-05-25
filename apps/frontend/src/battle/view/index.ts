@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 
+import { ARENA_HEIGHT, ARENA_WIDTH, PLAYER_CORE_RADIUS, YOUMU_BOMB_DASH_DISTANCE } from "@repo/constants";
 import type { BattleInputState, BattleOutputState, BodyDebugData, FighterKey } from "@repo/raid-logic";
 import { CrosshairView } from "./crosshair";
 import { EffectsView } from "./effects";
@@ -46,6 +47,7 @@ export class BattleView {
       pointerX: input.aimX,
       pointerY: input.aimY,
       danger: localFighter.ammo <= 0 || localFighter.reloadRemaining > 0,
+      highlight: canYoumuDashToPointer(localFighter, input.aimX, input.aimY),
       ammoDisplay: localFighter.ammoDisplay,
       ammoCount: localFighter.ammo,
       ammoMax: localFighter.ammoCapacity,
@@ -99,4 +101,21 @@ export class BattleView {
       }
     }
   }
+}
+
+function canYoumuDashToPointer(
+  fighter: BattleOutputState["player"],
+  pointerX: number,
+  pointerY: number,
+): boolean {
+  if (fighter.activeCharacter.id !== "youmu") return false;
+  if (
+    pointerX < PLAYER_CORE_RADIUS ||
+    pointerX > ARENA_WIDTH - PLAYER_CORE_RADIUS ||
+    pointerY < PLAYER_CORE_RADIUS ||
+    pointerY > ARENA_HEIGHT - PLAYER_CORE_RADIUS
+  ) {
+    return false;
+  }
+  return Math.hypot(pointerX - fighter.x, pointerY - fighter.y) <= YOUMU_BOMB_DASH_DISTANCE;
 }

@@ -45,6 +45,7 @@ export class CrosshairView {
     readonly pointerX: number;
     readonly pointerY: number;
     readonly danger: boolean;
+    readonly highlight?: boolean;
     readonly ammoDisplay: number;
     readonly ammoCount: number;
     readonly ammoMax: number;
@@ -57,11 +58,12 @@ export class CrosshairView {
     const ratio = Math.max(0, Math.min(1, params.ammoDisplay / Math.max(1, params.ammoMax)));
     const fillHeight = 56 * ratio;
     this.crosshair.setPosition(params.pointerX, params.pointerY);
-    this.crosshair.setTint(params.danger ? 0xff5a5a : 0xffffff);
+    const tint = params.highlight ? 0x4dff88 : params.danger ? 0xff5a5a : 0xffffff;
+    this.crosshair.setTint(tint);
     this.ammoBack.setPosition(barX, barY);
     this.ammoFill.setPosition(barX, barY + (56 - fillHeight));
     this.ammoFill.setDisplaySize(8, fillHeight);
-    this.ammoFill.setFillStyle(params.danger ? 0xff5a5a : 0x4e7fff, 1);
+    this.ammoFill.setFillStyle(params.highlight ? 0x4dff88 : params.danger ? 0xff5a5a : 0x4e7fff, 1);
     this.ammoOutline.setPosition(barX, barY);
     this.ammoText.setPosition(barX, barY + 74);
     this.ammoText.setText(`${Math.floor(params.ammoCount)}/${params.ammoMax}`);

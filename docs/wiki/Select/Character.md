@@ -9,10 +9,11 @@
 | `suppress` | `reimu` | 低速诱导弹和消弹 bomb，偏压制与空间控制。 |
 | `sniper` | `marisa` | 高速激光和长前摇 bomb，偏高爆发。 |
 | `assault` | `sakuya` | 平行双弹和时间停止 bomb，偏近中距离压迫。 |
+| `scout` | `youmu` | 高速侦察，使用剑气消弹并通过 bomb 短距离突刺。 |
 
 ## 角色数据页
 
 - [Reimu](../Data/PC/reimu.md)
 - [Marisa](../Data/PC/marisa.md)
 - [Sakuya](../Data/PC/sakuya.md)
-
+- [Youmu](../Data/PC/youmu.md)

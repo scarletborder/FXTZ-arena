@@ -28,6 +28,22 @@ export type LaserProjectileParams = Omit<
   Parameters<typeof createLaserProjectile>[0],
   "id"
 >;
+export interface SegmentProjectileParams {
+  readonly owner: FighterKey;
+  readonly x1: number;
+  readonly y1: number;
+  readonly x2: number;
+  readonly y2: number;
+  readonly halfWidth: number;
+  readonly damage: number;
+  readonly duration: number;
+  readonly frame: number;
+  readonly visibleFrom?: number;
+  readonly pausedUntil?: number;
+  readonly couldClear?: boolean;
+  readonly clearsProjectiles?: boolean;
+  readonly piercesTargets?: boolean;
+}
 
 export interface ProjectileHitTarget {
   readonly key: FighterKey;
@@ -77,6 +93,42 @@ export class ProjectileSystem {
   ): void {
     projectiles.push(
       createLaserProjectile({ id: this.nextProjectileId++, ...params }),
+    );
+  }
+
+  spawnSegment(
+    projectiles: ProjectileState[],
+    params: SegmentProjectileParams,
+  ): void {
+    const dx = params.x2 - params.x1;
+    const dy = params.y2 - params.y1;
+    const length = Math.hypot(dx, dy);
+    if (length <= 0 || params.halfWidth <= 0 || params.duration <= 0) {
+      return;
+    }
+    projectiles.push(
+      createLaserProjectile({
+        id: this.nextProjectileId++,
+        owner: params.owner,
+        x: (params.x1 + params.x2) / 2,
+        y: (params.y1 + params.y2) / 2,
+        angle: Math.atan2(dy, dx),
+        frame: params.frame,
+        speedRank: "low",
+        initialLength: length,
+        maxLength: length,
+        lengthGrowthPerTick: 0,
+        height: params.halfWidth * 2,
+        damage: params.damage,
+        expireTicks: params.duration,
+        spawnOffset: 0,
+        pinned: true,
+        visibleFrom: params.visibleFrom,
+        pausedUntil: params.pausedUntil,
+        couldClear: params.couldClear,
+        clearsProjectiles: params.clearsProjectiles,
+        piercesTargets: params.piercesTargets,
+      }),
     );
   }
 
@@ -275,9 +327,7 @@ function resolveProjectileClears(
 ): void {
   const clearers = projectiles.filter(
     (projectile) =>
-      projectile.clearsProjectiles &&
-      projectile.damage > 0 &&
-      frame >= projectile.visibleFrom,
+      projectile.clearsProjectiles && frame >= projectile.visibleFrom,
   );
   if (clearers.length === 0) {
     return;
@@ -303,6 +353,24 @@ function projectileIntersectsClearer(
   clearer: ProjectileState,
   projectile: ProjectileState,
 ): boolean {
+  if (
+    Number.isFinite(clearer.width) &&
+    Number.isFinite(projectile.width) &&
+    clearer.width > 0 &&
+    clearer.height > 0 &&
+    projectile.width > 0 &&
+    projectile.height > 0
+  ) {
+    return rotatedRectsIntersect(clearer, {
+      owner: projectile.owner,
+      x: projectile.x,
+      y: projectile.y,
+      width: projectile.width,
+      height: projectile.height,
+      angle: projectile.angle,
+    });
+  }
+
   const clearerRadius = fp.div(
     fp.fromFloat(Math.max(clearer.width, clearer.height)),
     fp.fromInt(2),

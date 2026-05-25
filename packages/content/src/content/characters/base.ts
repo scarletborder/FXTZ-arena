@@ -66,6 +66,23 @@ export interface BattleLaserSpawnParams {
   readonly piercesTargets?: boolean;
 }
 
+export interface BattleSegmentSpawnParams {
+  readonly owner: FighterKey;
+  readonly x1: number;
+  readonly y1: number;
+  readonly x2: number;
+  readonly y2: number;
+  readonly halfWidth: number;
+  readonly damage: number;
+  readonly duration: number;
+  readonly frame?: number;
+  readonly visibleFrom?: number;
+  readonly pausedUntil?: number;
+  readonly couldClear?: boolean;
+  readonly clearsProjectiles?: boolean;
+  readonly piercesTargets?: boolean;
+}
+
 export interface CharacterActionContext
   extends StandardBattleActionContext<
     FighterState,
@@ -74,7 +91,9 @@ export interface CharacterActionContext
     TrainingStats,
     BattleBulletSpawnParams,
     BattleLaserSpawnParams
-  > {}
+  > {
+  spawnSegment(params: BattleSegmentSpawnParams): void;
+}
 
 export type PointPowerTier = 1 | 2 | 3 | 4;
 
@@ -125,7 +144,12 @@ export abstract class BattleCharacter {
     aimX: number,
     aimY: number,
   ): void;
-  abstract useBomb(ctx: CharacterActionContext, fighter: FighterState): void;
+  abstract useBomb(
+    ctx: CharacterActionContext,
+    fighter: FighterState,
+    aimX: number,
+    aimY: number,
+  ): void;
   abstract onHit(ctx: BattleHitContext): void;
 
   canUseBomb(fighter: FighterState): boolean {

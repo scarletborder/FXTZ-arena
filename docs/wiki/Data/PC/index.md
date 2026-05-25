@@ -7,4 +7,4 @@
 | [`reimu`](./reimu.md) | 4 | `suppress` | `medium` | `medium` | 5 | `low` |
 | [`marisa`](./marisa.md) | 5 | `sniper` | `high` | `low` | 2 | `high` |
 | [`sakuya`](./sakuya.md) | 4 | `assault` | `medium` | `medium` | 3 | `medium` |
-
+| [`youmu`](./youmu.md) | 5 | `scout` | `high` | `low` | 1 | `high` |

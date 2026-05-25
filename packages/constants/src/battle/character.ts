@@ -1,0 +1,1 @@
+export const YOUMU_BOMB_DASH_DISTANCE = 256;

@@ -24,6 +24,7 @@ export class CodexScene extends Phaser.Scene {
   private listLayer!: Phaser.GameObjects.Container;
   private detailLayer!: Phaser.GameObjects.Container;
   private listScrollOffset = 0;
+  private detailScrollOffset = 0;
   private scrollAreas: Array<{ bounds: Phaser.Geom.Rectangle; scroll: (deltaY: number) => void }> = [];
   private readonly onWheel = (
     pointer: Phaser.Input.Pointer,
@@ -78,11 +79,13 @@ export class CodexScene extends Phaser.Scene {
     this.listLayer.add(createSmallTab(this, mainTabX, 170, "角色", this.tab === "characters", () => {
       this.tab = "characters";
       this.listScrollOffset = 0;
+      this.detailScrollOffset = 0;
       this.render();
     }).container);
     this.listLayer.add(createSmallTab(this, mainTabX + 92, 170, "能力卡", this.tab === "cards", () => {
       this.tab = "cards";
       this.listScrollOffset = 0;
+      this.detailScrollOffset = 0;
       this.render();
     }).container);
 
@@ -111,6 +114,7 @@ export class CodexScene extends Phaser.Scene {
         } else {
           this.cardFilter = filter[0] as AbilityCardDefinition["kind"] | "all";
         }
+        this.detailScrollOffset = 0;
         this.render();
       }, filterWidth).container);
     });
@@ -144,6 +148,7 @@ export class CodexScene extends Phaser.Scene {
         drawCharacterIcon(this, target, 82, 48, 1.0);
       }, () => {
         this.selectedCharacter = character;
+        this.detailScrollOffset = 0;
         this.render();
       });
       item.container.setScale(tileScale);
@@ -193,6 +198,7 @@ export class CodexScene extends Phaser.Scene {
         drawCardIcon(this, target, 82, 48, card.kind, 1.0);
       }, () => {
         this.selectedCard = card;
+        this.detailScrollOffset = 0;
         this.render();
       });
       item.container.setScale(tileScale);
@@ -233,7 +239,7 @@ export class CodexScene extends Phaser.Scene {
       `弹速：${speedLabel(character.bulletSpeed)}`,
       `描述：${character.description}`,
     ];
-    this.detailLayer.add(this.add.text(DETAIL_PANEL.x + 18, 442, lines.join("\n"), bodyStyle("#d7e3ef", 18)).setLineSpacing(10).setWordWrapWidth(DETAIL_PANEL.width - 36));
+    this.renderDetailText(lines);
   }
 
   private renderCardDetail(): void {
@@ -250,7 +256,51 @@ export class CodexScene extends Phaser.Scene {
       `冷却时间：${cooldown}`,
       `描述：${card.description}`,
     ];
-    this.detailLayer.add(this.add.text(DETAIL_PANEL.x + 18, 442, lines.join("\n"), bodyStyle("#d7e3ef", 18)).setLineSpacing(10).setWordWrapWidth(DETAIL_PANEL.width - 36));
+    this.renderDetailText(lines);
+  }
+
+  private renderDetailText(lines: readonly string[]): void {
+    const bounds = new Phaser.Geom.Rectangle(
+      DETAIL_PANEL.x + 18,
+      442,
+      DETAIL_PANEL.width - 36,
+      DETAIL_PANEL.y + DETAIL_PANEL.height - 442 - 18,
+    );
+    const content = this.add.container(0, 0);
+    const text = this.add.text(bounds.x, bounds.y, lines.join("\n"), bodyStyle("#d7e3ef", 18))
+      .setLineSpacing(10)
+      .setWordWrapWidth(bounds.width);
+
+    content.add(text);
+
+    const mask = this.make.graphics({ x: 0, y: 0 });
+    mask.fillStyle(0xffffff, 1);
+    mask.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+    content.setMask(mask.createGeometryMask());
+
+    this.detailLayer.add(content);
+    this.registerDetailScrollArea(bounds, content, text.height, bounds.height);
+  }
+
+  private registerDetailScrollArea(
+    bounds: Phaser.Geom.Rectangle,
+    container: Phaser.GameObjects.Container,
+    contentHeight: number,
+    viewHeight: number,
+  ): void {
+    const maxOffset = Math.max(0, contentHeight - viewHeight);
+    let offset = Phaser.Math.Clamp(this.detailScrollOffset, 0, maxOffset);
+    container.y = -offset;
+    const scroll = (deltaY: number) => {
+      if (maxOffset <= 0) {
+        return;
+      }
+      offset = Phaser.Math.Clamp(offset + deltaY, 0, maxOffset);
+      container.y = -offset;
+      this.detailScrollOffset = offset;
+    };
+    this.detailScrollOffset = offset;
+    this.scrollAreas.push({ bounds, scroll });
   }
 
   private registerScrollArea(

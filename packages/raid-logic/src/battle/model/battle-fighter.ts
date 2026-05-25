@@ -161,11 +161,11 @@ export class BattleFighter {
     }
   }
 
-  useBomb(ctx: CharacterActionContext): void {
+  useBomb(ctx: CharacterActionContext, aimX: number, aimY: number): void {
     if (this.state.actionLockedUntil > 0 || this.state.nonFireActionLockedUntil > 0 || !this.activeCharacter.canUseBomb(this.state) || this.state.bombCooldownUntil > 0 || this.state.deadUntil > 0) {
       return;
     }
-    this.activeCharacter.useBomb(ctx, this.state);
+    this.activeCharacter.useBomb(ctx, this.state, aimX, aimY);
   }
 
   useActiveCard(ctx: CharacterActionContext): void {

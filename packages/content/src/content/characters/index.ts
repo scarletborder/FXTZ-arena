@@ -10,6 +10,7 @@ import "./reimu";
 import "./marisa";
 import "./sakuya";
 import "./cirno";
+import "./youmu";
 
 import type { BattleCharacter } from "./base";
 import { characterLibrary } from "./character-library";
