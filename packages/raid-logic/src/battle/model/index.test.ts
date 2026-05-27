@@ -5,7 +5,11 @@ import {
   type BattleInputState,
   type NeutralMobState,
 } from "@repo/types";
-import { HIT_CIRCLE_DIAMETER } from "@repo/constants";
+import {
+  GRAZE_CIRCLE_DIAMETER,
+  HIT_CIRCLE_DIAMETER,
+  POINT_REWARD_VALUES,
+} from "@repo/constants";
 import type { BattleLoadouts } from "../loadout";
 import { POINT_COUNT_MAX } from "../constants";
 import { BattleModel } from ".";
@@ -480,11 +484,12 @@ describe("BattleModel ability cards", () => {
 
   it("extends the physics graze circle with graze lover", async () => {
     const baseline = await createBattleModel("reimu", "marisa");
+    const grazeLoverOnlyDistance = GRAZE_CIRCLE_DIAMETER / 2 + 2;
     baseline.projectiles.push(
       testProjectile({
         id: 1,
         owner: "Neutral",
-        x: baseline.player.x + 13,
+        x: baseline.player.x + grazeLoverOnlyDistance,
         y: baseline.player.y,
         width: 2,
         previousWidth: 2,
@@ -501,7 +506,7 @@ describe("BattleModel ability cards", () => {
       testProjectile({
         id: 1,
         owner: "Neutral",
-        x: boosted.player.x + 13,
+        x: boosted.player.x + grazeLoverOnlyDistance,
         y: boosted.player.y,
         width: 2,
         previousWidth: 2,
@@ -554,7 +559,7 @@ describe("BattleModel character bombs", () => {
     expect(model.clearRings).toHaveLength(1);
     expect(model.clearRings[0]).toMatchObject({
       owner: "Player1",
-      radius: HIT_CIRCLE_DIAMETER * 16,
+      radius: HIT_CIRCLE_DIAMETER * 32,
       followsOwner: false,
     });
     const snapshot = model.serialize();
@@ -564,14 +569,14 @@ describe("BattleModel character bombs", () => {
       testProjectile({
         id: 500,
         owner: "Player2",
-        x: model.player.x + HIT_CIRCLE_DIAMETER * 16 + 20,
+        x: model.player.x + HIT_CIRCLE_DIAMETER * 32 + 20,
         y: model.player.y,
         vx: -40,
       }),
       testProjectile({
         id: 501,
         owner: "Player2",
-        x: model.player.x + HIT_CIRCLE_DIAMETER * 16 + 20,
+        x: model.player.x + HIT_CIRCLE_DIAMETER * 32 + 20,
         y: model.player.y,
         vx: -40,
         couldClear: false,
@@ -847,7 +852,10 @@ describe("BattleModel character bombs", () => {
     model.step(input());
 
     expect(model.points).toHaveLength(1);
-    expect(model.points[0]).toMatchObject({ value: 5, size: 12 });
+    expect(model.points[0]).toMatchObject({
+      value: POINT_REWARD_VALUES.medium,
+      size: 12,
+    });
   });
 
   it("attributes neutral mob active self-removal to a null death source", async () => {
@@ -891,7 +899,7 @@ describe("BattleModel point pickups", () => {
 
     model.step(input());
 
-    expect(model.player.pointCount).toBe(1);
+    expect(model.player.pointCount).toBe(POINT_REWARD_VALUES.small);
     expect(model.points).toHaveLength(0);
   });
 
@@ -1052,8 +1060,8 @@ describe("BattleModel point power shooting tiers", () => {
     expect(
       bombOrbs.every(
         (projectile) =>
-          projectile.width === HIT_CIRCLE_DIAMETER * 8 &&
-          projectile.height === HIT_CIRCLE_DIAMETER * 8,
+          projectile.width === HIT_CIRCLE_DIAMETER * 16 &&
+          projectile.height === HIT_CIRCLE_DIAMETER * 16,
       ),
     ).toBe(true);
     expect(
@@ -1085,7 +1093,7 @@ describe("BattleModel point power shooting tiers", () => {
               projectile.x - model.player.previousX,
               projectile.y - model.player.previousY,
             ) -
-              HIT_CIRCLE_DIAMETER * 12,
+              HIT_CIRCLE_DIAMETER * 28,
           ) < 0.001,
       ),
     ).toBe(true);
@@ -1663,10 +1671,6 @@ class TestNeutralMob extends NeutralMob<
     };
   }
 
-  get flashAlpha(): number {
-    return 0;
-  }
-
   move(): void {
     this.state.x += 1;
   }
@@ -1744,10 +1748,6 @@ class StaticRectNeutralMob extends NeutralMob<
       ageTicks: 0,
       sfxFlags: 0,
     };
-  }
-
-  get flashAlpha(): number {
-    return 0;
   }
 
   move(): void {
