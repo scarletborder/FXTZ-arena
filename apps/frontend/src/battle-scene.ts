@@ -68,6 +68,12 @@ export class BattleScene extends Phaser.Scene {
   }
 
   preload(): void {
+    if (!this.textures.exists("mob-example-fairy")) {
+      this.load.spritesheet("mob-example-fairy", "/assets/mobs/example_fairy/combat.png", {
+        frameWidth: 512,
+        frameHeight: 512,
+      });
+    }
     for (const character of getAllCharacterDefinitions()) {
       const textureKey = `character-combat-${character.id}`;
       if (this.textures.exists(textureKey)) continue;
@@ -471,9 +477,8 @@ export class BattleScene extends Phaser.Scene {
 
     const rows = this.debugLogger.getConfirmedRows(authoritativeFrame);
 
-    const label = `FXTZ Debug Hash Bundle (mode=${
-      this.sceneData.mode ?? "offline"
-    }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${localConfirmedFrame}, serverConfirmedFrame=${targetFrame}, authoritativeFrame=${authoritativeFrame}, cachedRows=${rows.length})`;
+    const label = `FXTZ Debug Hash Bundle (mode=${this.sceneData.mode ?? "offline"
+      }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${localConfirmedFrame}, serverConfirmedFrame=${targetFrame}, authoritativeFrame=${authoritativeFrame}, cachedRows=${rows.length})`;
 
     console.group(label);
     console.log(
