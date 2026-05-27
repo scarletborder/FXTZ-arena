@@ -7,7 +7,6 @@ export namespace Depth {
   export const Character = 4;
   export const GrazeCircle = 4.8;
   export const Projectile = 5.2;
-  export const CharacterFlash = 5.4;
   export const PlayerCore = 5.6;
   export const StatusTag = 6;
   export const Shield = 7;

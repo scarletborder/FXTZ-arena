@@ -46,10 +46,6 @@ export class ImmortalFairy extends NeutralMob<ImmortalFairyState, BattleBulletSp
     return mob;
   }
 
-  get flashAlpha(): number {
-    return 0;
-  }
-
   move(): void {
     this.state.previousX = this.state.x;
     this.state.previousY = this.state.y;

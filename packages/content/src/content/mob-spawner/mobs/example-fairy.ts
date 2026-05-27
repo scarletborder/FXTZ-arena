@@ -75,13 +75,6 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
     this.volleyFireAge = fireAge;
   }
 
-  get flashAlpha(): number {
-    if (this.volleyFireAge < 0) return 0;
-    const remaining = this.volleyFireAge - this.state.ageTicks;
-    // Flash white during the 0.5 s (30 ticks) window before firing.
-    return remaining > 0 && remaining <= secondsToTicks(0.5) ? 1 : 0;
-  }
-
   onDeathEffect(): void {
     // No-op for ExampleFairy.
   }

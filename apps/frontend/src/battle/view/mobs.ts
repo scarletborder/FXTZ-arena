@@ -3,8 +3,6 @@ import Phaser from "phaser";
 import type { NeutralMobState } from "@repo/types";
 import { Depth } from "../../utils/depth";
 
-const SFX_FLAG_FLASH = 1;
-
 /** Sprite display size is slightly larger than the hit circle. */
 const SPRITE_SIZE = 76;
 
@@ -28,7 +26,6 @@ function mobTextureConfig(mob: NeutralMobState): { readonly frame: number; reado
 
 export class MobView {
   private readonly sprites = new Map<number, Phaser.GameObjects.Sprite>();
-  private readonly flashOverlays = new Map<number, Phaser.GameObjects.Sprite>();
   private readonly damageTags = new Map<number, Phaser.GameObjects.Text>();
 
   constructor(private readonly scene: Phaser.Scene) {}
@@ -43,24 +40,26 @@ export class MobView {
       active.add(mob.id);
 
       const config = mobTextureConfig(mob);
+      const x = lerp(mob.previousX, mob.x, alpha);
+      const y = lerp(mob.previousY, mob.y, alpha);
       let sprite = this.sprites.get(mob.id);
       if (!sprite) {
-        sprite = this.scene.add.sprite(mob.x, mob.y, "mob-example-fairy", config.frame)
+        sprite = this.scene.add.sprite(x, y, "mob-example-fairy", config.frame)
           .setOrigin(0.5)
           .setDepth(Depth.Character)
           .setDisplaySize(SPRITE_SIZE, SPRITE_SIZE);
         this.sprites.set(mob.id, sprite);
       }
-      sprite.setPosition(mob.x, mob.y);
+      sprite.setPosition(x, y);
       sprite.setFrame(config.frame);
       sprite.setFlipX(config.flipX);
-      sprite.setAlpha(alpha);
+      sprite.setAlpha(1);
       sprite.setVisible(true);
 
       let damageTag = this.damageTags.get(mob.id);
       if (mob.kind === "immortal_fairy") {
         if (!damageTag) {
-          damageTag = this.scene.add.text(mob.x, mob.y - 28, "", {
+          damageTag = this.scene.add.text(x, y - 28, "", {
             fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
             fontSize: "13px",
             color: "#f6f1e6",
@@ -69,35 +68,14 @@ export class MobView {
           }).setOrigin(0.5).setDepth(Depth.FloatingText);
           this.damageTags.set(mob.id, damageTag);
         }
-        damageTag.setPosition(mob.x, mob.y - 28);
+        damageTag.setPosition(x, y - 28);
         damageTag.setText(`[${Math.max(0, Math.floor(mob.damageTaken ?? 0))}]`);
-        damageTag.setAlpha(alpha);
+        damageTag.setAlpha(1);
         damageTag.setVisible(true);
       } else if (damageTag) {
         damageTag.setVisible(false);
       }
 
-      // Flash overlay
-      const flashing = (mob.sfxFlags & SFX_FLAG_FLASH) !== 0;
-      let flash = this.flashOverlays.get(mob.id);
-      if (flashing) {
-        if (!flash) {
-          flash = this.scene.add.sprite(mob.x, mob.y, "mob-example-fairy", config.frame)
-            .setOrigin(0.5)
-            .setDepth(Depth.CharacterFlash)
-            .setTint(0xffffff)
-            .setDisplaySize(SPRITE_SIZE, SPRITE_SIZE);
-          this.flashOverlays.set(mob.id, flash);
-        }
-        flash.setPosition(mob.x, mob.y);
-        flash.setFrame(config.frame);
-        flash.setFlipX(config.flipX);
-        flash.setDisplaySize(SPRITE_SIZE, SPRITE_SIZE);
-        flash.setAlpha(alpha * 0.6);
-        flash.setVisible(true);
-      } else if (flash) {
-        flash.setVisible(false);
-      }
     }
 
     // Cleanup destroyed mobs
@@ -107,12 +85,6 @@ export class MobView {
         this.sprites.delete(id);
       }
     }
-    for (const [id, flash] of this.flashOverlays) {
-      if (!active.has(id)) {
-        flash.destroy();
-        this.flashOverlays.delete(id);
-      }
-    }
     for (const [id, damageTag] of this.damageTags) {
       if (!active.has(id)) {
         damageTag.destroy();
@@ -120,4 +92,8 @@ export class MobView {
       }
     }
   }
+}
+
+function lerp(from: number, to: number, alpha: number): number {
+  return from + (to - from) * alpha;
 }

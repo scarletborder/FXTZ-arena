@@ -60,9 +60,6 @@ export abstract class NeutralMob<
   abstract onProjectileHit(damage: number): "accepted" | "ignored";
   abstract onDeath(source: NeutralMobDeathSource): void;
 
-  /** Flash overlay alpha (0-1). 1 = full white flash for pre-firing telegraph. */
-  abstract get flashAlpha(): number;
-
   /** Called when the mob becomes inactive (death). Override for death effects. */
   onDeathEffect(): void {
     // No-op by default.
@@ -79,7 +76,7 @@ export abstract class NeutralMob<
     this.fire(ctx);
     this.switchForm(ctx);
     this.die(ctx);
-    this.state.sfxFlags = this.flashAlpha > 0.5 ? (this.state.sfxFlags | 1) : (this.state.sfxFlags & ~1);
+    this.state.sfxFlags = 0;
   }
 
   snapshot(): TState {

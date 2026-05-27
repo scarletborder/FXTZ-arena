@@ -2,14 +2,6 @@ import Phaser from "phaser";
 
 import type { NeutralMobState } from "@repo/types";
 
-/**
- * ExampleFairy flash effect.
- *
- * Renders a full-white overlay when the fairy is about to fire.
- * The base MobView handles the tint-based flash; this module
- * provides additional per-frame FX hooks if needed.
- */
-
 export interface ExampleFairyMobSfxParams {
   readonly mob: NeutralMobState;
 }
