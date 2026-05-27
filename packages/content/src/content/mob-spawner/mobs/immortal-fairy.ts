@@ -21,6 +21,7 @@ export class ImmortalFairy extends NeutralMob<ImmortalFairyState, BattleBulletSp
       id: params.id,
       key: "Neutral",
       kind: "immortal_fairy",
+      textureKey: "enemy_type_2",
       x: POSITION.x,
       y: POSITION.y,
       previousX: POSITION.x,

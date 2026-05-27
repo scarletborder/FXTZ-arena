@@ -9,6 +9,7 @@ export interface NeutralMobState {
   readonly id: NeutralMobId;
   readonly key: "Neutral";
   readonly kind: string;
+  readonly textureKey?: string;
   x: number;
   y: number;
   previousX: number;

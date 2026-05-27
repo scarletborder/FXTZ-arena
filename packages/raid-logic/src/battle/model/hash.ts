@@ -71,6 +71,7 @@ function writeNeutralMobs(
     hasher.writeNumber(mob.id);
     hasher.writeString(mob.key);
     hasher.writeString(mob.kind);
+    hasher.writeString(mob.textureKey ?? "");
     writeFixed(hasher, mob.x);
     writeFixed(hasher, mob.y);
     writeFixed(hasher, mob.previousX);

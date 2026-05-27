@@ -82,6 +82,7 @@ export class BattleScene extends Phaser.Scene {
 
   preload(): void {
     this.load.json("bullet-config", "/assets/bullet/bullet_config.json");
+    this.load.json("enemy-config", "/assets/enemy/enemy_config.json");
     for (const texture of [
       "bullet1",
       "bullet2",
@@ -94,11 +95,10 @@ export class BattleScene extends Phaser.Scene {
         this.load.image(texture, `/assets/bullet/${texture}.png`);
       }
     }
-    if (!this.textures.exists("mob-example-fairy")) {
-      this.load.spritesheet("mob-example-fairy", "/assets/mobs/example_fairy/combat.png", {
-        frameWidth: 512,
-        frameHeight: 512,
-      });
+    for (const texture of ["enemy", "enemy2", "enemy5", "enemy_aura"]) {
+      if (!this.textures.exists(texture)) {
+        this.load.image(texture, `/assets/enemy/${texture}.png`);
+      }
     }
     for (const character of getAllCharacterDefinitions()) {
       const textureKey = `character-combat-${character.id}`;

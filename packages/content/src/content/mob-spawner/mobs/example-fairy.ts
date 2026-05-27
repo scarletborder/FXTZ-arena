@@ -43,6 +43,7 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
       id: params.id,
       key: "Neutral",
       kind: "example_fairy",
+      textureKey: "enemy_type_1",
       x: START.x,
       y: START.y,
       previousX: START.x,
