@@ -158,6 +158,7 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
   ): void {
     ctx.spawnBullet({
       owner: "Neutral",
+      textureKey: "bullet_type_3_offset_6",
       kind: "orb",
       x: this.state.x,
       y: this.state.y,
@@ -166,8 +167,8 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
         fp.fromFloat(targetX - this.state.x),
       ),
       speedRank: "high",
-      width: hitCircleUnits(2),
-      height: hitCircleUnits(2),
+      width: 10,
+      height: 10,
       homingTicks: 0,
       spawnOffset: 0,
     });

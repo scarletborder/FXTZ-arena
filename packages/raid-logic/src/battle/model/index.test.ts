@@ -336,7 +336,10 @@ describe("BattleModel ability cards", () => {
     expect(model.projectiles).toHaveLength(4);
     expect(
       model.projectiles.some(
-        (projectile) => projectile.width === 18 && projectile.height === 10,
+        (projectile) =>
+          projectile.textureKey === "bullet_type_8_offset_0" &&
+          projectile.width === 8 &&
+          projectile.height === 8,
       ),
     ).toBe(true);
   });
@@ -735,7 +738,8 @@ describe("BattleModel character bombs", () => {
 
     const extraShot = model.projectiles.find(
       (projectile) =>
-        projectile.kind === "orb" && projectile.owner === "Player1",
+        projectile.textureKey === "bullet_type_8_offset_0" &&
+        projectile.owner === "Player1",
     );
     expect(extraShot?.pausedUntil).toBe(model.frame + 60);
     expect(

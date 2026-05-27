@@ -22,13 +22,14 @@ export class MultiShotBattleCard extends BattleAbilityCard {
   onAfterFire(ctx: BattleCardContext): void {
     ctx.spawnBullet({
       owner: ctx.self.key,
+      textureKey: "bullet_type_8_offset_0",
       kind: "orb",
       x: ctx.self.x,
       y: ctx.self.y,
       angle: ctx.self.facing,
       speedRank: "low",
-      width: 18,
-      height: 10,
+      width: 8,
+      height: 8,
       homingTicks: secondsToTicks(1.5),
       damage: 15,
       spawnOffset: 34,
