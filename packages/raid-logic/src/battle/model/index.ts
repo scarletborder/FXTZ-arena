@@ -884,8 +884,8 @@ export class BattleModel {
   }
 
   private dropPointFromMob(mob: NeutralMobState): void {
-    const value = mob.pointValue ?? 0;
-    if (value <= 0) {
+    const rewardSize = mob.pointRewardSize;
+    if (!rewardSize) {
       return;
     }
     const velocity = pointVelocityFromFrame(this.frame, "low");
@@ -894,7 +894,7 @@ export class BattleModel {
         id: this.allocatePointId(),
         x: mob.x,
         y: mob.y,
-        value,
+        rewardSize,
         vx: velocity.vx,
         vy: velocity.vy,
       }),

@@ -12,13 +12,13 @@ export class ExtensionBattleCard extends BattleAbilityCard {
   readonly kind = "passive" as AbilityCardDefinition["kind"];
   readonly useLimit: AbilityCardDefinition["useLimit"] = "infinite";
   readonly cooldownTicks = 0;
-  readonly description = "吸点范围增加 16 像素。";
+  readonly description = "吸点范围小范围增加";
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/extension/icon.png",
     previewAsset: "assets/ability-cards/extension/preview.png",
   };
 
   getPointCollectRadiusBonus(_fighter: FighterState): number {
-    return 16;
+    return 32;
   }
 }

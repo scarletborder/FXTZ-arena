@@ -17,6 +17,7 @@ import {
   GAME_HEIGHT,
   GAME_WIDTH,
 } from "@repo/constants";
+import type { PointRewardSize } from "@repo/constants";
 import {
   createBattleInput,
   getBattlePointerWorld,
@@ -35,6 +36,17 @@ interface DebugFrameRecord {
   readonly frame: number;
   readonly hash: string;
   readonly snapshot: BattleModelSnapshot;
+}
+
+function pointRewardSizeForValue(value: 1 | 5 | 10): PointRewardSize {
+  switch (value) {
+    case 1:
+      return "small";
+    case 5:
+      return "medium";
+    case 10:
+      return "large";
+  }
 }
 
 const DEBUG_HISTORY_LIMIT = 3600;
@@ -259,7 +271,7 @@ export class BattleScene extends Phaser.Scene {
       return false;
     }
     const pointer = getBattlePointerWorld(this);
-    this.runtime.debugSpawnPoint({ value, x: pointer.x, y: pointer.y });
+    this.runtime.debugSpawnPoint({ rewardSize: pointRewardSizeForValue(value), x: pointer.x, y: pointer.y });
     this.recordDebugFrame();
     return true;
   }

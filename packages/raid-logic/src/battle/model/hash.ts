@@ -83,7 +83,7 @@ function writeNeutralMobs(
     hasher.writeString(mob.form);
     hasher.writeNumber(mob.MaxHealth);
     hasher.writeNumber(mob.CurrentHealth);
-    hasher.writeNumber(mob.pointValue ?? 0);
+    hasher.writeString(mob.pointRewardSize ?? "");
     hasher.writeNumber(mob.damageTaken ?? 0);
     hasher.writeNumber(mob.active ? 1 : 0);
     hasher.writeNumber(mob.ageTicks);

@@ -66,7 +66,7 @@ export interface FighterState {
   grazedProjectileIds: readonly number[];
 }
 
-export type PointPrefabId = "point_1" | "point_5" | "point_10";
+export type PointPrefabId = "point_small" | "point_medium" | "point_large";
 
 export interface PointState {
   readonly id: number;

@@ -832,7 +832,7 @@ describe("BattleModel character bombs", () => {
     const model = await createBattleModel();
     const mob = new TestNeutralMob(model.allocateNeutralMobId(), 500, 120);
     mob.state.CurrentHealth = 1;
-    mob.state.pointValue = 5;
+    mob.state.pointRewardSize = "medium";
     model.addNeutralMob(mob);
     model.projectiles.push(
       testProjectile({
@@ -854,7 +854,7 @@ describe("BattleModel character bombs", () => {
     const model = await createBattleModel();
     const mob = new TestNeutralMob(model.allocateNeutralMobId(), 500, 120);
     mob.state.ageTicks = 999;
-    mob.state.pointValue = 10;
+    mob.state.pointRewardSize = "large";
     model.addNeutralMob(mob);
 
     model.step(input());
@@ -873,7 +873,7 @@ describe("BattleModel point pickups", () => {
         id: model.allocatePointId(),
         x: model.player.x + 31,
         y: model.player.y,
-        value: 1,
+        rewardSize: "small",
         vx: 0,
         vy: 0,
       }),
@@ -903,7 +903,7 @@ describe("BattleModel point pickups", () => {
         id: model.allocatePointId(),
         x: model.player.x + 31,
         y: model.player.y,
-        value: 5,
+        rewardSize: "medium",
         vx: 0,
         vy: 0,
       }),
@@ -928,7 +928,7 @@ describe("BattleModel point pickups", () => {
         id: model.allocatePointId(),
         x: model.player.x + 47,
         y: model.player.y,
-        value: 1,
+        rewardSize: "small",
         vx: 0,
         vy: 0,
       }),
@@ -946,7 +946,7 @@ describe("BattleModel point pickups", () => {
         id: model.allocatePointId(),
         x: model.player.x + 47,
         y: model.player.y,
-        value: 1,
+        rewardSize: "small",
         vx: 0,
         vy: 0,
       }),
@@ -964,7 +964,7 @@ describe("BattleModel point pickups", () => {
         id: model.allocatePointId(),
         x: 900,
         y: 200,
-        value: 10,
+        rewardSize: "large",
         vx: 2,
         vy: 0,
       }),

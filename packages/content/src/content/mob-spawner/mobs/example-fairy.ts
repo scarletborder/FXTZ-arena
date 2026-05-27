@@ -1,5 +1,6 @@
 import { fp } from "@shaisrc/fixed-point";
 import { ARENA_HEIGHT, ARENA_WIDTH } from "@repo/constants";
+import type { PointRewardSize } from "@repo/constants";
 import { NeutralMob, type NeutralMobActionContext, type NeutralMobDeathSource, type NeutralMobState } from "@repo/types";
 
 import { fpAtan2 } from "../../fp";
@@ -35,7 +36,7 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
     readonly id: number;
     readonly waveId: number;
     readonly movementVariant: ExampleFairyMovementVariant;
-    readonly pointValue?: number;
+    readonly pointRewardSize?: PointRewardSize;
   }) {
     super();
     this.state = {
@@ -52,7 +53,7 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
       form: "enter",
       MaxHealth: MAX_HEALTH,
       CurrentHealth: MAX_HEALTH,
-      pointValue: params.pointValue,
+      pointRewardSize: params.pointRewardSize,
       active: true,
       ageTicks: 0,
       sfxFlags: 0,

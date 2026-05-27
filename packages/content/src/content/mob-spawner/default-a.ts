@@ -1,6 +1,7 @@
 import { secondsToTicks } from "../seconds-to-ticks";
 import { ExampleFairy, type ExampleFairyMovementVariant } from "./mobs/example-fairy";
 import { NeutralMobSpawner, type BattleNeutralMob, type NeutralMobSpawnerContext, type NeutralMobSpawnerState } from "./base";
+import type { PointRewardSize } from "@repo/constants";
 import type { NeutralMobState } from "@repo/types";
 
 export interface DefaultMobSpawnerAState extends NeutralMobSpawnerState {
@@ -59,11 +60,12 @@ export class DefaultMobSpawnerA extends NeutralMobSpawner<DefaultMobSpawnerAStat
       return;
     }
     const variant: ExampleFairyMovementVariant = waveIndex % 2 === 0 ? "left" : "right";
+    const pointRewardSize: PointRewardSize = mobIndex === MOB_COUNT - 1 ? "medium" : "small";
     ctx.spawnMob(new ExampleFairy({
       id: ctx.allocateMobId(),
       waveId: waveIndex + 1,
       movementVariant: variant,
-      pointValue: mobIndex === MOB_COUNT - 1 ? 5 : 1,
+      pointRewardSize,
     }));
   }
 

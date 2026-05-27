@@ -1,5 +1,6 @@
 import { fp } from "@shaisrc/fixed-point";
 
+import { POINT_REWARD_VALUES, type PointRewardSize } from "@repo/constants";
 import { ARENA_HEIGHT, ARENA_WIDTH, speedRankToPixelsPerTick, type SpeedRank } from "@repo/types";
 import type { PointPrefabId, PointState } from "@repo/content";
 
@@ -7,14 +8,15 @@ export const POINT_COLLECT_TICKS = 10;
 
 interface PointPrefab {
   readonly prefabId: PointPrefabId;
+  readonly rewardSize: PointRewardSize;
   readonly value: number;
   readonly size: number;
 }
 
 const POINT_PREFABS: readonly PointPrefab[] = [
-  { prefabId: "point_1", value: 1, size: 8 },
-  { prefabId: "point_5", value: 5, size: 12 },
-  { prefabId: "point_10", value: 10, size: 16 },
+  { prefabId: "point_small", rewardSize: "small", value: POINT_REWARD_VALUES.small, size: 8 },
+  { prefabId: "point_medium", rewardSize: "medium", value: POINT_REWARD_VALUES.medium, size: 12 },
+  { prefabId: "point_large", rewardSize: "large", value: POINT_REWARD_VALUES.large, size: 16 },
 ];
 
 const SQRT_HALF = 0.7071067811865476;
@@ -33,11 +35,11 @@ export function createPointState(params: {
   readonly id: number;
   readonly x: number;
   readonly y: number;
-  readonly value: number;
+  readonly rewardSize: PointRewardSize;
   readonly vx: number;
   readonly vy: number;
 }): PointState {
-  const prefab = prefabForValue(params.value);
+  const prefab = prefabForRewardSize(params.rewardSize);
   return {
     id: params.id,
     prefabId: prefab.prefabId,
@@ -74,10 +76,10 @@ export function pointIsOutsideArena(point: PointState): boolean {
     fp.gt(fpY, fp.add(fp.fromFloat(ARENA_HEIGHT), halfSize));
 }
 
-function prefabForValue(value: number): PointPrefab {
-  const prefab = POINT_PREFABS.find((candidate) => candidate.value === value);
+function prefabForRewardSize(rewardSize: PointRewardSize): PointPrefab {
+  const prefab = POINT_PREFABS.find((candidate) => candidate.rewardSize === rewardSize);
   if (!prefab) {
-    throw new Error(`Unsupported point value: ${value}`);
+    throw new Error(`Unsupported point reward size: ${rewardSize}`);
   }
   return prefab;
 }

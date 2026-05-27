@@ -9,6 +9,7 @@ import {
   type BattleOutputFrame,
 } from "./output";
 import type { BattleInputState } from "@repo/types";
+import type { PointRewardSize } from "@repo/constants";
 import type { BattleOutputState } from "@repo/content";
 import { DEFAULT_MAPS, resolveMobSpawner } from "@repo/content";
 import type { NeutralMobSpawner } from "@repo/content";
@@ -49,7 +50,7 @@ export interface RaidLogicRuntime {
   initialize(): Promise<void>;
   readDebugBodies(): ReturnType<BattlePhysics["readAllBodies"]>;
   debugSpawnPoint(params: {
-    readonly value: 1 | 5 | 10;
+    readonly rewardSize: PointRewardSize;
     readonly x: number;
     readonly y: number;
   }): BattleOutputFrame;
@@ -111,7 +112,7 @@ class BattleRuntime implements RaidLogicRuntime {
   }
 
   debugSpawnPoint(params: {
-    readonly value: 1 | 5 | 10;
+    readonly rewardSize: PointRewardSize;
     readonly x: number;
     readonly y: number;
   }): BattleOutputFrame {
@@ -121,7 +122,7 @@ class BattleRuntime implements RaidLogicRuntime {
         id: this.model.allocatePointId(),
         x: params.x,
         y: params.y,
-        value: params.value,
+        rewardSize: params.rewardSize,
         vx: velocity.vx,
         vy: velocity.vy,
       }),
