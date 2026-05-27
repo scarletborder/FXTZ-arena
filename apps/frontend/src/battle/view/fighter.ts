@@ -4,20 +4,21 @@ import { PLAYER_CORE_RADIUS } from "@repo/constants";
 import type { FighterKey, FighterState } from "@repo/raid-logic";
 
 interface FighterVisual {
-  readonly body: Phaser.GameObjects.Image;
+  readonly body: Phaser.GameObjects.Sprite;
   readonly core: Phaser.GameObjects.Arc;
   readonly statusTag: Phaser.GameObjects.Text;
 }
 
-const TRIANGLE_CENTROID_TEXTURE_Y = (24 + 208 + 208) / 3;
+const COMBAT_DISPLAY_SIZE = 104;
+const ANIMATION_FRAME_TICKS = 10;
 
 export class FighterView {
   private readonly visuals: Record<"player" | "target", FighterVisual>;
 
   constructor(private readonly scene: Phaser.Scene) {
     this.visuals = {
-      player: this.createFighterVisual(0x7ee39d, 180, 280, "fighter-player"),
-      target: this.createFighterVisual(0xf05f65, 760, 280, "fighter-player"),
+      player: this.createFighterVisual(180, 280),
+      target: this.createFighterVisual(760, 280),
     };
   }
 
@@ -34,17 +35,11 @@ export class FighterView {
     this.updateFighter(this.visuals.target, target, frame, gameOver, infoHeld, localFighterKey === "Player2", alpha);
   }
 
-  private createFighterVisual(
-    bodyTint: number,
-    x: number,
-    y: number,
-    texture: string,
-  ): FighterVisual {
+  private createFighterVisual(x: number, y: number): FighterVisual {
     const body = this.scene.add
-      .image(x, y, texture)
-      .setOrigin(0.5, TRIANGLE_CENTROID_TEXTURE_Y / 256)
-      .setScale(0.42)
-      .setTint(bodyTint)
+      .sprite(x, y, "fighter-player")
+      .setOrigin(0.5)
+      .setDisplaySize(COMBAT_DISPLAY_SIZE, COMBAT_DISPLAY_SIZE)
       .setDepth(4);
     const core = this.scene.add.circle(x, y, PLAYER_CORE_RADIUS, 0xff4242, 1).setStrokeStyle(1, 0xffb2b2, 0.9).setDepth(5);
     const statusTag = this.scene.add.text(x, y - 48, "", {
@@ -67,10 +62,22 @@ export class FighterView {
     const visible = gameOver ? fighter.deadUntil === 0 : fighter.deadUntil === 0 || isPlayer;
     const x = lerp(fighter.previousX, fighter.x, alpha);
     const y = lerp(fighter.previousY, fighter.y, alpha);
+    const facing = lerpAngle(fighter.previousFacing, fighter.facing, alpha);
+    const pose = combatPoseForFacing(facing);
+    const textureKey = `character-combat-${fighter.activeCharacter.id}`;
     visual.body.setPosition(x, y);
-    visual.body.setRotation(lerpAngle(fighter.previousFacing, fighter.facing, alpha) + Math.PI / 2);
+    const hasCombatTexture = this.scene.textures.exists(textureKey);
+    if (visual.body.texture.key !== textureKey && hasCombatTexture) {
+      visual.body.setTexture(textureKey);
+      visual.body.setDisplaySize(COMBAT_DISPLAY_SIZE, COMBAT_DISPLAY_SIZE);
+    }
+    if (hasCombatTexture) {
+      visual.body.setFrame(pose.column + (Math.floor(frame / ANIMATION_FRAME_TICKS) % 2) * 3);
+    }
+    visual.body.setFlipX(pose.flipX);
+    visual.body.setRotation(0);
     visual.body.setVisible(visible);
-    visual.body.setTint(isPlayer ? 0x7ee39d : 0xf05f65);
+    visual.body.clearTint();
     const blinkAlpha = fighter.invulnerableUntil > 0 && Math.floor(frame / 5) % 2 === 0 ? 0.28 : 1;
     visual.body.setAlpha(visible ? blinkAlpha : 0);
     visual.core.setPosition(x, y);
@@ -87,6 +94,15 @@ export class FighterView {
     }
     visual.core.setFillStyle(0xff4242, fighter.flashUntil > frame ? 0.22 : 1);
   }
+}
+
+function combatPoseForFacing(angle: number): { readonly column: 0 | 1 | 2; readonly flipX: boolean } {
+  const x = Math.cos(angle);
+  const y = Math.sin(angle);
+  if (Math.abs(x) > Math.abs(y)) {
+    return x >= 0 ? { column: 2, flipX: true } : { column: 2, flipX: false };
+  }
+  return y >= 0 ? { column: 0, flipX: false } : { column: 1, flipX: false };
 }
 
 function lerp(from: number, to: number, alpha: number): number {

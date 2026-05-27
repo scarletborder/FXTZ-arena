@@ -45,6 +45,7 @@ export class CirnoBattleCharacter extends BattleCharacter {
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/cirno/portrait.png",
     attackPreviewAsset: "assets/characters/cirno/attack-preview.png",
+    combatAsset: "assets/characters/cirno/combat.png",
   };
   readonly normalAttackId = "cirno_ice_crystals";
   readonly bombId = "cirno_perfect_freeze";

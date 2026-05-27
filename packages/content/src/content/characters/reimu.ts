@@ -30,6 +30,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/reimu/portrait.png",
     attackPreviewAsset: "assets/characters/reimu/attack-preview.png",
+    combatAsset: "assets/characters/reimu/combat.png",
   };
   readonly normalAttackId = "reimu_homing_shot";
   readonly bombId = "reimu_clear_bomb";

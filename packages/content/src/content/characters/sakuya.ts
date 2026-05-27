@@ -33,6 +33,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/sakuya/portrait.png",
     attackPreviewAsset: "assets/characters/sakuya/attack-preview.png",
+    combatAsset: "assets/characters/sakuya/combat.png",
   };
   readonly normalAttackId = "sakuya_parallel_knives";
   readonly bombId = "sakuya_time_stop";

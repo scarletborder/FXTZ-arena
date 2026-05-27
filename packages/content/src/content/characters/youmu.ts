@@ -52,6 +52,7 @@ export class YoumuBattleCharacter extends BattleCharacter {
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/youmu/portrait.png",
     attackPreviewAsset: "assets/characters/youmu/attack-preview.png",
+    combatAsset: "assets/characters/youmu/combat.png",
   };
   readonly normalAttackId = "youmu_slash";
   readonly bombId = "youmu_dash_bomb";

@@ -31,6 +31,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/marisa/portrait.png",
     attackPreviewAsset: "assets/characters/marisa/attack-preview.png",
+    combatAsset: "assets/characters/marisa/combat.png",
   };
   readonly normalAttackId = "marisa_laser";
   readonly bombId = "marisa_master_spark";

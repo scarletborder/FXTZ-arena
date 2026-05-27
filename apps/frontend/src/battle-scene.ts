@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { getAllCharacterDefinitions } from "@repo/content";
 import type { PlayerId } from "@repo/types";
 import {
   createRaidLogicRuntime,
@@ -64,6 +65,17 @@ export class BattleScene extends Phaser.Scene {
 
   constructor() {
     super("battle");
+  }
+
+  preload(): void {
+    for (const character of getAllCharacterDefinitions()) {
+      const textureKey = `character-combat-${character.id}`;
+      if (this.textures.exists(textureKey)) continue;
+      this.load.spritesheet(textureKey, character.gallery.combatAsset, {
+        frameWidth: 512,
+        frameHeight: 512,
+      });
+    }
   }
 
   create(data: BattleSceneData = {}): void {

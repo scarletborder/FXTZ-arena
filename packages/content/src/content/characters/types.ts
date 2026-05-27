@@ -9,6 +9,7 @@ import type { CharacterId } from "../ids";
 export interface CharacterGalleryAssets {
   readonly portraitAsset: string;
   readonly attackPreviewAsset: string;
+  readonly combatAsset: string;
 }
 
 export interface CharacterDefinition {
