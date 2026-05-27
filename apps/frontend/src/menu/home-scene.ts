@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-import { createFightButton, drawBuildLabel, drawFightingBackdrop, drawTitleBlock } from "./ui";
+import { bodyStyle, createFightButton, drawBuildLabel, drawFightingBackdrop, drawTitleBlock } from "./ui";
 import type { SelectionData, SceneKey } from "./shared";
 
 export class HomeScene extends Phaser.Scene {
@@ -24,6 +24,10 @@ export class HomeScene extends Phaser.Scene {
       createFightButton(this, 642, 286 + index * 78, 310, 58, button.label, button.onClick);
     });
 
+    this.add.text(1254, 674, "本游戏使用AI绘图，AI编码", {
+      ...bodyStyle("#9fb4c8", 14),
+      align: "right",
+    }).setOrigin(1, 1).setAlpha(0.82);
     drawBuildLabel(this);
   }
 }
