@@ -2,6 +2,8 @@ import { fp } from "@shaisrc/fixed-point";
 
 import {
   PLAYER_CORE_RADIUS,
+  ENEMY_PROJECTILE_GRAZE_POINT_REWARD,
+  NEUTRAL_PROJECTILE_GRAZE_POINT_REWARD,
   PLAYER_SPAWN,
   TARGET_SPAWN,
   type NeutralMob,
@@ -301,9 +303,14 @@ export class BattleModel {
               this.currentShields(),
               this.neutralMobStates(),
               this.points,
+              {
+                Player1: this.playerFighter.getGrazeRadiusMultiplier(),
+                Player2: this.targetFighter.getGrazeRadiusMultiplier(),
+              },
             )
         : undefined,
       onHit: (ctx) => this.onProjectileHit(ctx),
+      onGraze: (ctx) => this.onProjectileGraze(ctx),
       clearProjectiles: (projectiles) => this.stepClearRings(projectiles),
     });
     this.removeInactiveNeutralMobs();
@@ -596,6 +603,32 @@ export class BattleModel {
       return true;
     }
     return true;
+  }
+
+  private onProjectileGraze(
+    ctx: ProjectileCollisionContext<
+      ProjectileState,
+      ProjectileHitTarget,
+      FighterKey
+    >,
+  ): void {
+    const { owner, victim, projectile } = ctx;
+    if (victim.key !== "Player1" && victim.key !== "Player2") {
+      return;
+    }
+    if (owner !== "Neutral" && owner === victim.key) {
+      return;
+    }
+    const fighter = victim.key === "Player1" ? this.player : this.target;
+    if (fighter.deadUntil > 0 || fighter.grazedProjectileIds.includes(projectile.id)) {
+      return;
+    }
+    fighter.grazedProjectileIds = [...fighter.grazedProjectileIds, projectile.id];
+    fighter.pointCount = clampPointCount(
+      fighter.pointCount + (owner === "Neutral"
+        ? NEUTRAL_PROJECTILE_GRAZE_POINT_REWARD
+        : ENEMY_PROJECTILE_GRAZE_POINT_REWARD),
+    );
   }
 
   private cancelTimeStop(caster: FighterState): void {

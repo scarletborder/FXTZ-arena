@@ -34,6 +34,7 @@ export interface PhysicsBodyDef {
   readonly kind:
     | "fighter"
     | "projectile"
+    | "graze"
     | "shield"
     | "obstacle"
     | "point"
@@ -337,6 +338,7 @@ export class PhysicsWorld {
         kind: (this.bodyKind.get(id) ?? "obstacle") as
           | "fighter"
           | "projectile"
+          | "graze"
           | "shield"
           | "obstacle"
           | "point"

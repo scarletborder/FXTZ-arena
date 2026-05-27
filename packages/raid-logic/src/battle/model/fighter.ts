@@ -61,6 +61,7 @@ export function createFighter(
     flashUntil: 0,
     statusVisibleUntil: 0,
     ammoByCharacterId: createAmmoState(primaryCharacter, alternateCharacter),
+    grazedProjectileIds: [],
   };
 }
 

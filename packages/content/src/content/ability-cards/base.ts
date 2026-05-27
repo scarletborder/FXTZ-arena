@@ -68,6 +68,9 @@ export abstract class BattleAbilityCard {
   getPointCollectRadiusBonus(_fighter: FighterState): number {
     return 0;
   }
+  getGrazeRadiusMultiplier(_fighter: FighterState): number {
+    return 1;
+  }
   collectShields(_fighter: FighterState): ShieldState[] {
     return [];
   }

@@ -432,6 +432,88 @@ describe("BattleModel ability cards", () => {
     expect(model.projectiles).toHaveLength(0);
     expect(model.hashHex()).toBe(originalHash);
   });
+
+  it("awards graze points through the physics graze circle once per projectile", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+    model.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Player2",
+        x: model.player.x + 9.5,
+        y: model.player.y,
+        width: 2,
+        previousWidth: 2,
+        height: 2,
+        pausedUntil: 999,
+      }),
+    );
+
+    model.step(input());
+    model.step(input());
+
+    expect(model.player.pointCount).toBe(2);
+    expect(model.player.grazedProjectileIds).toEqual([1]);
+    expect(model.player.lives).toBe(2);
+  });
+
+  it("keeps hit resolution ahead of graze resolution", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+    model.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Player2",
+        x: model.player.x + 4,
+        y: model.player.y,
+        width: 2,
+        previousWidth: 2,
+        height: 2,
+        pausedUntil: 999,
+      }),
+    );
+
+    model.step(input());
+
+    expect(model.player.lives).toBe(1);
+    expect(model.player.pointCount).toBe(0);
+    expect(model.player.grazedProjectileIds).toEqual([]);
+  });
+
+  it("extends the physics graze circle with graze lover", async () => {
+    const baseline = await createBattleModel("reimu", "marisa");
+    baseline.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Neutral",
+        x: baseline.player.x + 13,
+        y: baseline.player.y,
+        width: 2,
+        previousWidth: 2,
+        height: 2,
+        pausedUntil: 999,
+      }),
+    );
+    baseline.step(input());
+
+    const boosted = await createBattleModel("reimu", "marisa", [
+      "graze_lover",
+    ]);
+    boosted.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Neutral",
+        x: boosted.player.x + 13,
+        y: boosted.player.y,
+        width: 2,
+        previousWidth: 2,
+        height: 2,
+        pausedUntil: 999,
+      }),
+    );
+    boosted.step(input());
+
+    expect(baseline.player.pointCount).toBe(0);
+    expect(boosted.player.pointCount).toBe(1);
+  });
 });
 
 describe("BattleModel character bombs", () => {
@@ -1518,7 +1600,7 @@ async function shootOnceAtPoint(
 function testProjectile(
   overrides: Partial<BattleModel["projectiles"][number]> & {
     readonly id: number;
-    readonly owner: "Player1" | "Player2";
+    readonly owner: BattleModel["projectiles"][number]["owner"];
   },
 ) {
   return {

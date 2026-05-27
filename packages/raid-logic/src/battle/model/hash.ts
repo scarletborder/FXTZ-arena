@@ -193,6 +193,13 @@ function writeFighter(
     hasher.writeString(key);
     hasher.writeNumber(ammo);
   }
+  const grazedProjectileIds = [...fighter.grazedProjectileIds].sort(
+    (left, right) => left - right,
+  );
+  hasher.writeNumber(grazedProjectileIds.length);
+  for (const projectileId of grazedProjectileIds) {
+    hasher.writeNumber(projectileId);
+  }
 }
 
 function writeProjectiles(

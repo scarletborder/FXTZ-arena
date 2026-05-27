@@ -243,6 +243,7 @@ function serializeFighter(
     flashRemaining: fighter.flashUntil - frame,
     statusVisibleRemaining: fighter.statusVisibleUntil - frame,
     ammoByCharacterId: { ...fighter.ammoByCharacterId },
+    grazedProjectileIds: [...fighter.grazedProjectileIds],
   };
 }
 

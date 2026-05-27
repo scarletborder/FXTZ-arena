@@ -95,6 +95,7 @@ export interface AbilityCardDefinition {
 | `backdoor` | 后门 | 被动 | 1 | 无限 | 0 tick | 角色后方追加可消除普通子弹的矩形护盾 |
 | `multi_shot` | 多射 | 被动 | 1 | 无限 | 0 tick | 每次左键发射额外追加 1 个低速诱导普通矩形子弹 |
 | `spirit_strike_card` | 灵击符 | 主动使用 | 1 | 3 次 | 1200 tick | 清除周围 4 倍判定点圆圈直径范围内的全部弹幕 |
+| `graze_lover` | 擦弹爱好者 | 被动 | 1 | 无限 | 0 | 擦弹范围提升到 150% |
 
 ## 玩家配装
 

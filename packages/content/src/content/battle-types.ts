@@ -63,6 +63,7 @@ export interface FighterState {
   flashUntil: number;
   statusVisibleUntil: number;
   ammoByCharacterId: Record<string, number>;
+  grazedProjectileIds: readonly number[];
 }
 
 export type PointPrefabId = "point_1" | "point_5" | "point_10";

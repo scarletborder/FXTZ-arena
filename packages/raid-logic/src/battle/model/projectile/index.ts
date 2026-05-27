@@ -146,6 +146,13 @@ export class ProjectileSystem {
         FighterKey
       >,
     ) => boolean;
+    readonly onGraze?: (
+      ctx: ProjectileCollisionContext<
+        ProjectileState,
+        ProjectileHitTarget,
+        FighterKey
+      >,
+    ) => void;
     readonly clearProjectiles?: (projectiles: ProjectileState[]) => void;
     readonly computeRapierHits?: (
       projectiles: readonly ProjectileState[],
@@ -170,6 +177,7 @@ export class ProjectileSystem {
 
     let rapierHitMap: Map<number, FighterKey | "blocked"> | undefined;
     let rapierMobHitMap: Map<number, number> | undefined;
+    let rapierGrazeMap: Map<number, FighterKey[]> | undefined;
     if (params.computeRapierHits) {
       const results = params.computeRapierHits(params.projectiles);
       if (results) {
@@ -183,6 +191,15 @@ export class ProjectileSystem {
             .filter((r) => r.victimMobId !== undefined)
             .map((r) => [r.projectileId, r.victimMobId!]),
         );
+        rapierGrazeMap = new Map();
+        for (const result of results) {
+          if (!result.grazedByKey) {
+            continue;
+          }
+          const grazers = rapierGrazeMap.get(result.projectileId) ?? [];
+          grazers.push(result.grazedByKey);
+          rapierGrazeMap.set(result.projectileId, grazers);
+        }
         for (const result of results) {
           if (result.blockedByShield) {
             rapierHitMap.set(result.projectileId, "blocked");
@@ -236,6 +253,20 @@ export class ProjectileSystem {
             continue;
           }
         }
+        if (!victim && params.onGraze) {
+          for (const grazer of physicsGrazeTargets(
+            projectile,
+            hitTargets,
+            rapierGrazeMap,
+          )) {
+            params.onGraze({
+              projectile,
+              owner: projectile.owner,
+              victim: grazer,
+              damage: 0,
+            });
+          }
+        }
       }
 
       const expired =
@@ -248,6 +279,26 @@ export class ProjectileSystem {
 
     params.projectiles.splice(0, params.projectiles.length, ...remaining);
   }
+}
+
+function physicsGrazeTargets(
+  projectile: ProjectileState,
+  targets: readonly ProjectileHitTarget[],
+  rapierGrazeMap: Map<number, FighterKey[]> | undefined,
+): readonly ProjectileHitTarget[] {
+  const grazedByKeys = rapierGrazeMap?.get(projectile.id);
+  if (!grazedByKeys || grazedByKeys.length === 0) {
+    return [];
+  }
+  const keySet = new Set(grazedByKeys);
+  return targets.filter(
+    (target) =>
+      target.key !== "Neutral" &&
+      target.key !== projectile.owner &&
+      target.hitWidth === undefined &&
+      target.hitHeight === undefined &&
+      keySet.has(target.key),
+  );
 }
 
 function fighterHitTarget(fighter: FighterState): ProjectileHitTarget {

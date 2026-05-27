@@ -23,6 +23,7 @@
     - [Multi Shot](Data/Ability-Card/multi_shot)
     - [Ember](Data/Ability-Card/ember)
     - [Extra Life](Data/Ability-Card/extra_life)
+    - [Graze Lover](Data/Ability-Card/graze_lover)
 
 ## 开发相关
 

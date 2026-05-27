@@ -1,11 +1,12 @@
 import Phaser from "phaser";
 
-import { PLAYER_CORE_RADIUS } from "@repo/constants";
+import { GRAZE_CIRCLE_ALPHA, GRAZE_CIRCLE_DIAMETER, PLAYER_CORE_RADIUS } from "@repo/constants";
 import type { FighterKey, FighterState } from "@repo/raid-logic";
 
 interface FighterVisual {
   readonly body: Phaser.GameObjects.Sprite;
   readonly core: Phaser.GameObjects.Arc;
+  readonly graze: Phaser.GameObjects.Graphics;
   readonly statusTag: Phaser.GameObjects.Text;
 }
 
@@ -42,12 +43,13 @@ export class FighterView {
       .setDisplaySize(COMBAT_DISPLAY_SIZE, COMBAT_DISPLAY_SIZE)
       .setDepth(4);
     const core = this.scene.add.circle(x, y, PLAYER_CORE_RADIUS, 0xff4242, 1).setStrokeStyle(1, 0xffb2b2, 0.9).setDepth(5);
+    const graze = this.scene.add.graphics().setDepth(4.8);
     const statusTag = this.scene.add.text(x, y - 48, "", {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: "14px",
       color: "#f6f1e6",
     }).setOrigin(0.5).setDepth(6);
-    return { body, core, statusTag };
+    return { body, core, graze, statusTag };
   }
 
   private updateFighter(
@@ -82,6 +84,7 @@ export class FighterView {
     visual.body.setAlpha(visible ? blinkAlpha : 0);
     visual.core.setPosition(x, y);
     visual.core.setVisible(visible);
+    this.updateGrazeVisual(visual.graze, fighter, x, y, frame, visible && isPlayer);
     visual.statusTag.setPosition(x, y - 48);
     if (fighter.reloadRemaining > 0 && fighter.deadUntil === 0) {
       visual.statusTag.setText("[Reload]");
@@ -93,6 +96,52 @@ export class FighterView {
       visual.statusTag.setAlpha(fighter.statusVisibleUntil > frame || fighter.deadUntil > 0 ? (infoHeld ? 1 : 0.9) : 0);
     }
     visual.core.setFillStyle(0xff4242, fighter.flashUntil > frame ? 0.22 : 1);
+  }
+
+  private updateGrazeVisual(
+    graze: Phaser.GameObjects.Graphics,
+    fighter: FighterState,
+    x: number,
+    y: number,
+    frame: number,
+    visible: boolean,
+  ): void {
+    graze.clear();
+    const isAlternate = fighter.activeCharacter.id === fighter.alternateCharacter.id;
+    if (!visible || !isAlternate) {
+      graze.setVisible(false);
+      return;
+    }
+    graze.setVisible(true);
+    const multiplier = fighter.abilityCards.some((card) => card.id === "graze_lover") ? 1.5 : 1;
+    const radius = (GRAZE_CIRCLE_DIAMETER / 2) * multiplier;
+    const rotation = frame * 0.035;
+    graze.lineStyle(2, 0xbfefff, GRAZE_CIRCLE_ALPHA);
+    for (let index = 0; index < 8; index += 1) {
+      const angle = rotation + (Math.PI * 2 * index) / 8;
+      const inner = radius * 0.24;
+      const outer = radius;
+      const ix = x + Math.cos(angle) * inner;
+      const iy = y + Math.sin(angle) * inner;
+      const ox = x + Math.cos(angle) * outer;
+      const oy = y + Math.sin(angle) * outer;
+      graze.beginPath();
+      graze.moveTo(ix, iy);
+      graze.lineTo(ox, oy);
+      graze.strokePath();
+      graze.beginPath();
+      graze.arc(
+        x,
+        y,
+        outer * 0.78,
+        angle - 0.12,
+        angle + 0.12,
+        false,
+      );
+      graze.strokePath();
+    }
+    graze.lineStyle(1, 0xffffff, GRAZE_CIRCLE_ALPHA * 0.72);
+    graze.strokeCircle(x, y, radius);
   }
 }
 

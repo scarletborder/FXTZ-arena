@@ -17,6 +17,7 @@ import "./backdoor";
 import "./multi-shot";
 import "./spirit-strike-card";
 import "./extension";
+import "./graze-lover";
 
 import type { AbilityCardDefinition } from "./types";
 import type { FighterState } from "../battle-types";

@@ -5,5 +5,6 @@ export type AbilityCardId =
   | "backdoor"
   | "multi_shot"
   | "spirit_strike_card"
-  | "extension";
+  | "extension"
+  | "graze_lover";
 export type MapId = "arena_standard" | "shooting_range";

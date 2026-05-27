@@ -65,6 +65,13 @@ export class BattleFighter {
       + this.battleCards.reduce((total, card) => total + card.getPointCollectRadiusBonus(this.state), 0);
   }
 
+  getGrazeRadiusMultiplier(): number {
+    return this.battleCards.reduce(
+      (multiplier, card) => multiplier * card.getGrazeRadiusMultiplier(this.state),
+      1,
+    );
+  }
+
   collectShields(): readonly ShieldState[] {
     const shields: ShieldState[] = [];
     for (const card of this.battleCards) {
