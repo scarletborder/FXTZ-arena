@@ -38,7 +38,7 @@ export class PointView {
       const scale = point.collectingBy ? 1 + (1 - collectRatio) * 0.35 : 1;
       visual.container.setPosition(display.x, display.y);
       visual.container.setScale(scale);
-      visual.container.setAlpha(alpha * (point.collectingBy ? collectRatio : 1));
+      visual.container.setAlpha(point.collectingBy ? collectRatio : 1);
       visual.container.setVisible(true);
       visual.box.setDisplaySize(point.size, point.size);
       visual.label.setFontSize(Math.max(8, point.size - 1));
