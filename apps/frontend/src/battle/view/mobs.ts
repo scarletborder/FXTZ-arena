@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 
 import type { NeutralMobState } from "@repo/types";
+import { Depth } from "../../utils/depth";
 
 const SFX_FLAG_FLASH = 1;
 
@@ -46,7 +47,7 @@ export class MobView {
       if (!sprite) {
         sprite = this.scene.add.sprite(mob.x, mob.y, "mob-example-fairy", config.frame)
           .setOrigin(0.5)
-          .setDepth(4)
+          .setDepth(Depth.Character)
           .setDisplaySize(SPRITE_SIZE, SPRITE_SIZE);
         this.sprites.set(mob.id, sprite);
       }
@@ -65,7 +66,7 @@ export class MobView {
             color: "#f6f1e6",
             stroke: "#15203a",
             strokeThickness: 3,
-          }).setOrigin(0.5).setDepth(7);
+          }).setOrigin(0.5).setDepth(Depth.FloatingText);
           this.damageTags.set(mob.id, damageTag);
         }
         damageTag.setPosition(mob.x, mob.y - 28);
@@ -83,7 +84,7 @@ export class MobView {
         if (!flash) {
           flash = this.scene.add.sprite(mob.x, mob.y, "mob-example-fairy", config.frame)
             .setOrigin(0.5)
-            .setDepth(5)
+            .setDepth(Depth.CharacterFlash)
             .setTint(0xffffff)
             .setDisplaySize(SPRITE_SIZE, SPRITE_SIZE);
           this.flashOverlays.set(mob.id, flash);

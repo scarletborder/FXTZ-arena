@@ -1,5 +1,7 @@
 import Phaser from "phaser";
 
+import { Depth } from "../../utils/depth";
+
 export interface ClearRingSfxParams {
   readonly color: number;
   readonly x: number;
@@ -9,7 +11,7 @@ export interface ClearRingSfxParams {
 }
 
 export function createClearRingSfx(scene: Phaser.Scene, params: ClearRingSfxParams): Phaser.GameObjects.Graphics {
-  const graphics = scene.add.graphics().setDepth(2);
+  const graphics = scene.add.graphics().setDepth(Depth.Effect);
   renderClearRingSfx(graphics, params);
   return graphics;
 }

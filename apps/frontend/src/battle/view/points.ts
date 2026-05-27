@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 
 import type { FighterState, PointState } from "@repo/raid-logic";
+import { Depth } from "../../utils/depth";
 
 interface PointVisual {
   readonly box: Phaser.GameObjects.Rectangle;
@@ -61,7 +62,7 @@ export class PointView {
       fontStyle: "700",
       color: "#2f7fff",
     }).setOrigin(0.5);
-    const container = this.scene.add.container(point.x, point.y, [box, label]).setDepth(3.5);
+    const container = this.scene.add.container(point.x, point.y, [box, label]).setDepth(Depth.Point);
     return { box, label, container };
   }
 }

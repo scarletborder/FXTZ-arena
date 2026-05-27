@@ -25,6 +25,7 @@ import {
 import { BattleDebugLogger } from "./battle/logger";
 import type { BattleSceneData } from "./battle/loadout";
 import { BattleView } from "./battle/view";
+import { Depth } from "./utils/depth";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
 import { connectionManager } from "./menu/shared";
 import { CombatSyncManager } from "./network/combat";
@@ -291,7 +292,7 @@ export class BattleScene extends Phaser.Scene {
         padding: { x: 10, y: 6 },
       })
       .setScrollFactor(0)
-      .setDepth(100)
+      .setDepth(Depth.OnlineStatus)
       .setVisible(false);
 
     this.combatSync = new CombatSyncManager(this.runtime, connectionManager, {

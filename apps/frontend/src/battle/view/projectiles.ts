@@ -6,6 +6,7 @@ import {
   createMasterSparkPreviewSfx,
   renderMasterSparkPreviewSfx,
 } from "../sfx";
+import { Depth } from "../../utils/depth";
 
 type FighterKey = ProjectileState["owner"];
 
@@ -65,7 +66,7 @@ export class ProjectileView {
         sprite = this.scene.add
           .image(projectile.x, projectile.y, projectileTexture(projectile))
           .setOrigin(0.5)
-          .setDepth(3);
+          .setDepth(Depth.Projectile);
         this.sprites.set(projectile.id, sprite);
       }
       const display = projectileDisplay(projectile, alpha);

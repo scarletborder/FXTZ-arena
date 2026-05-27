@@ -28,6 +28,7 @@ import {
   type SelectionData,
 } from "./shared";
 import { uiSettings } from "../store/settings";
+import { Depth } from "../utils/depth";
 
 const COST_LIMIT = 10;
 
@@ -94,7 +95,7 @@ export class SelectScene extends Phaser.Scene {
 
     this.layer = this.add.container(0, 0);
     this.costLayer = this.add.container(0, 0);
-    this.tipLayer = this.add.container(0, 0).setDepth(1000).setVisible(false);
+    this.tipLayer = this.add.container(0, 0).setDepth(Depth.Tooltip).setVisible(false);
 
     // Status text for online waiting state — use space not empty string to
     // avoid zero-width canvas crash in Phaser's Text pipeline (drawImage on null).

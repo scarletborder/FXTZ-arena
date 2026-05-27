@@ -10,6 +10,7 @@ import { PointView } from "./points";
 import { ProjectileView } from "./projectiles";
 import { createBattleStage, type BattleViewMode } from "./stage";
 import { createBattleTextures } from "./textures";
+import { Depth } from "../../utils/depth";
 
 export class BattleView {
   private readonly fighters: FighterView;
@@ -33,7 +34,7 @@ export class BattleView {
     this.debugGraphics = scene.add.graphics();
     // Use max depth so debug always renders on top of game objects.
     // Other view components use depths in range 2–20, 999 is safely above.
-    this.debugGraphics.setDepth(999);
+    this.debugGraphics.setDepth(Depth.Debug);
   }
 
   render(state: BattleOutputState, input: BattleInputState, localFighterKey: FighterKey = "Player1", alpha = 1): void {

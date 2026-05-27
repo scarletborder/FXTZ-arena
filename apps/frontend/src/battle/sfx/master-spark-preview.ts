@@ -1,5 +1,7 @@
 import Phaser from "phaser";
 
+import { Depth } from "../../utils/depth";
+
 export interface MasterSparkPreviewSfxParams {
   readonly color: number;
   readonly x: number;
@@ -11,7 +13,7 @@ export interface MasterSparkPreviewSfxParams {
 }
 
 export function createMasterSparkPreviewSfx(scene: Phaser.Scene, params: MasterSparkPreviewSfxParams): Phaser.GameObjects.Graphics {
-  const graphics = scene.add.graphics().setDepth(3);
+  const graphics = scene.add.graphics().setDepth(Depth.ProjectilePreview);
   renderMasterSparkPreviewSfx(graphics, params);
   return graphics;
 }

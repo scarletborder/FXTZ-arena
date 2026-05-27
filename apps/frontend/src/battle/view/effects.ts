@@ -2,6 +2,7 @@ import Phaser from "phaser";
 
 import type { EffectState, ShieldState } from "@repo/raid-logic";
 import { createClearRingSfx, renderClearRingSfx } from "../sfx";
+import { Depth } from "../../utils/depth";
 
 export class EffectsView {
   private readonly sprites = new Map<number, Phaser.GameObjects.Image>();
@@ -36,7 +37,7 @@ export class EffectsView {
       }
       let sprite = this.sprites.get(effect.id);
       if (!sprite) {
-        sprite = this.scene.add.image(effect.x, effect.y, effect.kind === "burst" ? "effect-burst" : "effect-ring").setOrigin(0.5).setDepth(2);
+        sprite = this.scene.add.image(effect.x, effect.y, effect.kind === "burst" ? "effect-burst" : "effect-ring").setOrigin(0.5).setDepth(Depth.Effect);
         this.sprites.set(effect.id, sprite);
       }
       sprite.setPosition(effect.x, effect.y);
@@ -64,7 +65,7 @@ export class EffectsView {
       activeShields.add(shield.owner);
       let rect = this.shields.get(shield.owner);
       if (!rect) {
-        rect = this.scene.add.rectangle(shield.x, shield.y, shield.width, shield.height, 0x8af7ff, 0.18).setOrigin(0.5).setDepth(7);
+        rect = this.scene.add.rectangle(shield.x, shield.y, shield.width, shield.height, 0x8af7ff, 0.18).setOrigin(0.5).setDepth(Depth.Shield);
         rect.setStrokeStyle(2, 0x8af7ff, 0.95);
         rect.setBlendMode(Phaser.BlendModes.ADD);
         this.shields.set(shield.owner, rect);

@@ -2,6 +2,7 @@ import Phaser from "phaser";
 
 import { GRAZE_CIRCLE_ALPHA, GRAZE_CIRCLE_DIAMETER, PLAYER_CORE_RADIUS } from "@repo/constants";
 import type { FighterKey, FighterState } from "@repo/raid-logic";
+import { Depth } from "../../utils/depth";
 
 interface FighterVisual {
   readonly body: Phaser.GameObjects.Sprite;
@@ -41,14 +42,14 @@ export class FighterView {
       .sprite(x, y, "fighter-player")
       .setOrigin(0.5)
       .setDisplaySize(COMBAT_DISPLAY_SIZE, COMBAT_DISPLAY_SIZE)
-      .setDepth(4);
-    const core = this.scene.add.circle(x, y, PLAYER_CORE_RADIUS, 0xff4242, 1).setStrokeStyle(1, 0xffb2b2, 0.9).setDepth(5);
-    const graze = this.scene.add.graphics().setDepth(4.8);
+      .setDepth(Depth.Character);
+    const core = this.scene.add.circle(x, y, PLAYER_CORE_RADIUS, 0xff4242, 1).setStrokeStyle(1, 0xffb2b2, 0.9).setDepth(Depth.PlayerCore);
+    const graze = this.scene.add.graphics().setDepth(Depth.GrazeCircle);
     const statusTag = this.scene.add.text(x, y - 48, "", {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: "14px",
       color: "#f6f1e6",
-    }).setOrigin(0.5).setDepth(6);
+    }).setOrigin(0.5).setDepth(Depth.StatusTag);
     return { body, core, graze, statusTag };
   }
 
