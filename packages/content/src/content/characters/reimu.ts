@@ -17,7 +17,9 @@ const CLEAR_RING_TICKS = secondsToTicks(2 / 3);
 const BOMB_FORWARD_DELAY_TICKS = secondsToTicks(0.5);
 const BOMB_REAR_DELAY_TICKS = secondsToTicks(0.75);
 const BOMB_ORB_DISTANCE = hitCircleUnits(28);
-const BOMB_ORB_SIZE = hitCircleUnits(16);
+const CENTER_SHOT_HIT_SIZE = 12;
+const HOMING_SHOT_HIT_SIZE = 10;
+const BOMB_ORB_SIZE = 40;
 const BOMB_ORB_DAMAGE = 15;
 
 @Vanilla.RegisterCharacter("reimu")
@@ -110,13 +112,14 @@ export class ReimuBattleCharacter extends BattleCharacter {
       );
       ctx.spawnBullet({
         owner: fighter.key,
+        textureKey: "bullet_type_7_offset_2",
         kind: "orb",
         x: position.x,
         y: position.y,
         angle,
         speedRank: "medium",
-        width: hitCircleUnits(2),
-        height: hitCircleUnits(1),
+        width: CENTER_SHOT_HIT_SIZE,
+        height: CENTER_SHOT_HIT_SIZE,
         homingTicks: 0,
         damage: 10,
         spawnOffset: 0,
@@ -160,13 +163,14 @@ export class ReimuBattleCharacter extends BattleCharacter {
   ): void {
     ctx.spawnBullet({
       owner: fighter.key,
+      textureKey: "bullet_type_1_offset_2",
       kind: "orb",
       x,
       y,
       angle,
       speedRank: "low",
-      width: hitCircleUnits(2),
-      height: hitCircleUnits(1),
+      width: HOMING_SHOT_HIT_SIZE,
+      height: HOMING_SHOT_HIT_SIZE,
       homingTicks,
       damage,
       spawnOffset: 0,
@@ -191,6 +195,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
     );
     ctx.spawnBullet({
       owner: fighter.key,
+      textureKey: "bullet_type_23_offset_0",
       kind: "orb",
       x: fp.toFloat(fpX),
       y: fp.toFloat(fpY),

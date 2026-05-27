@@ -81,6 +81,19 @@ export class BattleScene extends Phaser.Scene {
   }
 
   preload(): void {
+    this.load.json("bullet-config", "/assets/bullet/bullet_config.json");
+    for (const texture of [
+      "bullet1",
+      "bullet2",
+      "bullet3",
+      "bullet4",
+      "bullet5",
+      "etbreak",
+    ]) {
+      if (!this.textures.exists(texture)) {
+        this.load.image(texture, `/assets/bullet/${texture}.png`);
+      }
+    }
     if (!this.textures.exists("mob-example-fairy")) {
       this.load.spritesheet("mob-example-fairy", "/assets/mobs/example_fairy/combat.png", {
         frameWidth: 512,

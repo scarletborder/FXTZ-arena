@@ -14,6 +14,8 @@ import {
 import { fpAtan2 } from "../fp";
 import { Vanilla } from "../decorators";
 
+const KNIFE_HIT_SIZE = 20;
+
 @Vanilla.RegisterCharacter("sakuya")
 export class SakuyaBattleCharacter extends BattleCharacter {
   readonly id = "sakuya" as CharacterDefinition["id"];
@@ -71,8 +73,8 @@ export class SakuyaBattleCharacter extends BattleCharacter {
         "medium",
         undefined,
         {
-          width: hitCircleUnits(3),
-          height: hitCircleUnits(1),
+          width: KNIFE_HIT_SIZE,
+          height: KNIFE_HIT_SIZE,
         },
       );
     }
@@ -99,8 +101,8 @@ export class SakuyaBattleCharacter extends BattleCharacter {
           "medium",
           undefined,
           {
-            width: hitCircleUnits(3),
-            height: hitCircleUnits(1),
+            width: KNIFE_HIT_SIZE,
+            height: KNIFE_HIT_SIZE,
           },
           ctx.frame + 6,
           10,
@@ -162,8 +164,8 @@ export class SakuyaBattleCharacter extends BattleCharacter {
         "medium",
         ctx.frame + freezeTicks,
         {
-          width: hitCircleUnits(3),
-          height: hitCircleUnits(1),
+          width: KNIFE_HIT_SIZE,
+          height: KNIFE_HIT_SIZE,
         },
       );
     }
@@ -190,6 +192,10 @@ export class SakuyaBattleCharacter extends BattleCharacter {
   ): void {
     ctx.spawnBullet({
       owner: fighter.key,
+      textureKey:
+        pausedUntil === undefined
+          ? "bullet_type_20_offset_0"
+          : "bullet_type_20_offset_1",
       kind: "knife",
       x,
       y,
@@ -229,8 +235,8 @@ export class SakuyaBattleCharacter extends BattleCharacter {
         "high",
         undefined,
         {
-          width: hitCircleUnits(3),
-          height: hitCircleUnits(1),
+          width: KNIFE_HIT_SIZE,
+          height: KNIFE_HIT_SIZE,
         },
         ctx.frame + frameDelay,
         10,

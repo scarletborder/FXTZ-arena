@@ -1,0 +1,143 @@
+import Phaser from "phaser";
+
+import type { ProjectileState } from "@repo/raid-logic";
+import { Depth } from "../../../utils/depth";
+
+import { projectileAlpha } from "./display";
+import type {
+  FighterKey,
+  ProjectileDisplay,
+  ProjectileSpec,
+  ProjectileVisual,
+} from "./types";
+
+export class ProjectileVisualStore {
+  private readonly visuals = new Map<number, ProjectileVisual>();
+
+  constructor(private readonly scene: Phaser.Scene) {}
+
+  renderImage(
+    projectile: ProjectileState,
+    display: ProjectileDisplay,
+    spec: Extract<ProjectileSpec, { readonly kind: "image" | "fallback" }>,
+    localFighterKey: FighterKey,
+  ): void {
+    const visual = this.ensureImageVisual(projectile.id);
+    const sprite = visual.image;
+    if (spec.kind === "image") {
+      sprite.setTexture(spec.frame.texture, spec.frame.frame);
+      sprite.clearTint();
+      sprite.setDisplaySize(spec.frame.width, spec.frame.height);
+    } else {
+      sprite.setTexture(spec.texture);
+      sprite.setTint(spec.tint);
+      sprite.setDisplaySize(display.width, display.height);
+    }
+    sprite.setPosition(display.x, display.y);
+    sprite.setRotation(
+      spec.kind === "fallback"
+        ? projectile.angle
+        : projectile.angle + Math.PI / 2,
+    );
+    sprite.setAlpha(projectileAlpha(projectile, localFighterKey));
+    sprite.setVisible(true);
+  }
+
+  renderLaser(
+    projectile: ProjectileState,
+    display: ProjectileDisplay,
+    spec: Extract<ProjectileSpec, { readonly kind: "laser" }>,
+    localFighterKey: FighterKey,
+  ): void {
+    const visual = this.ensureLaserVisual(projectile.id);
+    const container = visual.container;
+    container.removeAll(true);
+    container.setPosition(display.x, display.y);
+    container.setRotation(projectile.angle);
+    container.setAlpha(projectileAlpha(projectile, localFighterKey));
+    container.setVisible(true);
+
+    const length = display.width;
+    const scale = display.height / spec.frame.hitWidth;
+    const segmentLength = spec.frame.height * scale;
+    const step = Math.max(1, segmentLength - 0.5);
+    const segmentCount = Math.max(1, Math.ceil(length / step) + 1);
+    const startX = -length / 2;
+
+    for (let index = 0; index < segmentCount; index += 1) {
+      const image = this.scene.add
+        .image(
+          startX + step * (index + 0.5),
+          0,
+          spec.frame.texture,
+          spec.frame.frame,
+        )
+        .setOrigin(0.5)
+        .setRotation(Math.PI / 2)
+        .setDisplaySize(
+          display.height * (spec.frame.width / spec.frame.hitWidth),
+          segmentLength,
+        );
+      container.add(image);
+    }
+  }
+
+  destroy(id: number): void {
+    const visual = this.visuals.get(id);
+    if (!visual) return;
+    destroyVisual(visual);
+    this.visuals.delete(id);
+  }
+
+  prune(active: ReadonlySet<number>): void {
+    for (const [id, visual] of this.visuals) {
+      if (!active.has(id)) {
+        destroyVisual(visual);
+        this.visuals.delete(id);
+      }
+    }
+  }
+
+  private ensureImageVisual(
+    id: number,
+  ): Extract<ProjectileVisual, { kind: "image" }> {
+    const existing = this.visuals.get(id);
+    if (existing?.kind === "image") {
+      return existing;
+    }
+    if (existing) {
+      destroyVisual(existing);
+    }
+    const image = this.scene.add
+      .image(0, 0, "bullet-orb")
+      .setOrigin(0.5)
+      .setDepth(Depth.Projectile);
+    const visual = { kind: "image" as const, image };
+    this.visuals.set(id, visual);
+    return visual;
+  }
+
+  private ensureLaserVisual(
+    id: number,
+  ): Extract<ProjectileVisual, { kind: "laser" }> {
+    const existing = this.visuals.get(id);
+    if (existing?.kind === "laser") {
+      return existing;
+    }
+    if (existing) {
+      destroyVisual(existing);
+    }
+    const container = this.scene.add.container(0, 0).setDepth(Depth.Projectile);
+    const visual = { kind: "laser" as const, container };
+    this.visuals.set(id, visual);
+    return visual;
+  }
+}
+
+function destroyVisual(visual: ProjectileVisual): void {
+  if (visual.kind === "image") {
+    visual.image.destroy();
+  } else {
+    visual.container.destroy(true);
+  }
+}

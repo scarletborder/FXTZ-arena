@@ -17,7 +17,7 @@ import { Vanilla } from "../decorators";
 const SIDE_OFFSET = hitCircleUnits(5);
 const REAR_OFFSET = -hitCircleUnits(10);
 const CENTER_GAP = hitCircleUnits(3);
-const BULLET_SIZE = hitCircleUnits(2);
+const BULLET_SIZE = 6;
 const BOMB_RADIUS_MULTIPLIER = 36;
 const BOMB_BULLET_DAMAGE = 10;
 const NORMAL_BULLET_DAMAGE = 10;
@@ -116,6 +116,8 @@ export class CirnoBattleCharacter extends BattleCharacter {
         angle,
         "high",
         BOMB_BULLET_DAMAGE,
+        ctx.frame,
+        "bullet_type_6_offset_5",
       );
     }
   }
@@ -153,6 +155,7 @@ export class CirnoBattleCharacter extends BattleCharacter {
         "medium",
         NORMAL_BULLET_DAMAGE,
         ctx.frame + frameDelay,
+        "bullet_type_6_offset_5",
       );
     }
   }
@@ -166,9 +169,11 @@ export class CirnoBattleCharacter extends BattleCharacter {
     speedRank: "medium" | "high" = "medium",
     damage = NORMAL_BULLET_DAMAGE,
     frame = ctx.frame,
+    textureKey = "bullet_type_4_offset_5",
   ): void {
     ctx.spawnBullet({
       owner: fighter.key,
+      textureKey,
       kind: "diamond",
       x,
       y,

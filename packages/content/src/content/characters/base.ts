@@ -23,6 +23,7 @@ export const DEFAULT_POINT_COLLECT_RADIUS = 128;
 // defined locally so this package doesn't depend on raid-logic internals.
 export interface BattleBulletSpawnParams {
   readonly owner: FighterKey;
+  readonly textureKey?: string;
   readonly kind: "orb" | "knife" | "diamond" | "spark";
   readonly x: number;
   readonly y: number;
@@ -43,6 +44,7 @@ export interface BattleBulletSpawnParams {
 
 export interface BattleLaserSpawnParams {
   readonly owner: FighterKey;
+  readonly textureKey?: string;
   readonly kind?: "laser" | "spark";
   readonly x: number;
   readonly y: number;
@@ -69,6 +71,7 @@ export interface BattleLaserSpawnParams {
 
 export interface BattleSegmentSpawnParams {
   readonly owner: FighterKey;
+  readonly textureKey?: string;
   readonly x1: number;
   readonly y1: number;
   readonly x2: number;

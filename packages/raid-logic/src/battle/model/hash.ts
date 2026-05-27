@@ -213,6 +213,7 @@ function writeProjectiles(
     hasher.writeNumber(projectile.id);
     hasher.writeString(projectile.kind);
     hasher.writeString(projectile.owner);
+    hasher.writeString(projectile.textureKey ?? "");
     writeFixed(hasher, projectile.x);
     writeFixed(hasher, projectile.y);
     writeFixed(hasher, projectile.vx);

@@ -136,6 +136,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
   ): void {
     ctx.spawnLaser({
       owner: fighter.key,
+      textureKey: "laser_type_1_offset_13",
       x,
       y,
       angle,
@@ -206,6 +207,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
   ): void {
     ctx.spawnLaser({
       owner: fighter.key,
+      textureKey: "laser_type_1_offset_5",
       x,
       y,
       angle,
@@ -235,6 +237,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
   ): void {
     ctx.spawnLaser({
       owner: fighter.key,
+      textureKey: "laser_type_1_offset_5",
       x,
       y,
       angle,

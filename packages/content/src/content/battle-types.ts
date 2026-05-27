@@ -88,6 +88,7 @@ export interface ProjectileState {
   readonly id: number;
   readonly kind: ProjectileKind;
   readonly owner: FighterKey;
+  readonly textureKey?: string;
   x: number;
   y: number;
   previousX: number;

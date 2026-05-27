@@ -7,7 +7,7 @@ import { EffectsView } from "./effects";
 import { FighterView } from "./fighter";
 import { MobView } from "./mobs";
 import { PointView } from "./points";
-import { ProjectileView } from "./projectiles";
+import { ProjectileView } from "./projectile";
 import { createBattleStage, type BattleViewMode } from "./stage";
 import { createBattleTextures } from "./textures";
 import { Depth } from "../../utils/depth";
@@ -42,7 +42,13 @@ export class BattleView {
     this.fighters.render(state.player, state.target, state.frame, state.gameOver, input.infoHeld, localFighterKey, alpha);
     this.mobs.render(state.neutralMobs, alpha);
     this.points.render({ points: state.points, player: state.player, target: state.target, alpha });
-    this.projectiles.render(state.projectiles, state.frame, localFighterKey, alpha);
+    this.projectiles.render(
+      state.projectiles,
+      state.frame,
+      { player: state.player, target: state.target },
+      localFighterKey,
+      alpha,
+    );
     this.effects.render(state.effects, state.shields);
     this.crosshair.render({
       pointerX: input.aimX,

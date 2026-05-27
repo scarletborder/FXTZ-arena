@@ -21,7 +21,7 @@ import { Vanilla } from "../decorators";
 const ARC_SEGMENTS = 8;
 const CLEAR_DAMAGE = 0;
 const SLASH_DAMAGE = 5;
-const REAR_BULLET_SIZE = hitCircleUnits(2);
+const REAR_BULLET_SIZE = 6;
 const SLASH_DISTANCE_TIER1 = hitCircleUnits(12);
 const SLASH_DISTANCE_TIER1_GAP = hitCircleUnits(8);
 const SLASH_DISTANCE_TIER3 = hitCircleUnits(32);
@@ -135,6 +135,7 @@ export class YoumuBattleCharacter extends BattleCharacter {
     if (dashLength > 0) {
       ctx.spawnSegment({
         owner: fighter.key,
+        textureKey: "effect_youmu_dash_path",
         x1: startX,
         y1: startY,
         x2: destination.x,
@@ -182,6 +183,7 @@ export class YoumuBattleCharacter extends BattleCharacter {
       const segmentAngle = slashAngle + offset;
       ctx.spawnLaser({
         owner: fighter.key,
+        textureKey: "laser_type_1_offset_9",
         x: ringCenterX + Math.cos(segmentAngle) * centerlineRadius,
         y: ringCenterY + Math.sin(segmentAngle) * centerlineRadius,
         angle: segmentAngle + Math.PI / 2,
@@ -215,6 +217,7 @@ export class YoumuBattleCharacter extends BattleCharacter {
     );
     ctx.spawnBullet({
       owner: fighter.key,
+      textureKey: "bullet_type_4_offset_9",
       kind: "orb",
       x: position.x,
       y: position.y,
@@ -238,6 +241,7 @@ export class YoumuBattleCharacter extends BattleCharacter {
   ): void {
     ctx.spawnBullet({
       owner: fighter.key,
+      textureKey: "bullet_type_4_offset_9",
       kind: "orb",
       x,
       y,
