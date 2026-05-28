@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createServerConfig } from "./config";
 import { RoomLifecycle } from "./room/lifecycle";
 import { RoomManager } from "./room/manager";
@@ -20,7 +21,13 @@ const messageHandler = new MessageHandler(
 );
 
 const listenHosts = [config.ipv4Host, config.ipv6Host];
-const transport = new WsTransportServer(config.port, listenHosts);
+const tls = config.certPath && config.keyPath
+  ? {
+      cert: readFileSync(config.certPath),
+      key: readFileSync(config.keyPath),
+    }
+  : undefined;
+const transport = new WsTransportServer(config.port, listenHosts, tls);
 
 transport.onConnection((conn) => {
   messageHandler.registerConnection(conn);
@@ -46,7 +53,8 @@ const shutdown = () => {
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
-const addrs = listenHosts.map((host) => `ws://${formatHostForUrl(host)}:${config.port}`);
+const protocol = tls ? "wss" : "ws";
+const addrs = listenHosts.map((host) => `${protocol}://${formatHostForUrl(host)}:${config.port}`);
 console.log(`Dedicated server listening on ${addrs.join(" and ")}`);
 
 function formatHostForUrl(host: string): string {

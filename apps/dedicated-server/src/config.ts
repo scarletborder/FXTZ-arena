@@ -4,6 +4,8 @@ export interface ServerConfig {
   readonly port: number;
   readonly ipv4Host: string;
   readonly ipv6Host: string;
+  readonly certPath?: string;
+  readonly keyPath?: string;
   readonly maxPlayersPerRoom: 2;
   readonly maxRooms: number;
   readonly serverVersion: string;
@@ -27,6 +29,8 @@ export function createServerConfig(
   let ipv4Host = env.IPV4_HOST ?? env.HOST ?? "0.0.0.0";
   let ipv6Host = env.IPV6_HOST ?? "::";
   let port = parsePort(env.PORT ?? "22334");
+  let certPath: string | undefined;
+  let keyPath: string | undefined;
 
   for (const arg of argv) {
     const ipv4 = readOption(arg, "--ipv4");
@@ -44,6 +48,18 @@ export function createServerConfig(
     const portArg = readOption(arg, "--port");
     if (portArg !== null) {
       port = parsePort(portArg);
+      continue;
+    }
+
+    const cert = readOption(arg, "--cert");
+    if (cert !== null) {
+      certPath = cert;
+      continue;
+    }
+
+    const key = readOption(arg, "--key") ?? readOption(arg, "key");
+    if (key !== null) {
+      keyPath = key;
     }
   }
 
@@ -52,6 +68,8 @@ export function createServerConfig(
     ipv4Host,
     ipv6Host,
     port,
+    certPath,
+    keyPath,
   };
 }
 

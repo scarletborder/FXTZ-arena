@@ -37,4 +37,18 @@ describe("createServerConfig", () => {
     expect(config.ipv6Host).toBe("2001:db8::1");
     expect(config.port).toBe(22337);
   });
+
+  it("accepts certificate and key paths from CLI", () => {
+    const config = createServerConfig(["--cert=/tmp/cert.pem", "--key=/tmp/key.pem"], {});
+
+    expect(config.certPath).toBe("/tmp/cert.pem");
+    expect(config.keyPath).toBe("/tmp/key.pem");
+  });
+
+  it("accepts key path without a leading dash", () => {
+    const config = createServerConfig(["--cert=/tmp/cert.pem", "key=/tmp/key.pem"], {});
+
+    expect(config.certPath).toBe("/tmp/cert.pem");
+    expect(config.keyPath).toBe("/tmp/key.pem");
+  });
 });

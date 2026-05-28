@@ -1,9 +1,17 @@
 import { createServer, type Server as HttpServer } from "node:http";
+import { createServer as createSecureServer, type Server as HttpsServer } from "node:https";
 import { WebSocketServer, WebSocket } from "ws";
 import type { ServerMessage } from "../protocol/messages";
 import type { TransportConnection, TransportServer } from "./interface";
 
 let nextConnectionId = 0;
+
+type NodeServer = HttpServer | HttpsServer;
+
+export interface WsTransportTlsOptions {
+  readonly cert: Buffer | string;
+  readonly key: Buffer | string;
+}
 
 class WsConnection implements TransportConnection {
   public readonly id: string;
@@ -56,13 +64,13 @@ class WsConnection implements TransportConnection {
 }
 
 export class WsTransportServer implements TransportServer {
-  private httpServers: HttpServer[];
+  private httpServers: NodeServer[];
   private servers: WebSocketServer[];
   private connHandlers: Array<(conn: TransportConnection) => void> = [];
 
-  constructor(port: number, hosts: readonly string[]) {
+  constructor(port: number, hosts: readonly string[], tls?: WsTransportTlsOptions) {
     this.httpServers = hosts.map((host) => {
-      const httpServer = createServer();
+      const httpServer = tls ? createSecureServer(tls) : createServer();
       httpServer.listen({
         host,
         port,

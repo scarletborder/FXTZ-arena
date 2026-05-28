@@ -6,6 +6,7 @@ export interface UiSettings {
   serverAddress: string;
   music: number;
   sound: number;
+  selfAuthed: boolean;
 }
 
 const STORAGE_KEYS = {
@@ -14,6 +15,7 @@ const STORAGE_KEYS = {
   serverAddress: "fxtz_server_address",
   music: "fxtz_music",
   sound: "fxtz_sound",
+  selfAuthed: "selfAuthed",
 } as const;
 
 const DEFAULT_SERVER_ADDRESS = PUBLIC_SERVER[0]?.addr ?? "ws://localhost:22334";
@@ -82,6 +84,7 @@ export const uiSettings: UiSettings = {
   serverAddress: readString(STORAGE_KEYS.serverAddress, DEFAULT_SERVER_ADDRESS),
   music: readVolume(STORAGE_KEYS.music, 100),
   sound: readVolume(STORAGE_KEYS.sound, 100),
+  selfAuthed: readBoolean(STORAGE_KEYS.selfAuthed, false),
 };
 
 export function setUsername(username: string): void {
@@ -109,4 +112,9 @@ export function setSoundVolume(volume: number): void {
   const normalized = normalizeVolume(volume);
   uiSettings.sound = normalized;
   writeVolume(STORAGE_KEYS.sound, normalized);
+}
+
+export function setSelfAuthed(selfAuthed: boolean): void {
+  uiSettings.selfAuthed = selfAuthed;
+  writeBoolean(STORAGE_KEYS.selfAuthed, selfAuthed);
 }
