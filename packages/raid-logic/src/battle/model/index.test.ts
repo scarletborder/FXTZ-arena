@@ -6,6 +6,13 @@ import {
   type NeutralMobState,
 } from "@repo/types";
 import {
+  ExampleFairy,
+  NeutralMobSpawner,
+  type BattleNeutralMob,
+  type NeutralMobSpawnerContext,
+  type NeutralMobSpawnerState,
+} from "@repo/content";
+import {
   GRAZE_CIRCLE_DIAMETER,
   HIT_CIRCLE_DIAMETER,
   POINT_REWARD_VALUES,
@@ -110,6 +117,74 @@ describe("BattleModel rollback snapshots", () => {
 
     expect(model.effects.map((effect) => effect.id)).toEqual(originalIds);
     expect(originalIds).toEqual([2]);
+    expect(model.hashHex()).toBe(originalHash);
+  });
+
+  it("restores queued neutral mob volleys after rollback", async () => {
+    const model = await createBattleModel();
+    const mob = new ExampleFairy({
+      id: model.allocateNeutralMobId(),
+      waveId: 1,
+      movementVariant: "left",
+    });
+    mob.state.ageTicks = 10;
+    mob.queueVolleyAt(12);
+    model.addNeutralMob(mob);
+
+    const snapshot = model.serialize();
+    const snapshotHash = model.hashHex();
+
+    model.step(input());
+    model.step(input());
+    const originalHash = model.hashHex();
+    const originalProjectiles = model.projectiles.map((projectile) => ({
+      id: projectile.id,
+      owner: projectile.owner,
+      x: projectile.x,
+      y: projectile.y,
+      angle: projectile.angle,
+    }));
+
+    model.deserialize(snapshot);
+
+    expect(model.hashHex()).toBe(snapshotHash);
+
+    model.step(input());
+    model.step(input());
+
+    expect(model.projectiles.map((projectile) => ({
+      id: projectile.id,
+      owner: projectile.owner,
+      x: projectile.x,
+      y: projectile.y,
+      angle: projectile.angle,
+    }))).toEqual(originalProjectiles);
+    expect(model.hashHex()).toBe(originalHash);
+  });
+
+  it("restores neutral mob spawner state after rollback", async () => {
+    const spawner = new HiddenCounterSpawner();
+    const model = await createBattleModelWithSpawner(spawner);
+    model.step(input());
+
+    const snapshot = model.serialize();
+    const snapshotHash = model.hashHex();
+
+    model.step(input());
+    model.step(input());
+    const originalMobIds = model.neutralMobStates().map((mob) => mob.id);
+    const originalHash = model.hashHex();
+
+    model.deserialize(snapshot);
+
+    expect(model.hashHex()).toBe(snapshotHash);
+
+    model.step(input());
+    model.step(input());
+
+    expect(model.neutralMobStates().map((mob) => mob.id)).toEqual(
+      originalMobIds,
+    );
     expect(model.hashHex()).toBe(originalHash);
   });
 });
@@ -1722,6 +1797,30 @@ async function createBattleModel(
       alternateCharacterId: "marisa",
     },
   });
+  return initializeBattleModel(model);
+}
+
+async function createBattleModelWithSpawner(
+  neutralMobSpawner: NeutralMobSpawner,
+): Promise<BattleModel> {
+  return initializeBattleModel(
+    new BattleModel(
+      {
+        player: {
+          primaryCharacterId: "reimu",
+          alternateCharacterId: "marisa",
+        },
+        target: {
+          primaryCharacterId: "reimu",
+          alternateCharacterId: "marisa",
+        },
+      },
+      { neutralMobSpawner },
+    ),
+  );
+}
+
+async function initializeBattleModel(model: BattleModel): Promise<BattleModel> {
   const physics = new BattlePhysics();
   await physics.init();
   model.setPhysics(physics);
@@ -1916,6 +2015,50 @@ class StaticRectNeutralMob extends NeutralMob<
 
   onDeath(): void {
     // Static test target never dies.
+  }
+}
+
+interface HiddenCounterSpawnerState extends NeutralMobSpawnerState {
+  readonly spawnerId: "hidden-counter";
+  readonly nextSpawnFrame: number;
+}
+
+class HiddenCounterSpawner extends NeutralMobSpawner<HiddenCounterSpawnerState> {
+  readonly id = "hidden-counter";
+  private nextSpawnFrame = 3;
+
+  step(ctx: NeutralMobSpawnerContext): void {
+    if (ctx.frame !== this.nextSpawnFrame) {
+      return;
+    }
+    ctx.spawnMob(
+      new TestNeutralMob(ctx.allocateMobId(), 320 + ctx.frame, 240),
+    );
+    this.nextSpawnFrame += 3;
+  }
+
+  snapshot(): HiddenCounterSpawnerState {
+    return {
+      spawnerId: this.id,
+      nextSpawnFrame: this.nextSpawnFrame,
+    };
+  }
+
+  restore(snapshot: HiddenCounterSpawnerState): void {
+    this.nextSpawnFrame = snapshot.nextSpawnFrame;
+  }
+
+  reset(): void {
+    this.nextSpawnFrame = 3;
+  }
+
+  createMobFromSnapshot(snapshot: NeutralMobState): BattleNeutralMob | undefined {
+    if (snapshot.kind !== "test_mob") {
+      return undefined;
+    }
+    const mob = new TestNeutralMob(snapshot.id, snapshot.x, snapshot.y);
+    mob.restore(snapshot);
+    return mob;
   }
 }
 

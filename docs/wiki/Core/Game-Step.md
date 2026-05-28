@@ -31,7 +31,7 @@
 ## 帧同步和回滚要求
 
 - 所有影响战局结果的逻辑必须由 tick 推进，不能读取真实时间。
-- 位置、距离、角度、移动和碰撞相关计算应遵守 [Fixed-point、数学计算和移动处理](./Fixed-Point-and-Math.md)。
+- 位置、距离、角度、移动和碰撞体参数应遵守 [Fixed-point、数学计算和移动处理](./Fixed-Point-and-Math.md)；权威碰撞结果由 `BattlePhysics` / Rapier 适配层产出。
 - Map/Set 或数组参与 hash 前必须有稳定顺序。
 - 新增阶段时要明确它在 `stepFrame` 中的位置，尤其是它发生在碰撞前还是碰撞后。
 - 新增可生成 id 的系统时，`nextId` 必须进入 snapshot。

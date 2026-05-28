@@ -206,7 +206,7 @@ export class BattleModel {
   }
 
   neutralMobStates(): readonly NeutralMobState[] {
-    return this.neutralMobs.map((mob) => mob.state);
+    return this.neutralMobs.map((mob) => mob.snapshot());
   }
 
   getNextNeutralMobId(): number {

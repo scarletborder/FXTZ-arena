@@ -145,9 +145,9 @@ const fpNormX = fp.div(fpDx, fpLen);
 const fpNormY = fp.div(fpDy, fpLen);
 ```
 
-### 碰撞检测（旋转矩形 vs 圆）
+### 碰撞体参数
 
-见 `packages/raid-logic/src/battle/model/projectile/index.ts` 中 `rotatedRectIntersectsCircle` 函数。
+权威命中、shield 阻挡、mob 命中和擦弹由 `BattlePhysics` / Rapier 适配层产出，不应在角色、能力卡或前端里新增一套手写几何判定。定点数规则仍然适用于进入 Rapier 前的位置、尺寸、角度、速度和过滤条件；这些参数必须来自确定性逻辑计算，rollback 后重建 Rapier bodies 应得到同样的碰撞结果。
 
 ## 示例：编写一个发射弹幕的角色
 
@@ -297,7 +297,8 @@ export class ExampleBattleCharacter extends BattleCharacter {
 ## 文件清单
 
 - 基础 fp 工具：`packages/raid-logic/src/battle/fp.ts`
-- 物理碰撞：`packages/raid-logic/src/battle/model/projectile/index.ts`
+- Rapier 物理适配：`packages/raid-logic/src/battle/model/physics-adapter.ts`
+- 投射物碰撞消费：`packages/raid-logic/src/battle/model/projectile/index.ts`
 - 弹幕逻辑：`packages/raid-logic/src/battle/model/projectile/bullet.ts`
 - 激光逻辑：`packages/raid-logic/src/battle/model/projectile/laser.ts`
 - 角色基类：`packages/raid-logic/src/battle/presets/characters/base.ts`

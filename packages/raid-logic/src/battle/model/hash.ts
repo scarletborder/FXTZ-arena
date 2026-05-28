@@ -13,6 +13,30 @@ import type {
   NeutralMobSpawnerStateValue,
 } from "@repo/content";
 
+const NEUTRAL_MOB_HASHED_KEYS = new Set([
+  "id",
+  "key",
+  "kind",
+  "textureKey",
+  "x",
+  "y",
+  "previousX",
+  "previousY",
+  "hitRadius",
+  "hitWidth",
+  "hitHeight",
+  "waveId",
+  "movementVariant",
+  "form",
+  "MaxHealth",
+  "CurrentHealth",
+  "pointRewardSize",
+  "damageTaken",
+  "active",
+  "ageTicks",
+  "sfxFlags",
+]);
+
 class DeterministicHasher {
   private value = 0x811c9dc5;
 
@@ -88,6 +112,27 @@ function writeNeutralMobs(
     hasher.writeNumber(mob.damageTaken ?? 0);
     hasher.writeNumber(mob.active ? 1 : 0);
     hasher.writeNumber(mob.ageTicks);
+    writeNeutralMobExtraState(hasher, mob);
+  }
+}
+
+function writeNeutralMobExtraState(
+  hasher: DeterministicHasher,
+  mob: NeutralMobState,
+): void {
+  const entries = Object.entries(
+    mob as unknown as Record<string, NeutralMobSpawnerStateValue | undefined>,
+  )
+    .filter(
+      ([key, value]) =>
+        !NEUTRAL_MOB_HASHED_KEYS.has(key) && value !== undefined,
+    )
+    .sort(([left], [right]) => left.localeCompare(right));
+
+  hasher.writeNumber(entries.length);
+  for (const [key, value] of entries) {
+    hasher.writeString(key);
+    writeStateValue(hasher, value!);
   }
 }
 

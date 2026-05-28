@@ -38,14 +38,26 @@ import { CombatSyncManager } from "./manager";
 import type { CombatRollbackRecord } from "./types";
 
 describe("CombatSyncManager rollback integration", () => {
-  it("matches final frame and global BLAKE3 hashes through the dedicated server with asymmetric latency", async () => {
+  it.each([
+    {
+      name: "asymmetric latency",
+      latency: {
+        "Player1": { clientToServer: 2, serverToClient: 6 },
+        "Player2": { clientToServer: 8, serverToClient: 3 },
+      },
+    },
+    {
+      name: "high asymmetric latency",
+      latency: {
+        "Player1": { clientToServer: 10, serverToClient: 18 },
+        "Player2": { clientToServer: 22, serverToClient: 12 },
+      },
+    },
+  ])("matches final frame and global BLAKE3 hashes through the dedicated server with $name", async ({ latency }) => {
     expect(getCharacterDefinition("reimu")).toBeDefined();
     expect(getAbilityCardDefinition("spirit_strike_card")).toBeDefined();
 
-    const harness = new DedicatedServerHarness({
-      "Player1": { clientToServer: 2, serverToClient: 6 },
-      "Player2": { clientToServer: 8, serverToClient: 3 },
-    });
+    const harness = new DedicatedServerHarness(latency);
 
     const config = harness.setupBattle();
     const clientA = await createClient("Player1", config, harness.endpoint("Player1"));
@@ -75,7 +87,7 @@ describe("CombatSyncManager rollback integration", () => {
     expectFrameHashesMatch(clientA, clientB, finalFrame);
     expect(clientA.hashAt(finalFrame)).toBe(clientB.hashAt(finalFrame));
     expect(clientA.globalHashAt(finalFrame)).toBe(clientB.globalHashAt(finalFrame));
-  }, 20_000);
+  }, 30_000);
 });
 
 async function createClient(
@@ -225,7 +237,8 @@ class DedicatedServerHarness {
     new RoomLifecycle(),
     {
       port: 22334,
-      host: "127.0.0.1",
+      ipv4Host: "127.0.0.1",
+      ipv6Host: "::1",
       maxPlayersPerRoom: 2,
       maxRooms: 8,
       serverVersion: "test",

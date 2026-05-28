@@ -4,7 +4,7 @@
 
 ## 基本原则
 
-联机同步只信任帧输入和 `raid-logic` 的确定性模拟。渲染、UI、Phaser 状态、Rapier 事件顺序、真实时间、网络抵达顺序都不能影响权威战局结果。
+联机同步只信任帧输入和 `raid-logic` 的确定性模拟。渲染、UI、Phaser 状态、真实时间、网络抵达顺序都不能影响权威战局结果。Rapier 是权威碰撞查询层，但它必须只通过 `raid-logic` 的固定封装读写，并把事件转换为稳定排序、纯数据的逻辑结果。
 
 每个客户端可以有不同的预测历史，但在同一个权威帧、同一组双方输入下，最终恢复并重放后的状态 hash 必须一致。任何只在一端发生的 rollback 都不能改变之后的实体 id、效果 id、计时器或生成顺序。
 
@@ -44,16 +44,23 @@ rollback snapshot 不能只保存当前还存在的实体。所有会影响未�
 
 ## 投射物、消弹与碰撞
 
-权威战斗判定不要依赖 Rapier collision event queue。Rapier 可以用于 debug overlay 或独立测试，但 projectile 命中、shield 阻挡、消弹等权威结果应使用固定顺序的确定性代码。
+权威战斗碰撞应使用 `BattlePhysics` / Rapier 适配层。不要在角色、能力卡、前端或其他系统里绕过适配层手写一套 projectile 命中、shield 阻挡、mob 命中或擦弹几何逻辑；否则很容易出现两端一边使用 Rapier、一边使用近似几何，导致“看起来命中了但权威未命中”的分歧。
+
+Rapier 事件本身仍然需要被逻辑层规范化：
+
+- 每帧由 `BattleModel` 在固定阶段同步 fighter、projectile、shield、neutral mob、point 等碰撞体，再推进 Rapier。
+- Rapier 输出必须转成 `{ projectileId, victimKey, victimMobId, grazedByKey, blockedByShield }` 这类纯数据结果，后续按稳定顺序消费。
+- rollback / deserialize 后必须清掉 Rapier 临时 bodies，并由下一帧从逻辑状态重建，不能把 Rapier 原生对象、handle 或事件队列写进 snapshot。
+- 如果某类形状 Rapier 无法直接表达，应优先扩展适配层中的 Rapier 形状建模或显式定义一个可同步的查询策略，而不是在业务逻辑旁路新增一套碰撞判定。
 
 消弹效果需要明确作用域：
 
 - Reimu bomb 和 Sakuya bomb 使用固定点距离清弹。
 - Sakuya bomb 会暂停剩余投射物，`pausedUntil` 必须使用确定的 frame 值。
-- Backdoor 只应清除已可见、有伤害、敌方、普通弹幕 `orb` / `knife`。不要清除己方弹、未可见预告弹、零伤害弹、`spark` / `laser` 等特殊投射物。
+- Backdoor 只应阻挡/清除已可见、有伤害、敌方、普通弹幕 `orb` / `knife`。不要影响己方弹、未可见预告弹、零伤害弹、`spark` / `laser` 等特殊投射物。碰撞范围由 Rapier shield body 表达，逻辑层只负责过滤作用域。
 - Marisa Master Spark 这类延迟生成不能在 `ctx.spawnLaser()` 后立刻修改 `projectiles[projectiles.length - 1]`，因为 spawn 是 deferred。需要把 `pausedUntil` 等参数直接传进 spawn params。
 
-所有几何判断都应使用固定点工具，Map/Set 遍历参与 hash 前必须排序。新增 projectile kind 或 shield 形状时，必须补 rollback replay 测试。
+所有进入 Rapier 的位置、尺寸、角度和输出结果都应在适配层内保持确定性；Map/Set 遍历参与 hash 或碰撞消费前必须排序。新增 projectile kind、mob hitbox 或 shield 形状时，必须补 rollback replay 测试，并覆盖两端经历不同预测/rollback 历史后 Rapier 结果仍一致。
 
 ## Debug Log 与 Diff
 
