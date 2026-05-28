@@ -39,13 +39,15 @@ jobs:
 
       - name: Resolve build metadata
         id: meta
+        env:
+          CONFIGURED_APP_BASE: ${{ vars.VITE_APP_BASE }}
         run: |
           TAG_NAME="${GITHUB_REF_NAME}"
           APP_VERSION="${TAG_NAME}"
           APP_COMMIT="$(git rev-list --count HEAD)"
           BUILD_LABEL="${APP_VERSION}+${APP_COMMIT}"
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
-          APP_BASE="/${REPO_NAME}/"
+          APP_BASE="${CONFIGURED_APP_BASE:-./}"
 
           echo "version=${APP_VERSION}" >> "$GITHUB_OUTPUT"
           echo "commit=${APP_COMMIT}" >> "$GITHUB_OUTPUT"

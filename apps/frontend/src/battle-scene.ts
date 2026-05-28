@@ -32,6 +32,7 @@ import {
 } from "./battle/mobile-controls";
 import { BattleView } from "./battle/view";
 import { Depth } from "./utils/depth";
+import { assetUrl } from "./utils/assets";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
 import { connectionManager } from "./menu/shared";
 import { CombatSyncManager } from "./network/combat";
@@ -101,8 +102,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.json("bullet-config", "/assets/bullet/bullet_config.json");
-    this.load.json("enemy-config", "/assets/enemy/enemy_config.json");
+    this.load.json("bullet-config", assetUrl("assets/bullet/bullet_config.json"));
+    this.load.json("enemy-config", assetUrl("assets/enemy/enemy_config.json"));
     for (const texture of [
       "bullet1",
       "bullet2",
@@ -112,12 +113,12 @@ export class BattleScene extends Phaser.Scene {
       "etbreak",
     ]) {
       if (!this.textures.exists(texture)) {
-        this.load.image(texture, `/assets/bullet/${texture}.png`);
+        this.load.image(texture, assetUrl(`assets/bullet/${texture}.png`));
       }
     }
     for (const texture of ["enemy", "enemy2", "enemy5", "enemy_aura"]) {
       if (!this.textures.exists(texture)) {
-        this.load.image(texture, `/assets/enemy/${texture}.png`);
+        this.load.image(texture, assetUrl(`assets/enemy/${texture}.png`));
       }
     }
     for (const character of getAllCharacterDefinitions()) {
