@@ -1,11 +1,11 @@
-import { DEFAULT_SERVER_CONFIG } from "./config";
+import { createServerConfig } from "./config";
 import { RoomLifecycle } from "./room/lifecycle";
 import { RoomManager } from "./room/manager";
 import { MessageHandler } from "./protocol/handler";
 import { SessionStore } from "./session/store";
 import { WsTransportServer } from "./transport/ws-server";
 
-const config = DEFAULT_SERVER_CONFIG;
+const config = createServerConfig();
 
 console.log(`You are running FXTZ_area dedicated server.  Version:${config.serverVersion}`);
 
@@ -45,5 +45,9 @@ const shutdown = () => {
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
-const addr = `ws://${config.host}:${config.port}`;
+const addr = `ws://${formatHostForUrl(config.host)}:${config.port}`;
 console.log(`Dedicated server listening on ${addr}`);
+
+function formatHostForUrl(host: string): string {
+  return host.includes(":") && !host.startsWith("[") ? `[${host}]` : host;
+}

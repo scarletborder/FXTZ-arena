@@ -15,3 +15,54 @@ export const DEFAULT_SERVER_CONFIG: ServerConfig = {
   maxRooms: 100,
   serverVersion: APP_BUILD_LABEL,
 };
+
+type EnvLike = Readonly<Record<string, string | undefined>>;
+
+export function createServerConfig(
+  argv: readonly string[] = process.argv.slice(2),
+  env: EnvLike = process.env,
+): ServerConfig {
+  let host = env.HOST ?? "0.0.0.0";
+  let port = parsePort(env.PORT ?? "22334");
+
+  for (const arg of argv) {
+    const ipv4 = readOption(arg, "--ipv4");
+    if (ipv4 !== null) {
+      host = ipv4;
+      continue;
+    }
+
+    const ipv6 = readOption(arg, "--ipv6");
+    if (ipv6 !== null) {
+      host = ipv6;
+      continue;
+    }
+
+    const portArg = readOption(arg, "--port");
+    if (portArg !== null) {
+      port = parsePort(portArg);
+    }
+  }
+
+  return {
+    ...DEFAULT_SERVER_CONFIG,
+    host,
+    port,
+  };
+}
+
+function readOption(arg: string, name: string): string | null {
+  const prefix = `${name}=`;
+  if (!arg.startsWith(prefix)) {
+    return null;
+  }
+  return arg.slice(prefix.length).trim();
+}
+
+function parsePort(raw: string): number {
+  const port = Number.parseInt(raw, 10);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`Invalid port: ${raw}`);
+  }
+  return port;
+}

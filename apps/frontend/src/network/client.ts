@@ -1,5 +1,6 @@
 import type { BattleConfig, ClientMessage, PlayerId, ServerMessage } from "@repo/types";
 import { APP_BUILD_LABEL } from "@repo/constants";
+import { normalizeServerAddress } from "./address";
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
 
@@ -86,13 +87,15 @@ export class ConnectionManager {
       return;
     }
 
-    this.lastAddress = address;
+    const normalizedAddress = normalizeServerAddress(address);
+
+    this.lastAddress = normalizedAddress;
     this.lastUsername = username;
     this.manualDisconnect = false;
     this.setStatus("connecting");
 
     try {
-      this.ws = new WebSocket(address);
+      this.ws = new WebSocket(normalizedAddress);
     } catch {
       this.setStatus("error");
       return;
