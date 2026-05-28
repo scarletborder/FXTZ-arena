@@ -1,7 +1,17 @@
 import Phaser from "phaser";
 
-import { ARENA_HEIGHT, ARENA_WIDTH, PLAYER_CORE_RADIUS, YOUMU_BOMB_DASH_DISTANCE } from "@repo/constants";
-import type { BattleInputState, BattleOutputState, BodyDebugData, FighterKey } from "@repo/raid-logic";
+import {
+  ARENA_HEIGHT,
+  ARENA_WIDTH,
+  PLAYER_CORE_RADIUS,
+  YOUMU_BOMB_DASH_DISTANCE,
+} from "@repo/constants";
+import type {
+  BattleInputState,
+  BattleOutputState,
+  BodyDebugData,
+  FighterKey,
+} from "@repo/raid-logic";
 import { CrosshairView } from "./crosshair";
 import { EffectsView } from "./effects";
 import { FighterView } from "./fighter";
@@ -37,11 +47,30 @@ export class BattleView {
     this.debugGraphics.setDepth(Depth.Debug);
   }
 
-  render(state: BattleOutputState, input: BattleInputState, localFighterKey: FighterKey = "Player1", alpha = 1): void {
-    const localFighter = localFighterKey === "Player1" ? state.player : state.target;
-    this.fighters.render(state.player, state.target, state.frame, state.gameOver, input.infoHeld, localFighterKey, alpha);
+  render(
+    state: BattleOutputState,
+    input: BattleInputState,
+    localFighterKey: FighterKey = "Player1",
+    alpha = 1,
+  ): void {
+    const localFighter =
+      localFighterKey === "Player1" ? state.player : state.target;
+    this.fighters.render(
+      state.player,
+      state.target,
+      state.frame,
+      state.gameOver,
+      input.infoHeld,
+      localFighterKey,
+      alpha,
+    );
     this.mobs.render(state.neutralMobs, alpha);
-    this.points.render({ points: state.points, player: state.player, target: state.target, alpha });
+    this.points.render({
+      points: state.points,
+      player: state.player,
+      target: state.target,
+      alpha,
+    });
     this.projectiles.render(
       state.projectiles,
       state.frame,
@@ -61,6 +90,10 @@ export class BattleView {
       pointCount: localFighter.pointCount,
       bombs: localFighter.bombs,
       lives: localFighter.lives,
+      activeCardUses: localFighter.activeCardUses,
+      activeCardUseLimit: localFighter.activeCard?.useLimit,
+      activeCardCooldownRemaining: localFighter.activeCardCooldownUntil,
+      activeCardCooldownTotal: localFighter.activeCard?.cooldownTicks ?? 0,
     });
   }
 
@@ -124,5 +157,8 @@ function canYoumuDashToPointer(
   ) {
     return false;
   }
-  return Math.hypot(pointerX - fighter.x, pointerY - fighter.y) <= YOUMU_BOMB_DASH_DISTANCE;
+  return (
+    Math.hypot(pointerX - fighter.x, pointerY - fighter.y) <=
+    YOUMU_BOMB_DASH_DISTANCE
+  );
 }

@@ -127,8 +127,8 @@ describe("BattleModel reload timing", () => {
     model.step(input({ reloadPressed: true }));
 
     expect(model.player.reloadStartedAmmo).toBe(3);
-    expect(model.player.reloadTotal).toBe(96);
-    expect(model.player.reloadRemaining).toBe(96);
+    expect(model.player.reloadTotal).toBe(144);
+    expect(model.player.reloadRemaining).toBe(144);
     expect(model.player.ammo).toBe(3);
 
     for (
@@ -173,8 +173,8 @@ describe("BattleModel reload timing", () => {
     model.step(input({ reloadPressed: true }));
 
     expect(model.player.reloadStartedAmmo).toBe(2);
-    expect(model.player.reloadTotal).toBe(60);
-    expect(model.player.reloadRemaining).toBe(60);
+    expect(model.player.reloadTotal).toBe(54);
+    expect(model.player.reloadRemaining).toBe(54);
     expect(model.player.ammo).toBe(2);
 
     for (
@@ -201,8 +201,8 @@ describe("BattleModel reload timing", () => {
     model.step(input({ reloadPressed: true }));
 
     expect(model.player.reloadStartedAmmo).toBe(1);
-    expect(model.player.reloadTotal).toBe(120);
-    expect(model.player.reloadRemaining).toBe(120);
+    expect(model.player.reloadTotal).toBe(108);
+    expect(model.player.reloadRemaining).toBe(108);
     expect(model.player.ammo).toBe(1);
   });
 
@@ -223,8 +223,8 @@ describe("BattleModel reload timing", () => {
     model.step(input({ reloadPressed: true }));
 
     expect(model.player.reloadStartedAmmo).toBe(0);
-    expect(model.player.reloadTotal).toBe(180);
-    expect(model.player.reloadRemaining).toBe(180);
+    expect(model.player.reloadTotal).toBe(162);
+    expect(model.player.reloadRemaining).toBe(162);
     expect(model.player.ammo).toBe(0);
   });
 
@@ -502,9 +502,7 @@ describe("BattleModel ability cards", () => {
     );
     baseline.step(input());
 
-    const boosted = await createBattleModel("reimu", "marisa", [
-      "graze_lover",
-    ]);
+    const boosted = await createBattleModel("reimu", "marisa", ["graze_lover"]);
     boosted.projectiles.push(
       testProjectile({
         id: 1,
@@ -759,7 +757,7 @@ describe("BattleModel character bombs", () => {
     model.step(input({ shootPressed: true }));
     model.step(input({ reloadPressed: true }));
 
-    expect(model.player.reloadRemaining).toBe(60);
+    expect(model.player.reloadRemaining).toBe(54);
 
     model.step(input({ bombPressed: true }));
     const frozenReloadRemaining = model.player.reloadRemaining;
@@ -775,6 +773,34 @@ describe("BattleModel character bombs", () => {
     }
 
     expect(model.player.reloadRemaining).toBeLessThan(frozenReloadRemaining);
+  });
+
+  it("sakuya time stop pauses active card cooldown progress", async () => {
+    const model = await createBattleModel(
+      "sakuya",
+      "reimu",
+      ["spirit_strike_card"],
+      "spirit_strike_card",
+    );
+    model.step(input({ activeCardPressed: true }));
+    const initialCooldown = model.player.activeCardCooldownUntil;
+
+    model.step(input({ bombPressed: true }));
+    const frozenCooldown = model.player.activeCardCooldownUntil;
+
+    for (let index = 0; index < 30; index += 1) {
+      model.step(input());
+    }
+
+    expect(model.player.activeCardCooldownUntil).toBe(frozenCooldown);
+
+    while (model.player.timeStopUntil > 0) {
+      model.step(input());
+    }
+
+    expect(model.player.activeCardCooldownUntil).toBe(initialCooldown - 1);
+    model.step(input());
+    expect(model.player.activeCardCooldownUntil).toBe(initialCooldown - 2);
   });
 
   it("sakuya time stop preserves delayed volley intervals until time resumes", async () => {
@@ -1150,9 +1176,7 @@ describe("BattleModel point power shooting tiers", () => {
     );
     expect(
       bombOrbs.every(
-        (projectile) =>
-          projectile.width === 40 &&
-          projectile.height === 40,
+        (projectile) => projectile.width === 40 && projectile.height === 40,
       ),
     ).toBe(true);
     expect(

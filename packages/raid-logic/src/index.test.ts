@@ -183,7 +183,9 @@ describe("@repo/raid-logic", () => {
   });
 
   it("restores a snapshot and replays to the same current hash", () => {
-    const battle = createRaidBattle(createDefaultBattleConfig("rollback", PLAYERS));
+    const battle = createRaidBattle(
+      createDefaultBattleConfig("rollback", PLAYERS),
+    );
     const inputs = createInputSequence(12);
 
     for (const frameInputs of inputs) {
@@ -233,11 +235,15 @@ describe("@repo/raid-logic", () => {
 
     const reimu = battle.state.fighters.get("Player1");
     expect(reimu?.reloadStartedAmmo).toBe(3);
-    expect(reimu?.reloadTotalTicks).toBe(96);
-    expect(reimu?.reloadRemainingTicks).toBe(96);
+    expect(reimu?.reloadTotalTicks).toBe(144);
+    expect(reimu?.reloadRemainingTicks).toBe(144);
     expect(reimu?.ammo).toBe(3);
 
-    for (let frame = 13; (battle.state.fighters.get("Player1")?.reloadRemainingTicks ?? 0) > 0; frame += 1) {
+    for (
+      let frame = 13;
+      (battle.state.fighters.get("Player1")?.reloadRemainingTicks ?? 0) > 0;
+      frame += 1
+    ) {
       battle.tick([createInput(frame, "Player1")]);
     }
 
@@ -256,7 +262,11 @@ describe("@repo/raid-logic", () => {
     expect(marisa?.reloadRemainingTicks).toBe(180);
     expect(marisa?.ammo).toBe(0);
 
-    for (let frame = 2; (battle.state.fighters.get("Player1")?.reloadRemainingTicks ?? 0) > 0; frame += 1) {
+    for (
+      let frame = 2;
+      (battle.state.fighters.get("Player1")?.reloadRemainingTicks ?? 0) > 0;
+      frame += 1
+    ) {
       battle.tick([createInput(frame, "Player1")]);
     }
 
@@ -271,11 +281,15 @@ describe("@repo/raid-logic", () => {
 
     const sakuya = battle.state.fighters.get("Player1");
     expect(sakuya?.reloadStartedAmmo).toBe(2);
-    expect(sakuya?.reloadTotalTicks).toBe(60);
-    expect(sakuya?.reloadRemainingTicks).toBe(60);
+    expect(sakuya?.reloadTotalTicks).toBe(54);
+    expect(sakuya?.reloadRemainingTicks).toBe(54);
     expect(sakuya?.ammo).toBe(2);
 
-    for (let frame = 2; (battle.state.fighters.get("Player1")?.reloadRemainingTicks ?? 0) > 0; frame += 1) {
+    for (
+      let frame = 2;
+      (battle.state.fighters.get("Player1")?.reloadRemainingTicks ?? 0) > 0;
+      frame += 1
+    ) {
       battle.tick([createInput(frame, "Player1")]);
     }
 
@@ -296,8 +310,8 @@ describe("@repo/raid-logic", () => {
 
     const sakuya = battle.state.fighters.get("Player1");
     expect(sakuya?.reloadStartedAmmo).toBe(1);
-    expect(sakuya?.reloadTotalTicks).toBe(120);
-    expect(sakuya?.reloadRemainingTicks).toBe(120);
+    expect(sakuya?.reloadTotalTicks).toBe(108);
+    expect(sakuya?.reloadRemainingTicks).toBe(108);
     expect(sakuya?.ammo).toBe(1);
   });
 
@@ -319,14 +333,16 @@ describe("@repo/raid-logic", () => {
 
     const sakuya = battle.state.fighters.get("Player1");
     expect(sakuya?.reloadStartedAmmo).toBe(0);
-    expect(sakuya?.reloadTotalTicks).toBe(180);
-    expect(sakuya?.reloadRemainingTicks).toBe(180);
+    expect(sakuya?.reloadTotalTicks).toBe(162);
+    expect(sakuya?.reloadRemainingTicks).toBe(162);
     expect(sakuya?.ammo).toBe(0);
   });
 });
 
 function runHashSequence(): readonly number[] {
-  const battle = createRaidBattle(createDefaultBattleConfig("determinism", PLAYERS));
+  const battle = createRaidBattle(
+    createDefaultBattleConfig("determinism", PLAYERS),
+  );
   const hashes: number[] = [];
 
   for (const frameInputs of createInputSequence(20)) {

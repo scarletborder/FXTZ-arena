@@ -95,6 +95,16 @@ export class TickerManager {
     }
   }
 
+  getRemainingTicks(group: string): number {
+    let remaining = 0;
+    for (const timer of Array.from(this.timers.values())) {
+      if (timer.group === group && timer.targetFrame > this.currentFrame) {
+        remaining = Math.max(remaining, timer.targetFrame - this.currentFrame);
+      }
+    }
+    return remaining;
+  }
+
   pauseGroup(group: string, ticks: number): void {
     if (ticks <= 0) {
       return;
@@ -144,7 +154,9 @@ export class TickerManager {
     }
   }
 
-  serializeProjectileTimers(projectile: ProjectileState): ProjectileTimerSnapshot {
+  serializeProjectileTimers(
+    projectile: ProjectileState,
+  ): ProjectileTimerSnapshot {
     return {
       visibleIn: projectile.visibleFrom - this.currentFrame,
       expireIn:
@@ -161,10 +173,9 @@ export class TickerManager {
     };
   }
 
-  restoreProjectileTimers(snapshot: ProjectileTimerSnapshot): Pick<
-    ProjectileState,
-    ProjectileTimerKey
-  > {
+  restoreProjectileTimers(
+    snapshot: ProjectileTimerSnapshot,
+  ): Pick<ProjectileState, ProjectileTimerKey> {
     return {
       visibleFrom: this.currentFrame + snapshot.visibleIn,
       expireAt:

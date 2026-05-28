@@ -49,7 +49,8 @@ export function createFighter(
     alternateCharacter,
     activeCard,
     abilityCards: cards,
-    activeCardUses: activeCard?.useLimit === "infinite" ? 999 : (activeCard?.useLimit ?? 0),
+    activeCardUses:
+      activeCard?.useLimit === "infinite" ? 999 : (activeCard?.useLimit ?? 0),
     activeCardCooldownUntil: 0,
     fireCooldownUntil: 0,
     bombCooldownUntil: 0,
@@ -74,7 +75,15 @@ export function resetFighter(
   activeCard: AbilityCardDefinition | undefined,
   cards: readonly AbilityCardDefinition[] = activeCard ? [activeCard] : [],
 ): void {
-  const reset = createFighter(fighter.key, primaryCharacter, alternateCharacter, x, y, activeCard, cards);
+  const reset = createFighter(
+    fighter.key,
+    primaryCharacter,
+    alternateCharacter,
+    x,
+    y,
+    activeCard,
+    cards,
+  );
   Object.assign(fighter, reset);
 }
 
@@ -85,7 +94,10 @@ export function tickFighterTimers(fighter: FighterState): void {
   if (fighter.invulnerableDelayRemaining > 0) {
     fighter.invulnerableDelayRemaining -= 1;
     if (fighter.invulnerableDelayRemaining === 0) {
-      fighter.invulnerableUntil = Math.max(fighter.invulnerableUntil, fighter.invulnerableDelayDuration);
+      fighter.invulnerableUntil = Math.max(
+        fighter.invulnerableUntil,
+        fighter.invulnerableDelayDuration,
+      );
       fighter.invulnerableDelayDuration = 0;
     }
   }
@@ -94,9 +106,6 @@ export function tickFighterTimers(fighter: FighterState): void {
   }
   if (fighter.bombCooldownUntil > 0) {
     fighter.bombCooldownUntil -= 1;
-  }
-  if (fighter.activeCardCooldownUntil > 0) {
-    fighter.activeCardCooldownUntil -= 1;
   }
   if (fighter.actionLockedUntil > 0) {
     fighter.actionLockedUntil -= 1;
@@ -142,7 +151,11 @@ export function setCharacterAmmo(
   character: CharacterDefinition,
   ammo: number,
 ): void {
-  fighter.ammoByCharacterId[character.id] = clamp(ammo, 0, character.ammoCapacity);
+  fighter.ammoByCharacterId[character.id] = clamp(
+    ammo,
+    0,
+    character.ammoCapacity,
+  );
 }
 
 function createAmmoState(

@@ -1,19 +1,48 @@
 import { fp } from "@shaisrc/fixed-point";
 
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
-import { ARENA_HEIGHT, ARENA_WIDTH, DEFAULT_BOMBS, PLAYER_CORE_RADIUS, speedRankToPixelsPerTick } from "@repo/types";
+import {
+  ARENA_HEIGHT,
+  ARENA_WIDTH,
+  DEFAULT_BOMBS,
+  PLAYER_CORE_RADIUS,
+  speedRankToPixelsPerTick,
+} from "@repo/types";
 
 import type { BattleInputState } from "@repo/types";
-import type { FighterKey, FighterState, ShieldState, TrainingStats } from "@repo/content";
+import type {
+  FighterKey,
+  FighterState,
+  ShieldState,
+  TrainingStats,
+} from "@repo/content";
 import { applyHit, getFireCooldown } from "./combat";
-import { createFighter, getCharacterAmmo, resetFighter, setCharacterAmmo, tickFighterTimers } from "./fighter";
-import { applyInitialCardState, createBattleAbilityCard, type BattleAbilityCard, type BattleHitContext } from "@repo/content";
-import { createBattleCharacter, type BattleCharacter, type CharacterActionContext } from "@repo/content";
+import {
+  createFighter,
+  getCharacterAmmo,
+  resetFighter,
+  setCharacterAmmo,
+  tickFighterTimers,
+} from "./fighter";
+import {
+  applyInitialCardState,
+  createBattleAbilityCard,
+  type BattleAbilityCard,
+  type BattleHitContext,
+} from "@repo/content";
+import {
+  createBattleCharacter,
+  type BattleCharacter,
+  type CharacterActionContext,
+} from "@repo/content";
 import { fpClamp, fpMax, fpMin } from "@repo/content";
 
 export class BattleFighter {
   readonly state: FighterState;
-  private readonly characters = new Map<CharacterDefinition["id"], BattleCharacter>();
+  private readonly characters = new Map<
+    CharacterDefinition["id"],
+    BattleCharacter
+  >();
   private activeBattleCard: BattleAbilityCard | undefined;
   private battleCards: BattleAbilityCard[] = [];
 
@@ -26,8 +55,18 @@ export class BattleFighter {
     activeCard: AbilityCardDefinition | undefined,
     cards: readonly AbilityCardDefinition[] = activeCard ? [activeCard] : [],
   ) {
-    this.state = createFighter(key, primaryCharacter, alternateCharacter, x, y, activeCard, cards);
-    this.activeBattleCard = activeCard ? createBattleAbilityCard(activeCard) : undefined;
+    this.state = createFighter(
+      key,
+      primaryCharacter,
+      alternateCharacter,
+      x,
+      y,
+      activeCard,
+      cards,
+    );
+    this.activeBattleCard = activeCard
+      ? createBattleAbilityCard(activeCard)
+      : undefined;
     this.battleCards = cards.map((card) => createBattleAbilityCard(card));
     this.registerCharacter(primaryCharacter);
     this.registerCharacter(alternateCharacter);
@@ -43,8 +82,18 @@ export class BattleFighter {
     activeCard: AbilityCardDefinition | undefined,
     cards: readonly AbilityCardDefinition[] = activeCard ? [activeCard] : [],
   ): void {
-    resetFighter(this.state, primaryCharacter, alternateCharacter, x, y, activeCard, cards);
-    this.activeBattleCard = activeCard ? createBattleAbilityCard(activeCard) : undefined;
+    resetFighter(
+      this.state,
+      primaryCharacter,
+      alternateCharacter,
+      x,
+      y,
+      activeCard,
+      cards,
+    );
+    this.activeBattleCard = activeCard
+      ? createBattleAbilityCard(activeCard)
+      : undefined;
     this.battleCards = cards.map((card) => createBattleAbilityCard(card));
     this.registerCharacter(primaryCharacter);
     this.registerCharacter(alternateCharacter);
@@ -61,13 +110,19 @@ export class BattleFighter {
   }
 
   getPointCollectRadius(): number {
-    return this.activeCharacter.pointCollectRadius
-      + this.battleCards.reduce((total, card) => total + card.getPointCollectRadiusBonus(this.state), 0);
+    return (
+      this.activeCharacter.pointCollectRadius +
+      this.battleCards.reduce(
+        (total, card) => total + card.getPointCollectRadiusBonus(this.state),
+        0,
+      )
+    );
   }
 
   getGrazeRadiusMultiplier(): number {
     return this.battleCards.reduce(
-      (multiplier, card) => multiplier * card.getGrazeRadiusMultiplier(this.state),
+      (multiplier, card) =>
+        multiplier * card.getGrazeRadiusMultiplier(this.state),
       1,
     );
   }
@@ -81,11 +136,19 @@ export class BattleFighter {
   }
 
   selectActiveCharacter(alternateHeld: boolean): void {
-    if (this.state.actionLockedUntil > 0 || this.state.nonFireActionLockedUntil > 0) {
+    if (
+      this.state.actionLockedUntil > 0 ||
+      this.state.nonFireActionLockedUntil > 0
+    ) {
       return;
     }
-    const activeCharacter = alternateHeld ? this.state.alternateCharacter : this.state.primaryCharacter;
-    if (this.state.activeCharacter.id !== activeCharacter.id && this.state.reloadRemaining > 0) {
+    const activeCharacter = alternateHeld
+      ? this.state.alternateCharacter
+      : this.state.primaryCharacter;
+    if (
+      this.state.activeCharacter.id !== activeCharacter.id &&
+      this.state.reloadRemaining > 0
+    ) {
       this.interruptReload();
     }
     if (this.state.activeCharacter.id !== activeCharacter.id) {
@@ -97,21 +160,36 @@ export class BattleFighter {
     if (this.state.movementLockedUntil > 0) {
       return;
     }
-    const speed = speedRankToPixelsPerTick(this.state.moveSpeedOverride ?? this.activeCharacter.moveSpeed);
-    this.state.x = fp.toFloat(fpClamp(
-      fp.add(fp.fromFloat(this.state.x), fp.mul(fp.fromFloat(input.moveX), fp.fromFloat(speed))),
-      fp.fromFloat(PLAYER_CORE_RADIUS),
-      fp.fromFloat(ARENA_WIDTH - PLAYER_CORE_RADIUS),
-    ));
-    this.state.y = fp.toFloat(fpClamp(
-      fp.add(fp.fromFloat(this.state.y), fp.mul(fp.fromFloat(input.moveY), fp.fromFloat(speed))),
-      fp.fromFloat(PLAYER_CORE_RADIUS),
-      fp.fromFloat(ARENA_HEIGHT - PLAYER_CORE_RADIUS),
-    ));
+    const speed = speedRankToPixelsPerTick(
+      this.state.moveSpeedOverride ?? this.activeCharacter.moveSpeed,
+    );
+    this.state.x = fp.toFloat(
+      fpClamp(
+        fp.add(
+          fp.fromFloat(this.state.x),
+          fp.mul(fp.fromFloat(input.moveX), fp.fromFloat(speed)),
+        ),
+        fp.fromFloat(PLAYER_CORE_RADIUS),
+        fp.fromFloat(ARENA_WIDTH - PLAYER_CORE_RADIUS),
+      ),
+    );
+    this.state.y = fp.toFloat(
+      fpClamp(
+        fp.add(
+          fp.fromFloat(this.state.y),
+          fp.mul(fp.fromFloat(input.moveY), fp.fromFloat(speed)),
+        ),
+        fp.fromFloat(PLAYER_CORE_RADIUS),
+        fp.fromFloat(ARENA_HEIGHT - PLAYER_CORE_RADIUS),
+      ),
+    );
   }
 
   handleReload(reloadPressed: boolean): void {
-    if (this.state.actionLockedUntil > 0 || this.state.nonFireActionLockedUntil > 0) {
+    if (
+      this.state.actionLockedUntil > 0 ||
+      this.state.nonFireActionLockedUntil > 0
+    ) {
       return;
     }
     let startedReload = false;
@@ -125,12 +203,20 @@ export class BattleFighter {
     }
 
     this.state.reloadRemaining -= 1;
-    const fpReloadTotal = fpMax(fp.fromInt(1), fp.fromFloat(this.state.reloadTotal));
-    const reloadRatio = fp.sub(fp.fromInt(1), fp.div(fp.fromFloat(this.state.reloadRemaining), fpReloadTotal));
-    this.state.ammoDisplay = fp.toFloat(fpMin(
-      fp.fromFloat(this.state.ammoCapacity),
-      this.reloadDisplayAmmoFP(reloadRatio),
-    ));
+    const fpReloadTotal = fpMax(
+      fp.fromInt(1),
+      fp.fromFloat(this.state.reloadTotal),
+    );
+    const reloadRatio = fp.sub(
+      fp.fromInt(1),
+      fp.div(fp.fromFloat(this.state.reloadRemaining), fpReloadTotal),
+    );
+    this.state.ammoDisplay = fp.toFloat(
+      fpMin(
+        fp.fromFloat(this.state.ammoCapacity),
+        this.reloadDisplayAmmoFP(reloadRatio),
+      ),
+    );
     if (this.activeCharacter.reloadCommitPolicy === "commit_per_ammo") {
       const reloadedAmmo = this.reloadCommittedAmmo();
       this.state.ammo = reloadedAmmo;
@@ -139,13 +225,21 @@ export class BattleFighter {
     if (this.state.reloadRemaining === 0) {
       this.state.ammo = this.state.ammoCapacity;
       this.state.ammoDisplay = this.state.ammoCapacity;
-      setCharacterAmmo(this.state, this.state.activeCharacter, this.state.ammoCapacity);
+      setCharacterAmmo(
+        this.state,
+        this.state.activeCharacter,
+        this.state.ammoCapacity,
+      );
       this.state.reloadCharacterId = undefined;
     }
   }
 
   fire(ctx: CharacterActionContext, aimX: number, aimY: number): void {
-    if (this.state.actionLockedUntil > 0 || this.state.reloadRemaining > 0 || this.state.deadUntil > 0) {
+    if (
+      this.state.actionLockedUntil > 0 ||
+      this.state.reloadRemaining > 0 ||
+      this.state.deadUntil > 0
+    ) {
       return;
     }
     if (this.state.ammo <= 0) {
@@ -161,7 +255,9 @@ export class BattleFighter {
     setCharacterAmmo(this.state, this.state.activeCharacter, this.state.ammo);
     this.state.shotsFired += 1;
     ctx.stats.shots += 1;
-    this.state.fireCooldownUntil = getFireCooldown(this.activeCharacter.fireRate);
+    this.state.fireCooldownUntil = getFireCooldown(
+      this.activeCharacter.fireRate,
+    );
     this.activeCharacter.shoot(ctx, this.state, aimX, aimY);
     for (const card of this.battleCards) {
       card.onAfterFire(ctx);
@@ -169,20 +265,33 @@ export class BattleFighter {
   }
 
   useBomb(ctx: CharacterActionContext, aimX: number, aimY: number): void {
-    if (this.state.actionLockedUntil > 0 || this.state.nonFireActionLockedUntil > 0 || !this.activeCharacter.canUseBomb(this.state) || this.state.bombCooldownUntil > 0 || this.state.deadUntil > 0) {
+    if (
+      this.state.actionLockedUntil > 0 ||
+      this.state.nonFireActionLockedUntil > 0 ||
+      !this.activeCharacter.canUseBomb(this.state) ||
+      this.state.bombCooldownUntil > 0 ||
+      this.state.deadUntil > 0
+    ) {
       return;
     }
     this.activeCharacter.useBomb(ctx, this.state, aimX, aimY);
   }
 
-  useActiveCard(ctx: CharacterActionContext): void {
-    if (this.state.actionLockedUntil > 0 || this.state.nonFireActionLockedUntil > 0 || !this.state.activeCard || this.state.activeCardUses <= 0 || this.state.activeCardCooldownUntil > 0) {
-      return;
+  useActiveCard(ctx: CharacterActionContext): boolean {
+    if (
+      this.state.actionLockedUntil > 0 ||
+      this.state.nonFireActionLockedUntil > 0 ||
+      !this.state.activeCard ||
+      this.state.activeCardUses <= 0 ||
+      this.state.activeCardCooldownUntil > 0
+    ) {
+      return false;
     }
 
     this.state.activeCardUses -= 1;
     this.state.activeCardCooldownUntil = this.state.activeCard.cooldownTicks;
     this.activeBattleCard?.onUse(ctx);
+    return true;
   }
 
   postUpdate(ctx: CharacterActionContext): void {
@@ -253,11 +362,12 @@ export class BattleFighter {
     readonly actionContext: CharacterActionContext;
     readonly attackerCards: readonly AbilityCardDefinition[];
   }): BattleHitContext {
-    const attacker = params.owner === "Player1"
-      ? params.player
-      : params.owner === "Player2"
-        ? params.target
-        : params.victim;
+    const attacker =
+      params.owner === "Player1"
+        ? params.player
+        : params.owner === "Player2"
+          ? params.target
+          : params.victim;
     return {
       ...params.actionContext,
       owner: params.owner,
@@ -288,7 +398,11 @@ export class BattleFighter {
   }
 
   private startReload(): boolean {
-    if (this.state.nonFireActionLockedUntil > 0 || this.state.reloadRemaining > 0 || this.state.ammo >= this.state.ammoCapacity) {
+    if (
+      this.state.nonFireActionLockedUntil > 0 ||
+      this.state.reloadRemaining > 0 ||
+      this.state.ammo >= this.state.ammoCapacity
+    ) {
       return false;
     }
     if (this.activeCharacter.reloadStartPolicy === "keep_current") {
@@ -315,18 +429,27 @@ export class BattleFighter {
   private reloadTicksForMissingAmmo(): number {
     const missingAmmo = this.state.ammoCapacity - this.state.reloadStartedAmmo;
     const fpCount = fpMax(fp.fromInt(1), fp.fromInt(missingAmmo));
-    return fp.toFloat(fp.mul(fpCount, fp.fromFloat(this.activeCharacter.reloadTicksPerAmmo)));
+    return fp.toFloat(
+      fp.mul(fpCount, fp.fromFloat(this.activeCharacter.reloadTicksPerAmmo)),
+    );
   }
 
   private reloadStartAmmo(): number {
-    return this.activeCharacter.reloadStartPolicy === "reset_to_zero" ? 0 : this.state.ammo;
+    return this.activeCharacter.reloadStartPolicy === "reset_to_zero"
+      ? 0
+      : this.state.ammo;
   }
 
   private reloadCommittedAmmo(): number {
     if (this.activeCharacter.reloadCommitPolicy === "commit_per_ammo") {
       const elapsedTicks = this.state.reloadTotal - this.state.reloadRemaining;
-      const committedAmmo = Math.floor(elapsedTicks / this.activeCharacter.reloadTicksPerAmmo);
-      return Math.min(this.state.ammoCapacity, this.state.reloadStartedAmmo + committedAmmo);
+      const committedAmmo = Math.floor(
+        elapsedTicks / this.activeCharacter.reloadTicksPerAmmo,
+      );
+      return Math.min(
+        this.state.ammoCapacity,
+        this.state.reloadStartedAmmo + committedAmmo,
+      );
     }
     return this.state.reloadStartedAmmo;
   }

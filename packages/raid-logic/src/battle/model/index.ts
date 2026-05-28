@@ -62,6 +62,8 @@ import { TickerManager } from "./ticker-manager";
 import type { CharacterActionContext } from "@repo/content";
 import { fpClamp, fpAtan2, fpHypotFp } from "@repo/content";
 
+const ACTIVE_CARD_COOLDOWN_GROUP_PREFIX = "active-card-cooldown";
+
 export class BattleModel {
   readonly projectiles: ProjectileState[] = [];
   readonly effects: EffectState[] = [];
@@ -274,6 +276,7 @@ export class BattleModel {
     this.pendingSpawns = [];
     this.playerFighter.tickTimers();
     this.targetFighter.tickTimers();
+    this.syncActiveCardCooldownsFromTicker();
 
     if (this.gameOver) return;
 
@@ -413,6 +416,8 @@ export class BattleModel {
         restoreClearRingSnapshot(ring, this.frame),
       ),
     );
+    this.restoreActiveCardCooldownTimer(this.player);
+    this.restoreActiveCardCooldownTimer(this.target);
     this.restoreNeutralMobSnapshots(snapshot.neutralMobs);
     Object.assign(this.stats, snapshot.stats);
     this.projectileSystem.restoreNextId(
@@ -477,10 +482,21 @@ export class BattleModel {
 
     const ctx = this.fighterActionContext(state);
     if (input.activeCardPressed) {
-      fighter.useActiveCard(ctx);
+      if (fighter.useActiveCard(ctx)) {
+        this.registerActiveCardCooldown(state);
+      }
     }
     if (input.bombPressed) {
+      const previousTimeStopUntil = state.timeStopUntil;
       fighter.useBomb(ctx, input.aimX, input.aimY);
+      if (
+        state.activeCharacter.bombId === "sakuya_time_stop" &&
+        state.timeStopUntil > previousTimeStopUntil
+      ) {
+        this.pauseActiveCardCooldowns(
+          state.timeStopUntil - previousTimeStopUntil,
+        );
+      }
     }
     if (input.shootPressed) {
       fighter.fire(ctx, input.aimX, input.aimY);
@@ -507,7 +523,16 @@ export class BattleModel {
 
     const ctx = this.fighterActionContext(fighter);
     if (aiInput.bombPressed) {
+      const previousTimeStopUntil = fighter.timeStopUntil;
       this.targetFighter.useBomb(ctx, aiInput.aimX, aiInput.aimY);
+      if (
+        fighter.activeCharacter.bombId === "sakuya_time_stop" &&
+        fighter.timeStopUntil > previousTimeStopUntil
+      ) {
+        this.pauseActiveCardCooldowns(
+          fighter.timeStopUntil - previousTimeStopUntil,
+        );
+      }
     }
     if (aiInput.shootPressed) {
       this.targetFighter.fire(ctx, aiInput.aimX, aiInput.aimY);
@@ -633,14 +658,21 @@ export class BattleModel {
       return;
     }
     const fighter = victim.key === "Player1" ? this.player : this.target;
-    if (fighter.deadUntil > 0 || fighter.grazedProjectileIds.includes(projectile.id)) {
+    if (
+      fighter.deadUntil > 0 ||
+      fighter.grazedProjectileIds.includes(projectile.id)
+    ) {
       return;
     }
-    fighter.grazedProjectileIds = [...fighter.grazedProjectileIds, projectile.id];
+    fighter.grazedProjectileIds = [
+      ...fighter.grazedProjectileIds,
+      projectile.id,
+    ];
     fighter.pointCount = clampPointCount(
-      fighter.pointCount + (owner === "Neutral"
-        ? NEUTRAL_PROJECTILE_GRAZE_POINT_REWARD
-        : ENEMY_PROJECTILE_GRAZE_POINT_REWARD),
+      fighter.pointCount +
+        (owner === "Neutral"
+          ? NEUTRAL_PROJECTILE_GRAZE_POINT_REWARD
+          : ENEMY_PROJECTILE_GRAZE_POINT_REWARD),
     );
   }
 
@@ -655,6 +687,79 @@ export class BattleModel {
     for (const projectile of this.projectiles) {
       this.ticker.resumeProjectileTimeline(projectile, remainingPauseTicks);
     }
+    this.resumeActiveCardCooldowns(remainingPauseTicks);
+  }
+
+  private registerActiveCardCooldown(fighter: FighterState): void {
+    const group = activeCardCooldownGroup(fighter.key);
+    this.ticker.removeGroup(group);
+    if (fighter.activeCardCooldownUntil > 0) {
+      this.ticker.register(this.frame + fighter.activeCardCooldownUntil, group);
+    }
+  }
+
+  private syncActiveCardCooldownsFromTicker(): void {
+    this.syncActiveCardCooldownFromTicker(this.player);
+    this.syncActiveCardCooldownFromTicker(this.target);
+  }
+
+  private syncActiveCardCooldownFromTicker(fighter: FighterState): void {
+    const group = activeCardCooldownGroup(fighter.key);
+    if (fighter.activeCardCooldownUntil <= 0) {
+      fighter.activeCardCooldownUntil = 0;
+      this.ticker.removeGroup(group);
+      return;
+    }
+
+    const remaining = Math.max(
+      0,
+      this.ticker.getRemainingTicks(group) - this.timeStopRemaining(),
+    );
+    fighter.activeCardCooldownUntil = remaining;
+    if (remaining <= 0) {
+      this.ticker.removeGroup(group);
+    }
+  }
+
+  private restoreActiveCardCooldownTimer(fighter: FighterState): void {
+    const group = activeCardCooldownGroup(fighter.key);
+    if (fighter.activeCardCooldownUntil <= 0) {
+      fighter.activeCardCooldownUntil = 0;
+      this.ticker.removeGroup(group);
+      return;
+    }
+
+    const tickerRemaining = this.ticker.getRemainingTicks(group);
+    if (tickerRemaining > 0) {
+      fighter.activeCardCooldownUntil = Math.max(
+        0,
+        tickerRemaining - this.timeStopRemaining(),
+      );
+      return;
+    }
+
+    this.ticker.register(
+      this.frame + fighter.activeCardCooldownUntil + this.timeStopRemaining(),
+      group,
+    );
+  }
+
+  private timeStopRemaining(): number {
+    return Math.max(this.player.timeStopUntil, this.target.timeStopUntil);
+  }
+
+  private pauseActiveCardCooldowns(ticks: number): void {
+    if (ticks <= 0) return;
+    this.ticker.pauseGroup(activeCardCooldownGroup("Player1"), ticks);
+    this.ticker.pauseGroup(activeCardCooldownGroup("Player2"), ticks);
+    this.syncActiveCardCooldownsFromTicker();
+  }
+
+  private resumeActiveCardCooldowns(ticks: number): void {
+    if (ticks <= 0) return;
+    this.ticker.resumeGroup(activeCardCooldownGroup("Player1"), ticks);
+    this.ticker.resumeGroup(activeCardCooldownGroup("Player2"), ticks);
+    this.syncActiveCardCooldownsFromTicker();
   }
 
   private fighterActionContext(self: FighterState): CharacterActionContext {
@@ -1084,6 +1189,10 @@ function neutralMobIdFromHitTarget(
   target: ProjectileHitTarget,
 ): number | undefined {
   return target.mobId;
+}
+
+function activeCardCooldownGroup(key: FighterKey): string {
+  return `${ACTIVE_CARD_COOLDOWN_GROUP_PREFIX}:${key}`;
 }
 
 const DEFAULT_BATTLE_LOADOUTS: BattleLoadouts = {
