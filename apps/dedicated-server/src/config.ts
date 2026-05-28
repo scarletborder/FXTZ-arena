@@ -2,7 +2,8 @@ import { APP_BUILD_LABEL } from "@repo/constants";
 
 export interface ServerConfig {
   readonly port: number;
-  readonly host: string;
+  readonly ipv4Host: string;
+  readonly ipv6Host: string;
   readonly maxPlayersPerRoom: 2;
   readonly maxRooms: number;
   readonly serverVersion: string;
@@ -10,7 +11,8 @@ export interface ServerConfig {
 
 export const DEFAULT_SERVER_CONFIG: ServerConfig = {
   port: Number.parseInt(process.env.PORT ?? "22334", 10),
-  host: process.env.HOST ?? "0.0.0.0",
+  ipv4Host: process.env.IPV4_HOST ?? process.env.HOST ?? "0.0.0.0",
+  ipv6Host: process.env.IPV6_HOST ?? "::",
   maxPlayersPerRoom: 2,
   maxRooms: 100,
   serverVersion: APP_BUILD_LABEL,
@@ -22,19 +24,20 @@ export function createServerConfig(
   argv: readonly string[] = process.argv.slice(2),
   env: EnvLike = process.env,
 ): ServerConfig {
-  let host = env.HOST ?? "0.0.0.0";
+  let ipv4Host = env.IPV4_HOST ?? env.HOST ?? "0.0.0.0";
+  let ipv6Host = env.IPV6_HOST ?? "::";
   let port = parsePort(env.PORT ?? "22334");
 
   for (const arg of argv) {
     const ipv4 = readOption(arg, "--ipv4");
     if (ipv4 !== null) {
-      host = ipv4;
+      ipv4Host = ipv4;
       continue;
     }
 
     const ipv6 = readOption(arg, "--ipv6");
     if (ipv6 !== null) {
-      host = ipv6;
+      ipv6Host = ipv6;
       continue;
     }
 
@@ -46,7 +49,8 @@ export function createServerConfig(
 
   return {
     ...DEFAULT_SERVER_CONFIG,
-    host,
+    ipv4Host,
+    ipv6Host,
     port,
   };
 }

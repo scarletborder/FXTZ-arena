@@ -19,7 +19,8 @@ const messageHandler = new MessageHandler(
   config,
 );
 
-const transport = new WsTransportServer(config.port, config.host);
+const listenHosts = [config.ipv4Host, config.ipv6Host];
+const transport = new WsTransportServer(config.port, listenHosts);
 
 transport.onConnection((conn) => {
   messageHandler.registerConnection(conn);
@@ -45,8 +46,8 @@ const shutdown = () => {
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
-const addr = `ws://${formatHostForUrl(config.host)}:${config.port}`;
-console.log(`Dedicated server listening on ${addr}`);
+const addrs = listenHosts.map((host) => `ws://${formatHostForUrl(host)}:${config.port}`);
+console.log(`Dedicated server listening on ${addrs.join(" and ")}`);
 
 function formatHostForUrl(host: string): string {
   return host.includes(":") && !host.startsWith("[") ? `[${host}]` : host;

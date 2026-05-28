@@ -1,3 +1,4 @@
+import { createServer, type Server as HttpServer } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 import type { ServerMessage } from "../protocol/messages";
 import type { TransportConnection, TransportServer } from "./interface";
@@ -55,15 +56,29 @@ class WsConnection implements TransportConnection {
 }
 
 export class WsTransportServer implements TransportServer {
-  private wss: WebSocketServer;
+  private httpServers: HttpServer[];
+  private servers: WebSocketServer[];
   private connHandlers: Array<(conn: TransportConnection) => void> = [];
 
-  constructor(port: number, host: string) {
-    this.wss = new WebSocketServer({ port, host });
+  constructor(port: number, hosts: readonly string[]) {
+    this.httpServers = hosts.map((host) => {
+      const httpServer = createServer();
+      httpServer.listen({
+        host,
+        port,
+        ipv6Only: host.includes(":"),
+      });
+      return httpServer;
+    });
 
-    this.wss.on("connection", (ws) => {
-      const conn = new WsConnection(ws);
-      this.connHandlers.forEach((h) => h(conn));
+    this.servers = this.httpServers.map((httpServer) => {
+      const server = new WebSocketServer({ server: httpServer });
+      server.on("connection", (ws) => {
+        const conn = new WsConnection(ws);
+        this.connHandlers.forEach((h) => h(conn));
+      });
+
+      return server;
     });
   }
 
@@ -73,14 +88,17 @@ export class WsTransportServer implements TransportServer {
 
   broadcast(message: ServerMessage): void {
     const data = JSON.stringify(message);
-    this.wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(data);
-      }
+    this.servers.forEach((server) => {
+      server.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(data);
+        }
+      });
     });
   }
 
   close(): void {
-    this.wss.close();
+    this.servers.forEach((server) => server.close());
+    this.httpServers.forEach((server) => server.close());
   }
 }
