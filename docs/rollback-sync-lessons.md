@@ -27,11 +27,31 @@ rollback snapshot 不能只保存当前还存在的实体。所有会影响未�
 - `ProjectileSystem.nextProjectileId` 没进 snapshot。旧实现从当前存活 projectile 的最大 id 推断下一个 id。如果之前生成过弹幕但后来被消除、出界或命中，rollback 后下一次射击会复用较小 id。Sakuya 一次射击生成两枚 knife，最容易暴露为“同输入、同位置、同速度，但 projectile id 不同，hash 从射击帧开始分歧”。
 - `EffectSystem.nextEffectId` 同理。消弹 ring 等效果如果被清理后再 rollback，后续 effect id 也会偏移。
 - frame-relative timer 必须用相对量保存和恢复，例如 `visibleIn`、`expireIn`、`homingStartIn`、`homingRemaining`、`pausedRemaining`。不能直接把未来绝对帧号恢复到不同 rollback 基准上。
+- 中立怪的排队行为也属于 timer。`ExampleFairy.volleyFireAge` 曾经是私有字段，只决定“已排队但尚未发射”的下一波弹幕；rollback 到这个窗口后，恢复出来的 mob 位置和血量一样，但排队开火状态丢失，高延迟下两端会从中立弹生成帧开始分歧。类似字段必须放进 mob snapshot/hash。
+- `mobSpawner` 的内部流程必须 snapshot/restore。即使当前 `default-a` 是 frame-derived、没有隐藏计数器，新增 spawner 时只要有 `nextSpawnFrame`、波次游标、延迟生成队列、随机种子或“下一次发怪/发弹时间”，都必须进入 `NeutralMobSpawnerState`，并参与 hash。
+
+### 计时器和排队行为
+
+会影响未来帧的“时间”不只包括显式倒计时。凡是能回答“什么时候触发下一件事”的状态，都必须随 rollback 恢复：
+
+- 剩余时长：`reloadRemaining`、`pausedRemaining`、`homingRemaining`。
+- 未来触发点：`visibleFrom`、`expireAt`、`retargetAt`、`nextSpawnFrame`、`volleyFireAge`。
+- 排队/延迟任务：`pendingSpawns`、mob 已排队的 volley、spawner 已安排但还没落地的 wave 成员。
+- 暂停中的时间线：Sakuya time stop、projectile timeline pause、active card cooldown pause。
+
+保存方式要按语义选择：
+
+- snapshot 里的 projectile timer 使用相对量，如 `visibleIn = visibleFrom - snapshotFrame`。恢复时再加当前恢复帧，避免把旧基准上的绝对未来帧搬到新基准。
+- mob 自身的行为计时如果以 `ageTicks` 为基准，例如 `volleyFireAge`，可以保留 mob-local age 值，但必须和 `ageTicks` 一起进 snapshot/hash。
+- spawner 如果以全局 `frame` 为基准，例如 `nextSpawnFrame`，必须 snapshot/restore 这个绝对帧值，或改成纯 frame-derived；不要只靠构造函数默认值恢复。
+- deserialize 后 Rapier 临时 bodies、事件队列、pending 队列这类派生状态应清空，并由恢复后的逻辑状态重新构建；权威未来只能来自 snapshot 里的纯数据。
 
 新增任何系统时都要问：
 
 - 是否有 `nextId`、计数器、随机种子、冷却序列、pending 队列、缓存索引等不在实体列表里的状态？
 - 这些状态是否会影响未来生成物、hash 或战斗结果？
+- 它是倒计时、绝对触发帧，还是依赖实体 `ageTicks` 的局部计时？snapshot/restore 是否保留了同一个语义？
+- hash 是否覆盖了扩展状态？如果 hash 看不到这个字段，两端可能已经分歧但 debug diff 还晚几帧才显现。
 - rollback 到旧帧再重放，是否能得到完全相同的 id、状态和 hash？
 
 ## 输入消费顺序
@@ -75,6 +95,13 @@ debug 每帧记录只在 debug 开启或 live hash 开启时发生，避免正�
 
 使用 `pnpm run diff -- --p1=a.json --p2=b.json` 时，如果 `frames[]` 中同帧输入相同但 hash 不同，优先检查该帧前后的 rollback snapshot 完整性、实体 id、effect id、投射物数量和计时器，而不是先怀疑输入同步。
 
+如果分歧出现在中立怪弹幕附近，优先检查：
+
+- 场上 mob 是否通过 `mob.snapshot()` 导出，而不是直接读取 `mob.state` 绕过自定义快照。
+- mob state/hash 是否包含会影响未来行为的扩展字段，例如排队 volley、形态切换延迟、局部 cooldown。
+- `mobSpawner.snapshot()` / `restore()` 是否覆盖所有内部计时器和排队状态。
+- deserialize 后重放同一段帧，mob 生成顺序、mob id、projectile id、发射帧和 Rapier hit 结果是否完全一致。
+
 ## 必跑回归
 
 修改同步、snapshot、角色技能、投射物、消弹、hash、debug log 后，至少运行：
@@ -82,7 +109,7 @@ debug 每帧记录只在 debug 开启或 live hash 开启时发生，避免正�
 ```bash
 pnpm --filter @repo/raid-logic check-types
 pnpm --filter @repo/raid-logic exec vitest run src/battle/model/index.test.ts --testTimeout=15000
-pnpm --filter frontend exec vitest run src/network/combat/manager.test.ts --testTimeout=15000
+pnpm --filter frontend exec vitest run src/network/combat/manager.test.ts --testTimeout=30000
 pnpm --filter frontend check-types
 ```
 
@@ -92,5 +119,6 @@ pnpm --filter frontend check-types
 - `finalGlobalHash(BLAKE3)` 一致。
 - 每个 sampled authoritative frame 没有在后续 rollback 重放中被改写。
 - Reimu/Sakuya 与 Sakuya/Reimu 这类正式组合能通过。
+- 至少包含一组高不对称延迟，让一端经历多次预测和 rollback，覆盖中立怪生成与发弹窗口。
 
-对新增能力卡或角色技能，至少补一条“snapshot -> step -> hash -> deserialize snapshot -> step -> hash 相同”的测试。只测实时运行不够，真正的问题通常发生在其中一个客户端经历 rollback 之后。
+对新增能力卡、角色技能、中立怪或 mob spawner，至少补一条“snapshot -> step -> hash -> deserialize snapshot -> step -> hash 相同”的测试。涉及计时器时，测试必须把 snapshot 放在“已安排但尚未触发”的窗口，例如 volley 已排队但还没发射、spawner 已更新下一次生成帧但还没生成。只测实时运行不够，真正的问题通常发生在其中一个客户端经历 rollback 之后。
