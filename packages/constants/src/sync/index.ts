@@ -1,3 +1,5 @@
+export * from "./link";
+
 export const TICK_RATE = 60;
 export const FIXED_STEP_MS = 1000 / TICK_RATE;
 export const HIT_FLASH_MS = 140;

@@ -43,6 +43,7 @@ export interface FightButton {
 export interface TextFieldControl {
   readonly container: Phaser.GameObjects.Container;
   readonly hitArea: Phaser.GameObjects.Rectangle;
+  setValue(value: string): void;
   setActive(active: boolean): void;
   focus(): void;
   blur(): void;

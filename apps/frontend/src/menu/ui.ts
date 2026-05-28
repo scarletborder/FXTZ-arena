@@ -280,6 +280,13 @@ export function createTextField(
   const control: TextFieldControl = {
     container,
     hitArea,
+    setValue(nextValue: string): void {
+      value = nextValue.slice(0, maxLength);
+      cursorIndex = value.length;
+      syncNativeInput();
+      options.onChange(value);
+      redraw();
+    },
     setActive,
     focus(): void {
       focusNativeInput();

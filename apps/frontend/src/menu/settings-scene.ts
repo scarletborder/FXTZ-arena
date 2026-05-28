@@ -1,9 +1,11 @@
 import Phaser from "phaser";
+import { PUBLIC_SERVER } from "@repo/constants";
 
 import {
   createBackButton,
   createFightButton,
   createTextField,
+  drawAngledPanel,
   drawBuildLabel,
   drawFightingBackdrop,
   drawPanel,
@@ -28,6 +30,8 @@ interface SliderControl {
 
 export class SettingsScene extends Phaser.Scene {
   private activeField: TextFieldControl | undefined;
+  private serverAddressField: TextFieldControl | undefined;
+  private publicServerDialog: Phaser.GameObjects.Container | undefined;
   private connectionStatusText!: Phaser.GameObjects.Text;
   private connectBtn!: { setEnabled(enabled: boolean): void; setLabel(label: string): void; container: Phaser.GameObjects.Container };
   private unsubscribeStatus: (() => void) | null = null;
@@ -85,6 +89,7 @@ export class SettingsScene extends Phaser.Scene {
 
     this.add.text(492, 214, "专用服务器地址", bodyStyle("#f6f1e6", 18));
     this.createField(492, 252, 276, "serverAddress");
+    this.createPublicServerButton(774, 173);
     this.add.text(492, 356, "默认监听本地专用服务器", bodyStyle("#b7c7d8", 17));
     this.add.text(492, 396, "默认端口：22334", bodyStyle("#b7c7d8", 17));
 
@@ -118,6 +123,7 @@ export class SettingsScene extends Phaser.Scene {
       this.input.keyboard?.off("keydown", this.onKeyDown);
       window.removeEventListener("paste", this.onPaste);
       this.activeField = undefined;
+      this.publicServerDialog = undefined;
       this.unsubscribeStatus?.();
       this.unsubscribeStatus = null;
     });
@@ -175,6 +181,174 @@ export class SettingsScene extends Phaser.Scene {
     field.hitArea.on("pointerdown", () => {
       this.activateField(field);
     });
+    if (key === "serverAddress") {
+      this.serverAddressField = field;
+    }
+  }
+
+  private createPublicServerButton(x: number, y: number): void {
+    let hovering = false;
+    const width = 36;
+    const height = 32;
+    const container = this.add.container(x, y);
+    const background = this.add.graphics();
+    const icon = this.add.graphics();
+    const hitArea = this.add.rectangle(0, 0, width, height, 0xffffff, 0.001)
+      .setOrigin(0, 0)
+      .setInteractive({ useHandCursor: true });
+
+    const draw = () => {
+      background.clear();
+      drawAngledPanel(background, 0, 0, width, height, hovering ? 0x252e3d : 0x151b26, hovering ? 0xffcf6e : 0x5c7185, 1);
+      icon.clear();
+      icon.fillStyle(hovering ? 0xffcf6e : 0xf6f1e6, 1);
+      icon.fillTriangle(width / 2 - 7, 12, width / 2 + 7, 12, width / 2, 21);
+    };
+
+    hitArea.on("pointerover", () => {
+      hovering = true;
+      draw();
+    });
+    hitArea.on("pointerout", () => {
+      hovering = false;
+      draw();
+    });
+    hitArea.on("pointerup", () => {
+      this.showPublicServerDialog();
+    });
+
+    container.add([background, icon, hitArea]);
+    draw();
+  }
+
+  private showPublicServerDialog(): void {
+    if (this.publicServerDialog) {
+      this.publicServerDialog.destroy();
+      this.publicServerDialog = undefined;
+      return;
+    }
+
+    this.activeField?.blur();
+    this.activeField = undefined;
+
+    const servers = Array.from(new Set(PUBLIC_SERVER.map((server) => server.trim()).filter(Boolean)));
+    const rowHeight = 50;
+    const dialogWidth = 560;
+    const dialogHeight = 124 + Math.max(1, servers.length) * rowHeight;
+    const x = 360;
+    const y = Math.max(116, Math.round((720 - dialogHeight) / 2));
+    const layer = this.add.container(0, 0).setDepth(1000);
+    const shade = this.add.rectangle(0, 0, 1280, 720, 0x05070a, 0.62)
+      .setOrigin(0, 0)
+      .setInteractive({ useHandCursor: false });
+    const panel = this.add.graphics();
+    drawAngledPanel(panel, x, y, dialogWidth, dialogHeight, 0x101820, 0xffcf6e, 0.98);
+
+    const title = this.add.text(x + 30, y + 24, "选择公共服务器", bodyStyle("#ffcf6e", 22));
+    const closeBtn = this.createDialogCloseButton(x + dialogWidth - 62, y + 22, () => {
+      this.closePublicServerDialog();
+    });
+    layer.add([shade, panel, title, closeBtn]);
+
+    if (servers.length === 0) {
+      layer.add(this.add.text(x + 30, y + 84, "暂无默认公共服务器", bodyStyle("#b7c7d8", 18)));
+    } else {
+      servers.forEach((server, index) => {
+        layer.add(this.createServerOptionRow(x + 28, y + 76 + index * rowHeight, dialogWidth - 56, rowHeight - 8, server, index));
+      });
+    }
+
+    shade.on("pointerup", () => {
+      this.closePublicServerDialog();
+    });
+    this.publicServerDialog = layer;
+  }
+
+  private createDialogCloseButton(x: number, y: number, onClick: () => void): Phaser.GameObjects.Container {
+    let hovering = false;
+    const width = 34;
+    const height = 30;
+    const container = this.add.container(x, y);
+    const background = this.add.graphics();
+    const label = this.add.text(width / 2, height / 2 - 1, "×", bodyStyle("#f6f1e6", 23)).setOrigin(0.5);
+    const hitArea = this.add.rectangle(0, 0, width, height, 0xffffff, 0.001)
+      .setOrigin(0, 0)
+      .setInteractive({ useHandCursor: true });
+
+    const draw = () => {
+      background.clear();
+      drawAngledPanel(background, 0, 0, width, height, hovering ? 0x342335 : 0x151b26, hovering ? 0xff5c66 : 0x5c7185, 1);
+      label.setColor(hovering ? "#ffffff" : "#f6f1e6");
+    };
+    hitArea.on("pointerover", () => {
+      hovering = true;
+      draw();
+    });
+    hitArea.on("pointerout", () => {
+      hovering = false;
+      draw();
+    });
+    hitArea.on("pointerup", (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
+      onClick();
+    });
+    container.add([background, label, hitArea]);
+    draw();
+    return container;
+  }
+
+  private createServerOptionRow(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    server: string,
+    index: number,
+  ): Phaser.GameObjects.Container {
+    let hovering = false;
+    const selected = server === uiSettings.serverAddress;
+    const container = this.add.container(x, y);
+    const background = this.add.graphics();
+    const label = this.add.text(18, 12, `公共服务器 ${index + 1}`, bodyStyle(selected ? "#ffcf6e" : "#f6f1e6", 16));
+    const address = this.add.text(150, 12, server, bodyStyle("#b7c7d8", 15)).setWordWrapWidth(width - 168);
+    const hitArea = this.add.rectangle(0, 0, width, height, 0xffffff, 0.001)
+      .setOrigin(0, 0)
+      .setInteractive({ useHandCursor: true });
+
+    const draw = () => {
+      background.clear();
+      const fill = selected ? 0x263244 : hovering ? 0x18212d : 0x0f141d;
+      const stroke = selected ? 0xffcf6e : hovering ? 0x9fd8ff : 0x34475c;
+      drawAngledPanel(background, 0, 0, width, height, fill, stroke, 1);
+      label.setColor(selected || hovering ? "#ffcf6e" : "#f6f1e6");
+      address.setColor(hovering ? "#d7e3ef" : "#b7c7d8");
+    };
+
+    hitArea.on("pointerover", () => {
+      hovering = true;
+      draw();
+    });
+    hitArea.on("pointerout", () => {
+      hovering = false;
+      draw();
+    });
+    hitArea.on("pointerup", (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
+      this.serverAddressField?.setValue(server);
+      if (!this.serverAddressField) {
+        setServerAddress(server);
+      }
+      this.closePublicServerDialog();
+    });
+
+    container.add([background, label, address, hitArea]);
+    draw();
+    return container;
+  }
+
+  private closePublicServerDialog(): void {
+    this.publicServerDialog?.destroy();
+    this.publicServerDialog = undefined;
   }
 
   private createVolumeSlider(
