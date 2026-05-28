@@ -29,7 +29,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
   readonly reloadCommitPolicy =
     "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = "high" as CharacterDefinition["bulletSpeed"];
-  readonly description = "· 路边的普通魔法使\n· 可发射瞬时激光的狙击机体，弹幕具有高额伤害\n· bomb可发射超大型魔炮";
+  readonly description = "· 路边的普通魔法使\n· 高速激光的狙击性机体，弹幕具有高额伤害\n· bomb可发射超大型魔炮";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/marisa/portrait.png",
     attackPreviewAsset: "assets/characters/marisa/attack-preview.png",

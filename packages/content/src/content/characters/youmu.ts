@@ -20,7 +20,7 @@ import { Vanilla } from "../decorators";
 
 const ARC_SEGMENTS = 8;
 const CLEAR_DAMAGE = 0;
-const SLASH_DAMAGE = 5; // 单次伤害需乘以62倍
+const SLASH_DAMAGE = 2; // 单次伤害需乘以62倍
 
 const NORMALSHOOT_DAMAGE = 20;
 const BOMBSHOT_DAMAGE = 8;
@@ -39,7 +39,7 @@ const BOMB_SHOT_INTERVAL = 5;
 @Vanilla.RegisterCharacter("youmu")
 export class YoumuBattleCharacter extends BattleCharacter {
   readonly id = "youmu" as CharacterDefinition["id"];
-  readonly name = "Youmu";
+  readonly name = "魂魄妖梦";
   readonly cost = 5;
   readonly roleClass = "scout" as CharacterDefinition["roleClass"];
   readonly moveSpeed = "high" as CharacterDefinition["moveSpeed"];
@@ -52,7 +52,7 @@ export class YoumuBattleCharacter extends BattleCharacter {
     "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = "high" as CharacterDefinition["bulletSpeed"];
   readonly description =
-    "High-speed scout with crescent slash clears and a short dash bomb.";
+    "· 无敌的半灵剑客\n· 高速斩击具有高伤害和清除弹幕能力\n· bomb可进行高速冲刺";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/youmu/portrait.png",
     attackPreviewAsset: "assets/characters/youmu/attack-preview.png",

@@ -28,7 +28,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
   readonly moveSpeed = "medium" as CharacterDefinition["moveSpeed"];
   readonly fireRate = "medium" as CharacterDefinition["fireRate"];
   readonly ammoCapacity = 3;
-  readonly reloadTicksPerAmmo = secondsToTicks(1);
+  readonly reloadTicksPerAmmo = secondsToTicks(0.9);
   readonly reloadStartPolicy =
     "keep_current" as CharacterDefinition["reloadStartPolicy"];
   readonly reloadCommitPolicy =

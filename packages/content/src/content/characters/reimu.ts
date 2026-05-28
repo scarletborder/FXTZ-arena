@@ -31,7 +31,8 @@ export class ReimuBattleCharacter extends BattleCharacter {
   readonly name = "博丽灵梦";
   readonly cost = 4;
   readonly roleClass = "suppress" as CharacterDefinition["roleClass"];
-  readonly description = "· 传统的乐园巫女\n· 重视防御的平衡型角色，追踪性弹幕\n· bomb释放大玉消除沿途弹幕";
+  readonly description =
+    "· 传统的乐园巫女\n· 重视防御的平衡型角色，追踪性弹幕\n· bomb释放大玉消除沿途弹幕\n· 普通射击逐个装填";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/reimu/portrait.png",
     attackPreviewAsset: "assets/characters/reimu/attack-preview.png",
@@ -43,7 +44,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
   readonly moveSpeed = "medium" as CharacterDefinition["moveSpeed"];
   readonly fireRate = "medium" as CharacterDefinition["fireRate"];
   readonly ammoCapacity = 5;
-  readonly reloadTicksPerAmmo = secondsToTicks(0.8);
+  readonly reloadTicksPerAmmo = secondsToTicks(1.2);
   readonly reloadStartPolicy =
     "keep_current" as CharacterDefinition["reloadStartPolicy"];
   readonly reloadCommitPolicy =
