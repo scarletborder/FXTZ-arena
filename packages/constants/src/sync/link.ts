@@ -6,6 +6,6 @@ export interface PublicServer {
 export const PUBLIC_SERVER: readonly PublicServer[] = [
   {
     name: "湖北十堰",
-    addr: "wss://arena-api.scarletborder.cn:443/",
+    addr: "ws://160.202.238.18:21483/",
   },
 ];
