@@ -20,7 +20,11 @@ import { Vanilla } from "../decorators";
 
 const ARC_SEGMENTS = 8;
 const CLEAR_DAMAGE = 0;
-const SLASH_DAMAGE = 5;
+const SLASH_DAMAGE = 5; // 单次伤害需乘以62倍
+
+const NORMALSHOOT_DAMAGE = 20;
+const BOMBSHOT_DAMAGE = 8;
+
 const REAR_BULLET_SIZE = 6;
 const SLASH_DISTANCE_TIER1 = hitCircleUnits(12);
 const SLASH_DISTANCE_TIER1_GAP = hitCircleUnits(8);
@@ -226,7 +230,7 @@ export class YoumuBattleCharacter extends BattleCharacter {
       width: REAR_BULLET_SIZE,
       height: REAR_BULLET_SIZE,
       homingTicks: 0,
-      damage: 10,
+      damage: NORMALSHOOT_DAMAGE,
       frame,
       couldClear: true,
     });
@@ -250,7 +254,7 @@ export class YoumuBattleCharacter extends BattleCharacter {
       width: REAR_BULLET_SIZE,
       height: REAR_BULLET_SIZE,
       homingTicks: 0,
-      damage: 10,
+      damage: BOMBSHOT_DAMAGE,
       frame,
       couldClear: true,
     });

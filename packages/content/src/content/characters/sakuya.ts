@@ -16,6 +16,9 @@ import { Vanilla } from "../decorators";
 
 const KNIFE_HIT_SIZE = 20;
 
+const NORMALSHOOT_DAMAGE = 20;
+const BOMBSHOT_DAMAGE = 150;
+
 @Vanilla.RegisterCharacter("sakuya")
 export class SakuyaBattleCharacter extends BattleCharacter {
   readonly id = "sakuya" as CharacterDefinition["id"];
@@ -76,6 +79,8 @@ export class SakuyaBattleCharacter extends BattleCharacter {
           width: KNIFE_HIT_SIZE,
           height: KNIFE_HIT_SIZE,
         },
+        undefined,
+        NORMALSHOOT_DAMAGE,
       );
     }
 
@@ -83,7 +88,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
     if (tier >= 2) {
       const sideRepeats = tier >= 3 ? 4 : 2;
       for (let repeat = 0; repeat < sideRepeats; repeat += 1) {
-        this.spawnSideKnives(ctx, fighter, repeat * 6);
+        this.spawnSideKnives(ctx, fighter, repeat * 6, NORMALSHOOT_DAMAGE);
       }
     }
     if (tier >= 4) {
@@ -105,7 +110,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
             height: KNIFE_HIT_SIZE,
           },
           ctx.frame + 6,
-          10,
+          NORMALSHOOT_DAMAGE,
         );
       }
     }
@@ -167,6 +172,8 @@ export class SakuyaBattleCharacter extends BattleCharacter {
           width: KNIFE_HIT_SIZE,
           height: KNIFE_HIT_SIZE,
         },
+        undefined,
+        BOMBSHOT_DAMAGE,
       );
     }
   }
@@ -215,6 +222,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
     ctx: CharacterActionContext,
     fighter: FighterState,
     frameDelay: number,
+    damage = 10,
   ): void {
     const angle = this.angleToOpponent(ctx, fighter);
     const sideOffset = hitCircleUnits(3);
@@ -239,7 +247,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
           height: KNIFE_HIT_SIZE,
         },
         ctx.frame + frameDelay,
-        10,
+        damage,
       );
     }
   }

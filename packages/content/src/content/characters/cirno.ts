@@ -19,8 +19,10 @@ const REAR_OFFSET = -hitCircleUnits(10);
 const CENTER_GAP = hitCircleUnits(3);
 const BULLET_SIZE = 6;
 const BOMB_RADIUS_MULTIPLIER = 36;
+
 const BOMB_BULLET_DAMAGE = 10;
 const NORMAL_BULLET_DAMAGE = 10;
+const NORMAL_BULLET_SIDE_DAMAGE = 20;
 
 @Vanilla.RegisterCharacter("cirno")
 export class CirnoBattleCharacter extends BattleCharacter {
@@ -153,7 +155,7 @@ export class CirnoBattleCharacter extends BattleCharacter {
         position.y,
         shotAngle,
         "medium",
-        NORMAL_BULLET_DAMAGE,
+        NORMAL_BULLET_SIDE_DAMAGE,
         ctx.frame + frameDelay,
         "bullet_type_6_offset_5",
       );

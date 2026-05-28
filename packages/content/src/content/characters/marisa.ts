@@ -11,6 +11,8 @@ import {
 import { Vanilla } from "../decorators";
 
 const REAR_BEAM_DIAGONAL_ANGLE = Math.PI / 18;
+const NORMAL_SHOOT_DAMAGE = 6; // 乘以9
+const REAR_BEAM_DAMAGE = 1; // 乘以31
 
 @Vanilla.RegisterCharacter("marisa")
 export class MarisaBattleCharacter extends BattleCharacter {
@@ -145,7 +147,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
       maxLength: hitCircleUnits(16),
       lengthGrowthPerTick: hitCircleUnits(1),
       speedRank: "high",
-      damage: 5,
+      damage: NORMAL_SHOOT_DAMAGE,
       couldClear: false,
     });
   }
@@ -247,7 +249,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
       lengthGrowthPerTick: 0,
       speedRank: "low",
       expireTicks,
-      damage: 5,
+      damage: REAR_BEAM_DAMAGE,
       spawnOffset: 0,
       pinned: true,
       anchored: true,

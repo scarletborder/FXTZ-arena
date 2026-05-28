@@ -13,7 +13,7 @@ export interface ExampleFairyState extends NeutralMobState {
   movementVariant: ExampleFairyMovementVariant;
 }
 
-const MAX_HEALTH = 80;
+const MAX_HEALTH = 50;
 const HIT_RADIUS = 36;
 const ENTER_TICKS = secondsToTicks(3);
 const ARC_TICKS = secondsToTicks(2);

@@ -20,7 +20,10 @@ const BOMB_ORB_DISTANCE = hitCircleUnits(28);
 const CENTER_SHOT_HIT_SIZE = 12;
 const HOMING_SHOT_HIT_SIZE = 10;
 const BOMB_ORB_SIZE = 40;
-const BOMB_ORB_DAMAGE = 15;
+
+const NORMALSHOOT_TARGET_DAMAGE = 20;
+const NORMALSHOOT_HOMING_DAMAGE = 10;
+const BOMB_ORB_DAMAGE = 40;
 
 @Vanilla.RegisterCharacter("reimu")
 export class ReimuBattleCharacter extends BattleCharacter {
@@ -121,7 +124,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
         width: CENTER_SHOT_HIT_SIZE,
         height: CENTER_SHOT_HIT_SIZE,
         homingTicks: 0,
-        damage: 10,
+        damage: NORMALSHOOT_TARGET_DAMAGE,
         spawnOffset: 0,
         frame: ctx.frame + frameDelay,
       });
@@ -146,7 +149,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
         fp.toFloat(fpShotAngle),
         secondsToTicks(2),
         frameDelay,
-        frameDelay === 0 ? 15 : 10,
+        NORMALSHOOT_HOMING_DAMAGE,
       );
     }
   }
