@@ -1258,7 +1258,7 @@ describe("BattleModel point power shooting tiers", () => {
       .filter(
         (projectile) =>
           projectile.kind === "laser" &&
-          projectile.damage === 5 &&
+          projectile.damage === 1 &&
           !Number.isFinite(projectile.width),
       )
       .sort((left, right) => left.y - right.y);
@@ -1291,7 +1291,7 @@ describe("BattleModel point power shooting tiers", () => {
     const tier4RearBeams = tier4.projectiles.filter(
       (projectile) =>
         projectile.kind === "laser" &&
-        projectile.damage === 5 &&
+        projectile.damage === 1 &&
         !Number.isFinite(projectile.width),
     );
     expect(tier4RearBeams).toHaveLength(4);

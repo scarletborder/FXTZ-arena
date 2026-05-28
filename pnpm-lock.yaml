@@ -263,6 +263,9 @@ importers:
       '@repo/constants':
         specifier: workspace:*
         version: link:../constants
+      '@repo/content':
+        specifier: workspace:*
+        version: link:../content
     devDependencies:
       '@repo/eslint-config':
         specifier: workspace:*

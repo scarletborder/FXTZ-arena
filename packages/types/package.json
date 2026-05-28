@@ -22,7 +22,8 @@
     }
   },
   "dependencies": {
-    "@repo/constants": "workspace:*"
+    "@repo/constants": "workspace:*",
+    "@repo/content": "workspace:*"
   },
   "scripts": {
     "build": "bunchee",

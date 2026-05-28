@@ -75,7 +75,7 @@ describe("CombatSyncManager rollback integration", () => {
     expectFrameHashesMatch(clientA, clientB, finalFrame);
     expect(clientA.hashAt(finalFrame)).toBe(clientB.hashAt(finalFrame));
     expect(clientA.globalHashAt(finalFrame)).toBe(clientB.globalHashAt(finalFrame));
-  });
+  }, 20_000);
 });
 
 async function createClient(

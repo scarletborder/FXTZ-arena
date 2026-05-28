@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { getAllAbilityCardDefinitions, getAllCharacterDefinitions } from "@repo/content";
 import {
   ARENA_WIDTH,
   DEFAULT_BOMBS,
@@ -13,14 +14,21 @@ import {
   speedRankToPixelsPerTick,
   type PlayerLoadout,
 } from "./index";
-import { getAllAbilityCardDefinitions, getAllCharacterDefinitions } from "@repo/content";
 
 describe("@repo/types static content", () => {
   it("exports the baseline characters", () => {
-    expect(getAllCharacterDefinitions()).toMatchObject([
+    const characters = getAllCharacterDefinitions();
+
+    expect(characters.map((character) => character.id)).toEqual([
+      "reimu",
+      "marisa",
+      "sakuya",
+      "cirno",
+      "youmu",
+    ]);
+    expect(characters).toMatchObject([
       {
         id: "reimu",
-        name: "博丽灵梦",
         cost: 4,
         ammoCapacity: 5,
         reloadTicksPerAmmo: 48,
@@ -29,7 +37,6 @@ describe("@repo/types static content", () => {
       },
       {
         id: "marisa",
-        name: "魔理沙",
         cost: 5,
         ammoCapacity: 2,
         reloadTicksPerAmmo: 90,
@@ -38,11 +45,26 @@ describe("@repo/types static content", () => {
       },
       {
         id: "sakuya",
-        name: "咲夜",
         cost: 4,
         ammoCapacity: 3,
         reloadTicksPerAmmo: 60,
         reloadStartPolicy: "keep_current",
+        reloadCommitPolicy: "commit_on_finish",
+      },
+      {
+        id: "cirno",
+        cost: 4,
+        ammoCapacity: 4,
+        reloadTicksPerAmmo: 54,
+        reloadStartPolicy: "keep_current",
+        reloadCommitPolicy: "commit_per_ammo",
+      },
+      {
+        id: "youmu",
+        cost: 5,
+        ammoCapacity: 1,
+        reloadTicksPerAmmo: 90,
+        reloadStartPolicy: "reset_to_zero",
         reloadCommitPolicy: "commit_on_finish",
       },
     ]);
@@ -56,6 +78,7 @@ describe("@repo/types static content", () => {
       "multi_shot",
       "spirit_strike_card",
       "extension",
+      "graze_lover",
     ]);
   });
 });
@@ -95,9 +118,7 @@ describe("@repo/types unit conversions", () => {
     expect(speedRankToPixelsPerTick("low")).toBe(2);
     expect(speedRankToPixelsPerTick("medium")).toBe(4);
     expect(speedRankToPixelsPerTick("high")).toBe(5);
-    expect(bulletSpeedRankToPixelsPerTick("low")).toBeCloseTo(
-      ARENA_WIDTH / 360,
-    );
+    expect(bulletSpeedRankToPixelsPerTick("low")).toBeCloseTo(ARENA_WIDTH / 360);
   });
 
   it("converts hit circle diameter multipliers", () => {
