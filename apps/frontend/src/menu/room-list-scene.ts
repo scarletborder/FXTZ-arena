@@ -49,6 +49,7 @@ export class RoomListScene extends Phaser.Scene {
     const field = createTextField(this, 800, 658, 170, {
       value: "",
       maxLength: 16,
+      onFocus: (focusedField) => { this.activeField = focusedField; },
       onChange: (v) => { this.roomIdValue = v.trim(); },
     });
     this.activeField = field;
@@ -150,6 +151,7 @@ export class RoomListScene extends Phaser.Scene {
     const field = createTextField(this, 500, 330, 280, {
       value: "",
       maxLength: 32,
+      onFocus: (focusedField) => { this.activeField = focusedField; },
       onChange: (v) => { password = v; },
     });
     field.setActive(true);

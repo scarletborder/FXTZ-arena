@@ -114,11 +114,20 @@ export class BattleStartScene extends Phaser.Scene {
     let roomName = `${uiSettings.username} 的房间`;
     let roomPassword = "";
     c.add(this.add.text(cx - 140, py + 78, "房间名", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
-    const nameField = createTextField(this, cx - 140, py + 108, 280, { value: roomName, onChange: (v) => { roomName = v; } });
+    const nameField = createTextField(this, cx - 140, py + 108, 280, {
+      value: roomName,
+      onFocus: (field) => { this.activeField = field; },
+      onChange: (v) => { roomName = v; },
+    });
     c.add(nameField.container);
     this.activeField = nameField;
     c.add(this.add.text(cx - 140, py + 158, "密码(可选)", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
-    c.add(createTextField(this, cx - 140, py + 188, 280, { value: roomPassword, onChange: (v) => { roomPassword = v; } }).container);
+    const passwordField = createTextField(this, cx - 140, py + 188, 280, {
+      value: roomPassword,
+      onFocus: (field) => { this.activeField = field; },
+      onChange: (v) => { roomPassword = v; },
+    });
+    c.add(passwordField.container);
     c.add(this.add.text(cx + 20, py + 248, "命数", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
     const lifeLabel = this.add.text(cx + 140, py + 248, "2", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#34d399" });
     c.add(lifeLabel);

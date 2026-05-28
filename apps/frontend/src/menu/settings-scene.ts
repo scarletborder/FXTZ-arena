@@ -148,10 +148,22 @@ export class SettingsScene extends Phaser.Scene {
     }
   }
 
+  private activateField(field: TextFieldControl): void {
+    if (this.activeField === field) {
+      return;
+    }
+    this.activeField?.setActive(false);
+    this.activeField = field;
+    field.setActive(true);
+  }
+
   private createField(x: number, y: number, width: number, key: "username" | "serverAddress"): void {
     const field = createTextField(this, x, y, width, {
       value: uiSettings[key],
       maxLength: key === "serverAddress" ? 160 : 32,
+      onFocus: (focusedField) => {
+        this.activateField(focusedField);
+      },
       onChange: (value) => {
         if (key === "username") {
           setUsername(value);
@@ -161,9 +173,7 @@ export class SettingsScene extends Phaser.Scene {
       },
     });
     field.hitArea.on("pointerdown", () => {
-      this.activeField?.setActive(false);
-      this.activeField = field;
-      field.setActive(true);
+      this.activateField(field);
     });
   }
 

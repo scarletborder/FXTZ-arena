@@ -11,6 +11,9 @@ new Phaser.Game({
   height: 720,
   backgroundColor: "#101820",
   scene: [HomeScene, BattleStartScene, RoomListScene, RoomLobbyScene, SelectScene, LoadingScene, BattleScene, ResultScene, CodexScene, SettingsScene],
+  dom: {
+    createContainer: true,
+  },
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

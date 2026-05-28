@@ -44,6 +44,8 @@ export interface TextFieldControl {
   readonly container: Phaser.GameObjects.Container;
   readonly hitArea: Phaser.GameObjects.Rectangle;
   setActive(active: boolean): void;
+  focus(): void;
+  blur(): void;
   handleKey(event: KeyboardEvent): void;
   handlePaste(text: string): void;
 }

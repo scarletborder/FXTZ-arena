@@ -18,6 +18,7 @@ interface TextFieldOptions {
   readonly value: string;
   readonly onChange: (value: string) => void;
   readonly maxLength?: number;
+  readonly onFocus?: (field: TextFieldControl) => void;
 }
 
 interface EntryTileOptions {
@@ -40,6 +41,8 @@ interface EntryTileControl {
   setSelected(selected: boolean): void;
   setHovered(hovered: boolean): void;
 }
+
+let activeTextField: TextFieldControl | undefined;
 
 export function createFightButton(
   scene: Phaser.Scene,
@@ -144,6 +147,36 @@ export function createTextField(
   let value = options.value;
   let cursorIndex = value.length;
   const maxLength = options.maxLength ?? 42;
+  const domEvents = "input focusin focusout keydown keyup click pointerdown touchstart mouseup touchend select";
+  const domElement = scene.add.dom(0, 0).createFromHTML('<input name="textField" type="text" />').setOrigin(0, 0);
+  const nativeInput = domElement.getChildByName("textField") as HTMLInputElement | null;
+  let cleanedUp = false;
+
+  if (!nativeInput) {
+    throw new Error("Failed to create text field DOM input.");
+  }
+
+  nativeInput.value = value;
+  nativeInput.maxLength = maxLength;
+  nativeInput.autocomplete = "off";
+  nativeInput.spellcheck = false;
+  nativeInput.setAttribute("autocapitalize", "none");
+  nativeInput.setAttribute("aria-label", "text input");
+  Object.assign(nativeInput.style, {
+    width: `${width}px`,
+    height: "46px",
+    boxSizing: "border-box",
+    border: "0",
+    outline: "0",
+    margin: "0",
+    padding: "0 14px",
+    background: "transparent",
+    color: "transparent",
+    caretColor: "transparent",
+    opacity: "0.01",
+    font: `16px ${FONT}`,
+    pointerEvents: "auto",
+  } satisfies Partial<CSSStyleDeclaration>);
 
   const redraw = () => {
     background.clear();
@@ -155,32 +188,107 @@ export function createTextField(
     label.setText(displayValue);
   };
 
-  hitArea.on("pointerdown", () => {
-    active = true;
-    redraw();
-  });
-  hitArea.on("pointerover", () => {
-    if (!active) {
-      background.clear();
-      drawAngledPanel(background, 0, 0, width, 46, 0x121822, 0x7f8994, 1);
+  const syncNativeInput = () => {
+    if (nativeInput.value !== value) {
+      nativeInput.value = value;
     }
-  });
-  hitArea.on("pointerout", () => {
+    nativeInput.setSelectionRange(cursorIndex, cursorIndex);
+  };
+
+  const cleanup = () => {
+    if (cleanedUp) {
+      return;
+    }
+    cleanedUp = true;
+    domElement.removeListener(domEvents);
+    domElement.off("focusin", onDomFocusIn);
+    domElement.off("focusout", onDomFocusOut);
+    domElement.off("input", onDomInput);
+    domElement.off("keydown", onDomKeyDown);
+    domElement.off("keyup", updateCursorFromDom);
+    domElement.off("click", onDomPointerFocus);
+    domElement.off("pointerdown", onDomPointerFocus);
+    domElement.off("touchstart", onDomPointerFocus);
+    domElement.off("mouseup", updateCursorFromDom);
+    domElement.off("touchend", updateCursorFromDom);
+    domElement.off("select", updateCursorFromDom);
+    if (activeTextField === control) {
+      activeTextField = undefined;
+    }
+  };
+
+  const setActive = (nextActive: boolean) => {
+    if (nextActive && activeTextField && activeTextField !== control) {
+      activeTextField.setActive(false);
+    }
+    const wasActive = active;
+    active = nextActive;
+    if (nextActive) {
+      activeTextField = control;
+      if (!wasActive) {
+        options.onFocus?.(control);
+      }
+    } else if (activeTextField === control) {
+      activeTextField = undefined;
+    }
+    if (!nextActive && nativeInput === document.activeElement) {
+      nativeInput.blur();
+    }
     redraw();
-  });
+  };
 
-  container.add([background, label, hitArea]);
-  redraw();
+  const applyNativeValue = () => {
+    value = nativeInput.value.slice(0, maxLength);
+    if (nativeInput.value !== value) {
+      nativeInput.value = value;
+    }
+    cursorIndex = nativeInput.selectionStart ?? value.length;
+    options.onChange(value);
+    redraw();
+  };
 
-  return {
+  const updateCursorFromDom = () => {
+    cursorIndex = nativeInput.selectionStart ?? value.length;
+    redraw();
+  };
+
+  const focusNativeInput = () => {
+    nativeInput.focus({ preventScroll: true });
+    syncNativeInput();
+  };
+
+  const onDomFocusIn = () => {
+    setActive(true);
+    syncNativeInput();
+  };
+  const onDomFocusOut = () => {
+    setActive(false);
+  };
+  const onDomInput = () => {
+    applyNativeValue();
+  };
+  const onDomKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Enter" || event.key === "Escape") {
+      nativeInput.blur();
+    }
+  };
+  const onDomPointerFocus = () => {
+    setActive(true);
+    focusNativeInput();
+  };
+
+  const control: TextFieldControl = {
     container,
     hitArea,
-    setActive(nextActive: boolean): void {
-      active = nextActive;
-      redraw();
+    setActive,
+    focus(): void {
+      focusNativeInput();
+    },
+    blur(): void {
+      nativeInput.blur();
     },
     handleKey(event: KeyboardEvent): void {
-      if (!active) {
+      if (!active || document.activeElement instanceof HTMLInputElement) {
         return;
       }
       if (event.ctrlKey || event.metaKey || event.altKey) {
@@ -199,20 +307,55 @@ export function createTextField(
         value = `${value.slice(0, cursorIndex)}${event.key}${value.slice(cursorIndex)}`;
         cursorIndex += event.key.length;
       }
+      syncNativeInput();
       options.onChange(value);
       redraw();
     },
     handlePaste(text: string): void {
-      if (!active || text.length === 0) {
+      if (!active || text.length === 0 || document.activeElement instanceof HTMLInputElement) {
         return;
       }
       const nextValue = `${value.slice(0, cursorIndex)}${text}${value.slice(cursorIndex)}`.slice(0, maxLength);
       cursorIndex = Math.min(cursorIndex + text.length, nextValue.length);
       value = nextValue;
+      syncNativeInput();
       options.onChange(value);
       redraw();
     },
   };
+
+  hitArea.on("pointerdown", () => {
+    setActive(true);
+    focusNativeInput();
+  });
+  hitArea.on("pointerover", () => {
+    if (!active) {
+      background.clear();
+      drawAngledPanel(background, 0, 0, width, 46, 0x121822, 0x7f8994, 1);
+    }
+  });
+  hitArea.on("pointerout", () => {
+    redraw();
+  });
+
+  container.add([background, label, domElement, hitArea]);
+  domElement.addListener(domEvents);
+  domElement.on("focusin", onDomFocusIn);
+  domElement.on("focusout", onDomFocusOut);
+  domElement.on("input", onDomInput);
+  domElement.on("keydown", onDomKeyDown);
+  domElement.on("keyup", updateCursorFromDom);
+  domElement.on("click", onDomPointerFocus);
+  domElement.on("pointerdown", onDomPointerFocus);
+  domElement.on("touchstart", onDomPointerFocus);
+  domElement.on("mouseup", updateCursorFromDom);
+  domElement.on("touchend", updateCursorFromDom);
+  domElement.on("select", updateCursorFromDom);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, cleanup);
+  container.once("destroy", cleanup);
+  redraw();
+
+  return control;
 }
 
 export function drawFightingBackdrop(scene: Phaser.Scene, word: string, subWord: string): void {
