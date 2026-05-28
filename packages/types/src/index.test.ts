@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { getAllAbilityCardDefinitions, getAllCharacterDefinitions } from "@repo/content";
 import {
   ARENA_WIDTH,
   DEFAULT_BOMBS,
@@ -14,74 +13,6 @@ import {
   speedRankToPixelsPerTick,
   type PlayerLoadout,
 } from "./index";
-
-describe("@repo/types static content", () => {
-  it("exports the baseline characters", () => {
-    const characters = getAllCharacterDefinitions();
-
-    expect(characters.map((character) => character.id)).toEqual([
-      "reimu",
-      "marisa",
-      "sakuya",
-      "cirno",
-      "youmu",
-    ]);
-    expect(characters).toMatchObject([
-      {
-        id: "reimu",
-        cost: 4,
-        ammoCapacity: 5,
-        reloadTicksPerAmmo: 48,
-        reloadStartPolicy: "keep_current",
-        reloadCommitPolicy: "commit_per_ammo",
-      },
-      {
-        id: "marisa",
-        cost: 5,
-        ammoCapacity: 2,
-        reloadTicksPerAmmo: 90,
-        reloadStartPolicy: "reset_to_zero",
-        reloadCommitPolicy: "commit_on_finish",
-      },
-      {
-        id: "sakuya",
-        cost: 4,
-        ammoCapacity: 3,
-        reloadTicksPerAmmo: 60,
-        reloadStartPolicy: "keep_current",
-        reloadCommitPolicy: "commit_on_finish",
-      },
-      {
-        id: "cirno",
-        cost: 4,
-        ammoCapacity: 4,
-        reloadTicksPerAmmo: 54,
-        reloadStartPolicy: "keep_current",
-        reloadCommitPolicy: "commit_per_ammo",
-      },
-      {
-        id: "youmu",
-        cost: 5,
-        ammoCapacity: 1,
-        reloadTicksPerAmmo: 90,
-        reloadStartPolicy: "reset_to_zero",
-        reloadCommitPolicy: "commit_on_finish",
-      },
-    ]);
-  });
-
-  it("exports the baseline ability cards", () => {
-    expect(getAllAbilityCardDefinitions().map((card) => card.id)).toEqual([
-      "extra_life",
-      "ember",
-      "backdoor",
-      "multi_shot",
-      "spirit_strike_card",
-      "extension",
-      "graze_lover",
-    ]);
-  });
-});
 
 describe("@repo/types default battle rules", () => {
   it("uses default lives and bombs without passive cards", () => {

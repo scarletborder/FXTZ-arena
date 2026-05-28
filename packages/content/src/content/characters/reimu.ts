@@ -31,7 +31,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
   readonly name = "博丽灵梦";
   readonly cost = 4;
   readonly roleClass = "suppress" as CharacterDefinition["roleClass"];
-  readonly description = "低速诱导弹与清弹 bomb，适合压制弹幕空间。";
+  readonly description = "· 传统的乐园巫女\n· 重视防御的平衡型角色，追踪性弹幕\n· bomb释放大玉消除沿途弹幕";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/reimu/portrait.png",
     attackPreviewAsset: "assets/characters/reimu/attack-preview.png",

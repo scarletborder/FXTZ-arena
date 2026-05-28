@@ -34,7 +34,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
   readonly reloadCommitPolicy =
     "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = "medium" as CharacterDefinition["bulletSpeed"];
-  readonly description = "平行双弹和时间停止 bomb，擅长近中距离压迫。";
+  readonly description = "· 过劳996女仆\n· 擅长近中距离压迫的突击性机体\n· bomb可让时间停止";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/sakuya/portrait.png",
     attackPreviewAsset: "assets/characters/sakuya/attack-preview.png",

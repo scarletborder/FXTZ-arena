@@ -33,7 +33,7 @@ export class CirnoBattleCharacter extends BattleCharacter {
   readonly moveSpeed = "medium" as CharacterDefinition["moveSpeed"];
   readonly fireRate = "medium" as CharacterDefinition["fireRate"];
   readonly ammoCapacity = 4;
-  readonly reloadTicksPerAmmo = secondsToTicks(0.9);
+  readonly reloadTicksPerAmmo = secondsToTicks(1.2);
   readonly reloadStartPolicy =
     "keep_current" as CharacterDefinition["reloadStartPolicy"];
   readonly reloadCommitPolicy =
@@ -43,7 +43,7 @@ export class CirnoBattleCharacter extends BattleCharacter {
   readonly pointBombCost: number = 150;
   readonly pointCollectRadius = DEFAULT_POINT_COLLECT_RADIUS;
   readonly description =
-    "背后展开中速冰晶弹幕，并用 bomb 将近身弹幕冻结后反推出去。";
+    "· 骄阳下的冰块妖精\n· 擅长压制的进攻性角色，可瞬间发射大量侵略性弹幕\n· Bomb可将敌弹冻结为己方弹幕";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/cirno/portrait.png",
     attackPreviewAsset: "assets/characters/cirno/attack-preview.png",
