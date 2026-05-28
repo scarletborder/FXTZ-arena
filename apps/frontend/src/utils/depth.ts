@@ -17,6 +17,7 @@ export namespace Depth {
   export const CrosshairText = 14;
 
   export const OnlineStatus = 100;
+  export const MobileControls = 200;
   export const Debug = 999;
   export const Tooltip = 1000;
 }

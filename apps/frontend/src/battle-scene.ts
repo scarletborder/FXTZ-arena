@@ -18,13 +18,18 @@ import {
   GAME_WIDTH,
 } from "@repo/constants";
 import type { PointRewardSize } from "@repo/constants";
+import { createBattleInput, getBattlePointerWorld } from "./battle/input";
 import {
-  createBattleInput,
-  getBattlePointerWorld,
+  createBattleKeybinds,
+  type BattleKeybinds,
   type BattleKeyMap,
-} from "./battle/input";
+} from "./battle/keybind";
 import { BattleDebugLogger } from "./battle/logger";
 import type { BattleSceneData } from "./battle/loadout";
+import {
+  BattleMobileControls,
+  shouldEnableMobileBattleControls,
+} from "./battle/mobile-controls";
 import { BattleView } from "./battle/view";
 import { Depth } from "./utils/depth";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
@@ -52,9 +57,18 @@ function pointRewardSizeForValue(value: 1 | 5 | 10): PointRewardSize {
 const DEBUG_HISTORY_LIMIT = 3600;
 const PRESET_SCRIPT_ROLLBACK_FRAME = 30;
 const PRESET_SCRIPT_FRAMES = 420;
+const ARENA_ASPECT_RATIO = ARENA_WIDTH_PX / ARENA_HEIGHT_PX;
+
+interface BattleLayout {
+  readonly width: number;
+  readonly height: number;
+  readonly arenaInsetX: number;
+  readonly arenaInsetY: number;
+}
 
 export class BattleScene extends Phaser.Scene {
   private accumulator = 0;
+  private keybinds!: BattleKeybinds;
   private keys!: BattleKeyMap;
   private runtime!: RaidLogicRuntime;
   private currentOutput!: BattleOutputFrame;
@@ -75,6 +89,12 @@ export class BattleScene extends Phaser.Scene {
   };
   private combatSync: CombatSyncManager | undefined;
   private onlineStatusText: Phaser.GameObjects.Text | undefined;
+  private mobileControls: BattleMobileControls | undefined;
+  private mobileControlsEnabled = false;
+  private previousScaleAutoCenter: Phaser.Scale.CenterType | undefined;
+  private battleLayout: BattleLayout | undefined;
+  private applyingBattleLayout = false;
+  private pendingLayoutRefresh: Phaser.Time.TimerEvent | undefined;
 
   constructor() {
     super("battle");
@@ -118,21 +138,18 @@ export class BattleScene extends Phaser.Scene {
     this.debugHistory.clear();
     this.debugLogger.reset();
     this.accumulator = 0;
-    this.scale.resize(ARENA_WIDTH_PX, ARENA_HEIGHT_PX);
-    this.cameras.main.setScroll(0, 0);
+    this.mobileControlsEnabled = shouldEnableMobileBattleControls(this);
+    if (this.mobileControlsEnabled) {
+      this.previousScaleAutoCenter = this.scale.autoCenter;
+      this.scale.autoCenter = Phaser.Scale.CENTER_HORIZONTALLY;
+    } else {
+      this.previousScaleAutoCenter = undefined;
+    }
+    this.applyBattleLayout(createBattleLayout(), true);
     this.input.setDefaultCursor("none");
     this.input.mouse?.disableContextMenu();
-    this.keys = this.input.keyboard!.addKeys({
-      w: "W",
-      a: "A",
-      s: "S",
-      d: "D",
-      shift: Phaser.Input.Keyboard.KeyCodes.SHIFT,
-      r: "R",
-      tab: Phaser.Input.Keyboard.KeyCodes.TAB,
-      enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
-      e: "E",
-    }) as BattleKeyMap;
+    this.keybinds = createBattleKeybinds(this);
+    this.keys = this.keybinds.keys;
     this.runtime = createRaidLogicRuntime({
       mode: data.mode ?? "training",
       loadouts: data.loadouts,
@@ -144,21 +161,26 @@ export class BattleScene extends Phaser.Scene {
       this.logicReady = true;
     });
     this.view = new BattleView(this, data.mode ?? "training");
-    this.lastInput = createBattleInput(this, this.keys);
+    this.lastInput = createBattleInput(this, this.keys, this.mobileControls);
     this.recordDebugFrame();
     this.setupOnlineBattle(data);
     ConsoleCmd.install(this);
     if (data.debug) {
       this.setDebugPhysicsEnabled(true);
     }
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.scale.resize(GAME_WIDTH, GAME_HEIGHT);
-      this.input.setDefaultCursor("auto");
-      ConsoleCmd.uninstall(this);
-      if (this.sceneData.mode === "online") {
-        this.combatSync?.destroy();
-      }
-    });
+    this.scale.on(
+      Phaser.Scale.Events.RESIZE,
+      this.scheduleBattleLayoutRefresh,
+      this,
+    );
+    this.scale.on(
+      Phaser.Scale.Events.ORIENTATION_CHANGE,
+      this.scheduleBattleLayoutRefresh,
+      this,
+    );
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
+      this.shutdownBattleScene(),
+    );
   }
 
   update(_: number, delta: number): void {
@@ -168,6 +190,7 @@ export class BattleScene extends Phaser.Scene {
         this.lastInput = createBattleInput(
           this,
           this.keys,
+          this.mobileControls,
         ) satisfies BattleInputState & {
           readonly pointerX: number;
           readonly pointerY: number;
@@ -185,7 +208,7 @@ export class BattleScene extends Phaser.Scene {
       }
       this.accumulator -= FIXED_STEP_MS;
     }
-    const pointerWorld = getBattlePointerWorld(this);
+    const pointerWorld = getBattlePointerWorld(this, this.mobileControls);
     this.lastInput = {
       ...this.lastInput,
       aimX: pointerWorld.x,
@@ -283,8 +306,12 @@ export class BattleScene extends Phaser.Scene {
     if (this.sceneData.mode === "online") {
       return false;
     }
-    const pointer = getBattlePointerWorld(this);
-    this.runtime.debugSpawnPoint({ rewardSize: pointRewardSizeForValue(value), x: pointer.x, y: pointer.y });
+    const pointer = getBattlePointerWorld(this, this.mobileControls);
+    this.runtime.debugSpawnPoint({
+      rewardSize: pointRewardSizeForValue(value),
+      x: pointer.x,
+      y: pointer.y,
+    });
     this.recordDebugFrame();
     return true;
   }
@@ -347,6 +374,67 @@ export class BattleScene extends Phaser.Scene {
           this.goToOnlineResult(winnerPlayerId, serverConfirmedFrame),
       },
     });
+  }
+
+  private shutdownBattleScene(): void {
+    this.scale.off(
+      Phaser.Scale.Events.RESIZE,
+      this.scheduleBattleLayoutRefresh,
+      this,
+    );
+    this.scale.off(
+      Phaser.Scale.Events.ORIENTATION_CHANGE,
+      this.scheduleBattleLayoutRefresh,
+      this,
+    );
+    this.pendingLayoutRefresh?.remove(false);
+    this.pendingLayoutRefresh = undefined;
+    if (this.previousScaleAutoCenter !== undefined) {
+      this.scale.autoCenter = this.previousScaleAutoCenter;
+      this.previousScaleAutoCenter = undefined;
+    }
+    this.mobileControls?.destroy();
+    this.mobileControls = undefined;
+    this.scale.setGameSize(GAME_WIDTH, GAME_HEIGHT);
+    this.cameras.main?.setSize(GAME_WIDTH, GAME_HEIGHT);
+    this.cameras.main?.setScroll(0, 0);
+    this.input?.setDefaultCursor("auto");
+    this.keybinds?.destroy();
+    ConsoleCmd.uninstall(this);
+    if (this.sceneData.mode === "online") {
+      this.combatSync?.destroy();
+    }
+    this.combatSync = undefined;
+  }
+
+  private scheduleBattleLayoutRefresh(): void {
+    if (this.applyingBattleLayout || !this.scene.isActive()) {
+      return;
+    }
+    this.pendingLayoutRefresh?.remove(false);
+    this.pendingLayoutRefresh = this.time.delayedCall(80, () => {
+      this.pendingLayoutRefresh = undefined;
+      this.applyBattleLayout(createBattleLayout());
+    });
+  }
+
+  private applyBattleLayout(layout: BattleLayout, force = false): void {
+    if (!force && sameBattleLayout(this.battleLayout, layout)) {
+      return;
+    }
+    this.battleLayout = layout;
+    this.applyingBattleLayout = true;
+    try {
+      this.scale.setGameSize(layout.width, layout.height);
+      this.cameras.main.setSize(layout.width, layout.height);
+      this.cameras.main.setScroll(-layout.arenaInsetX, -layout.arenaInsetY);
+    } finally {
+      this.applyingBattleLayout = false;
+    }
+    this.mobileControls?.destroy();
+    this.mobileControls = this.mobileControlsEnabled
+      ? new BattleMobileControls(this, layout)
+      : undefined;
   }
 
   private goToOnlineResult(
@@ -503,8 +591,9 @@ export class BattleScene extends Phaser.Scene {
 
     const rows = this.debugLogger.getConfirmedRows(authoritativeFrame);
 
-    const label = `FXTZ Debug Hash Bundle (mode=${this.sceneData.mode ?? "offline"
-      }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${localConfirmedFrame}, serverConfirmedFrame=${targetFrame}, authoritativeFrame=${authoritativeFrame}, cachedRows=${rows.length})`;
+    const label = `FXTZ Debug Hash Bundle (mode=${
+      this.sceneData.mode ?? "offline"
+    }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${localConfirmedFrame}, serverConfirmedFrame=${targetFrame}, authoritativeFrame=${authoritativeFrame}, cachedRows=${rows.length})`;
 
     console.group(label);
     console.log(
@@ -604,6 +693,52 @@ export class BattleScene extends Phaser.Scene {
       },
     });
   }
+}
+
+function createBattleLayout(): BattleLayout {
+  const viewport = readViewportSize();
+  const viewportAspect =
+    viewport.width > 0 && viewport.height > 0
+      ? viewport.width / viewport.height
+      : ARENA_ASPECT_RATIO;
+  const width =
+    viewportAspect >= ARENA_ASPECT_RATIO
+      ? Math.round(ARENA_HEIGHT_PX * viewportAspect)
+      : ARENA_WIDTH_PX;
+  const height =
+    viewportAspect >= ARENA_ASPECT_RATIO
+      ? ARENA_HEIGHT_PX
+      : Math.round(ARENA_WIDTH_PX / viewportAspect);
+  return {
+    width,
+    height,
+    arenaInsetX: Math.max(0, Math.round((width - ARENA_WIDTH_PX) / 2)),
+    arenaInsetY: Math.max(0, Math.round((height - ARENA_HEIGHT_PX) / 2)),
+  };
+}
+
+function readViewportSize(): {
+  readonly width: number;
+  readonly height: number;
+} {
+  const viewport = window.visualViewport;
+  return {
+    width: Math.max(1, Math.round(viewport?.width ?? window.innerWidth)),
+    height: Math.max(1, Math.round(viewport?.height ?? window.innerHeight)),
+  };
+}
+
+function sameBattleLayout(
+  left: BattleLayout | undefined,
+  right: BattleLayout,
+): boolean {
+  return (
+    left !== undefined &&
+    left.width === right.width &&
+    left.height === right.height &&
+    left.arenaInsetX === right.arenaInsetX &&
+    left.arenaInsetY === right.arenaInsetY
+  );
 }
 
 function toHashRow(record: DebugFrameRecord): DebugHashRow {
