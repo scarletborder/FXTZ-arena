@@ -142,10 +142,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
     fighter.timeStopUntil = Math.max(fighter.timeStopUntil, freezeTicks);
 
     for (const projectile of ctx.projectiles) {
-      projectile.pausedUntil = Math.max(
-        projectile.pausedUntil,
-        ctx.frame + freezeTicks,
-      );
+      ctx.pauseProjectileTimeline(projectile, freezeTicks);
     }
 
     const orbitRadius = hitCircleUnits(24);

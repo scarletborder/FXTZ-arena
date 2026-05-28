@@ -754,6 +754,93 @@ describe("BattleModel character bombs", () => {
     expect(model.hashHex()).toBe(originalHash);
   });
 
+  it("sakuya time stop pauses reload progress and resumes it after the effect ends", async () => {
+    const model = await createBattleModel("sakuya", "reimu");
+    model.step(input({ shootPressed: true }));
+    model.step(input({ reloadPressed: true }));
+
+    expect(model.player.reloadRemaining).toBe(60);
+
+    model.step(input({ bombPressed: true }));
+    const frozenReloadRemaining = model.player.reloadRemaining;
+
+    for (let index = 0; index < 30; index += 1) {
+      model.step(input());
+    }
+
+    expect(model.player.reloadRemaining).toBe(frozenReloadRemaining);
+
+    while (model.player.timeStopUntil > 0) {
+      model.step(input());
+    }
+
+    expect(model.player.reloadRemaining).toBeLessThan(frozenReloadRemaining);
+  });
+
+  it("sakuya time stop preserves delayed volley intervals until time resumes", async () => {
+    const model = await createBattleModel("sakuya", "reimu");
+    model.setPlayerPointCount(300);
+
+    model.step(input({ bombPressed: true, shootPressed: true }));
+
+    const delayedVolley = model.projectiles.find(
+      (projectile) =>
+        projectile.owner === "Player1" &&
+        projectile.kind === "knife" &&
+        projectile.visibleFrom === model.frame + 66,
+    );
+    expect(delayedVolley).toBeDefined();
+    expect(delayedVolley?.pausedUntil).toBe(model.frame + 66);
+
+    const startX = delayedVolley!.x;
+    const startY = delayedVolley!.y;
+
+    while (model.player.timeStopUntil > 0) {
+      model.step(input());
+    }
+
+    expect(delayedVolley!.visibleFrom - model.frame).toBe(6);
+    expect(delayedVolley!.x).toBeCloseTo(startX);
+    expect(delayedVolley!.y).toBeCloseTo(startY);
+
+    while (model.frame < delayedVolley!.visibleFrom) {
+      model.step(input());
+    }
+
+    expect(delayedVolley!.x).not.toBeCloseTo(startX);
+  });
+
+  it("sakuya time stop restores projectile timelines when cancelled by a hit", async () => {
+    const model = await createBattleModel("sakuya", "reimu");
+    const delayedVisibleFrom = model.frame + 31;
+    model.projectiles.push(
+      testProjectile({
+        id: 200,
+        owner: "Player2",
+        x: model.player.x + HIT_CIRCLE_DIAMETER * 40,
+        y: model.player.y,
+        vx: 1,
+        visibleFrom: delayedVisibleFrom,
+      }),
+      testProjectile({
+        id: 201,
+        owner: "Player2",
+        x: model.player.x,
+        y: model.player.y,
+        couldClear: false,
+      }),
+    );
+
+    model.step(input({ bombPressed: true }));
+
+    const delayed = model.projectiles.find(
+      (projectile) => projectile.id === 200,
+    );
+    expect(model.player.timeStopUntil).toBe(0);
+    expect(delayed?.pausedUntil).toBe(model.frame);
+    expect(delayed?.visibleFrom).toBe(delayedVisibleFrom);
+  });
+
   it("drives neutral mobs after Player1 and Player2 in stable mob id order", async () => {
     const model = await createBattleModel("reimu", "marisa");
     model.addNeutralMob(new TestNeutralMob(2, 640, 240));

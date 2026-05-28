@@ -97,6 +97,7 @@ export interface CharacterActionContext
     BattleLaserSpawnParams
   > {
   spawnSegment(params: BattleSegmentSpawnParams): void;
+  pauseProjectileTimeline(projectile: ProjectileState, ticks: number): void;
 }
 
 export type PointPowerTier = 1 | 2 | 3 | 4;

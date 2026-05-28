@@ -58,6 +58,7 @@ import {
   restoreProjectileSnapshot,
   type BattleModelSnapshot,
 } from "./snapshot";
+import { TickerManager } from "./ticker-manager";
 import type { CharacterActionContext } from "@repo/content";
 import { fpClamp, fpAtan2, fpHypotFp } from "@repo/content";
 
@@ -86,6 +87,7 @@ export class BattleModel {
   private readonly loadouts: BattleLoadouts;
   private readonly projectileSystem = new ProjectileSystem();
   private readonly effectSystem = new EffectSystem();
+  private readonly ticker = new TickerManager();
   private readonly playerFighter: BattleFighter;
   private readonly targetFighter: BattleFighter;
   private readonly cpuPlayer: CpuPlayer | undefined;
@@ -156,6 +158,7 @@ export class BattleModel {
     this.stats.damage = 0;
     this.stats.elapsedTicks = 0;
     this.frame = 0;
+    this.ticker.reset();
     this.gameOver = false;
     this.physics?.reset();
     this.cpuPlayer?.reset();
@@ -264,6 +267,7 @@ export class BattleModel {
 
     this.capturePreviousFighterState();
     this.frame += 1;
+    this.ticker.setCurrentFrame(this.frame);
     this.stats.elapsedTicks += 1;
 
     // --- Phase 1: Timer ticking (order-independent) ---
@@ -361,6 +365,7 @@ export class BattleModel {
       points: this.points,
       clearRings: this.clearRings,
       mobSpawner: this.mobSpawnerState(),
+      ticker: this.ticker.snapshot(),
     });
   }
 
@@ -371,6 +376,14 @@ export class BattleModel {
       );
     }
     this.frame = snapshot.frame;
+    this.ticker.restore(
+      snapshot.ticker ?? {
+        currentFrame: this.frame,
+        nextTimerId: 1,
+        timers: [],
+      },
+    );
+    this.ticker.setCurrentFrame(this.frame);
     this.gameOver = snapshot.gameOver;
     restoreFighterSnapshot(this.player, snapshot.player, this.frame);
     restoreFighterSnapshot(this.target, snapshot.target, this.frame);
@@ -378,7 +391,7 @@ export class BattleModel {
       0,
       this.projectiles.length,
       ...snapshot.projectiles.map((projectile) =>
-        restoreProjectileSnapshot(projectile, this.frame),
+        restoreProjectileSnapshot(projectile, this.ticker),
       ),
     );
     this.effects.splice(
@@ -633,15 +646,14 @@ export class BattleModel {
 
   private cancelTimeStop(caster: FighterState): void {
     const opponent = caster.key === "Player1" ? this.target : this.player;
+    const remainingPauseTicks = caster.timeStopUntil;
     caster.timeStopUntil = 0;
     caster.projectilePauseUntil = 0;
     caster.nonFireActionLockedUntil = 0;
     opponent.actionLockedUntil = 0;
     opponent.movementLockedUntil = 0;
     for (const projectile of this.projectiles) {
-      if (this.frame < projectile.pausedUntil) {
-        projectile.pausedUntil = this.frame;
-      }
+      this.ticker.resumeProjectileTimeline(projectile, remainingPauseTicks);
     }
   }
 
@@ -657,40 +669,58 @@ export class BattleModel {
       spawnBullet: (params) => {
         const spawnFrame = params.frame ?? frame;
         const owner = params.owner === "Player1" ? this.player : this.target;
+        const pauseTicks =
+          params.pausedUntil === undefined ? owner.projectilePauseUntil : 0;
         const spawnParams = {
           ...params,
           frame: spawnFrame,
-          pausedUntil:
-            params.pausedUntil ?? spawnFrame + owner.projectilePauseUntil,
+          pausedUntil: params.pausedUntil ?? spawnFrame,
         };
         this.pendingSpawns.push(() => {
+          const startIndex = this.projectiles.length;
           this.projectileSystem.spawnBullet(this.projectiles, spawnParams);
+          const projectile = this.projectiles[startIndex];
+          if (projectile) {
+            this.ticker.pauseProjectileTimeline(projectile, pauseTicks);
+          }
         });
       },
       spawnLaser: (params) => {
         const spawnFrame = params.frame ?? frame;
         const owner = params.owner === "Player1" ? this.player : this.target;
+        const pauseTicks =
+          params.pausedUntil === undefined ? owner.projectilePauseUntil : 0;
         const spawnParams = {
           ...params,
           frame: spawnFrame,
-          pausedUntil:
-            params.pausedUntil ?? spawnFrame + owner.projectilePauseUntil,
+          pausedUntil: params.pausedUntil ?? spawnFrame,
         };
         this.pendingSpawns.push(() => {
+          const startIndex = this.projectiles.length;
           this.projectileSystem.spawnLaser(this.projectiles, spawnParams);
+          const projectile = this.projectiles[startIndex];
+          if (projectile) {
+            this.ticker.pauseProjectileTimeline(projectile, pauseTicks);
+          }
         });
       },
       spawnSegment: (params) => {
         const spawnFrame = params.frame ?? frame;
         const owner = params.owner === "Player1" ? this.player : this.target;
+        const pauseTicks =
+          params.pausedUntil === undefined ? owner.projectilePauseUntil : 0;
         const spawnParams = {
           ...params,
           frame: spawnFrame,
-          pausedUntil:
-            params.pausedUntil ?? spawnFrame + owner.projectilePauseUntil,
+          pausedUntil: params.pausedUntil ?? spawnFrame,
         };
         this.pendingSpawns.push(() => {
+          const startIndex = this.projectiles.length;
           this.projectileSystem.spawnSegment(this.projectiles, spawnParams);
+          const projectile = this.projectiles[startIndex];
+          if (projectile) {
+            this.ticker.pauseProjectileTimeline(projectile, pauseTicks);
+          }
         });
       },
       clearProjectilesAround: (params) => {
@@ -720,6 +750,9 @@ export class BattleModel {
           fp.toFloat(fp.div(fp.fromFloat(params.radius), fp.fromInt(100))),
           params.duration,
         );
+      },
+      pauseProjectileTimeline: (projectile, ticks) => {
+        this.ticker.pauseProjectileTimeline(projectile, ticks);
       },
     };
   }

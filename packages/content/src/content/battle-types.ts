@@ -100,9 +100,9 @@ export interface ProjectileState {
   readonly height: number;
   readonly anchorX: number | undefined;
   readonly anchorY: number | undefined;
-  readonly visibleFrom: number;
-  readonly expireAt: number | undefined;
-  readonly homingStartAt: number;
+  visibleFrom: number;
+  expireAt: number | undefined;
+  homingStartAt: number;
   homingUntil: number;
   pausedUntil: number;
   retargetAt: number | undefined;

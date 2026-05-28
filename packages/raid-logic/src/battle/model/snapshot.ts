@@ -11,6 +11,11 @@ import type {
 } from "@repo/content";
 import type { NeutralMobSpawnerState } from "@repo/content";
 import type { ClearRingState } from "./entities/clear-ring";
+import {
+  TickerManager,
+  type ProjectileTimerSnapshot,
+  type TickerManagerSnapshot,
+} from "./ticker-manager";
 
 export interface BattleModelSnapshot {
   readonly version: 1;
@@ -27,6 +32,7 @@ export interface BattleModelSnapshot {
   readonly points: readonly PointSnapshot[];
   readonly clearRings: readonly ClearRingSnapshot[];
   readonly mobSpawner: NeutralMobSpawnerState | undefined;
+  readonly ticker?: TickerManagerSnapshot;
   readonly projectiles: readonly ProjectileSnapshot[];
   readonly effects: readonly EffectSnapshot[];
   readonly stats: TrainingStats;
@@ -59,14 +65,8 @@ export type ProjectileSnapshot = Omit<
   | "homingUntil"
   | "pausedUntil"
   | "retargetAt"
-> & {
-  readonly visibleIn: number;
-  readonly expireIn: number | undefined;
-  readonly homingStartIn: number;
-  readonly homingRemaining: number;
-  readonly pausedRemaining: number;
-  readonly retargetIn: number | undefined;
-};
+> &
+  ProjectileTimerSnapshot;
 
 export type EffectSnapshot = Omit<EffectState, "expireAt"> & {
   readonly expireIn: number;
@@ -96,7 +96,10 @@ export function createBattleModelSnapshot(params: {
   readonly points: readonly PointState[];
   readonly clearRings: readonly ClearRingState[];
   readonly mobSpawner: NeutralMobSpawnerState | undefined;
+  readonly ticker?: TickerManagerSnapshot;
 }): BattleModelSnapshot {
+  const ticker = new TickerManager();
+  ticker.setCurrentFrame(params.frame);
   return {
     version: 1,
     frame: params.frame,
@@ -114,8 +117,9 @@ export function createBattleModelSnapshot(params: {
       serializeClearRing(ring, params.frame),
     ),
     mobSpawner: params.mobSpawner,
+    ticker: params.ticker,
     projectiles: params.projectiles.map((projectile) =>
-      serializeProjectile(projectile, params.frame),
+      serializeProjectile(projectile, ticker),
     ),
     effects: params.effects.map((effect) =>
       serializeEffect(effect, params.frame),
@@ -146,7 +150,7 @@ export function restoreFighterSnapshot(
 
 export function restoreProjectileSnapshot(
   snapshot: ProjectileSnapshot,
-  frame: number,
+  ticker: TickerManager,
 ): ProjectileState {
   const {
     visibleIn,
@@ -159,12 +163,14 @@ export function restoreProjectileSnapshot(
   } = snapshot;
   return {
     ...projectile,
-    visibleFrom: frame + visibleIn,
-    expireAt: expireIn === undefined ? undefined : frame + expireIn,
-    homingStartAt: frame + homingStartIn,
-    homingUntil: frame + homingRemaining,
-    pausedUntil: frame + pausedRemaining,
-    retargetAt: retargetIn === undefined ? undefined : frame + retargetIn,
+    ...ticker.restoreProjectileTimers({
+      visibleIn,
+      expireIn,
+      homingStartIn,
+      homingRemaining,
+      pausedRemaining,
+      retargetIn,
+    }),
   };
 }
 
@@ -249,7 +255,7 @@ function serializeFighter(
 
 function serializeProjectile(
   projectile: ProjectileState,
-  frame: number,
+  ticker: TickerManager,
 ): ProjectileSnapshot {
   return {
     id: projectile.id,
@@ -267,18 +273,7 @@ function serializeProjectile(
     height: projectile.height,
     anchorX: projectile.anchorX,
     anchorY: projectile.anchorY,
-    visibleIn: projectile.visibleFrom - frame,
-    expireIn:
-      projectile.expireAt === undefined
-        ? undefined
-        : projectile.expireAt - frame,
-    homingStartIn: projectile.homingStartAt - frame,
-    homingRemaining: projectile.homingUntil - frame,
-    pausedRemaining: projectile.pausedUntil - frame,
-    retargetIn:
-      projectile.retargetAt === undefined
-        ? undefined
-        : projectile.retargetAt - frame,
+    ...ticker.serializeProjectileTimers(projectile),
     widthGrowthPerTick: projectile.widthGrowthPerTick,
     maxWidth: projectile.maxWidth,
     damage: projectile.damage,
