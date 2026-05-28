@@ -7,12 +7,12 @@ import { Vanilla } from "../decorators";
 @Vanilla.RegisterCard("extra_life")
 export class ExtraLifeBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "extra_life";
-  readonly name = "余命";
+  readonly name = "生命卡牌";
   readonly cost = 3;
   readonly kind = "passive" as AbilityCardDefinition["kind"];
   readonly useLimit: AbilityCardDefinition["useLimit"] = "infinite";
   readonly cooldownTicks = 0;
-  readonly description = "初始命数变为 3。";
+  readonly description = "初始命数增加1";
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/extra-life/icon.png",
     previewAsset: "assets/ability-cards/extra-life/preview.png",

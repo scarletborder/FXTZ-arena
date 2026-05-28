@@ -8,7 +8,7 @@ import { Vanilla } from "../decorators";
 @Vanilla.RegisterCard("ember")
 export class EmberBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "ember";
-  readonly name = "余烬";
+  readonly name = "符咒卡牌";
   readonly cost = 2;
   readonly kind = "passive" as AbilityCardDefinition["kind"];
   readonly useLimit: AbilityCardDefinition["useLimit"] = "infinite";
