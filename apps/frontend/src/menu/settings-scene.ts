@@ -69,10 +69,10 @@ export class SettingsScene extends Phaser.Scene {
     this.add.text(104, 214, "用户名", bodyStyle("#f6f1e6", 18));
     this.createField(104, 252, 276, "username");
 
-    this.add.text(104, 310, "音乐", bodyStyle("#f6f1e6", 18));
+    this.add.text(104, 310, "音乐(暂无)", bodyStyle("#f6f1e6", 18));
     this.createVolumeSlider(104, 344, 276, uiSettings.music, setMusicVolume);
 
-    this.add.text(104, 386, "音效", bodyStyle("#f6f1e6", 18));
+    this.add.text(104, 386, "音效(暂无)", bodyStyle("#f6f1e6", 18));
     this.createVolumeSlider(104, 420, 276, uiSettings.sound, setSoundVolume);
 
     const debugText = this.add.text(104, 476, "", bodyStyle("#d7e3ef", 18));
