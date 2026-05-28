@@ -775,6 +775,20 @@ describe("MessageHandler", () => {
       expect(state2?.status).toBe("fighting");
     });
 
+    it("treats duplicate loading_done after fighting as idempotent", () => {
+      const { handler } = createHandler();
+      const { conn1, conn2 } = setupReadyRoom(handler);
+
+      handler.handle(conn1, { type: "loading_done" });
+      handler.handle(conn2, { type: "loading_done" });
+      conn1.clearMessages();
+
+      handler.handle(conn1, { type: "loading_done" });
+
+      expect(conn1.findSentMessage("error")).toBeUndefined();
+      expect(conn1.findSentMessage("room_state")?.status).toBe("fighting");
+    });
+
     it("rejects loading_done in wrong state", () => {
       const { handler } = createHandler();
       const conn = new MockConnection();

@@ -914,6 +914,16 @@ export class MessageHandler {
     const room = this.roomManager.get(session.roomId);
     if (!room) return;
 
+    if (room.status === "fighting") {
+      this.send(connection, {
+        type: "room_state",
+        roomId: room.id,
+        playerCount: room.connectionIds.filter(Boolean).length,
+        status: "fighting",
+      });
+      return;
+    }
+
     if (room.status !== "loading") {
       this.send(connection, {
         type: "error",

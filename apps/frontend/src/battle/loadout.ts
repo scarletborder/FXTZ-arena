@@ -1,5 +1,5 @@
 import type { BattleConfig, MapId, PlayerId } from "@repo/types";
-import type { BattleLoadouts } from "@repo/raid-logic";
+import type { BattleLoadouts, RaidLogicRuntime } from "@repo/raid-logic";
 
 export type { BattleLoadouts, FighterLoadout } from "@repo/raid-logic";
 
@@ -13,4 +13,5 @@ export interface BattleSceneData {
   readonly debug?: boolean;
   readonly battleConfig?: BattleConfig;
   readonly localPlayerId?: PlayerId;
+  readonly runtime?: RaidLogicRuntime;
 }

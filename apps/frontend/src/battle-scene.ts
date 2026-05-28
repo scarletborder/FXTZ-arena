@@ -1,5 +1,4 @@
 import Phaser from "phaser";
-import { getAllCharacterDefinitions } from "@repo/content";
 import type { PlayerId } from "@repo/types";
 import {
   createRaidLogicRuntime,
@@ -30,9 +29,9 @@ import {
   BattleMobileControls,
   shouldEnableMobileBattleControls,
 } from "./battle/mobile-controls";
+import { queueBattleAssets } from "./battle/assets";
 import { BattleView } from "./battle/view";
 import { Depth } from "./utils/depth";
-import { assetUrl } from "./utils/assets";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
 import { connectionManager } from "./menu/shared";
 import { CombatSyncManager } from "./network/combat";
@@ -102,33 +101,6 @@ export class BattleScene extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.json("bullet-config", assetUrl("assets/bullet/bullet_config.json"));
-    this.load.json("enemy-config", assetUrl("assets/enemy/enemy_config.json"));
-    for (const texture of [
-      "bullet1",
-      "bullet2",
-      "bullet3",
-      "bullet4",
-      "bullet5",
-      "etbreak",
-    ]) {
-      if (!this.textures.exists(texture)) {
-        this.load.image(texture, assetUrl(`assets/bullet/${texture}.png`));
-      }
-    }
-    for (const texture of ["enemy", "enemy2", "enemy5", "enemy_aura"]) {
-      if (!this.textures.exists(texture)) {
-        this.load.image(texture, assetUrl(`assets/enemy/${texture}.png`));
-      }
-    }
-    for (const character of getAllCharacterDefinitions()) {
-      const textureKey = `character-combat-${character.id}`;
-      if (this.textures.exists(textureKey)) continue;
-      this.load.spritesheet(textureKey, character.gallery.combatAsset, {
-        frameWidth: 512,
-        frameHeight: 512,
-      });
-    }
   }
 
   create(data: BattleSceneData = {}): void {
@@ -151,16 +123,20 @@ export class BattleScene extends Phaser.Scene {
     this.input.mouse?.disableContextMenu();
     this.keybinds = createBattleKeybinds(this);
     this.keys = this.keybinds.keys;
-    this.runtime = createRaidLogicRuntime({
-      mode: data.mode ?? "training",
-      loadouts: data.loadouts,
-      mapId: data.mapId ?? data.battleConfig?.mapId,
-    });
-    this.logicReady = false;
-    this.runtime.initialize().then(() => {
-      if (!this.scene.isActive()) return;
-      this.logicReady = true;
-    });
+    this.runtime =
+      data.runtime ??
+      createRaidLogicRuntime({
+        mode: data.mode ?? "training",
+        loadouts: data.loadouts,
+        mapId: data.mapId ?? data.battleConfig?.mapId,
+      });
+    this.logicReady = data.runtime?.physicsReady === true;
+    if (!this.logicReady) {
+      this.runtime.initialize().then(() => {
+        if (!this.scene.isActive()) return;
+        this.logicReady = true;
+      });
+    }
     this.view = new BattleView(this, data.mode ?? "training");
     this.lastInput = createBattleInput(this, this.keys, this.mobileControls);
     this.recordDebugFrame();
@@ -592,9 +568,8 @@ export class BattleScene extends Phaser.Scene {
 
     const rows = this.debugLogger.getConfirmedRows(authoritativeFrame);
 
-    const label = `FXTZ Debug Hash Bundle (mode=${
-      this.sceneData.mode ?? "offline"
-    }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${localConfirmedFrame}, serverConfirmedFrame=${targetFrame}, authoritativeFrame=${authoritativeFrame}, cachedRows=${rows.length})`;
+    const label = `FXTZ Debug Hash Bundle (mode=${this.sceneData.mode ?? "offline"
+      }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${localConfirmedFrame}, serverConfirmedFrame=${targetFrame}, authoritativeFrame=${authoritativeFrame}, cachedRows=${rows.length})`;
 
     console.group(label);
     console.log(
