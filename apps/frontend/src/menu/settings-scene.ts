@@ -231,8 +231,20 @@ export class SettingsScene extends Phaser.Scene {
     this.activeField?.blur();
     this.activeField = undefined;
 
-    const servers = Array.from(new Set(PUBLIC_SERVER.map((server) => server.trim()).filter(Boolean)));
-    const rowHeight = 50;
+    const seenAddresses = new Set<string>();
+    const servers = PUBLIC_SERVER
+      .map((server) => ({
+        name: server.name.trim(),
+        addr: server.addr.trim(),
+      }))
+      .filter((server) => {
+        if (!server.addr || seenAddresses.has(server.addr)) {
+          return false;
+        }
+        seenAddresses.add(server.addr);
+        return true;
+      });
+    const rowHeight = 58;
     const dialogWidth = 560;
     const dialogHeight = 124 + Math.max(1, servers.length) * rowHeight;
     const x = 360;
@@ -302,15 +314,15 @@ export class SettingsScene extends Phaser.Scene {
     y: number,
     width: number,
     height: number,
-    server: string,
+    server: typeof PUBLIC_SERVER[number],
     index: number,
   ): Phaser.GameObjects.Container {
     let hovering = false;
-    const selected = server === uiSettings.serverAddress;
+    const selected = server.addr === uiSettings.serverAddress;
     const container = this.add.container(x, y);
     const background = this.add.graphics();
-    const label = this.add.text(18, 12, `公共服务器 ${index + 1}`, bodyStyle(selected ? "#ffcf6e" : "#f6f1e6", 16));
-    const address = this.add.text(150, 12, server, bodyStyle("#b7c7d8", 15)).setWordWrapWidth(width - 168);
+    const label = this.add.text(18, 8, server.name || `公共服务器 ${index + 1}`, bodyStyle(selected ? "#ffcf6e" : "#f6f1e6", 17));
+    const address = this.add.text(18, 31, server.addr, bodyStyle("#b7c7d8", 14)).setWordWrapWidth(width - 36);
     const hitArea = this.add.rectangle(0, 0, width, height, 0xffffff, 0.001)
       .setOrigin(0, 0)
       .setInteractive({ useHandCursor: true });
@@ -334,9 +346,9 @@ export class SettingsScene extends Phaser.Scene {
     });
     hitArea.on("pointerup", (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
-      this.serverAddressField?.setValue(server);
+      this.serverAddressField?.setValue(server.addr);
       if (!this.serverAddressField) {
-        setServerAddress(server);
+        setServerAddress(server.addr);
       }
       this.closePublicServerDialog();
     });

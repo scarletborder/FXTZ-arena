@@ -10,7 +10,7 @@ export class HomeScene extends Phaser.Scene {
 
   create(): void {
     drawFightingBackdrop(this, "FXTZ ARENA", "LOCAL M5 BUILD");
-    drawTitleBlock(this, "FXTZ ARENA", "幻想突战 - 弹幕格斗演武");
+    drawTitleBlock(this, "FXTZ ARENA", "肥乡天则 ~ 角斗少女的虚荣");
 
     const buttons = [
       { label: "开始战斗", onClick: () => this.scene.start("battle-start") },

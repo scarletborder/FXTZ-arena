@@ -1,3 +1,5 @@
+import { PUBLIC_SERVER } from "@repo/constants";
+
 export interface UiSettings {
   username: string;
   debug: boolean;
@@ -13,6 +15,8 @@ const STORAGE_KEYS = {
   music: "fxtz_music",
   sound: "fxtz_sound",
 } as const;
+
+const DEFAULT_SERVER_ADDRESS = PUBLIC_SERVER[0]?.addr ?? "ws://localhost:22334";
 
 function canUseLocalStorage(): boolean {
   return typeof localStorage !== "undefined";
@@ -75,7 +79,7 @@ function normalizeVolume(value: number, fallback = 100): number {
 export const uiSettings: UiSettings = {
   username: readString(STORAGE_KEYS.username, "Player"),
   debug: readBoolean(STORAGE_KEYS.debug, false),
-  serverAddress: readString(STORAGE_KEYS.serverAddress, "ws://localhost:22334"),
+  serverAddress: readString(STORAGE_KEYS.serverAddress, DEFAULT_SERVER_ADDRESS),
   music: readVolume(STORAGE_KEYS.music, 100),
   sound: readVolume(STORAGE_KEYS.sound, 100),
 };
