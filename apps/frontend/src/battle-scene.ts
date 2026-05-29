@@ -86,6 +86,7 @@ export class BattleScene extends Phaser.Scene {
     readonly pointerX: number;
     readonly pointerY: number;
   };
+  private autoReloadObservedShotsFired = 0;
   private combatSync: CombatSyncManager | undefined;
   private onlineStatusText: Phaser.GameObjects.Text | undefined;
   private mobileControls: BattleMobileControls | undefined;
@@ -138,6 +139,7 @@ export class BattleScene extends Phaser.Scene {
     }
     this.view = new BattleView(this, data.mode ?? "training");
     this.lastInput = createBattleInput(this, this.keys, this.mobileControls);
+    this.autoReloadObservedShotsFired = this.localFighterState().shotsFired;
     this.recordDebugFrame();
     this.setupOnlineBattle(data);
     ConsoleCmd.install(this);
@@ -167,6 +169,10 @@ export class BattleScene extends Phaser.Scene {
           this,
           this.keys,
           this.mobileControls,
+          {
+            fighter: this.localFighterState(),
+            previousShotsFired: this.autoReloadObservedShotsFired,
+          },
         ) satisfies BattleInputState & {
           readonly pointerX: number;
           readonly pointerY: number;
@@ -181,6 +187,7 @@ export class BattleScene extends Phaser.Scene {
         } else if (this.logicReady) {
           this.stepRuntimeWithDebugInput(this.lastInput);
         }
+        this.updateAutoReloadObservation();
       }
       this.accumulator -= FIXED_STEP_MS;
     }
@@ -307,6 +314,25 @@ export class BattleScene extends Phaser.Scene {
       player: input,
     });
     this.recordDebugFrame();
+  }
+
+  private localFighterState() {
+    const key = this.combatSync?.localFighterKey() ?? "Player1";
+    return key === "Player1"
+      ? this.runtime.state.player
+      : this.runtime.state.target;
+  }
+
+  private updateAutoReloadObservation(): void {
+    const fighter = this.localFighterState();
+    if (
+      this.lastInput.reloadPressed ||
+      fighter.reloadRemaining > 0 ||
+      fighter.ammo > 0 ||
+      fighter.shotsFired <= this.autoReloadObservedShotsFired
+    ) {
+      this.autoReloadObservedShotsFired = fighter.shotsFired;
+    }
   }
 
   private setupOnlineBattle(data: BattleSceneData): void {

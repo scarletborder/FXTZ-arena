@@ -198,10 +198,6 @@ export class CombatSyncManager {
     if (this.gameOverVerdictSent || !this.runtime.gameOver) {
       return;
     }
-    if (this.lastReceivedRemoteFrame < this.runtime.frame) {
-      this.options.callbacks.setStatusText("等待对手输入确认终局…");
-      return;
-    }
 
     this.gameOverVerdictSent = true;
     this.paused = true;

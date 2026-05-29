@@ -2,6 +2,7 @@ import Phaser from "phaser";
 
 import type { BattleInputState } from "@repo/raid-logic";
 import { ARENA_HEIGHT_PX, ARENA_WIDTH_PX } from "@repo/constants";
+import type { FighterState } from "./types";
 import type { BattleKeyMap } from "./keybind";
 import type { BattleMobileControls } from "./mobile-controls";
 
@@ -12,10 +13,16 @@ export interface BattleInputBundle extends BattleInputState {
   readonly pointerY: number;
 }
 
+export interface BattleInputAutoReloadContext {
+  readonly fighter: FighterState | undefined;
+  readonly previousShotsFired: number;
+}
+
 export function createBattleInput(
   scene: Phaser.Scene,
   keys: BattleKeyMap,
   mobileControls?: BattleMobileControls,
+  autoReloadContext?: BattleInputAutoReloadContext,
 ): BattleInputBundle {
   const mobileState = mobileControls?.readState();
   const pointerWorld = getBattlePointerWorld(scene, mobileControls);
@@ -30,24 +37,63 @@ export function createBattleInput(
     | 1;
   const moveX = mobileState?.moveX || keyboardMoveX;
   const moveY = mobileState?.moveY || keyboardMoveY;
+  const manualReloadPressed = (mobileState?.reloadPressed ?? false) || keys.r.isDown;
+  const shootPressed =
+    mobileState?.shootPressed ??
+    (pointer.leftButtonDown() && !pointer.rightButtonDown());
+  const emptyShotReloadPressed = shouldReloadInsteadOfShooting(
+    autoReloadContext,
+    shootPressed,
+  );
   return {
     moveX,
     moveY,
     aimX: pointerWorld.x,
     aimY: pointerWorld.y,
-    shootPressed:
-      mobileState?.shootPressed ??
-      (pointer.leftButtonDown() && !pointer.rightButtonDown()),
+    shootPressed: shootPressed && !emptyShotReloadPressed,
     bombPressed: mobileState?.bombPressed ?? pointer.rightButtonDown(),
     activeCardPressed:
       (mobileState?.activeCardPressed ?? false) ||
       Phaser.Input.Keyboard.JustDown(keys.e),
-    reloadPressed: (mobileState?.reloadPressed ?? false) || keys.r.isDown,
+    reloadPressed:
+      manualReloadPressed ||
+      emptyShotReloadPressed ||
+      shouldAutoReloadAfterLastShot(autoReloadContext),
     alternateHeld: (mobileState?.alternateHeld ?? false) || keys.shift.isDown,
     infoHeld: keys.tab.isDown,
     pointerX: pointerWorld.x,
     pointerY: pointerWorld.y,
   };
+}
+
+function shouldReloadInsteadOfShooting(
+  context: BattleInputAutoReloadContext | undefined,
+  shootPressed: boolean,
+): boolean {
+  const fighter = context?.fighter;
+  if (!shootPressed || !fighter) {
+    return false;
+  }
+  return (
+    fighter.ammo <= 0 &&
+    fighter.reloadRemaining <= 0 &&
+    fighter.ammo < fighter.ammoCapacity
+  );
+}
+
+function shouldAutoReloadAfterLastShot(
+  context: BattleInputAutoReloadContext | undefined,
+): boolean {
+  const fighter = context?.fighter;
+  if (!fighter) {
+    return false;
+  }
+  return (
+    fighter.shotsFired > context.previousShotsFired &&
+    fighter.ammo <= 0 &&
+    fighter.reloadRemaining <= 0 &&
+    fighter.ammo < fighter.ammoCapacity
+  );
 }
 
 export function getBattlePointerWorld(

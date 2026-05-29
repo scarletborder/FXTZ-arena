@@ -243,7 +243,6 @@ export class BattleFighter {
       return;
     }
     if (this.state.ammo <= 0) {
-      this.startReload();
       return;
     }
     if (this.state.fireCooldownUntil > 0) {

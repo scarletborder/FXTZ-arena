@@ -319,7 +319,7 @@ describe("BattleModel reload timing", () => {
     expect(model.player.shotsFired).toBe(shotsBeforeReload);
   });
 
-  it("starts reload when left click is pressed after ammo is empty", async () => {
+  it("does not start reload from the model when shooting after ammo is empty", async () => {
     const model = await createBattleModel("marisa", "reimu");
     model.step(input({ shootPressed: true }));
     for (let index = 0; index < 20; index += 1) {
@@ -331,9 +331,8 @@ describe("BattleModel reload timing", () => {
 
     model.step(input({ shootPressed: true }));
 
-    expect(model.player.reloadStartedAmmo).toBe(0);
-    expect(model.player.reloadTotal).toBe(180);
-    expect(model.player.reloadRemaining).toBe(180);
+    expect(model.player.reloadRemaining).toBe(0);
+    expect(model.player.shotsFired).toBe(2);
   });
 });
 
@@ -1284,7 +1283,7 @@ describe("BattleModel point power shooting tiers", () => {
               projectile.x - model.player.previousX,
               projectile.y - model.player.previousY,
             ) -
-              HIT_CIRCLE_DIAMETER * 28,
+            HIT_CIRCLE_DIAMETER * 28,
           ) < 0.001,
       ),
     ).toBe(true);
@@ -1659,7 +1658,7 @@ describe("BattleModel point power shooting tiers", () => {
         (projectile) =>
           projectile.textureKey === "bullet_type_24_offset_1" &&
           projectile.vx * projectile.vx + projectile.vy * projectile.vy <
-            lowBulletSpeed * lowBulletSpeed + 0.01 &&
+          lowBulletSpeed * lowBulletSpeed + 0.01 &&
           projectile.retargetAt === tier1.frame + 60 &&
           projectile.retargetSpeed === highBulletSpeed,
       ),
