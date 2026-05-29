@@ -33,6 +33,8 @@ const FP_DEGREES_TO_RADIANS = fp.div(FP_PI, fp.fromInt(180));
 const CENTER_HALF_GAP = fp.div(fp.fromFloat(CENTER_PAIR_GAP), fp.fromInt(2));
 const TIER1_SIDE_ANGLES = [20, 45, 60] as const;
 const TIER2_SIDE_ANGLES = [10, 30, 55] as const;
+const TIER3_SIDE_ANGLES = [20, 50] as const;
+const TIER4_SIDE_ANGLES = [10, 40, 65] as const;
 const BOMB_SHOT_COUNT = 3;
 const BOMB_SHOT_SPACING = fp.div(FP_TWO_PI, fp.fromInt(BOMB_SHOT_COUNT));
 const BOMB_BULLET_EXPIRE_TICKS = secondsToTicks(4);
@@ -54,7 +56,7 @@ export class EllenBattleCharacter extends BattleCharacter {
     "commit_per_ammo" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = "high" as CharacterDefinition["bulletSpeed"];
   readonly description =
-    "· 狙击型魔法使\n· 以延迟变向弹幕控制战场\n· bomb展开消弹圈和旋转弹幕";
+    "· 沉入久远之爱的魔女\n· 倾斜大量高速狙击弹的广义上狙击型机体\n· bomb展开高速旋转弹幕\n· 普通射击逐个装填";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/ellen/combat.png",
     attackPreviewAsset: "assets/characters/ellen/combat.png",
@@ -107,12 +109,24 @@ export class EllenBattleCharacter extends BattleCharacter {
       );
     }
 
+    if (tier >= 3) {
+      this.spawnRetargetFan(
+        ctx,
+        fighter,
+        fp.toFloat(fp.add(fp.fromFloat(angle), FP_PI)),
+        [...TIER3_SIDE_ANGLES],
+        secondsToTicks(0.8),
+        "bullet_type_24_offset_1",
+        SIDE_BULLET_SIZE,
+      );
+    }
+
     if (tier >= 4) {
       this.spawnRetargetFan(
         ctx,
         fighter,
         fp.toFloat(fp.add(fp.fromFloat(angle), FP_PI)),
-        [...TIER2_SIDE_ANGLES, ...TIER1_SIDE_ANGLES],
+        [...TIER4_SIDE_ANGLES],
         secondsToTicks(0.8),
         "bullet_type_24_offset_1",
         SIDE_BULLET_SIZE,
