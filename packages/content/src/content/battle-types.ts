@@ -106,6 +106,7 @@ export interface ProjectileState {
   homingUntil: number;
   pausedUntil: number;
   retargetAt: number | undefined;
+  retargetSpeed: number | undefined;
   widthGrowthPerTick: number;
   maxWidth: number | undefined;
   readonly damage: number;
@@ -113,6 +114,12 @@ export interface ProjectileState {
   readonly couldClear: boolean;
   readonly clearsProjectiles: boolean;
   readonly piercesTargets: boolean;
+  polarOriginX: number | undefined;
+  polarOriginY: number | undefined;
+  polarRadius: number | undefined;
+  polarAngle: number | undefined;
+  polarRadialSpeed: number | undefined;
+  polarAngularSpeed: number | undefined;
 }
 
 export interface EffectState {

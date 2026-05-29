@@ -34,12 +34,20 @@ export interface BattleBulletSpawnParams {
   readonly homingTicks: number;
   readonly damage?: number;
   readonly spawnOffset?: number;
+  readonly expireTicks?: number;
   readonly pausedUntil?: number;
   readonly retargetAt?: number;
+  readonly retargetSpeed?: number;
   readonly frame?: number;
   readonly couldClear?: boolean;
   readonly clearsProjectiles?: boolean;
   readonly piercesTargets?: boolean;
+  readonly polarOriginX?: number;
+  readonly polarOriginY?: number;
+  readonly polarRadius?: number;
+  readonly polarAngle?: number;
+  readonly polarRadialSpeed?: number;
+  readonly polarAngularSpeed?: number;
 }
 
 export interface BattleLaserSpawnParams {

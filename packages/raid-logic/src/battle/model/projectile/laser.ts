@@ -80,6 +80,7 @@ export function createLaserProjectile(params: {
     homingUntil: 0,
     pausedUntil: params.pausedUntil ?? params.frame,
     retargetAt: undefined,
+    retargetSpeed: undefined,
     widthGrowthPerTick: params.lengthGrowthPerTick ?? 0,
     maxWidth: params.maxLength,
     damage: params.damage ?? 1,
@@ -87,6 +88,12 @@ export function createLaserProjectile(params: {
     couldClear: params.couldClear ?? true,
     clearsProjectiles: params.clearsProjectiles ?? false,
     piercesTargets: params.piercesTargets ?? false,
+    polarOriginX: undefined,
+    polarOriginY: undefined,
+    polarRadius: undefined,
+    polarAngle: undefined,
+    polarRadialSpeed: undefined,
+    polarAngularSpeed: undefined,
   };
 }
 

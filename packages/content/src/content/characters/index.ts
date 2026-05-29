@@ -11,6 +11,7 @@ import "./marisa";
 import "./sakuya";
 import "./cirno";
 import "./youmu";
+import "./ellen";
 
 import type { BattleCharacter } from "./base";
 import { characterLibrary } from "./character-library";

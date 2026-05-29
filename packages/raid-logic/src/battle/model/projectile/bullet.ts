@@ -29,11 +29,19 @@ export function createBulletProjectile(params: {
   readonly homingTicks: number;
   readonly damage?: number;
   readonly spawnOffset?: number;
+  readonly expireTicks?: number;
   readonly pausedUntil?: number;
   readonly retargetAt?: number;
+  readonly retargetSpeed?: number;
   readonly couldClear?: boolean;
   readonly clearsProjectiles?: boolean;
   readonly piercesTargets?: boolean;
+  readonly polarOriginX?: number;
+  readonly polarOriginY?: number;
+  readonly polarRadius?: number;
+  readonly polarAngle?: number;
+  readonly polarRadialSpeed?: number;
+  readonly polarAngularSpeed?: number;
 }): ProjectileState {
   const speed = bulletSpeedRankToPixelsPerTick(params.speedRank);
   const spawnOffset = params.spawnOffset ?? 28;
@@ -68,11 +76,15 @@ export function createBulletProjectile(params: {
     anchorX: undefined,
     anchorY: undefined,
     visibleFrom: params.frame,
-    expireAt: undefined,
+    expireAt:
+      params.expireTicks === undefined
+        ? undefined
+        : params.frame + params.expireTicks,
     homingStartAt: params.frame + HOMING_START_DELAY_TICKS,
     homingUntil: params.frame + HOMING_START_DELAY_TICKS + params.homingTicks,
     pausedUntil: params.pausedUntil ?? params.frame,
     retargetAt: params.retargetAt,
+    retargetSpeed: params.retargetSpeed,
     widthGrowthPerTick: 0,
     maxWidth: undefined,
     damage: params.damage ?? 1,
@@ -80,6 +92,12 @@ export function createBulletProjectile(params: {
     couldClear: params.couldClear ?? true,
     clearsProjectiles: params.clearsProjectiles ?? false,
     piercesTargets: params.piercesTargets ?? false,
+    polarOriginX: params.polarOriginX,
+    polarOriginY: params.polarOriginY,
+    polarRadius: params.polarRadius,
+    polarAngle: params.polarAngle,
+    polarRadialSpeed: params.polarRadialSpeed,
+    polarAngularSpeed: params.polarAngularSpeed,
   };
 }
 
@@ -91,6 +109,7 @@ export function stepBulletProjectile(
   if (projectile.retargetAt !== undefined && frame >= projectile.retargetAt) {
     retargetProjectile(projectile, target);
     projectile.retargetAt = undefined;
+    projectile.retargetSpeed = undefined;
   }
 
   if (
@@ -125,6 +144,11 @@ export function stepBulletProjectile(
     projectile.vy = fp.toFloat(fpNewVy);
   }
 
+  if (hasPolarMotion(projectile)) {
+    stepPolarProjectile(projectile);
+    return;
+  }
+
   // Position step (non-homing: simple fp add)
   projectile.x = fp.toFloat(
     fp.add(fp.fromFloat(projectile.x), fp.fromFloat(projectile.vx)),
@@ -132,6 +156,43 @@ export function stepBulletProjectile(
   projectile.y = fp.toFloat(
     fp.add(fp.fromFloat(projectile.y), fp.fromFloat(projectile.vy)),
   );
+  projectile.angle = fpAtan2(
+    fp.fromFloat(projectile.vy),
+    fp.fromFloat(projectile.vx),
+  );
+}
+
+function hasPolarMotion(projectile: ProjectileState): boolean {
+  return (
+    projectile.polarOriginX !== undefined &&
+    projectile.polarOriginY !== undefined &&
+    projectile.polarRadius !== undefined &&
+    projectile.polarAngle !== undefined &&
+    projectile.polarRadialSpeed !== undefined &&
+    projectile.polarAngularSpeed !== undefined
+  );
+}
+
+function stepPolarProjectile(projectile: ProjectileState): void {
+  const fpRadius = fp.add(
+    fp.fromFloat(projectile.polarRadius!),
+    fp.fromFloat(projectile.polarRadialSpeed!),
+  );
+  const fpAngle = fp.add(
+    fp.fromFloat(projectile.polarAngle!),
+    fp.fromFloat(projectile.polarAngularSpeed!),
+  );
+  const fpOriginX = fp.fromFloat(projectile.polarOriginX!);
+  const fpOriginY = fp.fromFloat(projectile.polarOriginY!);
+  const fpX = fp.add(fpOriginX, fp.mul(fp.cos(fpAngle), fpRadius));
+  const fpY = fp.add(fpOriginY, fp.mul(fp.sin(fpAngle), fpRadius));
+
+  projectile.polarRadius = fp.toFloat(fpRadius);
+  projectile.polarAngle = fp.toFloat(fpAngle);
+  projectile.x = fp.toFloat(fpX);
+  projectile.y = fp.toFloat(fpY);
+  projectile.vx = fp.toFloat(fp.sub(fpX, fp.fromFloat(projectile.previousX)));
+  projectile.vy = fp.toFloat(fp.sub(fpY, fp.fromFloat(projectile.previousY)));
   projectile.angle = fpAtan2(
     fp.fromFloat(projectile.vy),
     fp.fromFloat(projectile.vx),
@@ -148,7 +209,12 @@ function retargetProjectile(
     fp.fromFloat(projectile.vx),
     fp.fromFloat(projectile.vy),
   );
-  const speed = fpMax(fp.fromFloat(1.5), fpCurrentSpeed);
+  const speed = fpMax(
+    fp.fromFloat(1.5),
+    projectile.retargetSpeed === undefined
+      ? fpCurrentSpeed
+      : fp.fromFloat(projectile.retargetSpeed),
+  );
   const angle = fpAtan2(fpDy, fpDx);
   const fpAngle = fp.fromFloat(angle);
 

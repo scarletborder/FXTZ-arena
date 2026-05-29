@@ -274,6 +274,7 @@ function writeProjectiles(
     hasher.writeNumber(projectile.homingUntil);
     hasher.writeNumber(projectile.pausedUntil);
     hasher.writeNumber(projectile.retargetAt ?? 0);
+    writeFixed(hasher, projectile.retargetSpeed ?? 0);
     writeFixed(hasher, projectile.widthGrowthPerTick);
     writeFixed(hasher, projectile.maxWidth ?? 0);
     hasher.writeNumber(projectile.damage);
@@ -281,6 +282,12 @@ function writeProjectiles(
     hasher.writeNumber(projectile.couldClear ? 1 : 0);
     hasher.writeNumber(projectile.clearsProjectiles ? 1 : 0);
     hasher.writeNumber(projectile.piercesTargets ? 1 : 0);
+    writeFixed(hasher, projectile.polarOriginX ?? 0);
+    writeFixed(hasher, projectile.polarOriginY ?? 0);
+    writeFixed(hasher, projectile.polarRadius ?? 0);
+    writeFixed(hasher, projectile.polarAngle ?? 0);
+    writeFixed(hasher, projectile.polarRadialSpeed ?? 0);
+    writeFixed(hasher, projectile.polarAngularSpeed ?? 0);
   }
 }
 

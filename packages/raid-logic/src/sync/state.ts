@@ -1,4 +1,5 @@
 import { DEFAULT_MAPS } from "@repo/content";
+import { getCharacterDefinition } from "@repo/content";
 import {
   ARENA_HEIGHT,
   ARENA_WIDTH,
@@ -192,8 +193,9 @@ export class RaidState {
   // ------------------------------------------------------------------
 
   private moveFighter(fighter: FighterEntity, input: RaidFrameInput): void {
+    const activeCharacter = getCharacterDefinition(fighter.activeCharacterId);
     const speed = speedRankToPixelsPerTick(
-      fighter.activeCharacterId === "marisa" ? "high" : "medium",
+      activeCharacter?.moveSpeed ?? "medium",
     );
     const diagonal = input.moveX !== 0 && input.moveY !== 0;
     const vx =
