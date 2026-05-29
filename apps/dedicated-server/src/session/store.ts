@@ -46,6 +46,13 @@ export class SessionStore {
     }
   }
 
+  setUsername(connectionId: string, username: string): void {
+    const session = this.sessions.get(connectionId);
+    if (session) {
+      session.username = username;
+    }
+  }
+
   setConnected(connectionId: string, connected: boolean): void {
     const session = this.sessions.get(connectionId);
     if (session) {

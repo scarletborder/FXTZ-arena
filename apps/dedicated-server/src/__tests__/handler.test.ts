@@ -146,6 +146,25 @@ describe("MessageHandler", () => {
       expect(room?.costLimit).toBe(15);
     });
 
+    it("uses the latest username from create_room for lobby display", () => {
+      const { handler, sessionStore } = createHandler();
+      const conn = new MockConnection();
+
+      performHello(handler, conn, "Player");
+
+      handler.handle(conn, {
+        type: "create_room",
+        name: "My Room",
+        username: "Alice",
+        mapId: "arena_standard",
+        lifeCount: 3,
+        costLimit: 15,
+      });
+
+      expect(sessionStore.get(conn.id)?.username).toBe("Alice");
+      expect(conn.findSentMessage("room_state")?.hostName).toBe("Alice");
+    });
+
     it("rejects create room when already in a room", () => {
       const { handler } = createHandler();
       const conn = new MockConnection();
@@ -210,6 +229,39 @@ describe("MessageHandler", () => {
       expect(hostState?.playerCount).toBe(2);
       expect(hostState?.status).toBe("waiting");
       expect(hostState?.opponentUsername).toBe("Joiner");
+    });
+
+    it("uses the latest username from join_room for both lobby views", () => {
+      const { handler } = createHandler();
+      const conn1 = new MockConnection("conn-1");
+      const conn2 = new MockConnection("conn-2");
+
+      performHello(handler, conn1, "Player");
+      performHello(handler, conn2, "Player");
+
+      handler.handle(conn1, {
+        type: "create_room",
+        name: "Test",
+        username: "Alice",
+        mapId: "arena_standard",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+
+      const roomCreated = conn1.findSentMessage("room_created")!;
+      conn1.clearMessages();
+      conn2.clearMessages();
+
+      handler.handle(conn2, {
+        type: "join_room",
+        roomId: roomCreated.roomId,
+        username: "Bob",
+      });
+
+      expect(conn2.findSentMessage("room_state")?.hostName).toBe("Alice");
+      expect(conn2.findSentMessage("room_state")?.opponentUsername).toBe("Alice");
+      expect(conn1.findSentMessage("room_state")?.hostName).toBe("Alice");
+      expect(conn1.findSentMessage("room_state")?.opponentUsername).toBe("Bob");
     });
 
     it("rejects joining a non-existent room", () => {

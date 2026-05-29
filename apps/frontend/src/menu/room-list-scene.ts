@@ -3,6 +3,7 @@ import type { PlayerId, RoomSummary, ServerMessage } from "@repo/types";
 
 import { createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop } from "./ui";
 import { connectionManager, type SceneKey, type SelectionData, type TextFieldControl } from "./shared";
+import { uiSettings } from "../store/settings";
 
 const PAGE_SIZE = 12;
 
@@ -130,7 +131,7 @@ export class RoomListScene extends Phaser.Scene {
       return;
     }
     this.pendingJoinRoomId = roomId;
-    connectionManager.send({ type: "join_room", roomId, password });
+    connectionManager.send({ type: "join_room", roomId, username: uiSettings.username, password });
   }
 
   private showPasswordDialog(roomId: string): void {

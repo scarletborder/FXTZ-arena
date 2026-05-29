@@ -26,6 +26,7 @@ export interface HelloMessage {
 export interface CreateRoomMessage {
   type: "create_room";
   name: string;
+  username?: string;
   password?: string;
   mapId: MapId;
   lifeCount: number;
@@ -35,11 +36,13 @@ export interface CreateRoomMessage {
 export interface JoinRoomMessage {
   type: "join_room";
   roomId: string;
+  username?: string;
   password?: string;
 }
 
 export interface QuickMatchMessage {
   type: "quick_match";
+  username?: string;
 }
 
 export interface ListRoomsMessage {

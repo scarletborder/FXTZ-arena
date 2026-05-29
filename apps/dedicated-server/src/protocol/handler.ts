@@ -18,6 +18,7 @@ import type {
   ListRoomsMessage,
   LobbyReadyMessage,
   PingMessage,
+  QuickMatchMessage,
   ReadyMessage,
   ServerMessage,
   StartGameMessage,
@@ -101,7 +102,7 @@ export class MessageHandler {
       case "join_room":
         return this.handleJoinRoom(connection, raw as JoinRoomMessage);
       case "quick_match":
-        return this.handleQuickMatch(connection);
+        return this.handleQuickMatch(connection, raw as QuickMatchMessage);
       case "list_rooms":
         return this.handleListRooms(connection, raw as ListRoomsMessage);
       case "leave_room":
@@ -345,6 +346,7 @@ export class MessageHandler {
   ): void {
     const session = this.sessionStore.get(connection.id);
     if (!session) return;
+    this.refreshSessionUsername(connection.id, msg.username);
 
     if (session.roomId) {
       this.send(connection, {
@@ -417,6 +419,7 @@ export class MessageHandler {
   ): void {
     const session = this.sessionStore.get(connection.id);
     if (!session) return;
+    this.refreshSessionUsername(connection.id, msg.username);
 
     if (session.roomId) {
       this.send(connection, {
@@ -512,9 +515,10 @@ export class MessageHandler {
 
   // ─── Quick Match ──────────────────────────────────
 
-  private handleQuickMatch(connection: TransportConnection): void {
+  private handleQuickMatch(connection: TransportConnection, msg: QuickMatchMessage): void {
     const session = this.sessionStore.get(connection.id);
     if (!session) return;
+    this.refreshSessionUsername(connection.id, msg.username);
 
     if (session.roomId) {
       this.send(connection, {
@@ -1081,6 +1085,12 @@ export class MessageHandler {
 
   private send(connection: TransportConnection, message: ServerMessage): void {
     connection.send(message);
+  }
+
+  private refreshSessionUsername(connectionId: string, username: string | undefined): void {
+    const nextUsername = username?.trim();
+    if (!nextUsername) return;
+    this.sessionStore.setUsername(connectionId, nextUsername);
   }
 
   private sendToConnection(connectionId: string, message: ServerMessage): void {
