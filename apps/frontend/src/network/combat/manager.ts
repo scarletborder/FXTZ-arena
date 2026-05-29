@@ -19,6 +19,9 @@ export class CombatSyncManager {
   private lastReceivedRemoteFrame = 0;
   private lastPeerAckFrame = 0;
   private gameOverVerdictSent = false;
+  private peerGameOverVerdict:
+    | { readonly frame: number; readonly ackFrame: number; readonly winnerPlayerId: PlayerId }
+    | undefined;
   private finishedByServer = false;
   private paused = false;
 
@@ -99,6 +102,21 @@ export class CombatSyncManager {
       this.finishedByServer = true;
       this.options.callbacks.setStatusText("双方裁决完成，进入结算…");
       this.options.callbacks.delay(450, () => this.options.callbacks.finishBattle(msg.winnerPlayerId, msg.confirmedFrame));
+      return;
+    }
+
+    if (msg.type === "peer_game_over" && msg.playerId === this.remotePlayerId) {
+      this.peerGameOverVerdict = {
+        frame: msg.frame,
+        ackFrame: msg.ackFrame,
+        winnerPlayerId: msg.winnerPlayerId,
+      };
+      this.lastPeerAckFrame = Math.max(this.lastPeerAckFrame, msg.ackFrame);
+      this.pruneOnlineHistory();
+      if (!this.gameOverVerdictSent) {
+        this.options.callbacks.setStatusText("对手已提交终局裁决，发送本地确认…");
+      }
+      this.trySendGameOverVerdict();
       return;
     }
 
@@ -195,18 +213,29 @@ export class CombatSyncManager {
   }
 
   private trySendGameOverVerdict(): void {
-    if (this.gameOverVerdictSent || !this.runtime.gameOver) {
+    if (this.gameOverVerdictSent) {
       return;
     }
 
+    const localGameOver = this.runtime.gameOver;
+    const peerVerdict = this.peerGameOverVerdict;
+    if (!localGameOver && !peerVerdict) {
+      return;
+    }
+
+    const frame = localGameOver
+      ? this.runtime.frame
+      : Math.min(this.runtime.frame, this.lastReceivedRemoteFrame, peerVerdict?.frame ?? this.runtime.frame);
+    const ackFrame = Math.min(this.lastReceivedRemoteFrame, frame);
+    const winnerPlayerId = localGameOver ? this.winnerPlayerId() : peerVerdict!.winnerPlayerId;
+
     this.gameOverVerdictSent = true;
     this.paused = true;
-    const winnerPlayerId = this.winnerPlayerId();
     this.options.callbacks.setStatusText("已提交终局裁决，等待对手确认…");
     this.connectionManager.send({
       type: "game_over",
-      frame: this.runtime.frame,
-      ackFrame: this.lastReceivedRemoteFrame,
+      frame,
+      ackFrame,
       winnerPlayerId,
     });
   }

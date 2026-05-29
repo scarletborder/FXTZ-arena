@@ -990,6 +990,12 @@ describe("MessageHandler", () => {
 
       expect(conn1.findSentMessage("battle_finished")).toBeUndefined();
       expect(conn2.findSentMessage("battle_finished")).toBeUndefined();
+      expect(conn2.findSentMessage("peer_game_over")).toMatchObject({
+        playerId: "Player1",
+        frame: 120,
+        ackFrame: 120,
+        winnerPlayerId: "Player1",
+      });
       expect(roomManager.get(roomId)?.status).toBe("fighting");
 
       handler.handle(conn2, {

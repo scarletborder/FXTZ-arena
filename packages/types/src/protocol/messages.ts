@@ -200,6 +200,14 @@ export interface BattleFinishedMessage {
   winnerPlayerId: PlayerId;
 }
 
+export interface PeerGameOverMessage {
+  type: "peer_game_over";
+  playerId: PlayerId;
+  frame: number;
+  ackFrame: number;
+  winnerPlayerId: PlayerId;
+}
+
 export interface ErrorMessage {
   type: "error";
   code: string;
@@ -222,6 +230,7 @@ export type ServerMessage =
   | GameStartingMessage
   | InputFrameRelayMessage
   | PeerStatusMessage
+  | PeerGameOverMessage
   | BattleFinishedMessage
   | ErrorMessage
   | PongMessage;

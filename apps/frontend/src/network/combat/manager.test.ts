@@ -88,6 +88,85 @@ describe("CombatSyncManager rollback integration", () => {
     expect(clientA.hashAt(finalFrame)).toBe(clientB.hashAt(finalFrame));
     expect(clientA.globalHashAt(finalFrame)).toBe(clientB.globalHashAt(finalFrame));
   }, 30_000);
+
+  it("submits a bounded game_over verdict when the peer has already stopped", () => {
+    const sent: ClientMessage[] = [];
+    let handler: ((msg: ServerMessage) => void) | null = null;
+    let runtimeFrame = 12;
+    const runtime = {
+      get frame() {
+        return runtimeFrame;
+      },
+      gameOver: false,
+      state: {
+        target: { lives: 1 },
+      },
+      step: () => {
+        runtimeFrame += 1;
+      },
+      deserialize: () => undefined,
+    } as unknown as RaidLogicRuntime;
+    const dispatch = (msg: ServerMessage) => {
+      if (!handler) {
+        throw new Error("CombatSyncManager did not install a message handler");
+      }
+      handler(msg);
+    };
+
+    const manager = new CombatSyncManager(runtime, {
+      send: (msg: ClientMessage) => {
+        sent.push(msg);
+      },
+      setMessageHandler: (nextHandler: ((msg: ServerMessage) => void) | null) => {
+        handler = nextHandler;
+      },
+    } as unknown as ConnectionManager, {
+      sceneData: {
+        mode: "online",
+        localPlayerId: "Player1",
+      } satisfies BattleSceneData,
+      callbacks: {
+        recordFrame: () => undefined,
+        getRollbackRecord: () => null,
+        pruneRollbackHistoryAfter: () => undefined,
+        pruneRollbackHistoryBefore: () => undefined,
+        onRollback: () => undefined,
+        setStatusText: () => undefined,
+        hideStatusText: () => undefined,
+        delay: (_ms, callback) => callback(),
+        finishBattle: () => undefined,
+      },
+    });
+
+    for (let frame = 1; frame <= 12; frame += 1) {
+      dispatch({
+        type: "input_frame",
+        playerId: "Player2",
+        frame,
+        ackFrame: frame - 1,
+        ...testInput(),
+      });
+    }
+    manager.step(testInput());
+    sent.length = 0;
+
+    dispatch({
+      type: "peer_game_over",
+      playerId: "Player2",
+      frame: 20,
+      ackFrame: 13,
+      winnerPlayerId: "Player1",
+    });
+
+    expect(sent).toEqual([
+      {
+        type: "game_over",
+        frame: 12,
+        ackFrame: 12,
+        winnerPlayerId: "Player1",
+      },
+    ]);
+  });
 });
 
 async function createClient(
@@ -458,6 +537,21 @@ function inputFromFrontend(playerId: PlayerId, tick: number): BattleInputState {
     }),
   );
   return input;
+}
+
+function testInput(): BattleInputState {
+  return {
+    moveX: 0,
+    moveY: 0,
+    aimX: 640,
+    aimY: 338,
+    shootPressed: false,
+    bombPressed: false,
+    activeCardPressed: false,
+    reloadPressed: false,
+    alternateHeld: false,
+    infoHeld: false,
+  };
 }
 
 function createKeys(state: Record<keyof BattleKeyMap, boolean>): BattleKeyMap {

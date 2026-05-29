@@ -21,6 +21,7 @@ export type {
   LoadingDoneMessage,
   LobbyReadyMessage,
   OpponentReadyMessage,
+  PeerGameOverMessage,
   PeerStatusMessage,
   PingMessage,
   PongMessage,

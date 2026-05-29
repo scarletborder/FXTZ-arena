@@ -1018,6 +1018,15 @@ export class MessageHandler {
       winnerPlayerId: msg.winnerPlayerId,
     };
 
+    const otherIdx = ownIdx === 0 ? 1 : 0;
+    this.sendToSlot(room, otherIdx, {
+      type: "peer_game_over",
+      playerId: session.playerId,
+      frame: msg.frame,
+      ackFrame: msg.ackFrame,
+      winnerPlayerId: msg.winnerPlayerId,
+    });
+
     const [left, right] = room.gameOverVerdicts;
     if (!left || !right) return;
 
