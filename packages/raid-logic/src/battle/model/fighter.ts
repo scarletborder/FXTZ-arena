@@ -163,9 +163,6 @@ function createAmmoState(
   alternateCharacter: CharacterDefinition,
 ): Record<string, number> {
   return {
-    reimu: 0,
-    marisa: 0,
-    sakuya: 0,
     [primaryCharacter.id]: primaryCharacter.ammoCapacity,
     [alternateCharacter.id]: alternateCharacter.ammoCapacity,
   };

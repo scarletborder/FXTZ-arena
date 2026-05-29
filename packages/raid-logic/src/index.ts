@@ -85,32 +85,19 @@ export function advanceFixedTick(
   }
 
   const battle = new RaidBattle(createDefaultRaidBattleConfig());
+  const serialized = battle.state.serialize();
   battle.state.deserialize({
-    ...battle.state.serialize(),
+    ...serialized,
     frame: stateOrBattle.frame,
-    fighters: stateOrBattle.fighters.map((fighter) => ({
-      kind: "fighter",
+    fighters: stateOrBattle.fighters.map((fighter, index) => ({
+      ...(serialized.fighters[index] ?? serialized.fighters[0]!),
       data: {
+        ...(serialized.fighters[index] ?? serialized.fighters[0]!).data,
         playerId: fighter.playerId as "Player1" | "Player2",
         x: fighter.x,
         y: fighter.y,
         vx: 0,
         vy: 0,
-        facingAngleTicks: 0,
-        primaryCharacterId: "reimu",
-        alternateCharacterId: "marisa",
-        activeCharacterId: "reimu",
-        lives: 2,
-        bombs: 3,
-        ammo: 5,
-        ammoCapacity: 5,
-        reloadRemainingTicks: 0,
-        reloadTotalTicks: 240,
-        reloadStartedAmmo: 5,
-        reloadCharacterId: "",
-        invulnerableRemainingTicks: 0,
-        actionLockRemainingTicks: 0,
-        infoHeld: 0,
       },
     })),
   });

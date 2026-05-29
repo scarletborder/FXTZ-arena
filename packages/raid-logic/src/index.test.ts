@@ -14,6 +14,7 @@ import {
   createRaidBattle,
   encodeInput,
   ensureRapierInit,
+  advanceFixedTick,
   runFixedTickExample,
   validateLoadout,
   type RaidFrameInput,
@@ -162,6 +163,42 @@ describe("@repo/raid-logic", () => {
     expect(second).toEqual(first);
   });
 
+  it("moves fighters using the active character definition in the legacy RaidState path", () => {
+    const battle = createRaidBattle(
+      createDefaultBattleConfig("legacy-speed", [
+        {
+          playerId: "Player1",
+          username: "Player 1",
+          spawnPointId: "left",
+          loadout: {
+            primaryCharacterId: "ellen",
+            alternateCharacterId: "marisa",
+            abilityCardIds: [],
+          },
+        },
+        {
+          playerId: "Player2",
+          username: "Player 2",
+          spawnPointId: "right",
+          loadout: {
+            primaryCharacterId: "reimu",
+            alternateCharacterId: "sakuya",
+            abilityCardIds: [],
+          },
+        },
+      ]),
+    );
+    const startX = battle.state.fighters.get("Player1")!.x;
+
+    battle.tick([createInput(0, "Player1", { moveX: 1 })]);
+    expect(battle.state.fighters.get("Player1")!.x - startX).toBe(2);
+
+    battle.tick([
+      createInput(1, "Player1", { moveX: 1, alternateHeld: true }),
+    ]);
+    expect(battle.state.fighters.get("Player1")!.x - startX).toBe(7);
+  });
+
   it("builds a deterministic BLAKE3 hash for confirmed frame hashes", () => {
     const first = new ConfirmedFrameHashAccumulator();
     const second = new ConfirmedFrameHashAccumulator();
@@ -218,6 +255,22 @@ describe("@repo/raid-logic", () => {
     adapter.deserialize(saved);
 
     expect(adapter.hash()).toBe(hash);
+  });
+
+  it("keeps legacy advanceFixedTick fighter definitions from the default config", () => {
+    const state = advanceFixedTick(
+      {
+        frame: 3,
+        fighters: [
+          { playerId: "Player1", x: -10, y: 0 },
+          { playerId: "Player2", x: 10, y: 0 },
+        ],
+      },
+      [],
+    ) as ReturnType<typeof createInitialState>;
+
+    expect(state.fighters[0].x).toBe(-10);
+    expect(state.fighters[1].x).toBe(10);
   });
 
   it("reimu reloads from current ammo one round at a time", () => {
