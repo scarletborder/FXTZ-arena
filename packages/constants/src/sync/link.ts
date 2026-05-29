@@ -11,10 +11,9 @@ export const PUBLIC_SERVER: readonly PublicServer[] = [
     addr: "wss://160.202.238.18:47343/",
     selfAuth: true,
   },
-  {
-    name: "local",
-    addr: "https://localhost:22334/wt",
-    selfAuth: true,
-    fingerprint: "16AD31D45FEA7EABCD64544B36C3975B0C9C166D495B4152E16977D053A0C400",
-  }
+  // {
+  //   name: "local",
+  //   addr: "wss://localhost:22334/",
+  //   selfAuth: true,
+  // }
 ];

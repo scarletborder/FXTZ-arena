@@ -22,6 +22,7 @@ import {
   uiSettings,
 } from "../store/settings";
 import type { ConnectionStatus } from "../network";
+import { showPublicServerConnectivityDialog } from "./public-server-connectivity-dialog";
 
 interface SliderControl {
   readonly container: Phaser.GameObjects.Container;
@@ -32,6 +33,7 @@ export class SettingsScene extends Phaser.Scene {
   private activeField: TextFieldControl | undefined;
   private serverAddressField: TextFieldControl | undefined;
   private publicServerDialog: Phaser.GameObjects.Container | undefined;
+  private publicServerConnectivityDialog: Phaser.GameObjects.Container | undefined;
   private connectionStatusText!: Phaser.GameObjects.Text;
   private connectBtn!: { setEnabled(enabled: boolean): void; setLabel(label: string): void; container: Phaser.GameObjects.Container };
   private unsubscribeStatus: (() => void) | null = null;
@@ -100,6 +102,9 @@ export class SettingsScene extends Phaser.Scene {
     this.connectBtn = createFightButton(this, 613, 510, 250, 50, "", () => this.onToggleConnection(), {
       accent: 0x34d399,
     });
+    createFightButton(this, 613, 566, 250, 44, "测试连通性", () => this.showConnectivityDialog(), {
+      accent: 0x5c7185,
+    });
 
     // Listen for status changes
     this.unsubscribeStatus = connectionManager.addStatusListener((s: ConnectionStatus) => {
@@ -124,6 +129,7 @@ export class SettingsScene extends Phaser.Scene {
       window.removeEventListener("paste", this.onPaste);
       this.activeField = undefined;
       this.publicServerDialog = undefined;
+      this.publicServerConnectivityDialog = undefined;
       this.unsubscribeStatus?.();
       this.unsubscribeStatus = null;
     });
@@ -152,6 +158,23 @@ export class SettingsScene extends Phaser.Scene {
     } else {
       connectionManager.connect(uiSettings.serverAddress, uiSettings.username);
     }
+  }
+
+  private showConnectivityDialog(): void {
+    if (this.publicServerConnectivityDialog) {
+      this.publicServerConnectivityDialog.destroy();
+      this.publicServerConnectivityDialog = undefined;
+      return;
+    }
+
+    this.activeField?.blur();
+    this.activeField = undefined;
+    this.closePublicServerDialog();
+    this.publicServerConnectivityDialog = showPublicServerConnectivityDialog(this, {
+      onClose: () => {
+        this.publicServerConnectivityDialog = undefined;
+      },
+    });
   }
 
   private activateField(field: TextFieldControl): void {

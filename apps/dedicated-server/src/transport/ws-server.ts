@@ -17,10 +17,44 @@ function handleHttpRequest(req: IncomingMessage, res: ServerResponse): void {
   const path = new URL(req.url ?? "/", "http://localhost").pathname;
   if (req.method === "GET" && path === "/echo") {
     res.writeHead(200, {
-      "content-type": "text/plain; charset=utf-8",
+      "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
     });
-    res.end("FXTZ arena dedicated server echo ok\n");
+    res.end(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body {
+          font-size: 48px;
+          font-family: Arial, sans-serif;
+          text-align: center;
+          padding: 50px;
+        }
+        .chinese {
+          font-size: 52px;
+          font-weight: bold;
+          margin-bottom: 30px;
+        }
+        .english {
+          font-size: 40px;
+          color: #555;
+        }
+        .server-info {
+          font-size: 36px;
+          margin-bottom: 50px;
+          color: #2c3e66;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="server-info">FXTZ arena dedicated server echo ok</div>
+      <div class="chinese">你已信任证书，现在可以关闭此网页</div>
+      <div class="english">You have trusted the certificate, you can now close this page</div>
+    </body>
+    </html>
+  `);
     return;
   }
 
