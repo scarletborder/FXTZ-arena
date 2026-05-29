@@ -59,7 +59,7 @@ export function createFightButton(
   const accent = options.accent ?? 0xe33d44;
   const container = scene.add.container(x - width / 2, y - height / 2);
   const background = scene.add.graphics();
-  const labelText = scene.add.text(width / 2, options.subLabel ? height / 2 - 9 : height / 2, label, {
+  const labelText = scene.add.text(width / 2, options.subLabel ? height / 2 - 9 : height / 2, nonEmptyText(label), {
     fontFamily: FONT,
     fontSize: "22px",
     fontStyle: "700",
@@ -117,9 +117,16 @@ export function createFightButton(
       redraw();
     },
     setLabel(nextLabel: string): void {
-      labelText.setText(nextLabel);
+      if (!labelText.active || !labelText.scene) {
+        return;
+      }
+      labelText.setText(nonEmptyText(nextLabel));
     },
   };
+}
+
+function nonEmptyText(text: string): string {
+  return text.length > 0 ? text : " ";
 }
 
 export function createSmallTab(scene: Phaser.Scene, x: number, y: number, label: string, active: boolean, onClick: () => void, width = 92): FightButton {

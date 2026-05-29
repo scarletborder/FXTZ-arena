@@ -12,7 +12,7 @@ import {
   bodyStyle,
   headingStyle,
 } from "./ui";
-import { connectionManager, type SceneKey, type TextFieldControl } from "./shared";
+import { connectionManager, type FightButton, type SceneKey, type TextFieldControl } from "./shared";
 import {
   setDebug,
   setMusicVolume,
@@ -34,8 +34,8 @@ export class SettingsScene extends Phaser.Scene {
   private serverAddressField: TextFieldControl | undefined;
   private publicServerDialog: Phaser.GameObjects.Container | undefined;
   private publicServerConnectivityDialog: Phaser.GameObjects.Container | undefined;
-  private connectionStatusText!: Phaser.GameObjects.Text;
-  private connectBtn!: { setEnabled(enabled: boolean): void; setLabel(label: string): void; container: Phaser.GameObjects.Container };
+  private connectionStatusText: Phaser.GameObjects.Text | undefined;
+  private connectBtn: FightButton | undefined;
   private unsubscribeStatus: (() => void) | null = null;
 
   private readonly onKeyDown = (event: KeyboardEvent) => {
@@ -55,6 +55,17 @@ export class SettingsScene extends Phaser.Scene {
 
   constructor() {
     super("settings" satisfies SceneKey);
+  }
+
+  init(): void {
+    this.activeField = undefined;
+    this.serverAddressField = undefined;
+    this.publicServerDialog = undefined;
+    this.publicServerConnectivityDialog = undefined;
+    this.connectionStatusText = undefined;
+    this.connectBtn = undefined;
+    this.unsubscribeStatus?.();
+    this.unsubscribeStatus = null;
   }
 
   create(): void {
@@ -95,11 +106,10 @@ export class SettingsScene extends Phaser.Scene {
     this.add.text(492, 356, "默认监听本地专用服务器", bodyStyle("#b7c7d8", 17));
     this.add.text(492, 396, "默认端口：22334", bodyStyle("#b7c7d8", 17));
 
-    this.connectionStatusText = this.add.text(492, 436, "", bodyStyle("#ffcf6e", 17));
-    this.updateConnectionDisplay(connectionManager.status);
+    this.connectionStatusText = this.add.text(492, 436, " ", bodyStyle("#ffcf6e", 17));
 
     // Connect/disconnect button
-    this.connectBtn = createFightButton(this, 613, 510, 250, 50, "", () => this.onToggleConnection(), {
+    this.connectBtn = createFightButton(this, 613, 510, 250, 50, " ", () => this.onToggleConnection(), {
       accent: 0x34d399,
     });
     createFightButton(this, 613, 566, 250, 44, "测试连通性", () => this.showConnectivityDialog(), {
@@ -146,6 +156,9 @@ export class SettingsScene extends Phaser.Scene {
       error: { text: "连接状态：连接失败", color: "#ff5c66" },
     };
     const info = statusMap[status] ?? statusMap.disconnected;
+    if (!this.connectionStatusText?.active || !this.connectionStatusText.scene) {
+      return;
+    }
     this.connectionStatusText.setText(info.text).setColor(info.color);
 
     const isConnected = status === "connected";
