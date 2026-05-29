@@ -7,6 +7,7 @@ export interface ServerConfig {
   readonly certPath?: string;
   readonly keyPath?: string;
   readonly pemDir?: string;
+  readonly webTransport: boolean;
   readonly maxPlayersPerRoom: 2;
   readonly maxRooms: number;
   readonly serverVersion: string;
@@ -16,6 +17,7 @@ export const DEFAULT_SERVER_CONFIG: ServerConfig = {
   port: Number.parseInt(process.env.PORT ?? "22334", 10),
   ipv4Host: process.env.IPV4_HOST ?? process.env.HOST ?? "0.0.0.0",
   ipv6Host: process.env.IPV6_HOST ?? "::",
+  webTransport: false,
   maxPlayersPerRoom: 2,
   maxRooms: 100,
   serverVersion: APP_BUILD_LABEL,
@@ -33,8 +35,14 @@ export function createServerConfig(
   let certPath: string | undefined;
   let keyPath: string | undefined;
   let pemDir: string | undefined;
+  let webTransport = false;
 
   for (const arg of argv) {
+    if (arg === "--wt") {
+      webTransport = true;
+      continue;
+    }
+
     const ipv4 = readOption(arg, "--ipv4");
     if (ipv4 !== null) {
       ipv4Host = ipv4;
@@ -79,6 +87,7 @@ export function createServerConfig(
     certPath,
     keyPath,
     pemDir,
+    webTransport,
   };
 }
 

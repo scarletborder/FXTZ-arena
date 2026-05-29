@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:20-bookworm-slim AS base
 RUN npm i -g pnpm@8.15.6
 
 FROM base AS builder
@@ -29,6 +29,8 @@ ENV HOST=0.0.0.0
 ENV PORT=22334
 COPY --from=installer /app/apps/dedicated-server/dist ./apps/dedicated-server/dist
 COPY --from=installer /app/apps/dedicated-server/package.json ./apps/dedicated-server/package.json
+COPY --from=installer /app/node_modules ./node_modules
+COPY --from=installer /app/apps/dedicated-server/node_modules ./apps/dedicated-server/node_modules
 
 EXPOSE 22334
 CMD ["node", "apps/dedicated-server/dist/index.js"]

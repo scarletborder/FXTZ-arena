@@ -1,20 +1,23 @@
 import type { BattleConfig, ClientMessage, PlayerId, ServerMessage } from "@repo/types";
 import { APP_BUILD_LABEL } from "@repo/constants";
-import { normalizeServerAddress } from "./address";
+import { isWebTransportAddress, normalizeServerAddress } from "./address";
+import { findServerCertificateFingerprint } from "./fingerprint";
+import { WsNetworkTransport, WtNetworkTransport } from "./transport";
+import type { BaseNetworkTransport } from "./transport";
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
 
 /**
- * Singleton WebSocket connection manager.
+ * Singleton server connection manager.
  *
- * - Connects to the dedicated server as a WebSocket client.
+ * - Connects to the dedicated server over WebSocket or WebTransport.
  * - Dispatches incoming {@link ServerMessage}s to a single handler
  *   (set by whichever Phaser scene is currently active).
  * - Tracks connection and room state for synchronous reads by scenes.
  * - Sends periodic pings to keep the connection alive.
  */
 export class ConnectionManager {
-  private ws: WebSocket | null = null;
+  private transport: BaseNetworkTransport | null = null;
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private lastAddress: string | null = null;
@@ -83,7 +86,7 @@ export class ConnectionManager {
    * If already connected or connecting, this is a no-op.
    */
   connect(address: string, username: string = "Player"): void {
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+    if (this.transport && (this.transport.readyState === "open" || this.transport.readyState === "connecting")) {
       return;
     }
 
@@ -94,14 +97,7 @@ export class ConnectionManager {
     this.manualDisconnect = false;
     this.setStatus("connecting");
 
-    try {
-      this.ws = new WebSocket(normalizedAddress);
-    } catch {
-      this.setStatus("error");
-      return;
-    }
-
-    this.ws.onopen = () => {
+    const onOpen = () => {
       this.setStatus("connected");
       this.startPing();
 
@@ -122,9 +118,9 @@ export class ConnectionManager {
       });
     };
 
-    this.ws.onclose = () => {
+    const onClose = () => {
       this.stopPing();
-      this.ws = null;
+      this.transport = null;
       this.setStatus("disconnected");
       if (this.manualDisconnect || !this.roomId || !this.playerId) {
         this.resetRoomState();
@@ -133,28 +129,32 @@ export class ConnectionManager {
       this.scheduleReconnect();
     };
 
-    this.ws.onerror = () => {
+    const onError = () => {
       this.setStatus("error");
     };
 
-    this.ws.onmessage = (event: MessageEvent) => {
-      try {
-        const msg = JSON.parse(event.data as string) as ServerMessage;
-        this.handleServerMessage(msg);
-        this._handler?.(msg);
-      } catch {
-        // Ignore malformed messages
-      }
+    const onMessage = (msg: ServerMessage) => {
+      this.handleServerMessage(msg);
+      this._handler?.(msg);
     };
+
+    this.transport = isWebTransportAddress(normalizedAddress)
+      ? new WtNetworkTransport(
+        normalizedAddress,
+        { open: onOpen, close: onClose, error: onError, message: onMessage },
+        findServerCertificateFingerprint(normalizedAddress),
+      )
+      : new WsNetworkTransport(normalizedAddress, { open: onOpen, close: onClose, error: onError, message: onMessage });
+    this.transport.open();
   }
 
-  /** Close the WebSocket connection. */
+  /** Close the server connection. */
   disconnect(): void {
     this.manualDisconnect = true;
     this.clearReconnectTimer();
     this.stopPing();
-    this.ws?.close();
-    this.ws = null;
+    this.transport?.close();
+    this.transport = null;
     this.setStatus("disconnected");
     this.resetRoomState();
     this._handler = null;
@@ -162,8 +162,8 @@ export class ConnectionManager {
 
   /** Send a typed message to the server. */
   send(msg: ClientMessage): void {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(msg));
+    if (this.transport?.readyState === "open") {
+      this.transport.send(msg);
     }
     if (msg.type === "leave_room") {
       this.resetRoomState();

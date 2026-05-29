@@ -29,7 +29,6 @@ import {
   BattleMobileControls,
   shouldEnableMobileBattleControls,
 } from "./battle/mobile-controls";
-import { queueBattleAssets } from "./battle/assets";
 import { BattleView } from "./battle/view";
 import { Depth } from "./utils/depth";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";

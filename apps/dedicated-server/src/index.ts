@@ -1,11 +1,15 @@
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createServerConfig } from "./config";
 import { RoomLifecycle } from "./room/lifecycle";
 import { RoomManager } from "./room/manager";
 import { MessageHandler } from "./protocol/handler";
 import { SessionStore } from "./session/store";
+import type { TransportServer } from "./transport/interface";
+import type { WsTransportTlsOptions } from "./transport/ws-server";
+import { WtTransportServer } from "./transport/wt-server";
 import { WsTransportServer } from "./transport/ws-server";
 
 const config = createServerConfig();
@@ -35,9 +39,13 @@ const certificatePaths = config.certPath && config.keyPath
   : config.pemDir
     ? ensurePemDirCertificatePaths(config.pemDir)
     : undefined;
-const tls = certificatePaths
+const cert = certificatePaths ? readFileSync(certificatePaths.certPath) : undefined;
+if (certificatePaths && cert) {
+  writeCertificateFingerprint(certificatePaths.certPath, cert);
+}
+const tls = certificatePaths && cert
   ? {
-      cert: readFileSync(certificatePaths.certPath),
+      cert,
       key: readFileSync(certificatePaths.keyPath),
     }
   : undefined;
@@ -48,9 +56,18 @@ if (certificatePaths) {
   console.warn("TLS certificate: none. Falling back to plain WS/HTTP.");
 }
 
-const transport = new WsTransportServer(config.port, listenHosts, tls);
+if (config.webTransport && !tls) {
+  throw new Error("WebTransport requires TLS. Provide --cert/--key or --pem-dir together with --wt.");
+}
 
-transport.onConnection((conn) => {
+const transports: TransportServer[] = [
+  new WsTransportServer(config.port, listenHosts, tls),
+];
+if (config.webTransport && tls) {
+  transports.push(new WtTransportServer(config.port, listenHosts, tls satisfies WsTransportTlsOptions));
+}
+
+const registerTransport = (transport: TransportServer) => transport.onConnection((conn) => {
   messageHandler.registerConnection(conn);
 
   conn.onMessage((raw) => {
@@ -65,9 +82,10 @@ transport.onConnection((conn) => {
     messageHandler.handleDisconnect(conn.id);
   });
 });
+transports.forEach(registerTransport);
 
 const shutdown = () => {
-  transport.close();
+  transports.forEach((transport) => transport.close());
   process.exit(0);
 };
 
@@ -78,9 +96,29 @@ const protocol = tls ? "wss" : "ws";
 const addrs = listenHosts.map((host) => `${protocol}://${formatHostForUrl(host)}:${config.port}`);
 console.log(`Dedicated server listening on ${addrs.join(" and ")}`);
 console.log(`HTTP echo endpoint: ${tls ? "https" : "http"}://${formatHostForUrl(listenHosts[0] ?? "localhost")}:${config.port}/echo`);
+if (config.webTransport) {
+  console.log(`WebTransport endpoint: https://${formatHostForUrl(listenHosts[0] ?? "localhost")}:${config.port}/wt`);
+}
 
 function formatHostForUrl(host: string): string {
   return host.includes(":") && !host.startsWith("[") ? `[${host}]` : host;
+}
+
+function writeCertificateFingerprint(certPath: string, cert: Buffer): void {
+  const fingerprint = createHash("sha256").update(certificateDerBytes(cert)).digest("hex").toUpperCase();
+  const fingerprintPath = join(dirname(certPath), "fingerprint.txt");
+  writeFileSync(fingerprintPath, `${fingerprint}\n`, "utf8");
+  console.log(`TLS certificate fingerprint: ${fingerprint} (${fingerprintPath})`);
+}
+
+function certificateDerBytes(cert: Buffer): Buffer {
+  const pem = cert.toString("utf8");
+  const match = /-----BEGIN CERTIFICATE-----([\s\S]+?)-----END CERTIFICATE-----/.exec(pem);
+  if (!match) {
+    return cert;
+  }
+
+  return Buffer.from(match[1].replace(/\s/g, ""), "base64");
 }
 
 function ensurePemDirCertificatePaths(pemDir: string): { certPath: string; keyPath: string; source: "pem-dir" } {

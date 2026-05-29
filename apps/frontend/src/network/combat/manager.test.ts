@@ -239,6 +239,7 @@ class DedicatedServerHarness {
       port: 22334,
       ipv4Host: "127.0.0.1",
       ipv6Host: "::1",
+      webTransport: false,
       maxPlayersPerRoom: 2,
       maxRooms: 8,
       serverVersion: "test",

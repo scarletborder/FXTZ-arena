@@ -63,4 +63,10 @@ describe("createServerConfig", () => {
 
     expect(config.pemDir).toBe("/tmp/fxtz-pems");
   });
+
+  it("accepts the WebTransport flag from CLI", () => {
+    const config = createServerConfig(["--wt"], {});
+
+    expect(config.webTransport).toBe(true);
+  });
 });
