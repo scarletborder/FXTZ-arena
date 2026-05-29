@@ -168,11 +168,24 @@ function toTrustUrl(addr: string): string {
   if (!addr) {
     return "";
   }
-  if (/^wss:\/\//i.test(addr)) {
-    return addr.replace(/^wss:\/\//i, "https://");
+  try {
+    const url = new URL(addr);
+    if (url.protocol === "wss:") {
+      url.protocol = "https:";
+    } else if (url.protocol === "ws:") {
+      url.protocol = "http:";
+    }
+    url.pathname = "/echo";
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    if (/^wss:\/\//i.test(addr)) {
+      return `${addr.replace(/^wss:\/\//i, "https://").replace(/\/[^/?#]*(?:[?#].*)?$/, "")}/echo`;
+    }
+    if (/^ws:\/\//i.test(addr)) {
+      return `${addr.replace(/^ws:\/\//i, "http://").replace(/\/[^/?#]*(?:[?#].*)?$/, "")}/echo`;
+    }
+    return addr;
   }
-  if (/^ws:\/\//i.test(addr)) {
-    return addr.replace(/^ws:\/\//i, "http://");
-  }
-  return addr;
 }

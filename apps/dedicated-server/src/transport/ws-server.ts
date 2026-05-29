@@ -1,4 +1,4 @@
-import { createServer, type Server as HttpServer } from "node:http";
+import { createServer, type IncomingMessage, type Server as HttpServer, type ServerResponse } from "node:http";
 import { createServer as createSecureServer, type Server as HttpsServer } from "node:https";
 import { WebSocketServer, WebSocket } from "ws";
 import type { ServerMessage } from "../protocol/messages";
@@ -11,6 +11,24 @@ type NodeServer = HttpServer | HttpsServer;
 export interface WsTransportTlsOptions {
   readonly cert: Buffer | string;
   readonly key: Buffer | string;
+}
+
+function handleHttpRequest(req: IncomingMessage, res: ServerResponse): void {
+  const path = new URL(req.url ?? "/", "http://localhost").pathname;
+  if (req.method === "GET" && path === "/echo") {
+    res.writeHead(200, {
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": "no-store",
+    });
+    res.end("FXTZ arena dedicated server echo ok\n");
+    return;
+  }
+
+  res.writeHead(404, {
+    "content-type": "text/plain; charset=utf-8",
+    "cache-control": "no-store",
+  });
+  res.end("Not found\n");
 }
 
 class WsConnection implements TransportConnection {
@@ -70,7 +88,7 @@ export class WsTransportServer implements TransportServer {
 
   constructor(port: number, hosts: readonly string[], tls?: WsTransportTlsOptions) {
     this.httpServers = hosts.map((host) => {
-      const httpServer = tls ? createSecureServer(tls) : createServer();
+      const httpServer = tls ? createSecureServer(tls, handleHttpRequest) : createServer(handleHttpRequest);
       httpServer.listen({
         host,
         port,

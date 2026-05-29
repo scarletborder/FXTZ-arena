@@ -1,55 +1,95 @@
 # FXTZ Arena Release Artifacts
 
-每个 `v*` tag 会生成四类发布产物：
+Every `v*` tag publishes these artifacts:
 
-1. `fxtz-arena-frontend-<version>.zip`：完整前端静态产物，已将 `@repo/raid-logic`、`@repo/types`、`@repo/content`、`@repo/constants` 打入包内。
-2. GitHub Pages：同一份前端产物会部署到仓库 Pages 地址。
-3. `fxtz-arena-dedicated-server-<version>.tar.gz`：Node 20 目标平台的 dedicated-server bundle，入口为 `dist/index.js`。
-4. `fxtz-arena-dedicated-server-image-<version>.tar.gz`：可直接运行的 Docker 镜像归档。
+1. `fxtz-arena-frontend-<version>.zip`: static frontend build.
+2. GitHub Pages: the same frontend build deployed to the repository Pages site.
+3. `fxtz-arena-dedicated-server-<version>.tar.gz`: Node 20 dedicated-server bundle, entry point `dist/index.js`.
+4. `fxtz-arena-dedicated-server-image-<version>.tar.gz`: Docker image archive for the dedicated server.
 
 ## Frontend Zip
 
-解压后用任意静态文件服务器托管目录内容即可。构建时会把 GitHub Pages base path 写入 Vite，因此 Pages 产物可直接在仓库 Pages 路径下运行。
+Unzip it and serve the contents with any static file server. The build includes the workspace packages needed by the browser client.
 
 ## GitHub Pages
 
-Release 页面会链接到 GitHub Pages 部署结果。客户端主页右下角和设置页会显示构建版本，格式为：
+The release page links to the deployed GitHub Pages build. The client shows the build label in the home/settings UI, for example:
 
 ```text
 v1.0.0+23456
 ```
 
-其中 `v1.0.0` 来自 tag，`23456` 来自commit id。
-
 ## Dedicated Server Bundle
 
-解压后在 Node 20+ 环境中运行：
+Run with Node 20+:
 
 ```bash
 node dist/index.js
 ```
 
-可选环境变量：
+Without certificate options, the server runs in plain WS/HTTP mode:
+
+```text
+Dedicated server listening on ws://0.0.0.0:22334 and ws://[::]:22334
+HTTP echo endpoint: http://0.0.0.0:22334/echo
+```
+
+Optional bind settings:
 
 ```bash
 HOST=0.0.0.0 PORT=22334 node dist/index.js
 ```
 
-启动第一行会输出：
+To let the server create and reuse a local self-signed certificate pair, pass a PEM directory:
+
+```bash
+node dist/index.js --pem-dir=/path/to/pems
+```
+
+If `/path/to/pems/cert.pem` and `/path/to/pems/key.pem` both exist, they are used. If neither exists, the server runs OpenSSL to create them:
+
+```bash
+openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes
+```
+
+The private key is created on the user's machine and is not shipped in release artifacts.
+
+To use an existing certificate pair directly, run:
+
+```bash
+node dist/index.js --cert=/path/to/cert.pem --key=/path/to/key.pem
+```
+
+`--cert` and `--key` must be provided together. Do not combine them with `--pem-dir`.
+
+When TLS is enabled, startup logs should include:
 
 ```text
-You are running FXTZ_area dedicated server.  Version:v1.0.0+23456
+Dedicated server listening on wss://0.0.0.0:22334 and wss://[::]:22334
+HTTP echo endpoint: https://0.0.0.0:22334/echo
+```
+
+For self-signed certificates, open the echo endpoint in the browser before connecting from the game, then accept/trust the certificate warning:
+
+```text
+https://<server-host>:22334/echo
+```
+
+After trust is granted, use the matching WebSocket address in the game:
+
+```text
+wss://<server-host>:22334/
 ```
 
 ## Docker Image
 
-加载镜像：
+Load the image:
 
 ```bash
 docker load -i fxtz-arena-dedicated-server-image-v1.0.0+23456.tar.gz
 ```
 
-运行镜像：
+Run the image:
 
 ```bash
 docker run --rm -p 22334:22334 fxtz-arena-dedicated-server:v1.0.0

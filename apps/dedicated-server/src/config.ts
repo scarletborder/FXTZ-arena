@@ -6,6 +6,7 @@ export interface ServerConfig {
   readonly ipv6Host: string;
   readonly certPath?: string;
   readonly keyPath?: string;
+  readonly pemDir?: string;
   readonly maxPlayersPerRoom: 2;
   readonly maxRooms: number;
   readonly serverVersion: string;
@@ -31,6 +32,7 @@ export function createServerConfig(
   let port = parsePort(env.PORT ?? "22334");
   let certPath: string | undefined;
   let keyPath: string | undefined;
+  let pemDir: string | undefined;
 
   for (const arg of argv) {
     const ipv4 = readOption(arg, "--ipv4");
@@ -60,6 +62,12 @@ export function createServerConfig(
     const key = readOption(arg, "--key") ?? readOption(arg, "key");
     if (key !== null) {
       keyPath = key;
+      continue;
+    }
+
+    const pemDirArg = readOption(arg, "--pem-dir") ?? readOption(arg, "---pem-dir");
+    if (pemDirArg !== null) {
+      pemDir = pemDirArg;
     }
   }
 
@@ -70,6 +78,7 @@ export function createServerConfig(
     port,
     certPath,
     keyPath,
+    pemDir,
   };
 }
 

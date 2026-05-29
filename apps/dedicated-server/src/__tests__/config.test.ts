@@ -51,4 +51,16 @@ describe("createServerConfig", () => {
     expect(config.certPath).toBe("/tmp/cert.pem");
     expect(config.keyPath).toBe("/tmp/key.pem");
   });
+
+  it("accepts a PEM directory from CLI", () => {
+    const config = createServerConfig(["--pem-dir=/tmp/fxtz-pems"], {});
+
+    expect(config.pemDir).toBe("/tmp/fxtz-pems");
+  });
+
+  it("accepts a PEM directory with three leading dashes", () => {
+    const config = createServerConfig(["---pem-dir=/tmp/fxtz-pems"], {});
+
+    expect(config.pemDir).toBe("/tmp/fxtz-pems");
+  });
 });

@@ -10,3 +10,4 @@ dist-ssr
 .cache
 server/dist
 public/dist
+apps/dedicated-server/example-pems/
