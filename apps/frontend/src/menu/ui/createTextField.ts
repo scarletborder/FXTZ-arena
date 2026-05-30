@@ -64,6 +64,9 @@ export function createTextField(
   } satisfies Partial<CSSStyleDeclaration>);
 
   const redraw = () => {
+    if (cleanedUp) {
+      return;
+    }
     background.clear();
     drawAngledPanel(background, 0, 0, width, 46, active ? 0x151b26 : 0x0f141d, active ? 0xffcf6e : 0x5c7185, 1);
     label.setColor(active ? "#ffcf6e" : "#f6f1e6");
@@ -103,6 +106,9 @@ export function createTextField(
   };
 
   const setActive = (nextActive: boolean) => {
+    if (cleanedUp) {
+      return;
+    }
     if (nextActive && activeTextField && activeTextField !== control) {
       activeTextField.setActive(false);
     }
@@ -123,6 +129,9 @@ export function createTextField(
   };
 
   const applyNativeValue = () => {
+    if (cleanedUp) {
+      return;
+    }
     value = nativeInput.value.slice(0, maxLength);
     if (nativeInput.value !== value) {
       nativeInput.value = value;
@@ -133,11 +142,17 @@ export function createTextField(
   };
 
   const updateCursorFromDom = () => {
+    if (cleanedUp) {
+      return;
+    }
     cursorIndex = nativeInput.selectionStart ?? value.length;
     redraw();
   };
 
   const focusNativeInput = () => {
+    if (cleanedUp) {
+      return;
+    }
     nativeInput.focus({ preventScroll: true });
     syncNativeInput();
   };

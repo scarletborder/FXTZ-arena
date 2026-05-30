@@ -27,9 +27,11 @@ export function renderGeneralTab(scene: SettingsScene, layer: Phaser.GameObjects
     value: uiSettings.username,
     maxLength: MAX_PLAYER_NAME_LENGTH,
     onFocus: (field) => {
+      if (activeField === field) {
+        return;
+      }
       activeField?.setActive(false);
       activeField = field;
-      field.setActive(true);
     },
     onChange: setUsername,
   });
