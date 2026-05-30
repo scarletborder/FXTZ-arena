@@ -184,6 +184,17 @@ describe("BattleModel rollback snapshots", () => {
     );
     expect(model.hashHex()).toBe(originalHash);
   });
+
+  it("allocates neutral mob ids from wave id and member index", async () => {
+    const model = await createBattleModel();
+
+    expect(
+      model.allocateNeutralMobId({ waveId: 2, waveMemberIndex: 4 }),
+    ).toBe(2005);
+    expect(
+      model.allocateNeutralMobId({ waveId: 2, waveMemberIndex: 4 }),
+    ).toBe(2005);
+  });
 });
 
 describe("BattleModel reload timing", () => {
@@ -782,7 +793,7 @@ describe("BattleModel character bombs", () => {
     expect(model.points).toHaveLength(1);
     expect(model.points[0]).toMatchObject({
       value: POINT_REWARD_VALUES.medium,
-      size: 12,
+      size: 25,
     });
   });
 

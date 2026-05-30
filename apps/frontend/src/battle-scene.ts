@@ -42,13 +42,15 @@ interface DebugFrameRecord {
   readonly snapshot: BattleModelSnapshot;
 }
 
-function pointRewardSizeForValue(value: 1 | 5 | 10): PointRewardSize {
-  switch (value) {
-    case 1:
+type DebugPointSize = "small" | "medium" | "large";
+
+function pointRewardSizeForDebugSize(size: DebugPointSize): PointRewardSize {
+  switch (size) {
+    case "small":
       return "small";
-    case 5:
+    case "medium":
       return "medium";
-    case 10:
+    case "large":
       return "large";
   }
 }
@@ -285,13 +287,13 @@ export class BattleScene extends Phaser.Scene {
     return rows;
   }
 
-  spawnDebugPoint(value: 1 | 5 | 10): boolean {
+  spawnDebugPoint(size: DebugPointSize): boolean {
     if (this.sceneData.mode === "online") {
       return false;
     }
     const pointer = getBattlePointerWorld(this, this.mobileControls);
     this.runtime.debugSpawnPoint({
-      rewardSize: pointRewardSizeForValue(value),
+      rewardSize: pointRewardSizeForDebugSize(size),
       x: pointer.x,
       y: pointer.y,
     });

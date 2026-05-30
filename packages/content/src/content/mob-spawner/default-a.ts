@@ -62,8 +62,11 @@ export class DefaultMobSpawnerA extends NeutralMobSpawner<DefaultMobSpawnerAStat
     const variant: ExampleFairyMovementVariant = waveIndex % 2 === 0 ? "left" : "right";
     const pointRewardSize: PointRewardSize = mobIndex === MOB_COUNT - 1 ? "medium" : "small";
     ctx.spawnMob(new ExampleFairy({
-      id: ctx.allocateMobId(),
       waveId: waveIndex + 1,
+      id: ctx.allocateMobId({
+        waveId: waveIndex + 1,
+        waveMemberIndex: mobIndex,
+      }),
       movementVariant: variant,
       pointRewardSize,
     }));

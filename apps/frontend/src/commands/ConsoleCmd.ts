@@ -9,7 +9,7 @@ export interface DebugConsoleCommands {
   log: (frame?: number) => string | null;
   script: () => DebugHashRow[] | null;
   physics: (enabled?: boolean) => boolean | null;
-  spawnPoint: (point: 1 | 5 | 10) => boolean | null;
+  spawnPoint: (point: "small" | "medium" | "large") => boolean | null;
   setPoint: (point: number) => boolean | null;
   help: () => void;
 }
@@ -174,19 +174,19 @@ function physics(enabled?: boolean): boolean | null {
   return nextEnabled;
 }
 
-function spawnPoint(point: 1 | 5 | 10): boolean | null {
+function spawnPoint(point: "small" | "medium" | "large"): boolean | null {
   const scene = getScene();
   if (!scene) {
     return null;
   }
-  const value = normalizePointValue(point);
-  if (value === null) {
-    return printBlocked(`Invalid point value: ${point}. Use 1, 5, or 10.`);
+  const size = normalizePointSize(point);
+  if (size === null) {
+    return printBlocked(`Invalid point size: ${point}. Use "small", "medium", or "large".`);
   }
-  if (!scene.spawnDebugPoint(value)) {
+  if (!scene.spawnDebugPoint(size)) {
     return printBlocked("FXTZ.spawnPoint is disabled in online battles.");
   }
-  printOk(`Spawned ${value}P point at the cursor.`);
+  printOk(`Spawned ${size} point at the cursor.`);
   return true;
 }
 
@@ -218,7 +218,7 @@ function help(): void {
     "FXTZ.script()             回滚到 frame=30 并执行边界输入脚本，打印期间每帧 hash",
   );
   console.log("FXTZ.physics(enabled?)    切换碰撞体可视化");
-  console.log("FXTZ.spawnPoint(1|5|10)   Spawn a P point at the cursor");
+  console.log('FXTZ.spawnPoint("small"|"medium"|"large") Spawn a P point at the cursor');
   console.log("FXTZ.setPoint(0..300)     Set current player point directly");
 }
 
@@ -235,9 +235,8 @@ function normalizeFrame(frame: number): number | null {
   return Number.isFinite(value) && value >= 0 ? value : null;
 }
 
-function normalizePointValue(point: unknown): 1 | 5 | 10 | null {
-  const value = Math.floor(Number(point));
-  return value === 1 || value === 5 || value === 10 ? value : null;
+function normalizePointSize(point: unknown): "small" | "medium" | "large" | null {
+  return point === "small" || point === "medium" || point === "large" ? point : null;
 }
 
 function normalizePointCount(point: unknown): number | null {

@@ -186,7 +186,15 @@ export class BattleModel {
     );
   }
 
-  allocateNeutralMobId(): number {
+  allocateNeutralMobId(params?: {
+    readonly waveId: number;
+    readonly waveMemberIndex: number;
+  }): number {
+    if (params) {
+      const id = stableNeutralMobId(params.waveId, params.waveMemberIndex);
+      this.nextNeutralMobId = Math.max(this.nextNeutralMobId, id + 1);
+      return id;
+    }
     return this.nextNeutralMobId++;
   }
 
@@ -907,7 +915,7 @@ export class BattleModel {
       player: this.player,
       target: this.target,
       neutralMobs: this.neutralMobs,
-      allocateMobId: () => this.allocateNeutralMobId(),
+      allocateMobId: (params) => this.allocateNeutralMobId(params),
       spawnMob: (mob) => this.addNeutralMob(mob),
     });
   }
@@ -1026,7 +1034,7 @@ export class BattleModel {
     if (!rewardSize) {
       return;
     }
-    const velocity = pointVelocityFromFrame(this.frame, "low");
+    const velocity = pointVelocityFromFrame(this.frame, "low", mob.id);
     this.addPoint(
       createPointState({
         id: this.allocatePointId(),
@@ -1189,6 +1197,12 @@ function neutralMobIdFromHitTarget(
   target: ProjectileHitTarget,
 ): number | undefined {
   return target.mobId;
+}
+
+function stableNeutralMobId(waveId: number, waveMemberIndex: number): number {
+  const normalizedWaveId = Math.max(0, Math.floor(waveId));
+  const normalizedMemberIndex = Math.max(0, Math.floor(waveMemberIndex));
+  return normalizedWaveId * 1000 + normalizedMemberIndex + 1;
 }
 
 function activeCardCooldownGroup(key: FighterKey): string {

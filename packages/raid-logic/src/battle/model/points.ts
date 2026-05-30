@@ -14,9 +14,9 @@ interface PointPrefab {
 }
 
 const POINT_PREFABS: readonly PointPrefab[] = [
-  { prefabId: "point_small", rewardSize: "small", value: POINT_REWARD_VALUES.small, size: 8 },
-  { prefabId: "point_medium", rewardSize: "medium", value: POINT_REWARD_VALUES.medium, size: 12 },
-  { prefabId: "point_large", rewardSize: "large", value: POINT_REWARD_VALUES.large, size: 16 },
+  { prefabId: "point_small", rewardSize: "small", value: POINT_REWARD_VALUES.small, size: 15 },
+  { prefabId: "point_medium", rewardSize: "medium", value: POINT_REWARD_VALUES.medium, size: 25 },
+  { prefabId: "point_large", rewardSize: "large", value: POINT_REWARD_VALUES.large, size: 35 },
 ];
 
 const SQRT_HALF = 0.7071067811865476;
@@ -57,8 +57,12 @@ export function createPointState(params: {
   };
 }
 
-export function pointVelocityFromFrame(frame: number, speedRank: SpeedRank = "low"): { readonly vx: number; readonly vy: number } {
-  const direction = FRAME_DIRECTIONS[positiveModulo(frame, FRAME_DIRECTIONS.length)]!;
+export function pointVelocityFromFrame(
+  frame: number,
+  speedRank: SpeedRank = "low",
+  seed = 0,
+): { readonly vx: number; readonly vy: number } {
+  const direction = FRAME_DIRECTIONS[positiveModulo(frame + seed, FRAME_DIRECTIONS.length)]!;
   const fpSpeed = fp.fromFloat(speedRankToPixelsPerTick(speedRank));
   return {
     vx: fp.toFloat(fp.mul(fp.fromFloat(direction[0]), fpSpeed)),

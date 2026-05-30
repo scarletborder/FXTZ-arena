@@ -16,7 +16,11 @@ export class ShootingRangeSpawn extends NeutralMobSpawner<ShootingRangeSpawnStat
     if (ctx.frame !== SPAWN_FRAME) {
       return;
     }
-    ctx.spawnMob(new ImmortalFairy({ id: ctx.allocateMobId() }));
+    ctx.spawnMob(
+      new ImmortalFairy({
+        id: ctx.allocateMobId({ waveId: 1, waveMemberIndex: 0 }),
+      }),
+    );
   }
 
   snapshot(): ShootingRangeSpawnState {

@@ -23,7 +23,10 @@ export interface NeutralMobSpawnerContext {
   readonly player: FighterState;
   readonly target: FighterState;
   readonly neutralMobs: readonly BattleNeutralMob[];
-  allocateMobId(): number;
+  allocateMobId(params?: {
+    readonly waveId: number;
+    readonly waveMemberIndex: number;
+  }): number;
   spawnMob(mob: BattleNeutralMob): void;
 }
 
