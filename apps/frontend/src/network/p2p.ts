@@ -14,7 +14,7 @@ export interface P2pConnectionOptions {
   readonly onMessage: (message: ServerMessage) => void;
 }
 
-const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_TIMEOUT_MS = 20_000;
 
 export class P2pConnection {
   private peer: RTCPeerConnection | null = null;
@@ -24,6 +24,7 @@ export class P2pConnection {
   private started = false;
   private readySent = false;
   private currentStatus: P2pStatus = "idle";
+  private terminalFailed = false;
   private pendingCandidates: RTCIceCandidateInit[] = [];
   private onStatus: ((status: P2pStatus) => void) | undefined;
   private onMessage: (message: ServerMessage) => void;
@@ -48,7 +49,7 @@ export class P2pConnection {
   }
 
   start(): void {
-    if (this.started) {
+    if (this.started || this.terminalFailed) {
       return;
     }
     this.started = true;
@@ -78,6 +79,10 @@ export class P2pConnection {
   }
 
   handleServerMessage(message: ServerMessage): boolean {
+    if (this.terminalFailed) {
+      return message.type === "peer_p2p_intent" || message.type === "peer_p2p_signal" || message.type === "peer_p2p_ready";
+    }
+
     switch (message.type) {
       case "peer_p2p_intent":
         if (message.playerId === this.options.localPlayerId) return true;
@@ -126,7 +131,7 @@ export class P2pConnection {
   }
 
   private tryBeginHandshake(): void {
-    if (!this.options.enabled || this.remoteIntent === false || this.peer) {
+    if (this.terminalFailed || !this.options.enabled || this.remoteIntent === false || this.peer) {
       return;
     }
 
@@ -211,7 +216,7 @@ export class P2pConnection {
   }
 
   private async handleSignal(signal: Extract<ServerMessage, { type: "peer_p2p_signal" }>["signal"]): Promise<void> {
-    if (!this.options.enabled || this.remoteIntent === false) {
+    if (this.terminalFailed || !this.options.enabled || this.remoteIntent === false) {
       return;
     }
 
@@ -277,6 +282,10 @@ export class P2pConnection {
   }
 
   private fail(reason: string): void {
+    if (this.terminalFailed) {
+      return;
+    }
+    this.terminalFailed = true;
     console.error("[P2P] failed", {
       reason,
       status: this.currentStatus,

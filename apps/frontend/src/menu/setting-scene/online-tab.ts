@@ -261,7 +261,7 @@ function renderP2pSection(scene: SettingsScene, layer: Phaser.GameObjects.Contai
   layer.add(stunText);
   layer.add(createRectangleButton(scene, x + 430, y + 141, 42, 34, "▼", openStunDialog, { accent: 0x5c7185 }).container);
   layer.add(createRectangleButton(scene, x + 484, y + 141, 42, 34, "+", addStun, { accent: 0x34d399 }).container);
-  layer.add(scene.add.text(x, y + 206, "不使用 TURN。P2P 超时或失败会自动回落到当前专用服务器连接。", bodyStyle("#b7c7d8", 16)).setWordWrapWidth(480));
+  layer.add(scene.add.text(x, y + 206, "P2P 超时或失败会自动回落到当前专用服务器连接 如果频繁失败禁用P2P可跳过尝试时间", bodyStyle("#b7c7d8", 16)).setWordWrapWidth(480));
 
   scene.addCleanup(closeStunDialog);
 }

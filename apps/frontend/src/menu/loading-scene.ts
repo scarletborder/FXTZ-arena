@@ -60,6 +60,7 @@ export class LoadingScene extends Phaser.Scene {
     });
 
     this.load.once("complete", () => {
+      if (!this.scene.isActive()) return;
       this.progress = 1;
       this.renderProgress();
       this.label?.setText(
@@ -102,6 +103,9 @@ export class LoadingScene extends Phaser.Scene {
       });
       this.p2pReady = this.p2p.status !== "connecting" && this.p2p.status !== "idle";
       connectionManager.setMessageHandler((msg: ServerMessage) => {
+        if (!this.scene.isActive()) {
+          return;
+        }
         if (this.p2p?.handleServerMessage(msg)) {
           return;
         }
@@ -194,6 +198,9 @@ export class LoadingScene extends Phaser.Scene {
   }
 
   private handleP2pStatus(status: P2pStatus): void {
+    if (!this.scene.isActive()) {
+      return;
+    }
     if (status === "connecting") {
       this.p2pReady = false;
       this.setConnectionStatus("p2p 尝试中", 0xffcf6e);
@@ -237,6 +244,9 @@ export class LoadingScene extends Phaser.Scene {
   }
 
   private setConnectionStatus(text: string, color: number): void {
+    if (!this.scene.isActive()) {
+      return;
+    }
     if (!this.connectionBadge) {
       this.createConnectionBadge();
     }

@@ -99,8 +99,7 @@ export class SelectScene extends Phaser.Scene {
 
     // Status text for online waiting state — use space not empty string to
     // avoid zero-width canvas crash in Phaser's Text pipeline (drawImage on null).
-    this.statusText = this.add.text(1036, 80, " ", bodyStyle("#ffcf6e", 18)).setOrigin(0.5).setVisible(false);
-    this.layer.add(this.statusText);
+    this.statusText = this.add.text(1036, 80, " ", bodyStyle("#ffcf6e", 18)).setOrigin(0.5).setVisible(false).setDepth(40);
 
     this.input.on("wheel", this.onWheel);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -117,6 +116,9 @@ export class SelectScene extends Phaser.Scene {
   }
 
   private onServerMessage(msg: import("@repo/types").ServerMessage): void {
+    if (!this.scene.isActive()) {
+      return;
+    }
     const m = msg as unknown as Record<string, unknown>;
     switch (m.type) {
       case "opponent_ready":
@@ -182,6 +184,7 @@ export class SelectScene extends Phaser.Scene {
   private leaveOnlineRoomView(): void {
     if (this.leavingOnlineRoom) return;
     this.leavingOnlineRoom = true;
+    if (!this.scene.isActive()) return;
     this.statusText.setVisible(true).setText("对方已经退出房间").setColor("#ff5c66");
     this.time.delayedCall(150, () => {
       if (this.scene.isActive("select")) {
@@ -191,11 +194,14 @@ export class SelectScene extends Phaser.Scene {
   }
 
   private render(): void {
+    this.layer.remove(this.statusText, false);
     this.layer.removeAll(true);
     this.costLayer.removeAll(true);
     this.hideTip();
     this.scrollAreas = [];
     this.hoverCost = 0;
+
+    this.layer.add(this.statusText);
 
     this.addDropBox(1020, 170, "常驻模式", this.primaryId, () => {
       this.primaryId = undefined;
