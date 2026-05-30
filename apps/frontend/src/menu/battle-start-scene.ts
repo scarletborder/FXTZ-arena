@@ -84,7 +84,7 @@ export class BattleStartScene extends Phaser.Scene {
   }
 
   private onQuickMatch(): void {
-    connectionManager.send({ type: "quick_match", username: uiSettings.username });
+    connectionManager.send({ type: "quick_match", username: uiSettings.username, p2pEnabled: uiSettings.p2pEnabled });
     this.showToast("正在匹配...");
   }
 
@@ -136,7 +136,7 @@ export class BattleStartScene extends Phaser.Scene {
     c.add(this.add.text(cx + 100, py + 248, "<", { fontFamily: "Arial", fontSize: "16px", color: "#b7c7d8" }).setInteractive({ useHandCursor: true }).on("pointerdown", () => lifeLabel.setText(String(Math.max(1, parseInt(lifeLabel.text, 10) - 1)))));
     c.add(this.add.text(cx + 164, py + 248, ">", { fontFamily: "Arial", fontSize: "16px", color: "#b7c7d8" }).setInteractive({ useHandCursor: true }).on("pointerdown", () => lifeLabel.setText(String(Math.min(9, parseInt(lifeLabel.text, 10) + 1)))));
     c.add(createFightButton(this, cx - 80, py + ph - 60, 140, 44, "创建", () => {
-      connectionManager.send({ type: "create_room", name: roomName, username: uiSettings.username, password: roomPassword || undefined, mapId: "arena_standard", lifeCount: parseInt(lifeLabel.text, 10), costLimit: 10 });
+      connectionManager.send({ type: "create_room", name: roomName, username: uiSettings.username, password: roomPassword || undefined, mapId: "arena_standard", lifeCount: parseInt(lifeLabel.text, 10), costLimit: 10, p2pEnabled: uiSettings.p2pEnabled });
       c.destroy();
       this.formContainer = null;
       this.activeField = null;

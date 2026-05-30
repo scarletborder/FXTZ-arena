@@ -14,6 +14,7 @@ function createRoom(overrides?: Partial<InternalRoom>): InternalRoom {
     status: "waiting",
     connectionIds: [null, null],
     playerSlots: [null, null],
+    p2pEnabledSlots: [null, null],
     loadouts: [null, null],
     loadingDone: [false, false],
     lobbyReady: [false, false],

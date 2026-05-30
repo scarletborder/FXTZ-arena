@@ -10,6 +10,7 @@ export interface InternalRoom {
   status: RoomStatus;
   connectionIds: (string | null)[]; // [Player1 connectionId, Player2 connectionId]
   playerSlots: (PlayerId | null)[]; // ["Player1" | "Player2" | null]
+  p2pEnabledSlots: (boolean | null)[];
   loadouts: (PlayerLoadout | null)[];
   loadingDone: boolean[];
   lobbyReady: boolean[];

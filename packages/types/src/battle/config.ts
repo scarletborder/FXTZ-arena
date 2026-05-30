@@ -22,6 +22,7 @@ export interface BattleConfig {
   readonly lifeCount: number;
   readonly defaultBombCount: number;
   readonly costLimit: number;
+  readonly p2pEnabled?: boolean;
   readonly players: readonly [BattlePlayerConfig, BattlePlayerConfig];
 }
 

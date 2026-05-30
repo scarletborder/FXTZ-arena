@@ -29,6 +29,7 @@ export class RoomManager {
       status: "waiting",
       connectionIds: [null, null],
       playerSlots: [null, null],
+      p2pEnabledSlots: [null, null],
       loadouts: [null, null],
       loadingDone: [false, false],
       lobbyReady: [false, false],
@@ -94,6 +95,7 @@ export class RoomManager {
     if (idx !== -1) {
       room.connectionIds[idx] = null;
       room.playerSlots[idx] = null;
+      room.p2pEnabledSlots[idx] = null;
       room.loadouts[idx] = null;
       room.loadingDone[idx] = false;
       room.lobbyReady[idx] = false;
@@ -121,6 +123,7 @@ export class RoomManager {
     }
     room.connectionIds[slotIndex] = null;
     room.playerSlots[slotIndex] = null;
+    room.p2pEnabledSlots[slotIndex] = null;
     room.loadouts[slotIndex] = null;
     room.loadingDone[slotIndex] = false;
     room.lobbyReady[slotIndex] = false;

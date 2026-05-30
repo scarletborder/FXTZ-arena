@@ -397,6 +397,7 @@ export class MessageHandler {
 
     this.sessionStore.setRoomId(connection.id, room.id);
     this.sessionStore.setPlayerId(connection.id, assignment.playerId);
+    room.p2pEnabledSlots[assignment.slotIndex] = msg.p2pEnabled === true;
 
     this.send(connection, {
       type: "room_created",
@@ -481,6 +482,7 @@ export class MessageHandler {
 
     this.sessionStore.setRoomId(connection.id, room.id);
     this.sessionStore.setPlayerId(connection.id, assignment.playerId);
+    room.p2pEnabledSlots[assignment.slotIndex] = msg.p2pEnabled === true;
 
     this.send(connection, {
       type: "room_joined",
@@ -563,6 +565,7 @@ export class MessageHandler {
 
     this.sessionStore.setRoomId(connection.id, match.id);
     this.sessionStore.setPlayerId(connection.id, assignment.playerId);
+    match.p2pEnabledSlots[assignment.slotIndex] = msg.p2pEnabled === true;
 
     this.send(connection, {
       type: "room_joined",
@@ -1213,6 +1216,7 @@ export class MessageHandler {
       lifeCount: room.lifeCount,
       defaultBombCount: 3,
       costLimit: room.costLimit,
+      p2pEnabled: room.p2pEnabledSlots.every((enabled) => enabled === true),
       players: [
         {
           playerId: room.playerSlots[0],

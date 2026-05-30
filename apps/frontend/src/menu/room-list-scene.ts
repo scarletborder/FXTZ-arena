@@ -131,7 +131,7 @@ export class RoomListScene extends Phaser.Scene {
       return;
     }
     this.pendingJoinRoomId = roomId;
-    connectionManager.send({ type: "join_room", roomId, username: uiSettings.username, password });
+    connectionManager.send({ type: "join_room", roomId, username: uiSettings.username, password, p2pEnabled: uiSettings.p2pEnabled });
   }
 
   private showPasswordDialog(roomId: string): void {

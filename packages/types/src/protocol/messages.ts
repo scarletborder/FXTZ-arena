@@ -31,6 +31,7 @@ export interface CreateRoomMessage {
   mapId: MapId;
   lifeCount: number;
   costLimit: number;
+  p2pEnabled?: boolean;
 }
 
 export interface JoinRoomMessage {
@@ -38,11 +39,13 @@ export interface JoinRoomMessage {
   roomId: string;
   username?: string;
   password?: string;
+  p2pEnabled?: boolean;
 }
 
 export interface QuickMatchMessage {
   type: "quick_match";
   username?: string;
+  p2pEnabled?: boolean;
 }
 
 export interface ListRoomsMessage {
@@ -81,9 +84,9 @@ export interface P2pIntentMessage {
 export interface P2pSignalMessage {
   type: "p2p_signal";
   signal:
-    | { readonly kind: "offer"; readonly sdp: string }
-    | { readonly kind: "answer"; readonly sdp: string }
-    | { readonly kind: "candidate"; readonly candidate: string; readonly sdpMid: string | null; readonly sdpMLineIndex: number | null };
+  | { readonly kind: "offer"; readonly sdp: string }
+  | { readonly kind: "answer"; readonly sdp: string }
+  | { readonly kind: "candidate"; readonly candidate: string; readonly sdpMid: string | null; readonly sdpMLineIndex: number | null };
 }
 
 export interface P2pReadyMessage {

@@ -96,7 +96,7 @@ export class LoadingScene extends Phaser.Scene {
     if (data.mode === "online") {
       this.p2p = data.p2p ?? new P2pConnection(connectionManager, {
         localPlayerId: data.localPlayerId ?? "Player1",
-        enabled: uiSettings.p2pEnabled,
+        enabled: data.battleConfig?.p2pEnabled === true,
         stunServer: uiSettings.stunServer,
         onStatus: (status) => this.handleP2pStatus(status),
         onMessage: () => undefined,

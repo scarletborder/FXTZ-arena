@@ -67,6 +67,8 @@ export class P2pConnection {
     }
 
     this.connectionManager.send({ type: "p2p_intent", enabled: true });
+    this.setStatus("connecting");
+    this.startTimer();
     this.tryBeginHandshake();
   }
 
@@ -140,8 +142,6 @@ export class P2pConnection {
     }
 
     this.createPeer();
-    this.setStatus("connecting");
-    this.startTimer();
 
     if (this.options.localPlayerId === "Player1") {
       const channel = this.peer!.createDataChannel("fxtz-input", {
