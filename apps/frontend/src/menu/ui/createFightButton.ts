@@ -1,0 +1,95 @@
+import Phaser from "phaser";
+
+import type { FightButton } from "../shared";
+
+import { bodyStyle } from "./styles";
+import { drawAngledPanel } from "./drawAngledPanel";
+import { nonEmptyText } from "./helpers";
+import { FONT } from "./constants";
+
+interface FightButtonOptions {
+  readonly enabled?: boolean;
+  readonly subLabel?: string;
+  readonly accent?: number;
+}
+
+export function createFightButton(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  label: string,
+  onClick?: () => void,
+  options: FightButtonOptions = {},
+): FightButton {
+  let enabled = options.enabled ?? true;
+  let hovered = false;
+  const accent = options.accent ?? 0xe33d44;
+  const container = scene.add.container(x - width / 2, y - height / 2);
+  const background = scene.add.graphics();
+  const labelText = scene.add.text(width / 2, options.subLabel ? height / 2 - 9 : height / 2, nonEmptyText(label), {
+    fontFamily: FONT,
+    fontSize: "22px",
+    fontStyle: "700",
+    color: enabled ? "#f6f1e6" : "#7f8994",
+  }).setOrigin(0.5);
+  const subText = options.subLabel
+    ? scene.add.text(width / 2, height / 2 + 18, options.subLabel, bodyStyle(enabled ? "#b7c7d8" : "#68717b", 13)).setOrigin(0.5)
+    : undefined;
+  const hitArea = scene.add.rectangle(0, 0, width, height, 0xffffff, 0.001)
+    .setOrigin(0, 0)
+    .setInteractive({ useHandCursor: enabled });
+
+  const redraw = () => {
+    background.clear();
+    const fill = enabled ? (hovered ? 0x252e3d : 0x151b26) : (hovered ? 0x373d46 : 0x2b2f36);
+    const stroke = enabled ? (hovered ? 0xffcf6e : accent) : (hovered ? 0x8a919b : 0x656a72);
+    drawAngledPanel(background, 0, 0, width, height, fill, stroke, enabled ? 0.98 : 0.72);
+    background.lineStyle(3, stroke, enabled ? 1 : 0.45);
+    background.lineBetween(18, height - 7, width - 20, height - 7);
+    labelText.setColor(enabled ? (hovered ? "#ffffff" : "#f6f1e6") : (hovered ? "#a7afb8" : "#7f8994"));
+    subText?.setColor(enabled ? "#b7c7d8" : (hovered ? "#87909a" : "#68717b"));
+  };
+
+  hitArea.on("pointerover", () => {
+    hovered = true;
+    redraw();
+  });
+  hitArea.on("pointerout", () => {
+    hovered = false;
+    redraw();
+  });
+  hitArea.on("pointerdown", () => {
+    if (enabled) {
+      redraw();
+    }
+  });
+  hitArea.on("pointerup", () => {
+    if (enabled) {
+      onClick?.();
+    }
+  });
+
+  container.add([background, labelText, hitArea]);
+  if (subText) {
+    container.add(subText);
+  }
+  redraw();
+
+  return {
+    container,
+    setEnabled(nextEnabled: boolean): void {
+      enabled = nextEnabled;
+      hitArea.disableInteractive();
+      hitArea.setInteractive({ useHandCursor: enabled });
+      redraw();
+    },
+    setLabel(nextLabel: string): void {
+      if (!labelText.active || !labelText.scene) {
+        return;
+      }
+      labelText.setText(nonEmptyText(nextLabel));
+    },
+  };
+}

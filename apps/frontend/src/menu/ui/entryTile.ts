@@ -1,0 +1,84 @@
+import Phaser from "phaser";
+
+import { bodyStyle } from "./styles";
+import { drawAngledPanel } from "./drawAngledPanel";
+
+interface EntryTileOptions {
+  readonly width: number;
+  readonly height: number;
+  readonly title: string;
+  readonly subtitle: string;
+  readonly badge: string;
+  readonly selected: boolean;
+  readonly accent?: number;
+  readonly onClick: () => void;
+  readonly drawIcon: (target: Phaser.GameObjects.Container) => void;
+}
+
+interface EntryTileControl {
+  readonly container: Phaser.GameObjects.Container;
+  readonly hitArea: Phaser.GameObjects.Rectangle;
+  readonly width: number;
+  readonly height: number;
+  setSelected(selected: boolean): void;
+  setHovered(hovered: boolean): void;
+}
+
+export function createEntryTile(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  options: EntryTileOptions,
+): EntryTileControl {
+  let selected = options.selected;
+  let hovered = false;
+  const container = scene.add.container(x - options.width / 2, y - options.height / 2);
+  const background = scene.add.graphics();
+  const hitArea = scene.add.rectangle(0, 0, options.width, options.height, 0xffffff, 0.001)
+    .setOrigin(0, 0)
+    .setInteractive({ useHandCursor: true });
+  const titleText = scene.add.text(options.width / 2, options.height - 40, options.title, bodyStyle("#f6f1e6", options.width === 164 ? 15 : 14)).setOrigin(0.5);
+  const subtitleText = scene.add.text(options.width / 2, options.height - 20, options.subtitle, bodyStyle("#ffcf6e", options.width === 164 ? 13 : 12)).setOrigin(0.5);
+  const badgeText = scene.add.text(options.width / 2, 16, options.badge, bodyStyle("#9fb4c8", 12)).setOrigin(0.5);
+  const draw = () => {
+    background.clear();
+    const fill = selected ? 0x263244 : hovered ? 0x18212d : 0x151b26;
+    const stroke = selected ? 0xffcf6e : hovered ? (options.accent ?? 0x5c7185) : 0x34475c;
+    drawAngledPanel(background, 0, 0, options.width, options.height, fill, stroke, 1);
+    badgeText.setColor(selected ? "#ffcf6e" : hovered ? "#d7e3ef" : "#9fb4c8");
+    titleText.setColor(selected ? "#ffffff" : "#f6f1e6");
+    subtitleText.setColor(selected ? "#ffcf6e" : hovered ? "#d7e3ef" : "#ffcf6e");
+  };
+  const iconLayer = scene.add.container(0, 0);
+  options.drawIcon(iconLayer);
+  container.add([background, iconLayer, badgeText, titleText, subtitleText, hitArea]);
+  hitArea.on("pointerover", () => {
+    hovered = true;
+    draw();
+  });
+  hitArea.on("pointerout", () => {
+    hovered = false;
+    draw();
+  });
+  hitArea.on("pointerdown", () => {
+    draw();
+  });
+  hitArea.on("pointerup", () => {
+    options.onClick();
+  });
+  draw();
+  return {
+    container,
+    hitArea,
+    width: options.width,
+    height: options.height,
+    setSelected(nextSelected: boolean): void {
+      selected = nextSelected;
+      draw();
+    },
+    setHovered(nextHovered: boolean): void {
+      hovered = nextHovered;
+      draw();
+    },
+  };
+}
