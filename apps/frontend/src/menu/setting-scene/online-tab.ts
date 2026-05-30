@@ -3,6 +3,7 @@ import { PUBLIC_SERVER } from "@repo/constants";
 
 import {
   bodyStyle,
+  createCheckbox,
   createFightButton,
   createRectangleButton,
   createTextField,
@@ -225,12 +226,13 @@ export function renderOnlineTab(scene: SettingsScene, layer: Phaser.GameObjects.
 
 function renderP2pSection(scene: SettingsScene, layer: Phaser.GameObjects.Container, x: number, y: number): void {
   let stunDialog: Phaser.GameObjects.Container | undefined;
-  const p2pText = scene.add.text(x, y + 52, " ", bodyStyle("#d7e3ef", 18));
+  const p2pText = scene.add.text(x, y + 52, "启用 P2P：", bodyStyle("#d7e3ef", 18));
+  const p2pCheckbox = createCheckbox(scene, x + 100, y + 62, uiSettings.p2pEnabled, {
+    onChange: (nextEnabled) => {
+      setP2pEnabled(nextEnabled);
+    },
+  });
   const stunText = scene.add.text(x, y + 130, uiSettings.stunServer, bodyStyle("#9fd8ff", 16)).setWordWrapWidth(410);
-
-  const updateP2p = () => {
-    p2pText.setText(uiSettings.p2pEnabled ? "使用 P2P：开启" : "使用 P2P：关闭");
-  };
   const closeStunDialog = () => {
     stunDialog?.destroy();
     stunDialog = undefined;
@@ -252,13 +254,9 @@ function renderP2pSection(scene: SettingsScene, layer: Phaser.GameObjects.Contai
     stunText.setText(uiSettings.stunServer);
   };
 
-  updateP2p();
   layer.add(sectionTitle(scene, x, y, "P2P 联机"));
   layer.add(p2pText);
-  layer.add(createFightButton(scene, x + 118, y + 116, 216, 44, "切换 P2P", () => {
-    setP2pEnabled(!uiSettings.p2pEnabled);
-    updateP2p();
-  }, { accent: 0x34d399 }).container);
+  layer.add(p2pCheckbox.container);
   layer.add(scene.add.text(x, y + 92, "STUN 服务器", bodyStyle("#f6f1e6", 18)));
   layer.add(stunText);
   layer.add(createRectangleButton(scene, x + 430, y + 141, 42, 34, "▼", openStunDialog, { accent: 0x5c7185 }).container);

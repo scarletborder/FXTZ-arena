@@ -13,6 +13,7 @@ export * from "./drawBuildLabel";
 export * from "./drawPanel";
 export * from "./drawPanelToLayer";
 export * from "./createPreviewArena";
+export * from "./createCheckbox";
 export * from "./createCharacterTile";
 export * from "./createCardTile";
 export * from "./createCodexTile";
