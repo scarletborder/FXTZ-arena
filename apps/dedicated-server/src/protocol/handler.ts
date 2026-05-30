@@ -1,4 +1,5 @@
 import { validateLoadout } from "@repo/raid-logic";
+import { MAX_PLAYER_NAME_LENGTH, MAX_ROOM_NAME_LENGTH } from "@repo/constants";
 import type { BattleConfig, PlayerId } from "@repo/types";
 
 import type { ServerConfig } from "../config";
@@ -256,7 +257,7 @@ export class MessageHandler {
 
     this.sessionStore.create(
       connection.id,
-      msg.username,
+      normalizeDisplayName(msg.username, MAX_PLAYER_NAME_LENGTH, "Player"),
       msg.clientVersion,
       msg.debug,
     );
@@ -282,7 +283,7 @@ export class MessageHandler {
       && battleMatches;
 
     if (!room || !canReconnect) {
-      this.sessionStore.create(connection.id, msg.username, msg.clientVersion, msg.debug);
+      this.sessionStore.create(connection.id, normalizeDisplayName(msg.username, MAX_PLAYER_NAME_LENGTH, "Player"), msg.clientVersion, msg.debug);
       this.send(connection, {
         type: "server_hello",
         serverVersion: this.config.serverVersion,
@@ -300,7 +301,7 @@ export class MessageHandler {
       this.sessionStore.remove(oldSession.connectionId);
     }
 
-    this.sessionStore.create(connection.id, msg.username, msg.clientVersion, msg.debug);
+    this.sessionStore.create(connection.id, normalizeDisplayName(msg.username, MAX_PLAYER_NAME_LENGTH, "Player"), msg.clientVersion, msg.debug);
     this.sessionStore.setRoomId(connection.id, room.id);
     this.sessionStore.setPlayerId(connection.id, reconnect.playerId);
     this.roomManager.reconnectSlot(room, slotIndex, connection.id);
@@ -367,7 +368,7 @@ export class MessageHandler {
     }
 
     const room = this.roomManager.create({
-      name: msg.name || `${session.username}'s room`,
+      name: normalizeDisplayName(msg.name, MAX_ROOM_NAME_LENGTH, `${session.username}'s room`),
       password: msg.password,
       mapId: msg.mapId,
       lifeCount: msg.lifeCount,
@@ -1088,7 +1089,7 @@ export class MessageHandler {
   }
 
   private refreshSessionUsername(connectionId: string, username: string | undefined): void {
-    const nextUsername = username?.trim();
+    const nextUsername = normalizeOptionalDisplayName(username, MAX_PLAYER_NAME_LENGTH);
     if (!nextUsername) return;
     this.sessionStore.setUsername(connectionId, nextUsername);
   }
@@ -1196,4 +1197,14 @@ export class MessageHandler {
     }
     return playerId ? this.sessionStore.findByRoomAndPlayer(room.id, playerId)?.username ?? "" : "";
   }
+}
+
+function normalizeDisplayName(value: string | undefined, maxLength: number, fallback: string): string {
+  return normalizeOptionalDisplayName(value, maxLength) ?? fallback.slice(0, maxLength);
+}
+
+function normalizeOptionalDisplayName(value: string | undefined, maxLength: number): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  return Array.from(trimmed).slice(0, maxLength).join("");
 }

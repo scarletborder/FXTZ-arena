@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { MAX_PLAYER_NAME_LENGTH, MAX_ROOM_NAME_LENGTH } from "@repo/constants";
 
-import { DEFAULT_SERVER_CONFIG } from "../config";
+import { DEFAULT_SERVER_CONFIG, type ServerConfig } from "../config";
 import { MessageHandler } from "../protocol/handler";
 import { RoomLifecycle } from "../room/lifecycle";
 import { RoomManager } from "../room/manager";
@@ -8,7 +9,7 @@ import { SessionStore } from "../session/store";
 import { MockConnection } from "./test-utils";
 import type { ServerMessage } from "../protocol/messages";
 
-function createHandler() {
+function createHandler(config: ServerConfig = DEFAULT_SERVER_CONFIG) {
   const sessionStore = new SessionStore();
   const roomManager = new RoomManager();
   const roomLifecycle = new RoomLifecycle();
@@ -16,7 +17,7 @@ function createHandler() {
     sessionStore,
     roomManager,
     roomLifecycle,
-    DEFAULT_SERVER_CONFIG,
+    config,
   );
   return { sessionStore, roomManager, handler };
 }
@@ -105,6 +106,16 @@ describe("MessageHandler", () => {
       expect(session?.debug).toBe(false);
     });
 
+    it("trims player names to the maximum protocol length", () => {
+      const { handler, sessionStore } = createHandler();
+      const conn = new MockConnection();
+      const longName = "A".repeat(MAX_PLAYER_NAME_LENGTH + 8);
+
+      performHello(handler, conn, longName);
+
+      expect(sessionStore.get(conn.id)?.username).toBe("A".repeat(MAX_PLAYER_NAME_LENGTH));
+    });
+
     it("returns server_hello with version", () => {
       const { handler } = createHandler();
       const conn = new MockConnection();
@@ -146,6 +157,25 @@ describe("MessageHandler", () => {
       expect(room?.costLimit).toBe(15);
     });
 
+    it("trims room names to the maximum protocol length", () => {
+      const { handler, roomManager } = createHandler();
+      const conn = new MockConnection();
+      const longName = "R".repeat(MAX_ROOM_NAME_LENGTH + 8);
+
+      performHello(handler, conn);
+      handler.handle(conn, {
+        type: "create_room",
+        name: longName,
+        mapId: "arena_standard",
+        lifeCount: 3,
+        costLimit: 15,
+      });
+
+      const roomCreated = conn.findSentMessage("room_created");
+      const room = roomManager.get(roomCreated!.roomId);
+      expect(room?.name).toBe("R".repeat(MAX_ROOM_NAME_LENGTH));
+    });
+
     it("uses the latest username from create_room for lobby display", () => {
       const { handler, sessionStore } = createHandler();
       const conn = new MockConnection();
@@ -163,6 +193,36 @@ describe("MessageHandler", () => {
 
       expect(sessionStore.get(conn.id)?.username).toBe("Alice");
       expect(conn.findSentMessage("room_state")?.hostName).toBe("Alice");
+    });
+
+    it("enforces configured maximum room count", () => {
+      const { handler } = createHandler({
+        ...DEFAULT_SERVER_CONFIG,
+        maxRooms: 1,
+      });
+      const conn1 = new MockConnection("conn-1");
+      const conn2 = new MockConnection("conn-2");
+
+      performHello(handler, conn1);
+      performHello(handler, conn2);
+      handler.handle(conn1, {
+        type: "create_room",
+        name: "Room 1",
+        mapId: "arena_standard",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+      handler.handle(conn2, {
+        type: "create_room",
+        name: "Room 2",
+        mapId: "arena_standard",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+
+      const error = conn2.findSentMessage("error");
+      expect(error?.code).toBe("invalid_state");
+      expect(error?.message).toBe("Server is full");
     });
 
     it("rejects create room when already in a room", () => {

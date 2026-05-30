@@ -1,4 +1,5 @@
 ﻿import Phaser from "phaser";
+import { MAX_ROOM_NAME_LENGTH } from "@repo/constants";
 import type { PlayerId } from "@repo/types";
 
 import type { ConnectionStatus } from "../network";
@@ -111,11 +112,12 @@ export class BattleStartScene extends Phaser.Scene {
     drawAngledPanel(bg, px, py, pw, ph, 0x111821, 0x5c7185, 0.98);
     c.add(bg);
     c.add(this.add.text(cx, py + 28, "创建房间", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "22px", fontStyle: "700", color: "#ffcf6e" }).setOrigin(0.5));
-    let roomName = `${uiSettings.username} 的房间`;
+    let roomName = Array.from(`${uiSettings.username} 的房间`).slice(0, MAX_ROOM_NAME_LENGTH).join("");
     let roomPassword = "";
     c.add(this.add.text(cx - 140, py + 78, "房间名", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
     const nameField = createTextField(this, cx - 140, py + 108, 280, {
       value: roomName,
+      maxLength: MAX_ROOM_NAME_LENGTH,
       onFocus: (field) => { this.activeField = field; },
       onChange: (v) => { roomName = v; },
     });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createServerConfig } from "../config";
+import { DEFAULT_SERVER_CONFIG, createServerConfig } from "../config";
 
 describe("createServerConfig", () => {
   it("uses environment defaults", () => {
@@ -9,6 +9,8 @@ describe("createServerConfig", () => {
     expect(config.ipv4Host).toBe("127.0.0.1");
     expect(config.ipv6Host).toBe("::1");
     expect(config.port).toBe(22335);
+    expect(config.maxRooms).toBe(100);
+    expect(DEFAULT_SERVER_CONFIG.maxRooms).toBe(100);
   });
 
   it("accepts an IPv4 bind address from CLI", () => {
@@ -68,5 +70,16 @@ describe("createServerConfig", () => {
     const config = createServerConfig(["--wt"], {});
 
     expect(config.webTransport).toBe(true);
+  });
+
+  it("accepts a maximum room count from CLI", () => {
+    const config = createServerConfig(["--max-room=12"], {});
+
+    expect(config.maxRooms).toBe(12);
+  });
+
+  it("rejects invalid maximum room counts", () => {
+    expect(() => createServerConfig(["--max-room=0"], {})).toThrow("Invalid max room");
+    expect(() => createServerConfig(["--max-room=abc"], {})).toThrow("Invalid max room");
   });
 });

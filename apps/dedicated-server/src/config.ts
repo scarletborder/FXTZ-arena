@@ -36,6 +36,7 @@ export function createServerConfig(
   let keyPath: string | undefined;
   let pemDir: string | undefined;
   let webTransport = false;
+  let maxRooms = DEFAULT_SERVER_CONFIG.maxRooms;
 
   for (const arg of argv) {
     if (arg === "--wt") {
@@ -76,6 +77,12 @@ export function createServerConfig(
     const pemDirArg = readOption(arg, "--pem-dir") ?? readOption(arg, "---pem-dir");
     if (pemDirArg !== null) {
       pemDir = pemDirArg;
+      continue;
+    }
+
+    const maxRoomArg = readOption(arg, "--max-room");
+    if (maxRoomArg !== null) {
+      maxRooms = parseMaxRooms(maxRoomArg);
     }
   }
 
@@ -88,6 +95,7 @@ export function createServerConfig(
     keyPath,
     pemDir,
     webTransport,
+    maxRooms,
   };
 }
 
@@ -105,4 +113,12 @@ function parsePort(raw: string): number {
     throw new Error(`Invalid port: ${raw}`);
   }
   return port;
+}
+
+function parseMaxRooms(raw: string): number {
+  const maxRooms = Number.parseInt(raw, 10);
+  if (!Number.isInteger(maxRooms) || maxRooms < 1) {
+    throw new Error(`Invalid max room: ${raw}`);
+  }
+  return maxRooms;
 }

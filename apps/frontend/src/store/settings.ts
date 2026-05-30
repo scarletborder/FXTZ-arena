@@ -1,4 +1,4 @@
-import { PUBLIC_SERVER } from "@repo/constants";
+import { MAX_PLAYER_NAME_LENGTH, PUBLIC_SERVER } from "@repo/constants";
 
 export interface UiSettings {
   username: string;
@@ -79,7 +79,7 @@ function normalizeVolume(value: number, fallback = 100): number {
 }
 
 export const uiSettings: UiSettings = {
-  username: readString(STORAGE_KEYS.username, "Player"),
+  username: normalizeUsername(readString(STORAGE_KEYS.username, "Player")),
   debug: readBoolean(STORAGE_KEYS.debug, false),
   serverAddress: readString(STORAGE_KEYS.serverAddress, DEFAULT_SERVER_ADDRESS),
   music: readVolume(STORAGE_KEYS.music, 100),
@@ -88,8 +88,9 @@ export const uiSettings: UiSettings = {
 };
 
 export function setUsername(username: string): void {
-  uiSettings.username = username;
-  writeString(STORAGE_KEYS.username, username);
+  const normalized = normalizeUsername(username);
+  uiSettings.username = normalized;
+  writeString(STORAGE_KEYS.username, normalized);
 }
 
 export function setDebug(debug: boolean): void {
@@ -117,4 +118,9 @@ export function setSoundVolume(volume: number): void {
 export function setSelfAuthed(selfAuthed: boolean): void {
   uiSettings.selfAuthed = selfAuthed;
   writeBoolean(STORAGE_KEYS.selfAuthed, selfAuthed);
+}
+
+function normalizeUsername(username: string): string {
+  const trimmed = username.trim();
+  return Array.from(trimmed || "Player").slice(0, MAX_PLAYER_NAME_LENGTH).join("");
 }

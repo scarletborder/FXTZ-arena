@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { PUBLIC_SERVER } from "@repo/constants";
+import { MAX_PLAYER_NAME_LENGTH, PUBLIC_SERVER } from "@repo/constants";
 
 import {
   bodyStyle,
@@ -59,7 +59,7 @@ export function renderOnlineTab(scene: SettingsScene, layer: Phaser.GameObjects.
   ): TextFieldControl => {
     const field = createTextField(scene, x, y, width, {
       value: uiSettings[key],
-      maxLength: key === "serverAddress" ? 160 : 32,
+      maxLength: key === "serverAddress" ? 160 : MAX_PLAYER_NAME_LENGTH,
       onFocus: activateField,
       onChange: (value) => {
         if (key === "username") {
