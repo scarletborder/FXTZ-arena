@@ -64,7 +64,7 @@ export function createTextField(
   } satisfies Partial<CSSStyleDeclaration>);
 
   const redraw = () => {
-    if (cleanedUp) {
+    if (cleanedUp || !container.active || !container.scene || !background.active || !background.scene || !label.active || !label.scene) {
       return;
     }
     background.clear();
@@ -106,7 +106,7 @@ export function createTextField(
   };
 
   const setActive = (nextActive: boolean) => {
-    if (cleanedUp) {
+    if (cleanedUp || !container.active || !container.scene || !background.active || !background.scene || !label.active || !label.scene) {
       return;
     }
     if (nextActive && activeTextField && activeTextField !== control) {

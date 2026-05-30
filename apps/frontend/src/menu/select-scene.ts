@@ -336,7 +336,8 @@ export class SelectScene extends Phaser.Scene {
     const mask = this.make.graphics({ x: 0, y: 0 });
     mask.fillStyle(0xffffff, 1);
     mask.fillRect(listBounds.x, listBounds.y, listBounds.width, listBounds.height);
-    listContainer.setMask(mask.createGeometryMask());
+    listContainer.enableFilters();
+    listContainer.filters.internal.addMask(mask);
     this.layer.add(listContainer);
     this.registerScrollArea(
       "characters",
@@ -420,7 +421,8 @@ export class SelectScene extends Phaser.Scene {
     const mask = this.make.graphics({ x: 0, y: 0 });
     mask.fillStyle(0xffffff, 1);
     mask.fillRect(listBounds.x, listBounds.y, listBounds.width, listBounds.height);
-    listContainer.setMask(mask.createGeometryMask());
+    listContainer.enableFilters();
+    listContainer.filters.internal.addMask(mask);
     this.layer.add(listContainer);
     this.registerScrollArea(
       "cards",

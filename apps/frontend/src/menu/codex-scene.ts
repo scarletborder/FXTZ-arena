@@ -165,7 +165,8 @@ export class CodexScene extends Phaser.Scene {
     const mask = this.make.graphics({ x: 0, y: 0 });
     mask.fillStyle(0xffffff, 1);
     mask.fillRect(listBounds.x, listBounds.y, listBounds.width, listBounds.height);
-    listContainer.setMask(mask.createGeometryMask());
+    listContainer.enableFilters();
+    listContainer.filters.internal.addMask(mask);
     this.listLayer.add(listContainer);
     const rows = Math.ceil(characters.length / columns) || 1;
     const topPadding = startY - listBounds.y;
@@ -215,7 +216,8 @@ export class CodexScene extends Phaser.Scene {
     const mask = this.make.graphics({ x: 0, y: 0 });
     mask.fillStyle(0xffffff, 1);
     mask.fillRect(listBounds.x, listBounds.y, listBounds.width, listBounds.height);
-    listContainer.setMask(mask.createGeometryMask());
+    listContainer.enableFilters();
+    listContainer.filters.internal.addMask(mask);
     this.listLayer.add(listContainer);
     const rows = Math.ceil(cards.length / columns) || 1;
     const topPadding = startY - listBounds.y;
@@ -252,7 +254,8 @@ export class CodexScene extends Phaser.Scene {
     const mask = this.make.graphics({ x: 0, y: 0 });
     mask.fillStyle(0xffffff, 1);
     mask.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
-    content.setMask(mask.createGeometryMask());
+    content.enableFilters();
+    content.filters.internal.addMask(mask);
 
     this.detailLayer.add(content);
     this.registerDetailScrollArea(bounds, content, descriptionY - bounds.y + description.height, bounds.height);
@@ -367,7 +370,8 @@ export class CodexScene extends Phaser.Scene {
     const mask = this.make.graphics({ x: 0, y: 0 });
     mask.fillStyle(0xffffff, 1);
     mask.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
-    content.setMask(mask.createGeometryMask());
+    content.enableFilters();
+    content.filters.internal.addMask(mask);
 
     this.detailLayer.add(content);
     this.registerDetailScrollArea(bounds, content, text.height, bounds.height);
