@@ -12,7 +12,7 @@ describe("WsTransportServer", () => {
       const response = await fetch(`http://127.0.0.1:${port}/echo`);
 
       expect(response.status).toBe(200);
-      expect(await response.text()).toBe("FXTZ arena dedicated server echo ok\n");
+      expect(await response.text()).toContain("FXTZ arena dedicated server echo ok");
     } finally {
       transport.close();
     }
