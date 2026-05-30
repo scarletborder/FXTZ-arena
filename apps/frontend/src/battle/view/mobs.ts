@@ -2,6 +2,7 @@ import Phaser from "phaser";
 
 import type { NeutralMobState } from "@repo/types";
 import { Depth } from "../../utils/depth";
+import { smoothValue } from "./smooth";
 
 interface EnemyConfigJson {
   readonly enemy_config: readonly EnemyConfigEntry[];
@@ -67,7 +68,7 @@ export class MobView {
     this.enemyConfigs = createEnemyAnimations(scene);
   }
 
-  render(neutralMobs: readonly NeutralMobState[], alpha = 1): void {
+  render(neutralMobs: readonly NeutralMobState[], alpha = 1, rollbackBlend = 1): void {
     const active = new Set<number>();
 
     for (const mob of neutralMobs) {
@@ -95,10 +96,10 @@ export class MobView {
           .setDisplaySize(config.width * config.scaleX, config.height * config.scaleY);
         this.sprites.set(mob.id, sprite);
       }
-      sprite.setPosition(x, y);
+      sprite.setPosition(smoothValue(sprite.x, x, rollbackBlend), smoothValue(sprite.y, y, rollbackBlend));
+      sprite.setAlpha(smoothValue(sprite.alpha, 1, rollbackBlend));
       sprite.setDisplaySize(config.width * config.scaleX, config.height * config.scaleY);
       sprite.setFlipX(motion.direction < 0);
-      sprite.setAlpha(1);
       sprite.setVisible(true);
       this.playMobAnimation(mob.id, sprite, config, motion);
 
@@ -114,9 +115,9 @@ export class MobView {
           }).setOrigin(0.5).setDepth(Depth.FloatingText);
           this.damageTags.set(mob.id, damageTag);
         }
-        damageTag.setPosition(x, y - 28);
+        damageTag.setPosition(smoothValue(damageTag.x, x, rollbackBlend), smoothValue(damageTag.y, y - 28, rollbackBlend));
+        damageTag.setAlpha(smoothValue(damageTag.alpha, 1, rollbackBlend));
         damageTag.setText(`[${Math.max(0, Math.floor(mob.damageTaken ?? 0))}]`);
-        damageTag.setAlpha(1);
         damageTag.setVisible(true);
       } else if (damageTag) {
         damageTag.setVisible(false);

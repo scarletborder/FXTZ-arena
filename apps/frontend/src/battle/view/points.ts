@@ -2,6 +2,7 @@ import Phaser from "phaser";
 
 import type { FighterState, PointState } from "@repo/raid-logic";
 import { Depth } from "../../utils/depth";
+import { smoothValue } from "./smooth";
 
 interface PointVisual {
   readonly box: Phaser.GameObjects.Rectangle;
@@ -12,15 +13,17 @@ interface PointVisual {
 export class PointView {
   private readonly visuals = new Map<number, PointVisual>();
 
-  constructor(private readonly scene: Phaser.Scene) {}
+  constructor(private readonly scene: Phaser.Scene) { }
 
   render(params: {
     readonly points: readonly PointState[];
     readonly player: FighterState;
     readonly target: FighterState;
     readonly alpha?: number;
+    readonly rollbackBlend?: number;
   }): void {
     const alpha = params.alpha ?? 1;
+    const rollbackBlend = params.rollbackBlend ?? 1;
     const active = new Set<number>();
     for (const point of params.points) {
       if (!point.active) {
@@ -36,9 +39,9 @@ export class PointView {
       const display = pointDisplay(point, params.player, params.target, alpha);
       const collectRatio = point.collectingBy ? Math.max(0, point.collectTicksRemaining / 10) : 1;
       const scale = point.collectingBy ? 1 + (1 - collectRatio) * 0.35 : 1;
-      visual.container.setPosition(display.x, display.y);
       visual.container.setScale(scale);
-      visual.container.setAlpha(point.collectingBy ? collectRatio : 1);
+      visual.container.setPosition(smoothValue(visual.container.x, display.x, rollbackBlend), smoothValue(visual.container.y, display.y, rollbackBlend));
+      visual.container.setAlpha(smoothValue(visual.container.alpha, point.collectingBy ? collectRatio : 1, rollbackBlend));
       visual.container.setVisible(true);
       visual.box.setDisplaySize(point.size, point.size);
       visual.label.setFontSize(Math.max(8, point.size - 1));

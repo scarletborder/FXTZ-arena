@@ -52,6 +52,7 @@ export class BattleView {
     input: BattleInputState,
     localFighterKey: FighterKey = "Player1",
     alpha = 1,
+    rollbackBlend = 1,
   ): void {
     const localFighter =
       localFighterKey === "Player1" ? state.player : state.target;
@@ -63,13 +64,15 @@ export class BattleView {
       input.infoHeld,
       localFighterKey,
       alpha,
+      rollbackBlend,
     );
-    this.mobs.render(state.neutralMobs, alpha);
+    this.mobs.render(state.neutralMobs, alpha, rollbackBlend);
     this.points.render({
       points: state.points,
       player: state.player,
       target: state.target,
       alpha,
+      rollbackBlend,
     });
     this.projectiles.render(
       state.projectiles,
@@ -77,6 +80,7 @@ export class BattleView {
       { player: state.player, target: state.target },
       localFighterKey,
       alpha,
+      rollbackBlend,
     );
     this.effects.render(state.effects, state.shields);
     this.crosshair.render({

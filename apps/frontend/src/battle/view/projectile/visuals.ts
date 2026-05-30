@@ -4,6 +4,7 @@ import type { ProjectileState } from "@repo/raid-logic";
 import { Depth } from "../../../utils/depth";
 
 import { projectileAlpha } from "./display";
+import { smoothValue } from "../smooth";
 import type {
   FighterKey,
   ProjectileDisplay,
@@ -14,13 +15,14 @@ import type {
 export class ProjectileVisualStore {
   private readonly visuals = new Map<number, ProjectileVisual>();
 
-  constructor(private readonly scene: Phaser.Scene) {}
+  constructor(private readonly scene: Phaser.Scene) { }
 
   renderImage(
     projectile: ProjectileState,
     display: ProjectileDisplay,
     spec: Extract<ProjectileSpec, { readonly kind: "image" | "fallback" }>,
     localFighterKey: FighterKey,
+    rollbackBlend = 1,
   ): void {
     const visual = this.ensureImageVisual(projectile.id);
     const sprite = visual.image;
@@ -33,13 +35,13 @@ export class ProjectileVisualStore {
       sprite.setTint(spec.tint);
       sprite.setDisplaySize(display.width, display.height);
     }
-    sprite.setPosition(display.x, display.y);
+    sprite.setPosition(smoothValue(sprite.x, display.x, rollbackBlend), smoothValue(sprite.y, display.y, rollbackBlend));
     sprite.setRotation(
       spec.kind === "fallback"
         ? projectile.angle
         : projectile.angle + Math.PI / 2,
     );
-    sprite.setAlpha(projectileAlpha(projectile, localFighterKey));
+    sprite.setAlpha(smoothValue(sprite.alpha, projectileAlpha(projectile, localFighterKey), rollbackBlend));
     sprite.setVisible(true);
   }
 
@@ -48,13 +50,14 @@ export class ProjectileVisualStore {
     display: ProjectileDisplay,
     spec: Extract<ProjectileSpec, { readonly kind: "laser" }>,
     localFighterKey: FighterKey,
+    rollbackBlend = 1,
   ): void {
     const visual = this.ensureLaserVisual(projectile.id);
     const container = visual.container;
     container.removeAll(true);
-    container.setPosition(display.x, display.y);
+    container.setPosition(smoothValue(container.x, display.x, rollbackBlend), smoothValue(container.y, display.y, rollbackBlend));
     container.setRotation(projectile.angle);
-    container.setAlpha(projectileAlpha(projectile, localFighterKey));
+    container.setAlpha(smoothValue(container.alpha, projectileAlpha(projectile, localFighterKey), rollbackBlend));
     container.setVisible(true);
 
     const length = display.width;

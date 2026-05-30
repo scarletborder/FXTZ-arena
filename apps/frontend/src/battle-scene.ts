@@ -98,6 +98,7 @@ export class BattleScene extends Phaser.Scene {
   private battleLayout: BattleLayout | undefined;
   private applyingBattleLayout = false;
   private pendingLayoutRefresh: Phaser.Time.TimerEvent | undefined;
+  private rollbackVisualFrames = 0;
 
   constructor() {
     super("battle");
@@ -207,7 +208,11 @@ export class BattleScene extends Phaser.Scene {
       this.lastInput,
       this.combatSync?.localFighterKey() ?? "Player1",
       this.accumulator / FIXED_STEP_MS,
+      this.rollbackVisualFrames > 0 ? 0.35 : 1,
     );
+    if (this.rollbackVisualFrames > 0) {
+      this.rollbackVisualFrames -= 1;
+    }
     if (this.debugPhysicsEnabled) {
       this.renderDebugPhysics();
     }
@@ -395,6 +400,7 @@ export class BattleScene extends Phaser.Scene {
           this.pruneDebugHistoryBefore(frame),
         onRollback: () => {
           this.accumulator = 0;
+          this.rollbackVisualFrames = 4;
         },
         setStatusText: (text) =>
           this.onlineStatusText?.setText(text).setVisible(true),

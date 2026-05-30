@@ -3,6 +3,7 @@ import Phaser from "phaser";
 import { GRAZE_CIRCLE_ALPHA, GRAZE_CIRCLE_DIAMETER, PLAYER_CORE_RADIUS } from "@repo/constants";
 import type { FighterKey, FighterState } from "@repo/raid-logic";
 import { Depth } from "../../utils/depth";
+import { smoothValue } from "./smooth";
 
 interface FighterVisual {
   readonly body: Phaser.GameObjects.Sprite;
@@ -32,9 +33,10 @@ export class FighterView {
     infoHeld: boolean,
     localFighterKey: FighterKey,
     alpha: number,
+    rollbackBlend = 1,
   ): void {
-    this.updateFighter(this.visuals.player, player, frame, gameOver, infoHeld, localFighterKey === "Player1", alpha);
-    this.updateFighter(this.visuals.target, target, frame, gameOver, infoHeld, localFighterKey === "Player2", alpha);
+    this.updateFighter(this.visuals.player, player, frame, gameOver, infoHeld, localFighterKey === "Player1", alpha, rollbackBlend);
+    this.updateFighter(this.visuals.target, target, frame, gameOver, infoHeld, localFighterKey === "Player2", alpha, rollbackBlend);
   }
 
   private createFighterVisual(x: number, y: number): FighterVisual {
@@ -61,6 +63,7 @@ export class FighterView {
     infoHeld: boolean,
     isPlayer: boolean,
     alpha: number,
+    rollbackBlend: number,
   ): void {
     const visible = gameOver ? fighter.deadUntil === 0 : fighter.deadUntil === 0 || isPlayer;
     const x = lerp(fighter.previousX, fighter.x, alpha);
@@ -68,7 +71,6 @@ export class FighterView {
     const facing = lerpAngle(fighter.previousFacing, fighter.facing, alpha);
     const pose = combatPoseForFacing(facing);
     const textureKey = `character-combat-${fighter.activeCharacter.id}`;
-    visual.body.setPosition(x, y);
     const hasCombatTexture = this.scene.textures.exists(textureKey);
     if (visual.body.texture.key !== textureKey && hasCombatTexture) {
       visual.body.setTexture(textureKey);
@@ -82,19 +84,31 @@ export class FighterView {
     visual.body.setVisible(visible);
     visual.body.clearTint();
     const blinkAlpha = fighter.invulnerableUntil > 0 && Math.floor(frame / 5) % 2 === 0 ? 0.28 : 1;
-    visual.body.setAlpha(visible ? blinkAlpha : 0);
-    visual.core.setPosition(x, y);
+    const renderX = smoothValue(visual.body.x, x, rollbackBlend);
+    const renderY = smoothValue(visual.body.y, y, rollbackBlend);
+    visual.body.setPosition(renderX, renderY);
+    visual.body.setAlpha(visible ? smoothValue(visual.body.alpha, blinkAlpha, rollbackBlend) : 0);
+    visual.core.setPosition(smoothValue(visual.core.x, x, rollbackBlend), smoothValue(visual.core.y, y, rollbackBlend));
+    visual.core.setAlpha(visible ? smoothValue(visual.core.alpha, 1, rollbackBlend) : 0);
     visual.core.setVisible(visible);
-    this.updateGrazeVisual(visual.graze, fighter, x, y, frame, visible && isPlayer);
-    visual.statusTag.setPosition(x, y - 48);
+    this.updateGrazeVisual(visual.graze, fighter, renderX, renderY, frame, visible && isPlayer);
+    const statusAlpha = fighter.reloadRemaining > 0 && fighter.deadUntil === 0
+      ? Math.floor(frame / 8) % 2 === 0
+        ? 1
+        : 0.25
+      : fighter.statusVisibleUntil > frame || fighter.deadUntil > 0
+        ? infoHeld
+          ? 1
+          : 0.9
+        : 0;
+    visual.statusTag.setPosition(smoothValue(visual.statusTag.x, x, rollbackBlend), smoothValue(visual.statusTag.y, y - 48, rollbackBlend));
+    visual.statusTag.setAlpha(smoothValue(visual.statusTag.alpha, statusAlpha, rollbackBlend));
     if (fighter.reloadRemaining > 0 && fighter.deadUntil === 0) {
       visual.statusTag.setText("[Reload]");
       visual.statusTag.setColor("#ffffff");
-      visual.statusTag.setAlpha(Math.floor(frame / 8) % 2 === 0 ? 1 : 0.25);
     } else {
       visual.statusTag.setText(fighter.deadUntil > 0 ? "重整中" : `命数 ${Math.max(0, fighter.lives)}  bomb ${fighter.bombs}`);
       visual.statusTag.setColor("#f6f1e6");
-      visual.statusTag.setAlpha(fighter.statusVisibleUntil > frame || fighter.deadUntil > 0 ? (infoHeld ? 1 : 0.9) : 0);
     }
     visual.core.setFillStyle(0xff4242, fighter.flashUntil > frame ? 0.22 : 1);
   }

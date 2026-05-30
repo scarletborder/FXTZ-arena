@@ -39,6 +39,7 @@ export class ProjectileView {
     fighters: ProjectileFighters,
     localFighterKey: FighterKey = "Player1",
     alpha = 1,
+    rollbackBlend = 1,
   ): void {
     const active = new Set<number>();
     for (const projectile of projectiles) {
@@ -63,9 +64,9 @@ export class ProjectileView {
       const display = projectileDisplay(projectile, alpha);
 
       if (spec.kind === "laser") {
-        this.visuals.renderLaser(projectile, display, spec, localFighterKey);
+        this.visuals.renderLaser(projectile, display, spec, localFighterKey, rollbackBlend);
       } else {
-        this.visuals.renderImage(projectile, display, spec, localFighterKey);
+        this.visuals.renderImage(projectile, display, spec, localFighterKey, rollbackBlend);
       }
     }
 
