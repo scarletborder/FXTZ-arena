@@ -24,7 +24,7 @@ export class ProjectileVisualStore {
     localFighterKey: FighterKey,
     rollbackBlend = 1,
   ): void {
-    const visual = this.ensureImageVisual(projectile.id);
+    const visual = this.ensureImageVisual(projectile.id, display.x, display.y);
     const sprite = visual.image;
     if (spec.kind === "image") {
       sprite.setTexture(spec.frame.texture, spec.frame.frame);
@@ -52,7 +52,7 @@ export class ProjectileVisualStore {
     localFighterKey: FighterKey,
     rollbackBlend = 1,
   ): void {
-    const visual = this.ensureLaserVisual(projectile.id);
+    const visual = this.ensureLaserVisual(projectile.id, display.x, display.y);
     const container = visual.container;
     container.removeAll(true);
     container.setPosition(smoothValue(container.x, display.x, rollbackBlend), smoothValue(container.y, display.y, rollbackBlend));
@@ -90,6 +90,8 @@ export class ProjectileVisualStore {
 
   private ensureImageVisual(
     id: number,
+    x: number,
+    y: number,
   ): Extract<ProjectileVisual, { kind: "image" }> {
     const existing = this.visuals.get(id);
     if (existing?.kind === "image") {
@@ -99,7 +101,7 @@ export class ProjectileVisualStore {
       destroyVisual(existing);
     }
     const image = this.scene.add
-      .image(0, 0, "bullet-orb")
+      .image(x, y, "bullet-orb")
       .setOrigin(0.5)
       .setDepth(Depth.Projectile);
     const visual = { kind: "image" as const, image };
@@ -109,6 +111,8 @@ export class ProjectileVisualStore {
 
   private ensureLaserVisual(
     id: number,
+    x: number,
+    y: number,
   ): Extract<ProjectileVisual, { kind: "laser" }> {
     const existing = this.visuals.get(id);
     if (existing?.kind === "laser") {
@@ -117,7 +121,7 @@ export class ProjectileVisualStore {
     if (existing) {
       destroyVisual(existing);
     }
-    const container = this.scene.add.container(0, 0).setDepth(Depth.Projectile);
+    const container = this.scene.add.container(x, y).setDepth(Depth.Projectile);
     const visual = { kind: "laser" as const, container };
     this.visuals.set(id, visual);
     return visual;
