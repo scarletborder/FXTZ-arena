@@ -36,6 +36,7 @@ export interface SegmentProjectileParams {
   readonly x2: number;
   readonly y2: number;
   readonly halfWidth: number;
+  readonly renderHalfWidth?: number;
   readonly damage: number;
   readonly duration: number;
   readonly frame: number;
@@ -121,6 +122,7 @@ export class ProjectileSystem {
         maxLength: length,
         lengthGrowthPerTick: 0,
         height: params.halfWidth * 2,
+        renderHeight: (params.renderHalfWidth ?? params.halfWidth) * 2,
         damage: params.damage,
         expireTicks: params.duration,
         spawnOffset: 0,

@@ -46,7 +46,7 @@ function textureKeyProjectileFrame(
       tint: projectileTint(projectile),
     };
   }
-  if (projectile.kind === "laser") {
+  if (projectile.kind === "laser" || projectile.textureKey.startsWith("laser_type_")) {
     const frame = frames.get(`${projectile.textureKey}_middle`);
     return frame ? { kind: "laser", frame } : undefined;
   }
@@ -127,7 +127,7 @@ function marisaProjectileFrame(
   projectile: ProjectileState,
   frames: ReadonlyMap<string, BulletFrame>,
 ): ProjectileSpec | undefined {
-  if (projectile.kind === "spark" && projectile.height >= 100) {
+  if (projectile.kind === "spark" && (projectile.renderHeight ?? projectile.height) >= 100) {
     return undefined;
   }
   if (projectile.kind !== "laser") return undefined;

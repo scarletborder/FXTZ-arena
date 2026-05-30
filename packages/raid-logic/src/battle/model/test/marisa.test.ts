@@ -6,6 +6,7 @@ describe("BattleModel Marisa", () => {
   it("adds Marisa rear beams and parallel lasers by point tier", async () => {
     const tier1 = await shootOnceAtPoint("marisa", 0);
     expect(tier1.projectiles).toHaveLength(1);
+    expect(tier1.projectiles[0]?.kind).toBe("knife");
     expect(tier1.projectiles[0]?.couldClear).toBe(false);
 
     const tier2 = await shootOnceAtPoint("marisa", 100);
@@ -23,6 +24,10 @@ describe("BattleModel Marisa", () => {
       .sort((left, right) => left.y - right.y);
     expect(tier2RearBeams).toHaveLength(2);
     expect(tier2RearBeams.map((projectile) => projectile.height)).toEqual([
+      0,
+      0,
+    ]);
+    expect(tier2RearBeams.map((projectile) => projectile.renderHeight)).toEqual([
       HIT_CIRCLE_DIAMETER * 2,
       HIT_CIRCLE_DIAMETER * 2,
     ]);

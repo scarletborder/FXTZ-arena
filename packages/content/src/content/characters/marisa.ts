@@ -13,6 +13,8 @@ import { Vanilla } from "../decorators";
 const REAR_BEAM_DIAGONAL_ANGLE = Math.PI / 18;
 const NORMAL_SHOOT_DAMAGE = 6; // 乘以9
 const REAR_BEAM_DAMAGE = 1; // 乘以31
+const NORMAL_SHOT_LENGTH = hitCircleUnits(16);
+const NORMAL_SHOT_THICKNESS = hitCircleUnits(3);
 
 @Vanilla.RegisterCharacter("marisa")
 export class MarisaBattleCharacter extends BattleCharacter {
@@ -136,18 +138,19 @@ export class MarisaBattleCharacter extends BattleCharacter {
     y: number,
     angle: number,
   ): void {
-    ctx.spawnLaser({
+    ctx.spawnBullet({
       owner: fighter.key,
       textureKey: "laser_type_1_offset_13",
+      kind: "knife",
       x,
       y,
       angle,
-      height: hitCircleUnits(3),
-      initialLength: hitCircleUnits(3),
-      maxLength: hitCircleUnits(16),
-      lengthGrowthPerTick: hitCircleUnits(1),
+      width: NORMAL_SHOT_LENGTH,
+      height: NORMAL_SHOT_THICKNESS,
       speedRank: "high",
+      homingTicks: 0,
       damage: NORMAL_SHOOT_DAMAGE,
+      spawnOffset: NORMAL_SHOT_LENGTH / 2,
       couldClear: false,
     });
   }
@@ -213,7 +216,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
       x,
       y,
       angle,
-      height: hitCircleUnits(2),
+      renderHeight: hitCircleUnits(2),
       initialLength: Number.POSITIVE_INFINITY,
       maxLength: Number.POSITIVE_INFINITY,
       lengthGrowthPerTick: 0,
@@ -243,7 +246,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
       x,
       y,
       angle,
-      height: hitCircleUnits(2),
+      renderHeight: hitCircleUnits(2),
       initialLength: Number.POSITIVE_INFINITY,
       maxLength: Number.POSITIVE_INFINITY,
       lengthGrowthPerTick: 0,

@@ -60,6 +60,7 @@ export interface BattleLaserSpawnParams {
   readonly speedRank?: "low" | "medium" | "high";
   readonly width?: number;
   readonly height?: number;
+  readonly renderHeight?: number;
   readonly expireTicks?: number;
   readonly initialLength?: number;
   readonly maxLength?: number;
@@ -85,6 +86,7 @@ export interface BattleSegmentSpawnParams {
   readonly x2: number;
   readonly y2: number;
   readonly halfWidth: number;
+  readonly renderHalfWidth?: number;
   readonly damage: number;
   readonly duration: number;
   readonly frame?: number;

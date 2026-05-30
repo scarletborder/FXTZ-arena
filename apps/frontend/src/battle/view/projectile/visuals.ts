@@ -58,28 +58,15 @@ export class ProjectileVisualStore {
     container.setVisible(true);
 
     const length = display.width;
-    const scale = display.height / spec.frame.hitWidth;
-    const segmentLength = spec.frame.height * scale;
-    const step = Math.max(1, segmentLength - 0.5);
-    const segmentCount = Math.max(1, Math.ceil(length / step) + 1);
-    const startX = -length / 2;
-
-    for (let index = 0; index < segmentCount; index += 1) {
-      const image = this.scene.add
-        .image(
-          startX + step * (index + 0.5),
-          0,
-          spec.frame.texture,
-          spec.frame.frame,
-        )
-        .setOrigin(0.5)
-        .setRotation(Math.PI / 2)
-        .setDisplaySize(
-          display.height * (spec.frame.width / spec.frame.hitWidth),
-          segmentLength,
-        );
-      container.add(image);
-    }
+    const image = this.scene.add
+      .image(0, 0, spec.frame.texture, spec.frame.frame)
+      .setOrigin(0.5)
+      .setRotation(Math.PI / 2)
+      .setDisplaySize(
+        display.height * (spec.frame.width / spec.frame.hitWidth),
+        length,
+      );
+    container.add(image);
   }
 
   destroy(id: number): void {

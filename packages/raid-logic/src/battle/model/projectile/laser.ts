@@ -22,6 +22,7 @@ export function createLaserProjectile(params: {
   readonly initialLength?: number;
   readonly maxLength?: number;
   readonly lengthGrowthPerTick?: number;
+  readonly renderHeight?: number;
   readonly damage?: number;
   readonly spawnOffset?: number;
   readonly pinned?: boolean;
@@ -68,7 +69,8 @@ export function createLaserProjectile(params: {
     vy: fp.toFloat(fp.mul(fpSin, fpV)),
     width,
     previousWidth: width,
-    height: params.height ?? 9,
+    height: params.kind === "spark" ? (params.height ?? 9) : 0,
+    renderHeight: params.renderHeight ?? params.height ?? 9,
     anchorX: params.anchored ? params.x : undefined,
     anchorY: params.anchored ? params.y : undefined,
     visibleFrom: params.visibleFrom ?? params.frame,

@@ -37,7 +37,7 @@ export function projectileDisplay(
       x: projectile.x + Math.cos(projectile.angle) * (length / 2),
       y: projectile.y + Math.sin(projectile.angle) * (length / 2),
       width: length,
-      height: projectile.height,
+      height: projectile.renderHeight ?? projectile.height,
     };
   }
 
@@ -50,7 +50,7 @@ export function projectileDisplay(
     x: lerp(projectile.previousX, projectile.x, alpha),
     y: lerp(projectile.previousY, projectile.y, alpha),
     width,
-    height: projectile.height,
+    height: projectile.renderHeight ?? projectile.height,
   };
 }
 

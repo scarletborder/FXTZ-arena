@@ -73,6 +73,7 @@ export function createBulletProjectile(params: {
     width: params.width,
     previousWidth: params.width,
     height: params.height,
+    renderHeight: undefined,
     anchorX: undefined,
     anchorY: undefined,
     visibleFrom: params.frame,
