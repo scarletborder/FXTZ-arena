@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { MAX_PLAYER_NAME_LENGTH, PUBLIC_SERVER } from "@repo/constants";
+import { PUBLIC_SERVER } from "@repo/constants";
 
 import {
   bodyStyle,
@@ -12,7 +12,9 @@ import { connectionManager, type TextFieldControl } from "../shared";
 import type { ConnectionStatus } from "../../network";
 import {
   setServerAddress,
-  setUsername,
+  setP2pEnabled,
+  setStunServer,
+  setStunServers,
   uiSettings,
 } from "../../store/settings";
 import { showPublicServerConnectivityDialog } from "../public-server-connectivity-dialog";
@@ -59,14 +61,10 @@ export function renderOnlineTab(scene: SettingsScene, layer: Phaser.GameObjects.
   ): TextFieldControl => {
     const field = createTextField(scene, x, y, width, {
       value: uiSettings[key],
-      maxLength: key === "serverAddress" ? 160 : MAX_PLAYER_NAME_LENGTH,
+      maxLength: 160,
       onFocus: activateField,
       onChange: (value) => {
-        if (key === "username") {
-          setUsername(value);
-        } else {
-          setServerAddress(value);
-        }
+        setServerAddress(value);
       },
     });
     field.hitArea.on("pointerdown", () => {
@@ -114,12 +112,12 @@ export function renderOnlineTab(scene: SettingsScene, layer: Phaser.GameObjects.
     });
   };
 
-  const statusText = scene.add.text(36, 286, " ", bodyStyle("#ffcf6e", 17));
-  const probeStatusText = scene.add.text(802, 248, "尚未测试当前地址", bodyStyle("#b7c7d8", 17)).setWordWrapWidth(260);
+  const statusText = scene.add.text(36, 350, " ", bodyStyle("#ffcf6e", 17));
+  const probeStatusText = scene.add.text(222, 278, "尚未测试当前地址", bodyStyle("#b7c7d8", 16)).setWordWrapWidth(260);
   const trustButton = createFightButton(
     scene,
-    1005,
-    258,
+    526,
+    288,
     142,
     40,
     "去信任",
@@ -131,7 +129,7 @@ export function renderOnlineTab(scene: SettingsScene, layer: Phaser.GameObjects.
     { accent: 0x34d399, enabled: false },
   );
 
-  const connectButton = createFightButton(scene, 166, 346, 250, 50, " ", () => {
+  const connectButton = createFightButton(scene, 393, 360, 160, 42, " ", () => {
     if (connectionManager.status === "connected") {
       connectionManager.disconnect();
     } else {
@@ -187,29 +185,25 @@ export function renderOnlineTab(scene: SettingsScene, layer: Phaser.GameObjects.
     });
   };
 
-  const currentServerButton = createFightButton(scene, 704, 258, 154, 40, "测试当前地址", testCurrentServer, { accent: 0x5c7185 });
-  const publicServerLabel = scene.add.text(616, 318, "公共服务器", bodyStyle("#f6f1e6", 18));
-  const publicServerButton = createRectangleButton(scene, 746, 328, 42, 36, "▼", openPublicServerDialog, { accent: 0x5c7185 });
-  const publicProbeButton = createFightButton(scene, 992, 338, 168, 40, "测试公共服", openConnectivityDialog, { accent: 0x5c7185 });
+  const currentServerButton = createFightButton(scene, 124, 288, 154, 40, "测试当前地址", testCurrentServer, { accent: 0x5c7185 });
+  const publicServerLabel = scene.add.text(36, 230, "公共服务器", bodyStyle("#f6f1e6", 18));
+  const publicServerButton = createRectangleButton(scene, 166, 240, 42, 36, "▼", openPublicServerDialog, { accent: 0x5c7185 });
+  const publicProbeButton = createFightButton(scene, 398, 250, 168, 40, "测试公共服", openConnectivityDialog, { accent: 0x5c7185 });
 
-  layer.add(sectionTitle(scene, 36, 34, "账号"));
-  layer.add(scene.add.text(36, 86, "用户名", bodyStyle("#f6f1e6", 18)));
-  createField(36, 124, 360, "username");
-
-  layer.add(sectionTitle(scene, 36, 230, "连接"));
-  layer.add(statusText);
-  layer.add(connectButton.container);
-
-  layer.add(sectionTitle(scene, 616, 34, "服务器"));
-  layer.add(scene.add.text(616, 86, "专用服务器地址", bodyStyle("#f6f1e6", 18)));
-  serverAddressField = createField(616, 124, 460, "serverAddress");
-  layer.add(scene.add.text(616, 188, "默认监听本地专用服务器，默认端口：22334", bodyStyle("#b7c7d8", 16)));
+  layer.add(sectionTitle(scene, 36, 34, "专用服务器"));
+  layer.add(scene.add.text(36, 86, "专用服务器地址", bodyStyle("#f6f1e6", 18)));
+  serverAddressField = createField(36, 124, 500, "serverAddress");
+  layer.add(scene.add.text(36, 188, "默认监听本地专用服务器，默认端口：22334", bodyStyle("#b7c7d8", 16)));
   layer.add(publicServerLabel);
   layer.add(publicServerButton.container);
   layer.add(publicProbeButton.container);
   layer.add(probeStatusText);
   layer.add(currentServerButton.container);
   layer.add(trustButton.container);
+  layer.add(statusText);
+  layer.add(connectButton.container);
+
+  renderP2pSection(scene, layer, 616, 34);
 
   setTrustButtonVisible(false);
   updateConnectionDisplay(connectionManager.status);
@@ -227,6 +221,51 @@ export function renderOnlineTab(scene: SettingsScene, layer: Phaser.GameObjects.
     closeConnectivityDialog();
     unsubscribeStatus();
   });
+}
+
+function renderP2pSection(scene: SettingsScene, layer: Phaser.GameObjects.Container, x: number, y: number): void {
+  let stunDialog: Phaser.GameObjects.Container | undefined;
+  const p2pText = scene.add.text(x, y + 52, " ", bodyStyle("#d7e3ef", 18));
+  const stunText = scene.add.text(x, y + 130, uiSettings.stunServer, bodyStyle("#9fd8ff", 16)).setWordWrapWidth(410);
+
+  const updateP2p = () => {
+    p2pText.setText(uiSettings.p2pEnabled ? "使用 P2P：开启" : "使用 P2P：关闭");
+  };
+  const closeStunDialog = () => {
+    stunDialog?.destroy();
+    stunDialog = undefined;
+  };
+  const openStunDialog = () => {
+    if (stunDialog) {
+      closeStunDialog();
+      return;
+    }
+    stunDialog = createStunServerDialog(scene, stunText, () => {
+      stunDialog = undefined;
+    });
+  };
+  const addStun = () => {
+    const raw = window.prompt("新增 STUN 服务器", uiSettings.stunServer);
+    if (!raw) return;
+    setStunServer(raw);
+    setStunServers([uiSettings.stunServer, ...uiSettings.stunServers]);
+    stunText.setText(uiSettings.stunServer);
+  };
+
+  updateP2p();
+  layer.add(sectionTitle(scene, x, y, "P2P 联机"));
+  layer.add(p2pText);
+  layer.add(createFightButton(scene, x + 118, y + 116, 216, 44, "切换 P2P", () => {
+    setP2pEnabled(!uiSettings.p2pEnabled);
+    updateP2p();
+  }, { accent: 0x34d399 }).container);
+  layer.add(scene.add.text(x, y + 92, "STUN 服务器", bodyStyle("#f6f1e6", 18)));
+  layer.add(stunText);
+  layer.add(createRectangleButton(scene, x + 430, y + 141, 42, 34, "▼", openStunDialog, { accent: 0x5c7185 }).container);
+  layer.add(createRectangleButton(scene, x + 484, y + 141, 42, 34, "+", addStun, { accent: 0x34d399 }).container);
+  layer.add(scene.add.text(x, y + 206, "不使用 TURN。P2P 超时或失败会自动回落到当前专用服务器连接。", bodyStyle("#b7c7d8", 16)).setWordWrapWidth(480));
+
+  scene.addCleanup(closeStunDialog);
 }
 
 function sectionTitle(scene: Phaser.Scene, x: number, y: number, label: string): Phaser.GameObjects.Text {
@@ -290,6 +329,90 @@ function createPublicServerDialog(
     layer.destroy();
   });
   return layer;
+}
+
+function createStunServerDialog(
+  scene: SettingsScene,
+  stunText: Phaser.GameObjects.Text,
+  onClose: () => void,
+): Phaser.GameObjects.Container {
+  const servers = uiSettings.stunServers;
+  const rowHeight = 52;
+  const dialogWidth = 520;
+  const dialogHeight = 112 + Math.max(1, servers.length) * rowHeight;
+  const x = 390;
+  const y = Math.max(116, Math.round((720 - dialogHeight) / 2));
+  const layer = scene.add.container(0, 0).setDepth(1000);
+  const shade = scene.add.rectangle(0, 0, 1280, 720, 0x05070a, 0.62)
+    .setOrigin(0, 0)
+    .setInteractive({ useHandCursor: false });
+  const panel = scene.add.graphics();
+  drawAngledPanel(panel, x, y, dialogWidth, dialogHeight, 0x101820, 0xffcf6e, 0.98);
+  const title = scene.add.text(x + 30, y + 24, "选择 STUN 服务器", bodyStyle("#ffcf6e", 22));
+  const closeBtn = createDialogCloseButton(scene, x + dialogWidth - 62, y + 22, () => {
+    layer.destroy();
+  });
+  layer.add([shade, panel, title, closeBtn]);
+
+  servers.forEach((server, index) => {
+    layer.add(createStunOptionRow(scene, x + 28, y + 74 + index * rowHeight, dialogWidth - 56, rowHeight - 8, server, stunText, () => {
+      layer.destroy();
+    }));
+  });
+
+  shade.on("pointerup", () => {
+    layer.destroy();
+  });
+  layer.once("destroy", onClose);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    layer.destroy();
+  });
+  return layer;
+}
+
+function createStunOptionRow(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  server: string,
+  stunText: Phaser.GameObjects.Text,
+  onPick: () => void,
+): Phaser.GameObjects.Container {
+  let hovering = false;
+  const selected = server === uiSettings.stunServer;
+  const container = scene.add.container(x, y);
+  const background = scene.add.graphics();
+  const label = scene.add.text(18, 12, server, bodyStyle(selected ? "#ffcf6e" : "#f6f1e6", 16)).setWordWrapWidth(width - 36);
+  const hitArea = scene.add.rectangle(0, 0, width, height, 0xffffff, 0.001)
+    .setOrigin(0, 0)
+    .setInteractive({ useHandCursor: true });
+
+  const draw = () => {
+    background.clear();
+    drawAngledPanel(background, 0, 0, width, height, selected ? 0x263244 : hovering ? 0x18212d : 0x0f141d, selected ? 0xffcf6e : hovering ? 0x9fd8ff : 0x34475c, 1);
+    label.setColor(selected || hovering ? "#ffcf6e" : "#f6f1e6");
+  };
+
+  hitArea.on("pointerover", () => {
+    hovering = true;
+    draw();
+  });
+  hitArea.on("pointerout", () => {
+    hovering = false;
+    draw();
+  });
+  hitArea.on("pointerup", (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
+    event.stopPropagation();
+    setStunServer(server);
+    stunText.setText(uiSettings.stunServer);
+    onPick();
+  });
+
+  container.add([background, label, hitArea]);
+  draw();
+  return container;
 }
 
 function createDialogCloseButton(scene: Phaser.Scene, x: number, y: number, onClick: () => void): Phaser.GameObjects.Container {

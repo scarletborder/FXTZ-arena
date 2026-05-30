@@ -31,6 +31,45 @@ describe("protocol binary codec", () => {
     expect(decodeProtocolMessage(encoded)).toEqual(message);
   });
 
+  it("round-trips unreliable redundant input frames as binary", () => {
+    const message = {
+      type: "input_frame",
+      frame: 8,
+      ackFrame: 4,
+      moveX: 1,
+      moveY: 0,
+      aimX: 123.25,
+      aimY: 456.5,
+      shootPressed: true,
+      bombPressed: false,
+      activeCardPressed: false,
+      reloadPressed: true,
+      alternateHeld: false,
+      infoHeld: true,
+      UnreliableLinkExtra: {
+        redundantInputs: [
+          {
+            frame: 7,
+            moveX: -1,
+            moveY: 1,
+            aimX: 111.125,
+            aimY: 222.25,
+            shootPressed: false,
+            bombPressed: true,
+            activeCardPressed: false,
+            reloadPressed: false,
+            alternateHeld: true,
+            infoHeld: false,
+          },
+        ],
+      },
+    } as const;
+
+    const encoded = encodeProtocolMessage(message);
+    expect(encoded[1]).not.toBe(255);
+    expect(decodeProtocolMessage(encoded)).toEqual(message);
+  });
+
   it("round-trips compact relayed input frames", () => {
     const message: ServerMessage = {
       type: "input_frame",

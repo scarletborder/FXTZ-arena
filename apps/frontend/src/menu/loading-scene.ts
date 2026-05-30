@@ -3,7 +3,9 @@ import { createRaidLogicRuntime } from "@repo/raid-logic";
 import type { ServerMessage } from "@repo/types";
 
 import { queueBattleAssets } from "../battle/assets";
+import { P2pConnection, type P2pStatus } from "../network/p2p";
 import { connectionManager, type LoadingData, type SceneKey } from "./shared";
+import { uiSettings } from "../store/settings";
 import {
   bodyStyle,
   drawAngledPanel,
@@ -16,7 +18,11 @@ export class LoadingScene extends Phaser.Scene {
   private loadingData!: LoadingData;
   private bar: Phaser.GameObjects.Graphics | undefined;
   private label: Phaser.GameObjects.Text | undefined;
+  private connectionBadge: Phaser.GameObjects.Container | undefined;
+  private connectionStatusText: Phaser.GameObjects.Text | undefined;
   private onlineReady = false;
+  private p2pReady = false;
+  private p2p: P2pConnection | undefined;
   private transitioning = false;
   private loadingDoneSent = false;
   private runtimeReady = false;
@@ -29,6 +35,8 @@ export class LoadingScene extends Phaser.Scene {
     this.loadingData = data;
     this.progress = 0;
     this.onlineReady = false;
+    this.p2pReady = false;
+    this.p2p = undefined;
     this.transitioning = false;
     this.loadingDoneSent = false;
     this.runtimeReady = false;
@@ -80,7 +88,23 @@ export class LoadingScene extends Phaser.Scene {
     );
 
     if (data.mode === "online") {
+      this.createConnectionBadge();
+      this.setConnectionStatus("p2p 初始化中", 0xffcf6e);
+    }
+
+    if (data.mode === "online") {
+      this.p2p = data.p2p ?? new P2pConnection(connectionManager, {
+        localPlayerId: data.localPlayerId ?? "Player1",
+        enabled: uiSettings.p2pEnabled,
+        stunServer: uiSettings.stunServer,
+        onStatus: (status) => this.handleP2pStatus(status),
+        onMessage: () => undefined,
+      });
+      this.p2pReady = this.p2p.status !== "connecting" && this.p2p.status !== "idle";
       connectionManager.setMessageHandler((msg: ServerMessage) => {
+        if (this.p2p?.handleServerMessage(msg)) {
+          return;
+        }
         if (msg.type === "room_state" && msg.status === "fighting") {
           this.onlineReady = true;
           this.tryGoToBattle();
@@ -93,11 +117,14 @@ export class LoadingScene extends Phaser.Scene {
           this.label?.setText("对手已重连，等待玩家同步");
         }
       });
+      this.p2p.start();
     }
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       if (this.loadingData.mode === "online") {
         connectionManager.setMessageHandler(null);
+        this.p2p?.close();
+        this.p2p = undefined;
       }
     });
 
@@ -140,7 +167,7 @@ export class LoadingScene extends Phaser.Scene {
 
   private tryGoToBattle(): void {
     if (!this.runtimeReady) return;
-    if (this.loadingData.mode === "online" && !this.onlineReady) return;
+    if (this.loadingData.mode === "online" && (!this.onlineReady || !this.p2pReady)) return;
     this.goToBattle();
   }
 
@@ -156,6 +183,65 @@ export class LoadingScene extends Phaser.Scene {
   private goToBattle(): void {
     if (this.transitioning) return;
     this.transitioning = true;
-    this.scene.start("battle", this.loadingData);
+    const p2p = this.p2p;
+    this.p2p = undefined;
+    p2p?.setStatusHandler(undefined);
+    p2p?.setMessageHandler(() => undefined);
+    this.scene.start("battle", {
+      ...this.loadingData,
+      p2p,
+    });
+  }
+
+  private handleP2pStatus(status: P2pStatus): void {
+    if (status === "connecting") {
+      this.p2pReady = false;
+      this.setConnectionStatus("p2p 尝试中", 0xffcf6e);
+      this.label?.setText("正在尝试 P2P 连接…");
+      return;
+    }
+
+    this.p2pReady = true;
+
+    if (status === "connected") {
+      this.setConnectionStatus("p2p 已连接", 0x34d399);
+      this.label?.setText("P2P 已连接，等待玩家同步");
+    } else if (status === "failed") {
+      this.setConnectionStatus("p2p 不可用", 0xff5c66);
+      this.label?.setText("P2P 不可用，已回落到专用服务器");
+    } else if (status === "disabled") {
+      this.setConnectionStatus("p2p 已关闭", 0x9fb4c8);
+      this.label?.setText("P2P 已关闭，使用专用服务器");
+    }
+
+    this.tryGoToBattle();
+  }
+
+  private createConnectionBadge(): void {
+    if (this.connectionBadge) return;
+
+    const badge = this.add.container(20, 20).setDepth(40);
+    const background = this.add.graphics();
+    drawAngledPanel(background, 0, 0, 264, 52, 0x101820, 0x5c7185, 0.96);
+    const text = this.add.text(18, 13, "p2p 初始化中", {
+      fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+      fontSize: "18px",
+      fontStyle: "700",
+      color: "#ffcf6e",
+    });
+
+    badge.add(background);
+    badge.add(text);
+    this.connectionBadge = badge;
+    this.connectionStatusText = text;
+  }
+
+  private setConnectionStatus(text: string, color: number): void {
+    if (!this.connectionBadge) {
+      this.createConnectionBadge();
+    }
+    this.connectionStatusText?.setText(text);
+    this.connectionStatusText?.setColor(`#${color.toString(16).padStart(6, "0")}`);
+    this.connectionBadge?.setVisible(true);
   }
 }

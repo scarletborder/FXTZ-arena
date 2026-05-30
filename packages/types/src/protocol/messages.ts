@@ -73,6 +73,23 @@ export interface LoadingDoneMessage {
   type: "loading_done";
 }
 
+export interface P2pIntentMessage {
+  type: "p2p_intent";
+  enabled: boolean;
+}
+
+export interface P2pSignalMessage {
+  type: "p2p_signal";
+  signal:
+    | { readonly kind: "offer"; readonly sdp: string }
+    | { readonly kind: "answer"; readonly sdp: string }
+    | { readonly kind: "candidate"; readonly candidate: string; readonly sdpMid: string | null; readonly sdpMLineIndex: number | null };
+}
+
+export interface P2pReadyMessage {
+  type: "p2p_ready";
+}
+
 export interface InputFrameMessage {
   type: "input_frame";
   frame: number;
@@ -87,6 +104,25 @@ export interface InputFrameMessage {
   reloadPressed: boolean;
   alternateHeld: boolean;
   infoHeld: boolean;
+  UnreliableLinkExtra?: UnreliableLinkExtra;
+}
+
+export interface UnreliableLinkExtra {
+  readonly redundantInputs: readonly RedundantInputFrame[];
+}
+
+export interface RedundantInputFrame {
+  readonly frame: number;
+  readonly moveX: -1 | 0 | 1;
+  readonly moveY: -1 | 0 | 1;
+  readonly aimX: number;
+  readonly aimY: number;
+  readonly shootPressed: boolean;
+  readonly bombPressed: boolean;
+  readonly activeCardPressed: boolean;
+  readonly reloadPressed: boolean;
+  readonly alternateHeld: boolean;
+  readonly infoHeld: boolean;
 }
 
 export interface GameOverMessage {
@@ -112,6 +148,9 @@ export type ClientMessage =
   | LobbyReadyMessage
   | ReadyMessage
   | LoadingDoneMessage
+  | P2pIntentMessage
+  | P2pSignalMessage
+  | P2pReadyMessage
   | InputFrameMessage
   | GameOverMessage
   | PingMessage;
@@ -186,6 +225,24 @@ export interface InputFrameRelayMessage {
   reloadPressed: boolean;
   alternateHeld: boolean;
   infoHeld: boolean;
+  UnreliableLinkExtra?: UnreliableLinkExtra;
+}
+
+export interface PeerP2pIntentMessage {
+  type: "peer_p2p_intent";
+  playerId: PlayerId;
+  enabled: boolean;
+}
+
+export interface PeerP2pSignalMessage {
+  type: "peer_p2p_signal";
+  playerId: PlayerId;
+  signal: P2pSignalMessage["signal"];
+}
+
+export interface PeerP2pReadyMessage {
+  type: "peer_p2p_ready";
+  playerId: PlayerId;
 }
 
 export interface PeerStatusMessage {
@@ -231,6 +288,9 @@ export type ServerMessage =
   | OpponentReadyMessage
   | BattleStartMessage
   | GameStartingMessage
+  | PeerP2pIntentMessage
+  | PeerP2pSignalMessage
+  | PeerP2pReadyMessage
   | InputFrameRelayMessage
   | PeerStatusMessage
   | PeerGameOverMessage

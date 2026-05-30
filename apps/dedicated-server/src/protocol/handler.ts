@@ -18,6 +18,9 @@ import type {
   JoinRoomMessage,
   ListRoomsMessage,
   LobbyReadyMessage,
+  P2pIntentMessage,
+  P2pReadyMessage,
+  P2pSignalMessage,
   PingMessage,
   QuickMatchMessage,
   ReadyMessage,
@@ -116,6 +119,12 @@ export class MessageHandler {
         return this.handleReady(connection, raw as ReadyMessage);
       case "loading_done":
         return this.handleLoadingDone(connection);
+      case "p2p_intent":
+        return this.handleP2pIntent(connection, raw as P2pIntentMessage);
+      case "p2p_signal":
+        return this.handleP2pSignal(connection, raw as P2pSignalMessage);
+      case "p2p_ready":
+        return this.handleP2pReady(connection, raw as P2pReadyMessage);
       case "input_frame":
         return this.handleInputFrame(connection, raw as InputFrameMessage);
       case "game_over":
@@ -955,6 +964,48 @@ export class MessageHandler {
     }
   }
 
+  private handleP2pIntent(connection: TransportConnection, msg: P2pIntentMessage): void {
+    const session = this.sessionStore.get(connection.id);
+    if (!session?.playerId) return;
+
+    this.relayToPeer(connection, {
+      type: "peer_p2p_intent",
+      playerId: session.playerId,
+      enabled: msg.enabled === true,
+    });
+  }
+
+  private handleP2pSignal(connection: TransportConnection, msg: P2pSignalMessage): void {
+    const session = this.sessionStore.get(connection.id);
+    if (!session?.playerId) return;
+
+    const signal = normalizeP2pSignal(msg.signal);
+    if (!signal) {
+      this.send(connection, {
+        type: "error",
+        code: ErrorCodes.INVALID_MESSAGE,
+        message: "Invalid p2p_signal payload",
+      });
+      return;
+    }
+
+    this.relayToPeer(connection, {
+      type: "peer_p2p_signal",
+      playerId: session.playerId,
+      signal,
+    });
+  }
+
+  private handleP2pReady(connection: TransportConnection, _msg: P2pReadyMessage): void {
+    const session = this.sessionStore.get(connection.id);
+    if (!session?.playerId) return;
+
+    this.relayToPeer(connection, {
+      type: "peer_p2p_ready",
+      playerId: session.playerId,
+    });
+  }
+
   // ─── Input Frame Relay ────────────────────────────
 
   private handleInputFrame(
@@ -998,6 +1049,7 @@ export class MessageHandler {
       reloadPressed: msg.reloadPressed,
       alternateHeld: msg.alternateHeld,
       infoHeld: msg.infoHeld,
+      UnreliableLinkExtra: msg.UnreliableLinkExtra,
     });
   }
 
@@ -1130,6 +1182,25 @@ export class MessageHandler {
     }
   }
 
+  private relayToPeer(connection: TransportConnection, message: ServerMessage): void {
+    const session = this.sessionStore.get(connection.id);
+    if (!session || !session.roomId || !session.playerId) {
+      return;
+    }
+
+    const room = this.roomManager.get(session.roomId);
+    if (!room) {
+      return;
+    }
+
+    const otherIdx = room.playerSlots.indexOf(session.playerId === "Player1" ? "Player2" : "Player1");
+    if (otherIdx === -1) {
+      return;
+    }
+
+    this.sendToSlot(room, otherIdx, message);
+  }
+
   private buildBattleConfig(room: import("../room/types").InternalRoom): BattleConfig | null {
     if (!room.battleId || room.seed === null || !room.loadouts[0] || !room.loadouts[1] || !room.playerSlots[0] || !room.playerSlots[1]) {
       return null;
@@ -1207,4 +1278,27 @@ function normalizeOptionalDisplayName(value: string | undefined, maxLength: numb
   const trimmed = value?.trim();
   if (!trimmed) return undefined;
   return Array.from(trimmed).slice(0, maxLength).join("");
+}
+
+function normalizeP2pSignal(signal: P2pSignalMessage["signal"] | undefined): P2pSignalMessage["signal"] | null {
+  if (!signal || typeof signal !== "object") {
+    return null;
+  }
+
+  if (signal.kind === "offer" || signal.kind === "answer") {
+    return typeof signal.sdp === "string"
+      ? { kind: signal.kind, sdp: signal.sdp }
+      : null;
+  }
+
+  if (signal.kind === "candidate" && typeof signal.candidate === "string") {
+    return {
+      kind: "candidate",
+      candidate: signal.candidate,
+      sdpMid: typeof signal.sdpMid === "string" ? signal.sdpMid : null,
+      sdpMLineIndex: typeof signal.sdpMLineIndex === "number" ? signal.sdpMLineIndex : null,
+    };
+  }
+
+  return null;
 }

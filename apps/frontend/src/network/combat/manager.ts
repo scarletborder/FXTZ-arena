@@ -1,4 +1,5 @@
 import type { PlayerId, ServerMessage } from "@repo/types";
+import type { ClientMessage, InputFrameMessage } from "@repo/types";
 import type { BattleInputState, RaidLogicRuntime } from "@repo/raid-logic";
 
 import type { ConnectionManager } from "../client";
@@ -40,6 +41,7 @@ export class CombatSyncManager {
 
   destroy(): void {
     this.connectionManager.setMessageHandler(null);
+    this.options.p2p?.close();
   }
 
   localFighterKey(): CanonicalFighterKey {
@@ -88,13 +90,12 @@ export class CombatSyncManager {
   }
 
   private handleServerMessage(msg: ServerMessage): void {
+    if (this.options.p2p?.handleServerMessage(msg)) {
+      return;
+    }
+
     if (msg.type === "input_frame") {
-      this.queues.enqueueReceived({
-        playerId: msg.playerId,
-        frame: msg.frame,
-        ackFrame: msg.ackFrame,
-        input: cloneInput(msg),
-      });
+      this.receiveInputFrameMessage(msg);
       return;
     }
 
@@ -140,6 +141,30 @@ export class CombatSyncManager {
     }
   }
 
+  receivePeerMessage(msg: ServerMessage): void {
+    if (msg.type === "input_frame") {
+      this.receiveInputFrameMessage(msg);
+    }
+  }
+
+  private receiveInputFrameMessage(msg: Extract<ServerMessage, { type: "input_frame" }>): void {
+    this.queues.enqueueReceived({
+      playerId: msg.playerId,
+      frame: msg.frame,
+      ackFrame: msg.ackFrame,
+      input: cloneInput(msg),
+    });
+
+    for (const redundant of msg.UnreliableLinkExtra?.redundantInputs ?? []) {
+      this.queues.enqueueReceived({
+        playerId: msg.playerId,
+        frame: redundant.frame,
+        ackFrame: msg.ackFrame,
+        input: cloneInput(redundant),
+      });
+    }
+  }
+
   private consumeReceiveSceneQueue(): void {
     this.queues.drainReceived((item) => {
       this.lastPeerAckFrame = Math.max(this.lastPeerAckFrame, item.ackFrame);
@@ -156,12 +181,20 @@ export class CombatSyncManager {
   }
 
   private sendInput(frame: number, input: BattleInputState): void {
-    this.connectionManager.send({
+    const message: InputFrameMessage = {
       type: "input_frame",
       frame,
       ackFrame: this.lastReceivedRemoteFrame,
       ...input,
-    });
+    };
+    const redundantInputs = this.options.p2p?.connected ? this.createRedundantInputs(frame) : [];
+    if (redundantInputs.length > 0) {
+      message.UnreliableLinkExtra = { redundantInputs };
+    }
+
+    if (!this.options.p2p?.send(message)) {
+      this.connectionManager.send(message);
+    }
   }
 
   private receiveRemoteInput(playerId: PlayerId, frame: number, input: BattleInputState): void {
@@ -238,7 +271,7 @@ export class CombatSyncManager {
       frame,
       ackFrame,
       winnerPlayerId,
-    });
+    } satisfies ClientMessage);
   }
 
   private winnerPlayerId(): PlayerId {
@@ -247,6 +280,26 @@ export class CombatSyncManager {
 
   private storeInput(playerId: PlayerId, frame: number, input: BattleInputState): void {
     this.inputs.get(playerId)?.set(frame, input);
+  }
+
+  private createRedundantInputs(currentFrame: number): NonNullable<InputFrameMessage["UnreliableLinkExtra"]>["redundantInputs"] {
+    const inputMap = this.inputs.get(this.localPlayerId);
+    if (!inputMap) {
+      return [];
+    }
+
+    const redundant: Array<NonNullable<InputFrameMessage["UnreliableLinkExtra"]>["redundantInputs"][number]> = [];
+    for (let frame = currentFrame - 1; frame >= Math.max(1, currentFrame - 4); frame -= 1) {
+      const input = inputMap.get(frame);
+      if (!input) {
+        continue;
+      }
+      redundant.push({
+        frame,
+        ...cloneInput(input),
+      });
+    }
+    return redundant;
   }
 
   private getInputForFrame(playerId: PlayerId, frame: number): BattleInputState {

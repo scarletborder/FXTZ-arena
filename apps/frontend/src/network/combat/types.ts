@@ -2,6 +2,7 @@ import type { PlayerId } from "@repo/types";
 import type { BattleInputState, BattleModelSnapshot } from "@repo/raid-logic";
 
 import type { BattleSceneData } from "../../battle/loadout";
+import type { P2pConnection } from "../p2p";
 
 export type CanonicalFighterKey = "Player1" | "Player2";
 
@@ -48,5 +49,6 @@ export interface CombatSyncCallbacks {
 
 export interface CombatSyncManagerOptions {
   readonly sceneData: BattleSceneData;
+  readonly p2p?: P2pConnection;
   readonly callbacks: CombatSyncCallbacks;
 }

@@ -34,6 +34,7 @@ import { Depth } from "./utils/depth";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
 import { connectionManager } from "./menu/shared";
 import { CombatSyncManager } from "./network/combat";
+import { P2pConnection } from "./network/p2p";
 import { uiSettings } from "./store/settings";
 
 interface DebugFrameRecord {
@@ -351,8 +352,30 @@ export class BattleScene extends Phaser.Scene {
       .setDepth(Depth.OnlineStatus)
       .setVisible(false);
 
+    const p2p = data.p2p ?? new P2pConnection(connectionManager, {
+      localPlayerId: data.localPlayerId ?? "Player1",
+      enabled: uiSettings.p2pEnabled,
+      stunServer: uiSettings.stunServer,
+      onStatus: () => undefined,
+      onMessage: () => undefined,
+    });
+
+    p2p.setStatusHandler((status) => {
+      if (status === "connecting") {
+        this.onlineStatusText?.setText("正在尝试 P2P 连接…").setVisible(true);
+      } else if (status === "connected") {
+        this.onlineStatusText?.setText("P2P 已连接").setVisible(true);
+        this.time.delayedCall(700, () => this.onlineStatusText?.setVisible(false));
+      } else if (status === "failed") {
+        this.onlineStatusText?.setText("P2P 不可用，已回落到专用服务器").setVisible(true);
+        this.time.delayedCall(1100, () => this.onlineStatusText?.setVisible(false));
+      }
+    });
+    p2p.setMessageHandler((message) => this.combatSync?.receivePeerMessage(message));
+
     this.combatSync = new CombatSyncManager(this.runtime, connectionManager, {
       sceneData: data,
+      p2p,
       callbacks: {
         recordFrame: () => this.recordDebugFrame(),
         recordStepInputs: (record) =>
@@ -383,6 +406,7 @@ export class BattleScene extends Phaser.Scene {
           this.goToOnlineResult(winnerPlayerId, serverConfirmedFrame),
       },
     });
+    p2p.start();
   }
 
   private shutdownBattleScene(): void {

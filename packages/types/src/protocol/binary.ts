@@ -13,6 +13,7 @@ const SERVER_PONG = 19;
 
 const HEADER_SIZE = 2;
 const INPUT_FIXED_FIELDS_SIZE = 12;
+const REDUNDANT_INPUT_FIXED_FIELDS_SIZE = 8;
 const INPUT_STRING_LENGTH_SIZE = 2;
 const CLIENT_GAME_OVER_SIZE = HEADER_SIZE + 9;
 const PING_SIZE = HEADER_SIZE + 8;
@@ -233,6 +234,7 @@ function writeInputFields(
   view.setUint16(offset + 10, encodeButtons(message), true);
   writeLengthPrefixedString(view, bytes, offset + 12, aimX);
   writeLengthPrefixedString(view, bytes, offset + 12 + INPUT_STRING_LENGTH_SIZE + aimX.byteLength, aimY);
+  writeUnreliableLinkExtra(view, bytes, offset + 12 + INPUT_STRING_LENGTH_SIZE + aimX.byteLength + INPUT_STRING_LENGTH_SIZE + aimY.byteLength, message);
 }
 
 function readInputFields(view: DataView, offset: number): Omit<Extract<ClientMessage, { type: "input_frame" }>, "type"> {
@@ -240,7 +242,8 @@ function readInputFields(view: DataView, offset: number): Omit<Extract<ClientMes
   const buttons = view.getUint16(offset + 10, true);
   const aimX = readLengthPrefixedString(view, offset + 12);
   const aimY = readLengthPrefixedString(view, aimX.nextOffset);
-  if (aimY.nextOffset !== view.byteLength) {
+  const UnreliableLinkExtra = readUnreliableLinkExtra(view, aimY.nextOffset);
+  if (!UnreliableLinkExtra && aimY.nextOffset !== view.byteLength) {
     throw new Error("Invalid protocol input frame size");
   }
   return {
@@ -256,6 +259,7 @@ function readInputFields(view: DataView, offset: number): Omit<Extract<ClientMes
     reloadPressed: (buttons & 8) !== 0,
     alternateHeld: (buttons & 16) !== 0,
     infoHeld: (buttons & 32) !== 0,
+    ...(UnreliableLinkExtra ? { UnreliableLinkExtra } : {}),
   };
 }
 
@@ -264,7 +268,98 @@ function inputPayloadSize(message: Extract<ClientMessage | ServerMessage, { type
     + INPUT_STRING_LENGTH_SIZE
     + encodePreciseNumber(message.aimX).byteLength
     + INPUT_STRING_LENGTH_SIZE
-    + encodePreciseNumber(message.aimY).byteLength;
+    + encodePreciseNumber(message.aimY).byteLength
+    + unreliableLinkExtraSize(message);
+}
+
+function unreliableLinkExtraSize(message: Extract<ClientMessage | ServerMessage, { type: "input_frame" }>): number {
+  const redundantInputs = message.UnreliableLinkExtra?.redundantInputs ?? [];
+  if (redundantInputs.length === 0) {
+    return 0;
+  }
+
+  let size = 1;
+  for (const input of redundantInputs) {
+    size += REDUNDANT_INPUT_FIXED_FIELDS_SIZE
+      + INPUT_STRING_LENGTH_SIZE
+      + encodePreciseNumber(input.aimX).byteLength
+      + INPUT_STRING_LENGTH_SIZE
+      + encodePreciseNumber(input.aimY).byteLength;
+  }
+  return size;
+}
+
+function writeUnreliableLinkExtra(
+  view: DataView,
+  target: Uint8Array,
+  offset: number,
+  message: Extract<ClientMessage | ServerMessage, { type: "input_frame" }>,
+): void {
+  const redundantInputs = message.UnreliableLinkExtra?.redundantInputs ?? [];
+  if (redundantInputs.length === 0) {
+    return;
+  }
+
+  if (redundantInputs.length > 0xff) {
+    throw new Error("Too many redundant input frames");
+  }
+
+  view.setUint8(offset, redundantInputs.length);
+  let cursor = offset + 1;
+  for (const input of redundantInputs) {
+    const aimX = encodePreciseNumber(input.aimX);
+    const aimY = encodePreciseNumber(input.aimY);
+    view.setUint32(cursor, input.frame, true);
+    view.setInt8(cursor + 4, input.moveX);
+    view.setInt8(cursor + 5, input.moveY);
+    view.setUint16(cursor + 6, encodeButtons(input), true);
+    cursor += REDUNDANT_INPUT_FIXED_FIELDS_SIZE;
+    writeLengthPrefixedString(view, target, cursor, aimX);
+    cursor += INPUT_STRING_LENGTH_SIZE + aimX.byteLength;
+    writeLengthPrefixedString(view, target, cursor, aimY);
+    cursor += INPUT_STRING_LENGTH_SIZE + aimY.byteLength;
+  }
+}
+
+function readUnreliableLinkExtra(
+  view: DataView,
+  offset: number,
+): Extract<ClientMessage, { type: "input_frame" }>["UnreliableLinkExtra"] | undefined {
+  if (offset === view.byteLength) {
+    return undefined;
+  }
+
+  ensureMinimumSize(view, offset + 1);
+  const count = view.getUint8(offset);
+  let cursor = offset + 1;
+  const redundantInputs: NonNullable<Extract<ClientMessage, { type: "input_frame" }>["UnreliableLinkExtra"]>["redundantInputs"][number][] = [];
+
+  for (let index = 0; index < count; index += 1) {
+    ensureMinimumSize(view, cursor + REDUNDANT_INPUT_FIXED_FIELDS_SIZE);
+    const buttons = view.getUint16(cursor + 6, true);
+    const aimX = readLengthPrefixedString(view, cursor + REDUNDANT_INPUT_FIXED_FIELDS_SIZE);
+    const aimY = readLengthPrefixedString(view, aimX.nextOffset);
+    redundantInputs.push({
+      frame: view.getUint32(cursor, true),
+      moveX: view.getInt8(cursor + 4) as -1 | 0 | 1,
+      moveY: view.getInt8(cursor + 5) as -1 | 0 | 1,
+      aimX: decodePreciseNumber(aimX.value),
+      aimY: decodePreciseNumber(aimY.value),
+      shootPressed: (buttons & 1) !== 0,
+      bombPressed: (buttons & 2) !== 0,
+      activeCardPressed: (buttons & 4) !== 0,
+      reloadPressed: (buttons & 8) !== 0,
+      alternateHeld: (buttons & 16) !== 0,
+      infoHeld: (buttons & 32) !== 0,
+    });
+    cursor = aimY.nextOffset;
+  }
+
+  if (cursor !== view.byteLength) {
+    throw new Error("Invalid protocol input frame size");
+  }
+
+  return redundantInputs.length > 0 ? { redundantInputs } : undefined;
 }
 
 function encodePreciseNumber(value: number): Uint8Array {
@@ -304,7 +399,14 @@ function readLengthPrefixedString(view: DataView, offset: number): { readonly va
   };
 }
 
-function encodeButtons(message: Extract<ClientMessage | ServerMessage, { type: "input_frame" }>): number {
+function encodeButtons(message: {
+  readonly shootPressed: boolean;
+  readonly bombPressed: boolean;
+  readonly activeCardPressed: boolean;
+  readonly reloadPressed: boolean;
+  readonly alternateHeld: boolean;
+  readonly infoHeld: boolean;
+}): number {
   return (message.shootPressed ? 1 : 0)
     | (message.bombPressed ? 2 : 0)
     | (message.activeCardPressed ? 4 : 0)

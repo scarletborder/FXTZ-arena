@@ -3,13 +3,17 @@ import Phaser from "phaser";
 import {
   bodyStyle,
   createFightButton,
+  createTextField,
 } from "../ui";
+import { MAX_PLAYER_NAME_LENGTH } from "@repo/constants";
 import {
   setDebug,
   setMusicVolume,
   setSoundVolume,
+  setUsername,
   uiSettings,
 } from "../../store/settings";
+import type { TextFieldControl } from "../shared";
 import type { SettingsScene } from "./index";
 
 interface SliderControl {
@@ -18,11 +22,41 @@ interface SliderControl {
 }
 
 export function renderGeneralTab(scene: SettingsScene, layer: Phaser.GameObjects.Container): void {
-  layer.add(sectionTitle(scene, 36, 34, "音量"));
-  layer.add(scene.add.text(36, 86, "音乐", bodyStyle("#f6f1e6", 18)));
-  layer.add(createVolumeSlider(scene, 36, 124, 360, uiSettings.music, setMusicVolume).container);
-  layer.add(scene.add.text(36, 178, "音效", bodyStyle("#f6f1e6", 18)));
-  layer.add(createVolumeSlider(scene, 36, 216, 360, uiSettings.sound, setSoundVolume).container);
+  let activeField: TextFieldControl | undefined;
+  const usernameField = createTextField(scene, 36, 124, 360, {
+    value: uiSettings.username,
+    maxLength: MAX_PLAYER_NAME_LENGTH,
+    onFocus: (field) => {
+      activeField?.setActive(false);
+      activeField = field;
+      field.setActive(true);
+    },
+    onChange: setUsername,
+  });
+  usernameField.hitArea.on("pointerdown", () => {
+    activeField?.setActive(false);
+    activeField = usernameField;
+    usernameField.setActive(true);
+  });
+
+  const onKeyDown = (event: KeyboardEvent) => activeField?.handleKey(event);
+  const onPaste = (event: ClipboardEvent) => {
+    const text = event.clipboardData?.getData("text") ?? "";
+    if (activeField && text) {
+      activeField.handlePaste(text);
+      event.preventDefault();
+    }
+  };
+
+  layer.add(sectionTitle(scene, 36, 34, "账号"));
+  layer.add(scene.add.text(36, 86, "用户名", bodyStyle("#f6f1e6", 18)));
+  layer.add(usernameField.container);
+
+  layer.add(sectionTitle(scene, 36, 190, "音量"));
+  layer.add(scene.add.text(36, 242, "音乐", bodyStyle("#f6f1e6", 18)));
+  layer.add(createVolumeSlider(scene, 36, 280, 360, uiSettings.music, setMusicVolume).container);
+  layer.add(scene.add.text(36, 334, "音效", bodyStyle("#f6f1e6", 18)));
+  layer.add(createVolumeSlider(scene, 36, 372, 360, uiSettings.sound, setSoundVolume).container);
 
   layer.add(sectionTitle(scene, 616, 34, "调试"));
   const debugText = scene.add.text(616, 86, " ", bodyStyle("#d7e3ef", 18));
@@ -35,6 +69,14 @@ export function renderGeneralTab(scene: SettingsScene, layer: Phaser.GameObjects
     setDebug(!uiSettings.debug);
     updateDebug();
   }, { accent: 0xf7b733 }).container);
+
+  scene.input.keyboard?.on("keydown", onKeyDown);
+  window.addEventListener("paste", onPaste);
+  scene.addCleanup(() => {
+    scene.input.keyboard?.off("keydown", onKeyDown);
+    window.removeEventListener("paste", onPaste);
+    activeField = undefined;
+  });
 }
 
 function sectionTitle(scene: Phaser.Scene, x: number, y: number, label: string): Phaser.GameObjects.Text {

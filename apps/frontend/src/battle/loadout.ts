@@ -1,5 +1,6 @@
 import type { BattleConfig, MapId, PlayerId } from "@repo/types";
 import type { BattleLoadouts, RaidLogicRuntime } from "@repo/raid-logic";
+import type { P2pConnection } from "../network/p2p";
 
 export type { BattleLoadouts, FighterLoadout } from "@repo/raid-logic";
 
@@ -14,4 +15,5 @@ export interface BattleSceneData {
   readonly battleConfig?: BattleConfig;
   readonly localPlayerId?: PlayerId;
   readonly runtime?: RaidLogicRuntime;
+  readonly p2p?: P2pConnection;
 }
