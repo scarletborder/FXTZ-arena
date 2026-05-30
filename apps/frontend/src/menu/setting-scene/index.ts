@@ -90,12 +90,12 @@ export class SettingsScene extends Phaser.Scene {
       const stroke = selected ? 0xffcf6e : hovering ? 0x9fd8ff : 0x5c7185;
       const cut = 14;
       const points = [
-        new Phaser.Geom.Point(0, height),
-        new Phaser.Geom.Point(0, cut),
-        new Phaser.Geom.Point(cut, 0),
-        new Phaser.Geom.Point(width - cut, 0),
-        new Phaser.Geom.Point(width, cut),
-        new Phaser.Geom.Point(width, height),
+        new Phaser.Math.Vector2(0, height),
+        new Phaser.Math.Vector2(0, cut),
+        new Phaser.Math.Vector2(cut, 0),
+        new Phaser.Math.Vector2(width - cut, 0),
+        new Phaser.Math.Vector2(width, cut),
+        new Phaser.Math.Vector2(width, height),
       ];
       background.fillStyle(fill, selected ? 1 : 0.98).fillPoints(points, true);
       background.lineStyle(2, stroke, 1).strokePoints(points, false, true);

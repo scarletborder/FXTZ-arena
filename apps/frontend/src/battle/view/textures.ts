@@ -18,9 +18,9 @@ export function createBattleTextures(scene: Phaser.Scene): void {
     g.lineStyle(5, 0xffffff, 1);
     g.strokePoints(
       [
-        new Phaser.Geom.Point(128, 24),
-        new Phaser.Geom.Point(212, 208),
-        new Phaser.Geom.Point(44, 208),
+        new Phaser.Math.Vector2(128, 24),
+        new Phaser.Math.Vector2(212, 208),
+        new Phaser.Math.Vector2(44, 208),
       ],
       true,
     );
@@ -47,20 +47,20 @@ export function createBattleTextures(scene: Phaser.Scene): void {
     g.fillStyle(0xffffff, 1);
     g.fillPoints(
       [
-        new Phaser.Geom.Point(128, 8),
-        new Phaser.Geom.Point(248, 128),
-        new Phaser.Geom.Point(128, 248),
-        new Phaser.Geom.Point(8, 128),
+        new Phaser.Math.Vector2(128, 8),
+        new Phaser.Math.Vector2(248, 128),
+        new Phaser.Math.Vector2(128, 248),
+        new Phaser.Math.Vector2(8, 128),
       ],
       true,
     );
     g.lineStyle(12, 0xffffff, 1);
     g.strokePoints(
       [
-        new Phaser.Geom.Point(128, 8),
-        new Phaser.Geom.Point(248, 128),
-        new Phaser.Geom.Point(128, 248),
-        new Phaser.Geom.Point(8, 128),
+        new Phaser.Math.Vector2(128, 8),
+        new Phaser.Math.Vector2(248, 128),
+        new Phaser.Math.Vector2(128, 248),
+        new Phaser.Math.Vector2(8, 128),
       ],
       true,
     );
