@@ -57,6 +57,7 @@ export interface FighterState {
   bombCooldownUntil: number;
   shotsFired: number;
   hits: number;
+  hitsTaken: number;
   damageTaken: number;
   deaths: number;
   bombUses: number;

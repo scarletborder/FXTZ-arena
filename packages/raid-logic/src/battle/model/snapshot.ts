@@ -243,6 +243,7 @@ function serializeFighter(
     bombCooldownUntil: fighter.bombCooldownUntil,
     shotsFired: fighter.shotsFired,
     hits: fighter.hits,
+    hitsTaken: fighter.hitsTaken,
     damageTaken: fighter.damageTaken,
     deaths: fighter.deaths,
     bombUses: fighter.bombUses,

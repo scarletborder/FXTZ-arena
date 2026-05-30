@@ -241,6 +241,7 @@ function writeFighter(
   hasher.writeNumber(fighter.bombCooldownUntil);
   hasher.writeNumber(fighter.shotsFired);
   hasher.writeNumber(fighter.hits);
+  hasher.writeNumber(fighter.hitsTaken);
   hasher.writeNumber(fighter.damageTaken);
   hasher.writeNumber(fighter.deaths);
   hasher.writeNumber(fighter.bombUses);

@@ -479,20 +479,7 @@ export class BattleScene extends Phaser.Scene {
     if (uiSettings.debug || this.debugLiveHashEnabled) {
       this.printDebugHashBundle(winnerPlayerId, serverConfirmedFrame);
     }
-    this.scene.start("result", {
-      winnerName:
-        winnerPlayerId === this.combatSync?.localPlayerId
-          ? (this.sceneData.playerName ?? "Player")
-          : (this.sceneData.opponentName ?? "Opponent"),
-      durationSeconds: this.currentOutput.state.stats.elapsedTicks / 60,
-      shots: this.currentOutput.state.stats.shots,
-      hits: this.currentOutput.state.stats.hits,
-      bombUses: this.currentOutput.state.stats.bombUses,
-      deaths:
-        this.currentOutput.state.player.deaths +
-        this.currentOutput.state.target.deaths,
-      returnScene: this.sceneData.returnScene ?? "battle-start",
-    });
+    this.scene.start("result", this.createResultData(winnerPlayerId));
   }
 
   private recordDebugFrame(): void {
@@ -570,20 +557,30 @@ export class BattleScene extends Phaser.Scene {
     if (uiSettings.debug || this.debugLiveHashEnabled) {
       this.printDebugHashBundle(null);
     }
-    this.scene.start("result", {
+    this.scene.start("result", this.createResultData(null));
+  }
+
+  private createResultData(winnerPlayerId: PlayerId | null) {
+    const localPlayerName = this.sceneData.playerName ?? uiSettings.username ?? "Player";
+    const opponentName = this.sceneData.opponentName ?? (this.sceneData.mode === "online" ? "Opponent" : "CPU");
+    const localFighterKey = this.combatSync?.localFighterKey() ?? "Player1";
+    const localFighterState = localFighterKey === "Player1" ? this.currentOutput.state.player : this.currentOutput.state.target;
+    const opponentFighterState = localFighterKey === "Player1" ? this.currentOutput.state.target : this.currentOutput.state.player;
+
+    return {
       winnerName:
-        this.currentOutput.state.target.lives <= 0
-          ? (this.sceneData.playerName ?? "Player")
-          : (this.sceneData.opponentName ?? "CPU"),
+        winnerPlayerId === null
+          ? (this.currentOutput.state.target.lives <= 0 ? localPlayerName : opponentName)
+          : winnerPlayerId === this.combatSync?.localPlayerId
+            ? localPlayerName
+            : opponentName,
       durationSeconds: this.currentOutput.state.stats.elapsedTicks / 60,
-      shots: this.currentOutput.state.stats.shots,
-      hits: this.currentOutput.state.stats.hits,
-      bombUses: this.currentOutput.state.stats.bombUses,
-      deaths:
-        this.currentOutput.state.player.deaths +
-        this.currentOutput.state.target.deaths,
+      players: [
+        createResultPlayerSummary(localPlayerName, localFighterState),
+        createResultPlayerSummary(opponentName, opponentFighterState),
+      ] as const,
       returnScene: this.sceneData.returnScene ?? "battle-start",
-    });
+    };
   }
 
   /** Toggle debug overlay that visualises Rapier collision bodies. */
@@ -727,6 +724,15 @@ export class BattleScene extends Phaser.Scene {
       },
     });
   }
+}
+
+function createResultPlayerSummary(name: string, fighterState: { shotsFired: number; bombUses: number; hitsTaken: number; }) {
+  return {
+    name,
+    shots: fighterState.shotsFired,
+    bombUses: fighterState.bombUses,
+    hitsTaken: fighterState.hitsTaken,
+  };
 }
 
 function createBattleLayout(): BattleLayout {

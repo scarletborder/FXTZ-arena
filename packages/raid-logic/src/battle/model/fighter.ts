@@ -56,6 +56,7 @@ export function createFighter(
     bombCooldownUntil: 0,
     shotsFired: 0,
     hits: 0,
+    hitsTaken: 0,
     damageTaken: 0,
     deaths: 0,
     bombUses: 0,

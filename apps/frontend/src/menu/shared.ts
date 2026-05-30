@@ -27,11 +27,15 @@ export const connectionManager = new ConnectionManager();
 export interface ResultData {
   readonly winnerName?: string;
   readonly durationSeconds?: number;
-  readonly shots?: number;
-  readonly hits?: number;
-  readonly bombUses?: number;
-  readonly deaths?: number;
+  readonly players: readonly [ResultPlayerSummary, ResultPlayerSummary];
   readonly returnScene?: string;
+}
+
+export interface ResultPlayerSummary {
+  readonly name: string;
+  readonly shots: number;
+  readonly bombUses: number;
+  readonly hitsTaken: number;
 }
 
 export interface FightButton {

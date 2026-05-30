@@ -21,6 +21,7 @@ export function applyHit(params: {
   const isFatal = params.victim.lives <= 0;
 
   params.victim.damageTaken += params.damage;
+  params.victim.hitsTaken += 1;
   params.victim.flashUntil = params.frame + secondsToTicks(3);
   params.victim.statusVisibleUntil = params.frame + STATUS_VISIBLE_TICKS;
   params.stats.hits += 1;
