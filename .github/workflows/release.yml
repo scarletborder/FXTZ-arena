@@ -81,18 +81,6 @@ jobs:
           cp apps/dedicated-server/package.json release/dedicated-server/package.json
           tar -czf "release/fxtz-arena-dedicated-server-${BUILD_LABEL}.tar.gz" -C release/dedicated-server .
 
-      - name: Build Docker image
-        env:
-          APP_VERSION: ${{ steps.meta.outputs.version }}
-          APP_COMMIT: ${{ steps.meta.outputs.commit }}
-        run: |
-          docker build \
-            --build-arg APP_VERSION="${APP_VERSION}" \
-            --build-arg APP_COMMIT="${APP_COMMIT}" \
-            -t "fxtz-arena-dedicated-server:${APP_VERSION}" \
-            .
-          docker save "fxtz-arena-dedicated-server:${APP_VERSION}" | gzip > "release/fxtz-arena-dedicated-server-image-${APP_VERSION}+${APP_COMMIT}.tar.gz"
-
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -106,6 +94,24 @@ jobs:
             Release.md
             release/fxtz-arena-frontend-${{ steps.meta.outputs.build_label }}.zip
             release/fxtz-arena-dedicated-server-${{ steps.meta.outputs.build_label }}.tar.gz
+
+      - name: Build Docker image
+        env:
+          APP_VERSION: ${{ steps.meta.outputs.version }}
+          APP_COMMIT: ${{ steps.meta.outputs.commit }}
+        run: |
+          docker build \
+            --build-arg APP_VERSION="${APP_VERSION}" \
+            --build-arg APP_COMMIT="${APP_COMMIT}" \
+            -t "fxtz-arena-dedicated-server:${APP_VERSION}" \
+            .
+          docker save "fxtz-arena-dedicated-server:${APP_VERSION}" | gzip > "release/fxtz-arena-dedicated-server-image-${APP_VERSION}+${APP_COMMIT}.tar.gz"
+
+      - name: Add Docker image to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
             release/fxtz-arena-dedicated-server-image-${{ steps.meta.outputs.build_label }}.tar.gz
 
   deploy-pages:
