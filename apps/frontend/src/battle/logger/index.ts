@@ -2,7 +2,10 @@ import type { PlayerId } from "@repo/types";
 import type { BattleInputState, BattleOutputFrame } from "@repo/raid-logic";
 
 import type { BattleSceneData } from "../loadout";
-import type { CombatFrameInputRecord } from "../../network/combat";
+import type {
+  CombatConfirmedFrameInputRecord,
+  CombatFrameInputRecord,
+} from "../../network/combat";
 
 export interface DebugFrameLogRecord {
   readonly sequence: number;
@@ -30,6 +33,7 @@ export interface DebugLogExportParams {
   readonly localPlayerId: PlayerId | null;
   readonly runtimeFrame: number;
   readonly targetFrame: number;
+  readonly serverConfirmedFrame: number | null;
   readonly authoritativeFrame: number;
   readonly localConfirmedFrame: number;
   readonly finalGlobalHash: string | null;
@@ -43,6 +47,7 @@ export interface DebugLogExportParams {
 
 export class BattleDebugLogger {
   private readonly stepInputs = new Map<number, CombatFrameInputRecord>();
+  private readonly confirmedInputs = new Map<number, CombatConfirmedFrameInputRecord>();
   private readonly frameLog = new Map<number, DebugFrameLogRecord>();
   private readonly confirmedFrameLog = new Map<number, AuthoritativeFrameLogRecord>();
   private readonly frameRevisions: DebugFrameLogRecord[] = [];
@@ -51,6 +56,7 @@ export class BattleDebugLogger {
 
   reset(): void {
     this.stepInputs.clear();
+    this.confirmedInputs.clear();
     this.frameLog.clear();
     this.confirmedFrameLog.clear();
     this.frameRevisions.length = 0;
@@ -65,6 +71,19 @@ export class BattleDebugLogger {
 
     this.stepInputs.set(record.frame, {
       frame: record.frame,
+      player: cloneDebugInput(record.player),
+      target: cloneDebugInput(record.target),
+    });
+  }
+
+  recordConfirmedInputs(record: CombatConfirmedFrameInputRecord, enabled: boolean): void {
+    if (!enabled) {
+      return;
+    }
+
+    this.confirmedInputs.set(record.frame, {
+      frame: record.frame,
+      confirmedThrough: record.confirmedThrough,
       player: cloneDebugInput(record.player),
       target: cloneDebugInput(record.target),
     });
@@ -111,6 +130,7 @@ export class BattleDebugLogger {
     }
 
     const source = this.frameLog.get(params.frame) ?? null;
+    const inputRecord = this.confirmedInputs.get(params.frame) ?? null;
     this.confirmedFrameLog.set(params.frame, {
       sequence: this.confirmedSequence,
       frame: params.frame,
@@ -119,8 +139,8 @@ export class BattleDebugLogger {
       localConfirmedFrame: params.confirmedThrough,
       authoritative: true,
       confirmedThrough: params.confirmedThrough,
-      player1Input: source?.player1Input ?? null,
-      player2Input: source?.player2Input ?? null,
+      player1Input: inputRecord ? cloneDebugInput(inputRecord.player) : null,
+      player2Input: inputRecord ? cloneDebugInput(inputRecord.target) : null,
     });
     this.confirmedSequence += 1;
   }
@@ -129,6 +149,11 @@ export class BattleDebugLogger {
     for (const key of this.stepInputs.keys()) {
       if (key > frame) {
         this.stepInputs.delete(key);
+      }
+    }
+    for (const key of this.confirmedInputs.keys()) {
+      if (key > frame) {
+        this.confirmedInputs.delete(key);
       }
     }
     for (const key of this.frameLog.keys()) {
@@ -152,9 +177,6 @@ export class BattleDebugLogger {
     const frames = Array.from(this.confirmedFrameLog.values())
       .filter((record) => record.authoritative && record.frame >= 0 && record.frame <= params.authoritativeFrame)
       .sort((left, right) => left.frame - right.frame);
-    const revisions = this.frameRevisions
-      .filter((record) => record.frame >= 0 && record.frame <= params.targetFrame)
-      .sort((left, right) => left.sequence - right.sequence);
     const payload = {
       version: 1,
       generatedAt: new Date().toISOString(),
@@ -164,12 +186,12 @@ export class BattleDebugLogger {
       winnerPlayerId: params.winnerPlayerId,
       runtimeFrame: params.runtimeFrame,
       localConfirmedFrame: params.localConfirmedFrame,
-      serverConfirmedFrame: params.targetFrame,
+      serverConfirmedFrame: params.serverConfirmedFrame,
+      targetFrame: params.targetFrame,
       authoritativeFrame: params.authoritativeFrame,
       finalGlobalHash: params.finalGlobalHash,
       sampledConfirmedFrames: params.sampledConfirmedFrames,
       frames,
-      revisions,
     };
     const filename = createDebugLogFilename(params.sceneData, params.localPlayerId, params.targetFrame);
     const text = `${JSON.stringify(payload, null, 2)}\n`;

@@ -28,9 +28,14 @@ export interface CombatFrameInputRecord {
   readonly target: BattleInputState;
 }
 
+export interface CombatConfirmedFrameInputRecord extends CombatFrameInputRecord {
+  readonly confirmedThrough: number;
+}
+
 export interface CombatSyncCallbacks {
   recordFrame(): void;
   recordStepInputs?(record: CombatFrameInputRecord): void;
+  recordConfirmedInputs?(record: CombatConfirmedFrameInputRecord): void;
   getRollbackRecord(frame: number): CombatRollbackRecord | null;
   pruneRollbackHistoryAfter(frame: number): void;
   pruneRollbackHistoryBefore(frame: number): void;

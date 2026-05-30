@@ -1,3 +1,4 @@
+import { encodeProtocolStreamPacket, ProtocolStreamDecoder } from "@repo/types";
 import type { ClientMessage } from "@repo/types";
 
 import { certificateFingerprintToArrayBuffer } from "../fingerprint";
@@ -29,7 +30,7 @@ export class WtNetworkTransport extends BaseNetworkTransport {
   private transport: WebTransportSessionLike | null = null;
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
   private writeQueue: Promise<void> = Promise.resolve();
-  private readBuffer = "";
+  private streamDecoder = new ProtocolStreamDecoder();
   private closeEmitted = false;
 
   constructor(
@@ -87,7 +88,7 @@ export class WtNetworkTransport extends BaseNetworkTransport {
     if (!this.writer || this.readyState !== "open") {
       return;
     }
-    const data = this.encoder.encode(`${this.serialize(message)}\n`);
+    const data = encodeProtocolStreamPacket(message);
     this.writeQueue = this.writeQueue
       .then(() => this.writer?.write(data))
       .then(() => undefined)
@@ -135,11 +136,9 @@ export class WtNetworkTransport extends BaseNetworkTransport {
           break;
         }
         if (value) {
-          this.consumeText(this.decoder.decode(value, { stream: true }));
+          this.consumeBytes(value);
         }
       }
-      this.consumeText(this.decoder.decode());
-      this.flushBufferedMessage();
       this.emitClose();
     } catch (error) {
       this.handlers.error(this.asError(error));
@@ -149,28 +148,9 @@ export class WtNetworkTransport extends BaseNetworkTransport {
     }
   }
 
-  private consumeText(text: string): void {
-    this.readBuffer += text;
-    while (true) {
-      const newline = this.readBuffer.indexOf("\n");
-      if (newline === -1) {
-        return;
-      }
-      const line = this.readBuffer.slice(0, newline).trim();
-      this.readBuffer = this.readBuffer.slice(newline + 1);
-      this.emitJsonLine(line);
-    }
-  }
-
-  private flushBufferedMessage(): void {
-    const line = this.readBuffer.trim();
-    this.readBuffer = "";
-    this.emitJsonLine(line);
-  }
-
-  private emitJsonLine(line: string): void {
-    if (line) {
-      this.emitJsonMessage(line);
+  private consumeBytes(bytes: Uint8Array): void {
+    for (const message of this.streamDecoder.push(bytes)) {
+      this.emitProtocolMessage(message);
     }
   }
 

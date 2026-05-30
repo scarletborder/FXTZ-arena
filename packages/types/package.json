@@ -22,7 +22,8 @@
     }
   },
   "dependencies": {
-    "@repo/constants": "workspace:*"
+    "@repo/constants": "workspace:*",
+    "@shaisrc/fixed-point": "^0.1.0"
   },
   "scripts": {
     "build": "bunchee",

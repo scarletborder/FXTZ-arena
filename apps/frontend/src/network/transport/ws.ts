@@ -16,6 +16,7 @@ export class WsNetworkTransport extends BaseNetworkTransport {
   open(): void {
     try {
       this.ws = new WebSocket(this.address);
+      this.ws.binaryType = "arraybuffer";
     } catch (error) {
       this.readyState = "closed";
       this.handlers.error(this.asError(error));
@@ -34,7 +35,7 @@ export class WsNetworkTransport extends BaseNetworkTransport {
       this.handlers.error(new Error("WebSocket connection error"));
     };
     this.ws.onmessage = (event: MessageEvent) => {
-      this.emitJsonMessage(String(event.data));
+      this.emitProtocolMessage(event.data);
     };
   }
 

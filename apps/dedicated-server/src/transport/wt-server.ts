@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 
+import { encodeProtocolStreamPacket, ProtocolStreamDecoder } from "@repo/types";
 import type { ServerMessage } from "../protocol/messages";
 import type { TransportConnection, TransportServer } from "./interface";
 import type { WsTransportTlsOptions } from "./ws-server";
@@ -43,14 +44,12 @@ interface WebTransportModule {
 
 export class WtConnection implements TransportConnection {
   public readonly id: string;
-  private readonly encoder = new TextEncoder();
-  private readonly decoder = new TextDecoder();
   private readonly pending: Uint8Array[] = [];
+  private readonly streamDecoder = new ProtocolStreamDecoder();
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
   private writeQueue: Promise<void> = Promise.resolve();
   private closing = false;
   private closeEmitted = false;
-  private readBuffer = "";
   private msgHandlers: Array<(message: unknown) => void> = [];
   private closeHandlers: Array<() => void> = [];
   private errorHandlers: Array<(error: Error) => void> = [];
@@ -68,7 +67,7 @@ export class WtConnection implements TransportConnection {
   }
 
   send(message: ServerMessage): void {
-    const data = this.encoder.encode(`${JSON.stringify(message)}\n`);
+    const data = encodeProtocolStreamPacket(message);
     if (!this.writer) {
       this.pending.push(data);
       return;
@@ -149,11 +148,9 @@ export class WtConnection implements TransportConnection {
           break;
         }
         if (value) {
-          this.consumeText(this.decoder.decode(value, { stream: true }));
+          this.consumeBytes(value);
         }
       }
-      this.consumeText(this.decoder.decode());
-      this.flushBufferedMessage();
       this.emitClose();
     } catch (error) {
       this.emitError(asError(error));
@@ -163,34 +160,9 @@ export class WtConnection implements TransportConnection {
     }
   }
 
-  private consumeText(text: string): void {
-    this.readBuffer += text;
-    while (true) {
-      const newline = this.readBuffer.indexOf("\n");
-      if (newline === -1) {
-        return;
-      }
-      const line = this.readBuffer.slice(0, newline).trim();
-      this.readBuffer = this.readBuffer.slice(newline + 1);
-      this.emitJsonLine(line);
-    }
-  }
-
-  private flushBufferedMessage(): void {
-    const line = this.readBuffer.trim();
-    this.readBuffer = "";
-    this.emitJsonLine(line);
-  }
-
-  private emitJsonLine(line: string): void {
-    if (!line) {
-      return;
-    }
-    try {
-      const parsed = JSON.parse(line);
-      this.msgHandlers.forEach((handler) => handler(parsed));
-    } catch {
-      // ignore malformed messages
+  private consumeBytes(bytes: Uint8Array): void {
+    for (const message of this.streamDecoder.push(bytes)) {
+      this.msgHandlers.forEach((handler) => handler(message));
     }
   }
 

@@ -18,6 +18,7 @@ export class CombatSyncManager {
   ]);
   private lastReceivedRemoteFrame = 0;
   private lastPeerAckFrame = 0;
+  private lastReportedConfirmedInputFrame = 0;
   private gameOverVerdictSent = false;
   private peerGameOverVerdict:
     | { readonly frame: number; readonly ackFrame: number; readonly winnerPlayerId: PlayerId }
@@ -260,6 +261,20 @@ export class CombatSyncManager {
     const confirmedFrame = Math.min(this.lastReceivedRemoteFrame, this.lastPeerAckFrame);
     if (confirmedFrame <= 0) return;
 
+    for (let frame = this.lastReportedConfirmedInputFrame + 1; frame <= confirmedFrame; frame += 1) {
+      const player = this.inputs.get("Player1")?.get(frame);
+      const target = this.inputs.get("Player2")?.get(frame);
+      if (!player || !target) {
+        break;
+      }
+      this.options.callbacks.recordConfirmedInputs?.({
+        frame,
+        confirmedThrough: confirmedFrame,
+        player: cloneInput(player),
+        target: cloneInput(target),
+      });
+      this.lastReportedConfirmedInputFrame = frame;
+    }
     this.options.callbacks.pruneRollbackHistoryBefore(confirmedFrame);
     for (const inputMap of this.inputs.values()) {
       for (const [frame] of inputMap) {

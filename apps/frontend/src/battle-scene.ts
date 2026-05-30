@@ -360,6 +360,11 @@ export class BattleScene extends Phaser.Scene {
             record,
             this.shouldRecordDebugLog(),
           ),
+        recordConfirmedInputs: (record) =>
+          this.debugLogger.recordConfirmedInputs(
+            record,
+            this.shouldRecordDebugLog(),
+          ),
         getRollbackRecord: (frame) => this.debugHistory.get(frame) ?? null,
         pruneRollbackHistoryAfter: (frame) =>
           this.pruneDebugHistoryAfter(frame),
@@ -499,7 +504,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private shouldRecordDebugLog(): boolean {
-    return uiSettings.debug || this.debugLiveHashEnabled;
+    return Boolean(this.sceneData.debug) || uiSettings.debug || this.debugLiveHashEnabled;
   }
 
   private pruneDebugHistoryAfter(frame: number): void {
@@ -582,12 +587,10 @@ export class BattleScene extends Phaser.Scene {
     const localConfirmedFrame =
       this.combatSync?.getConfirmedFrame() ?? serverConfirmedFrame;
     const targetFrame =
-      this.sceneData.mode === "online"
-        ? serverConfirmedFrame
-        : localConfirmedFrame;
+      this.sceneData.mode === "online" ? serverConfirmedFrame : localConfirmedFrame;
     const authoritativeFrame =
       this.sceneData.mode === "online"
-        ? Math.min(targetFrame, localConfirmedFrame)
+        ? Math.min(targetFrame, localConfirmedFrame, serverConfirmedFrame)
         : targetFrame;
     const hashComplete =
       this.recordConfirmedDebugHashesThrough(authoritativeFrame) &&
@@ -596,7 +599,7 @@ export class BattleScene extends Phaser.Scene {
     const rows = this.debugLogger.getConfirmedRows(authoritativeFrame);
 
     const label = `FXTZ Debug Hash Bundle (mode=${this.sceneData.mode ?? "offline"
-      }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${localConfirmedFrame}, serverConfirmedFrame=${targetFrame}, authoritativeFrame=${authoritativeFrame}, cachedRows=${rows.length})`;
+      }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${localConfirmedFrame}, serverConfirmedFrame=${serverConfirmedFrame}, authoritativeFrame=${authoritativeFrame}, cachedRows=${rows.length})`;
 
     console.group(label);
     console.log(
@@ -617,6 +620,7 @@ export class BattleScene extends Phaser.Scene {
     this.writeDebugHashLogFile({
       winnerPlayerId,
       targetFrame,
+      serverConfirmedFrame,
       authoritativeFrame,
       localConfirmedFrame,
       hashComplete,
@@ -660,6 +664,7 @@ export class BattleScene extends Phaser.Scene {
     return this.writeDebugHashLogFile({
       winnerPlayerId: null,
       targetFrame,
+      serverConfirmedFrame: null,
       authoritativeFrame,
       localConfirmedFrame,
       hashComplete:
@@ -671,6 +676,7 @@ export class BattleScene extends Phaser.Scene {
   private writeDebugHashLogFile(params: {
     readonly winnerPlayerId: PlayerId | null;
     readonly targetFrame: number;
+    readonly serverConfirmedFrame: number | null;
     readonly authoritativeFrame: number;
     readonly localConfirmedFrame: number;
     readonly hashComplete: boolean;
@@ -685,6 +691,7 @@ export class BattleScene extends Phaser.Scene {
         this.combatSync?.localPlayerId ?? this.sceneData.localPlayerId ?? null,
       runtimeFrame: this.runtime.frame,
       targetFrame: params.targetFrame,
+      serverConfirmedFrame: params.serverConfirmedFrame,
       authoritativeFrame: params.authoritativeFrame,
       localConfirmedFrame: params.localConfirmedFrame,
       finalGlobalHash,

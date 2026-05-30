@@ -1,3 +1,4 @@
+import { decodeProtocolMessage, encodeProtocolMessage } from "@repo/types";
 import type { ClientMessage, ServerMessage } from "@repo/types";
 
 export type NetworkTransportReadyState = "connecting" | "open" | "closed";
@@ -10,9 +11,6 @@ export interface NetworkTransportHandlers {
 }
 
 export abstract class BaseNetworkTransport {
-  protected readonly encoder = new TextEncoder();
-  protected readonly decoder = new TextDecoder();
-
   abstract readonly address: string;
   abstract readyState: NetworkTransportReadyState;
   abstract open(): void;
@@ -21,19 +19,25 @@ export abstract class BaseNetworkTransport {
 
   constructor(protected readonly handlers: NetworkTransportHandlers) {}
 
-  protected serialize(message: ClientMessage): string {
-    return JSON.stringify(message);
+  protected serialize(message: ClientMessage): Uint8Array {
+    return encodeProtocolMessage(message);
   }
 
-  protected emitJsonMessage(raw: string): void {
-    try {
-      this.handlers.message(JSON.parse(raw) as ServerMessage);
-    } catch {
-      // Ignore malformed messages.
+  protected emitProtocolMessage(data: unknown): void {
+    const message = isProtocolObject(data) ? data : decodeProtocolMessage(data);
+    if (message) {
+      this.handlers.message(message as ServerMessage);
     }
   }
 
   protected asError(error: unknown): Error {
     return error instanceof Error ? error : new Error(String(error));
   }
+}
+
+function isProtocolObject(value: unknown): value is ClientMessage | ServerMessage {
+  return typeof value === "object"
+    && value !== null
+    && "type" in value
+    && typeof value.type === "string";
 }

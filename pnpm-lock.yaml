@@ -269,6 +269,9 @@ importers:
       '@repo/constants':
         specifier: workspace:*
         version: link:../constants
+      '@shaisrc/fixed-point':
+        specifier: ^0.1.0
+        version: 0.1.0
     devDependencies:
       '@repo/eslint-config':
         specifier: workspace:*

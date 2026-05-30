@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type Server as HttpServer, type ServerResponse } from "node:http";
 import { createServer as createSecureServer, type Server as HttpsServer } from "node:https";
 import { WebSocketServer, WebSocket } from "ws";
+import { decodeProtocolMessage, encodeProtocolMessage } from "@repo/types";
 import type { ServerMessage } from "../protocol/messages";
 import type { TransportConnection, TransportServer } from "./interface";
 
@@ -75,11 +76,9 @@ class WsConnection implements TransportConnection {
     this.id = `conn_${nextConnectionId++}`;
 
     ws.on("message", (data) => {
-      try {
-        const parsed = JSON.parse(data.toString());
+      const parsed = decodeProtocolMessage(data);
+      if (parsed) {
         this.msgHandlers.forEach((h) => h(parsed));
-      } catch {
-        // ignore malformed messages
       }
     });
 
@@ -94,7 +93,7 @@ class WsConnection implements TransportConnection {
 
   send(message: ServerMessage): void {
     if (this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
+      this.ws.send(encodeProtocolMessage(message));
     }
   }
 
@@ -147,7 +146,7 @@ export class WsTransportServer implements TransportServer {
   }
 
   broadcast(message: ServerMessage): void {
-    const data = JSON.stringify(message);
+    const data = encodeProtocolMessage(message);
     this.servers.forEach((server) => {
       server.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {

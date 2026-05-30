@@ -14,7 +14,7 @@
 
 最终全局 hash 必须使用在线算法：每当一段帧被确认，就按帧号顺序采样这些权威帧的 frame hash，并写入 BLAKE3 accumulator。结算时输出的是 `0..serverConfirmedFrame` 的连续权威帧 hash 序列摘要。
 
-debug log 的 `frames[]` 只能记录权威确认帧。预测帧、rollback 重放中的中间帧、尚未被双方 ack 覆盖的帧，只能放在 `revisions[]` 或临时历史里。否则会出现“同 frameId、同 input、不同 hash”的假阳性，因为两端当时记录的是不同预测版本。
+debug log 的 `frames[]` 只能记录权威确认帧。预测帧、rollback 重放中的中间帧、尚未被双方 ack 覆盖的帧，不能进入最终导出的权威 diff 文件；如需排查预测过程，应使用 live console 或单独的临时开发日志。否则会出现“同 frameId、同 input、不同 hash”的假阳性，因为两端当时记录的是不同预测版本。
 
 游戏结束不能只以本地 `runtime.gameOver` 为准进入结算。客户端本地判定结束后，应提交 `game_over`，等待服务器广播双方都确认的 `battle_finished.confirmedFrame`，再导出最终 hash 和权威日志。
 
@@ -62,6 +62,40 @@ rollback snapshot 不能只保存当前还存在的实体。所有会影响未�
 
 缺失远端输入时可以预测，但真实输入抵达后如果与预测不同，必须从 `changedFrame - 1` 的 snapshot rollback，然后逐帧重放到当前帧。
 
+### 用户输入字段与网络包
+
+新增任何用户输入字段时，必须同时更新类型、网络 codec、server relay、debug log 和测试。只改 `BattleInputState` 或 `ClientMessage` 不够。
+
+检查清单：
+
+- 类型定义：更新 `packages/types/src/battle/input.ts` 和 `packages/types/src/protocol/messages.ts` 中的 `InputFrameMessage` / `InputFrameRelayMessage`。
+- 采集端：更新 `apps/frontend/src/battle/input.ts` 和 `CombatSyncManager.sendInput()` 的构造字段。
+- 网络 codec：更新 `packages/types/src/protocol/binary.ts` 的 `writeInputFields()` / `readInputFields()` / `inputPayloadSize()`。
+- server relay：更新 `apps/dedicated-server/src/protocol/handler.ts` 中 `handleInputFrame()` 转发字段。
+- 前端接收：更新 `CombatSyncManager.handleServerMessage()` 和 `cloneInput()` / `sameInput()`。
+- 日志：更新 `apps/frontend/src/battle/logger/index.ts` 的 clone/export 逻辑。
+- 测试：更新 `packages/types/src/protocol/binary.test.ts`，至少覆盖 round-trip；如果字段影响战斗结果，还要更新 `apps/frontend/src/network/combat/manager.test.ts` 或 raid-logic rollback 测试。
+
+字段编码规则：
+
+- 离散方向：`moveX` / `moveY` 使用 `int8`，值域必须保持 `-1 | 0 | 1`。
+- 布尔按钮：打包到 bitset。新增按钮时分配新的 bit，并同时更新 encode/decode。
+- 帧号、ack、id：使用整数编码，禁止用 float。
+- 连续数值：例如 `aimX` / `aimY` / 摇杆模拟量 / 模拟扳机压力，禁止用 `Float32`；必须用 decimal string + length prefix 写进 ArrayBuffer，并用 `fp.fromString(...)` 走确定性解析/校验路径。
+- 低频复杂消息：可以继续走二进制包裹 JSON fallback，但高频 `input_frame` 必须显式维护字段布局。
+
+已经踩过的坑：`aimX` / `aimY` 曾经用 `setFloat32()` 序列化，远端收到的值从 `845.3833799776838` 变成 `845.3833618164062`。这类偏差可能一开始不改变状态 hash，但会改变后续瞄准角、弹幕和碰撞，从而导致最终 hash 分歧。
+
+### Ack 与确认帧
+
+`input_frame.ackFrame` 表示“我已经连续收到并采用的对端输入帧”。双方不断发送 input 时，server 只负责 relay，客户端用 `min(lastReceivedRemoteFrame, lastPeerAckFrame)` 得到本地 confirmed frame。
+
+注意：
+
+- 本地 `runtime.frame` 不是权威确认帧。
+- `serverConfirmedFrame` 只在双方提交 `game_over` 后由 server 计算，结算导出的 final hash 目标应使用这个权威范围。
+- 如果 debug log 里 `runtimeFrame` 很大但 `localConfirmedFrame` / `serverConfirmedFrame` 仍是 0，应优先检查 ack 是否在输入包里持续发送、对端输入是否持续 relay、以及客户端是否在收到 relay 后调用了 `advanceRemoteContiguousFrame()`。
+
 ## 投射物、消弹与碰撞
 
 权威战斗碰撞应使用 `BattlePhysics` / Rapier 适配层。不要在角色、能力卡、前端或其他系统里绕过适配层手写一套 projectile 命中、shield 阻挡、mob 命中或擦弹几何逻辑；否则很容易出现两端一边使用 Rapier、一边使用近似几何，导致“看起来命中了但权威未命中”的分歧。
@@ -89,11 +123,22 @@ debug 每帧记录只在 debug 开启或 live hash 开启时发生，避免正�
 导出的 JSON 中：
 
 - `frames[]`：只保存权威确认帧。
-- `revisions[]`：可保存预测、回滚、重放记录，用于排查过程。
-- `finalGlobalHash`：只有 `0..serverConfirmedFrame` 的连续权威帧都被采样后才允许输出；否则应标记 incomplete。
+- `finalGlobalHash`：只有 `0..serverConfirmedFrame` 的连续权威帧都被采样后才允许输出；否则必须为 `null` / incomplete，不能用 frame 0 或本地预测帧凑数。
 - `player1Input` / `player2Input`：按 canonical player 记录，不按本地/远端视角记录。
+- `player1Input` / `player2Input` 必须来自 confirmed input 表，而不是来自预测 step 或本地 speculative step。预测输入在 rollback 后可能根本不会在最终权威时间线上执行，不能写进最终取证日志。
+
+当前实现中，`CombatSyncManager` 在确认帧推进时，从 `inputs["Player1"]` / `inputs["Player2"]` 里按帧取出双方真实输入，通过 `recordConfirmedInputs` 交给 `BattleDebugLogger`。`BattleDebugLogger.recordConfirmedFrame()` 只把这份 confirmed input 写进 `frames[]`。
+
+不要重新引入 `localFrames` / `revisions` 到最终导出文件里。如果临时需要排查预测过程，应使用 live console 或单独的临时开发日志，不能混进权威 diff 文件。
 
 使用 `pnpm run diff -- --p1=a.json --p2=b.json` 时，如果 `frames[]` 中同帧输入相同但 hash 不同，优先检查该帧前后的 rollback snapshot 完整性、实体 id、effect id、投射物数量和计时器，而不是先怀疑输入同步。
+
+如果 `finalGlobalHash` 为 `null`：
+
+- 说明导出目标帧没有完整采样，通常是 `authoritativeFrame < targetFrame`。
+- 在线结算时目标应为 `battle_finished.confirmedFrame`，不是本地 `runtime.frame`。
+- 检查 console group 中的 `localConfirmedFrame`、`serverConfirmedFrame`、`authoritativeFrame` 和 `sampledConfirmedFrames`。
+- 不要把未确认帧加入 accumulator；这样会把预测历史误当权威历史。
 
 如果分歧出现在中立怪弹幕附近，优先检查：
 

@@ -32,6 +32,7 @@ import { fpAtan2, fpHypot, fpHypotFp, fpClamp, fpMin, fpMax } from "../../fp";  
 |------|------|---------|------|
 | `fp.fromFloat(n)` | number → Q16.16 | float | fp |
 | `fp.fromInt(n)` | int → Q16.16 | int | fp |
+| `fp.fromString(s)` | decimal string → Q16.16 | string | fp |
 | `fp.toFloat(v)` | Q16.16 → number | fp | float |
 | `fp.add(a, b)` | 加法 | fp, fp | fp |
 | `fp.sub(a, b)` | 减法 | fp, fp | fp |
@@ -116,6 +117,62 @@ const angle = fpAtan2(fp.fromFloat(vy), fp.fromFloat(vx));
 // 业务上需要取整到 tick 数时可用 Math.round，但入参必须是 fp 计算后的值
 const ticks = Math.round(fp.toFloat(fp.mul(fp.fromFloat(seconds), fp.fromInt(60))));
 ```
+
+### 6. 网络传输禁止用 Float32 压缩用户输入浮点数
+
+联机输入必须按原样传播。`aimX` / `aimY` 这类来自指针、摇杆或客户端坐标换算的浮点值，不能用 `DataView.setFloat32()` 写入网络包；Float32 会截断 JS number，例如：
+
+```text
+845.3833799776838 -> 845.3833618164062
+428.8524590163934 -> 428.8524475097656
+```
+
+这种差异可能在前几帧没有立刻改变 frame hash，但会改变后续弹幕角度、命中时机或 rollback 重放结果，最终导致 `finalGlobalHash` 不一致。
+
+网络层处理规则：
+
+- `moveX` / `moveY` 这类离散方向仍用 `int8`，因为类型就是 `-1 | 0 | 1`。
+- `shootPressed` / `bombPressed` 等布尔输入打包为 bitset。
+- `aimX` / `aimY` 等连续数值必须作为 decimal string 写入二进制包，并在解码时通过 `fp.fromString(...)` 校验/解析路径。
+- 如果 fixed-point 库提供 `fp.toString(...)`，优先使用 `fp.toString(fp.fromFloat(value))` 作为跨端规范字符串；当前实现用 JS number 的精确 decimal string 作为 payload，并用 `fp.fromString(text)` 校验该字符串能被定点数稳定解析，再恢复原始 number。
+
+```typescript
+// ❌ 错误：会截断精度
+view.setFloat32(offset, input.aimX, true);
+
+// ✅ 正确：字符串进包，长度前缀分隔字段
+const encoded = encoder.encode(input.aimX.toString());
+view.setUint16(offset, encoded.byteLength, true);
+bytes.set(encoded, offset + 2);
+
+// ✅ 解包时走 fixed-point 字符串解析路径
+const text = decoder.decode(encoded);
+fp.fromString(text);
+const aimX = Number(text);
+```
+
+任何新增用户输入中的连续数值字段都必须按这个规则处理。不要为了节省几个字节改成 Float32，也不要把浮点值先乘常数后 `Math.round`，除非 gameplay 类型本身已经定义为整数 tick、整数像素或枚举。
+
+### 7. Hash 不能截断小数
+
+确定性 hash 必须能看到定点小数差异。`Math.trunc(value)` 或 `Math.round(value * 1000)` 会把不同输入折叠成同一个 hash，导致 debug 阶段出现“输入已经不同，但 frame hash 仍然相同”的假象。
+
+当前规则：
+
+- 整数字段走快速 32-bit 写入。
+- 非整数字段先转为 fixed-point 表示字符串，再写入 hash。
+- snapshot/hash 的 `writeFixed(...)` 不做千分位量化，必须写入 fixed-point 表示。
+
+```typescript
+// ❌ 错误：小数被吞掉
+hasher.writeNumber(Math.trunc(value));
+hasher.writeNumber(Math.round(value * 1000));
+
+// ✅ 正确：小数进入 hash
+hasher.writeString(fp.fromFloat(value).toString());
+```
+
+如果两端日志里 `aimX` / `aimY` 有任何差异，权威 frame hash 应尽早体现差异，而不是等到最终 hash 才暴露。
 
 ## 标准模式
 

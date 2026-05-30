@@ -16,6 +16,7 @@ import {
   ensureRapierInit,
   advanceFixedTick,
   runFixedTickExample,
+  stableHash,
   validateLoadout,
   type RaidFrameInput,
 } from "./index";
@@ -161,6 +162,19 @@ describe("@repo/raid-logic", () => {
     const second = runHashSequence();
 
     expect(second).toEqual(first);
+  });
+
+  it("includes fixed-point decimal differences in deterministic hashes", () => {
+    const left = stableHash((hasher) => {
+      hasher.writeNumber(845.3833799776838);
+      hasher.writeNumber(428.8524590163934);
+    });
+    const right = stableHash((hasher) => {
+      hasher.writeNumber(845.3833618164062);
+      hasher.writeNumber(428.8524475097656);
+    });
+
+    expect(right).not.toBe(left);
   });
 
   it("moves fighters using the active character definition in the legacy RaidState path", () => {
