@@ -28,6 +28,17 @@ export interface LoadingData extends BattleSceneData {
 /** Global ConnectionManager singleton, shared across scenes. */
 export const connectionManager = new ConnectionManager();
 
+export function installMenuAudioUnlock(scene: Phaser.Scene): void {
+  const unlock = () => {
+    scene.sound.unlock();
+  };
+
+  scene.input.on("pointerdown", unlock);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    scene.input.off("pointerdown", unlock);
+  });
+}
+
 export interface ResultData {
   readonly winnerName?: string;
   readonly durationSeconds?: number;

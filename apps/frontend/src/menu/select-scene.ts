@@ -22,6 +22,7 @@ import {
 } from "./ui";
 import {
   connectionManager,
+  installMenuAudioUnlock,
   getCardById,
   getCharacterById,
   type SceneKey,
@@ -70,6 +71,7 @@ export class SelectScene extends Phaser.Scene {
   }
 
   create(data: SelectionData): void {
+    installMenuAudioUnlock(this);
     this.mode = data.mode;
     this.playerId = data.playerId;
     this.localConfirmHandler = data.onLocalConfirm;

@@ -9,6 +9,7 @@ import { isProjectileOutOfWorld } from "./bullet";
 export function createLaserProjectile(params: {
   readonly id: number;
   readonly owner: FighterKey;
+  readonly sourceCharacterId?: string;
   readonly textureKey?: string;
   readonly kind?: "laser" | "spark";
   readonly x: number;
@@ -60,6 +61,7 @@ export function createLaserProjectile(params: {
     id: params.id,
     kind: params.kind ?? "laser",
     owner: params.owner,
+    sourceCharacterId: params.sourceCharacterId,
     textureKey: params.textureKey,
     x: laserX,
     y: laserY,

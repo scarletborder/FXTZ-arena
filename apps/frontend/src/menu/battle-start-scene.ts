@@ -4,7 +4,7 @@ import type { PlayerId } from "@repo/types";
 
 import type { ConnectionStatus } from "../network";
 import { uiSettings } from "../store/settings";
-import { connectionManager, type SceneKey, type SelectionData, type TextFieldControl } from "./shared";
+import { connectionManager, installMenuAudioUnlock, type SceneKey, type SelectionData, type TextFieldControl } from "./shared";
 import { createBackButton, createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop, drawPanel } from "./ui";
 
 export class BattleStartScene extends Phaser.Scene {
@@ -25,6 +25,7 @@ export class BattleStartScene extends Phaser.Scene {
   }
 
   create(): void {
+    installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "BATTLE", "VERSUS ENTRY");
     createBackButton(this);
     this.add.text(90, 74, "开始战斗", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "42px", fontStyle: "900", color: "#f6f1e6" });

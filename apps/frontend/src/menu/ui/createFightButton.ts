@@ -62,6 +62,7 @@ export function createFightButton(
   });
   hitArea.on("pointerdown", () => {
     if (enabled) {
+      scene.sound.unlock();
       redraw();
     }
   });

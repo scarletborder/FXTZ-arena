@@ -786,6 +786,7 @@ export class BattleModel {
           params.pausedUntil === undefined ? owner.projectilePauseUntil : 0;
         const spawnParams = {
           ...params,
+          sourceCharacterId: params.sourceCharacterId ?? self.activeCharacter.id,
           frame: spawnFrame,
           pausedUntil: params.pausedUntil ?? spawnFrame,
         };
@@ -805,6 +806,7 @@ export class BattleModel {
           params.pausedUntil === undefined ? owner.projectilePauseUntil : 0;
         const spawnParams = {
           ...params,
+          sourceCharacterId: params.sourceCharacterId ?? self.activeCharacter.id,
           frame: spawnFrame,
           pausedUntil: params.pausedUntil ?? spawnFrame,
         };
@@ -824,6 +826,7 @@ export class BattleModel {
           params.pausedUntil === undefined ? owner.projectilePauseUntil : 0;
         const spawnParams = {
           ...params,
+          sourceCharacterId: params.sourceCharacterId ?? self.activeCharacter.id,
           frame: spawnFrame,
           pausedUntil: params.pausedUntil ?? spawnFrame,
         };
@@ -883,6 +886,7 @@ export class BattleModel {
         const spawnParams = {
           ...params,
           owner: "Neutral" as const,
+          sourceCharacterId: undefined,
           frame: params.frame ?? frame,
         };
         this.pendingSpawns.push(() => {
@@ -893,6 +897,7 @@ export class BattleModel {
         const spawnParams = {
           ...params,
           owner: "Neutral" as const,
+          sourceCharacterId: undefined,
           frame: params.frame ?? frame,
         };
         this.pendingSpawns.push(() => {

@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 
 import { bodyStyle, createFightButton, drawBuildLabel, drawFightingBackdrop, drawTitleBlock } from "./ui";
-import type { SelectionData, SceneKey } from "./shared";
+import { installMenuAudioUnlock, type SelectionData, type SceneKey } from "./shared";
 import { showPublicServerConnectivityDialog } from "./public-server-connectivity-dialog";
 import { setSelfAuthed, uiSettings } from "../store/settings";
 
@@ -13,6 +13,7 @@ export class HomeScene extends Phaser.Scene {
   }
 
   create(): void {
+    installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "FXTZ ARENA", "LOCAL M5 BUILD");
     drawTitleBlock(this, "FXTZ ARENA", "肥乡天则 ~ 角斗少女的虚荣");
 

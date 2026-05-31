@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 
 import { createFightButton, drawFightingBackdrop, drawPanel, bodyStyle, headingStyle } from "./ui";
-import { type ResultData, type ResultPlayerSummary, type SceneKey } from "./shared";
+import { installMenuAudioUnlock, type ResultData, type ResultPlayerSummary, type SceneKey } from "./shared";
 import { uiSettings } from "../store/settings";
 
 export class ResultScene extends Phaser.Scene {
@@ -10,6 +10,7 @@ export class ResultScene extends Phaser.Scene {
   }
 
   create(data: ResultData): void {
+    installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "RESULT", "MATCH END");
     this.add.text(438, 112, "结算", headingStyle(46));
     drawPanel(this, 350, 184, 580, 350, "战斗统计");

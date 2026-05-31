@@ -30,6 +30,14 @@ export function queueBattleAssets(scene: Phaser.Scene): number {
 
   json("bullet-config", assetUrl("assets/bullet/bullet_config.json"));
   json("enemy-config", assetUrl("assets/enemy/enemy_config.json"));
+  if (!scene.cache.json.exists("sfx")) {
+    scene.load.audioSprite(
+      "sfx",
+      assetUrl("assets/audio/th_sfx.json"),
+      [assetUrl("assets/audio/th_sfx.ogg"), assetUrl("assets/audio/th_sfx.m4a")],
+    );
+    queued += 1;
+  }
 
   for (const texture of [
     "bullet1",

@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import type { PlayerId, RoomSummary, ServerMessage } from "@repo/types";
 
 import { createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop } from "./ui";
-import { connectionManager, type SceneKey, type SelectionData, type TextFieldControl } from "./shared";
+import { connectionManager, installMenuAudioUnlock, type SceneKey, type SelectionData, type TextFieldControl } from "./shared";
 import { uiSettings } from "../store/settings";
 
 const PAGE_SIZE = 12;
@@ -26,6 +26,7 @@ export class RoomListScene extends Phaser.Scene {
   }
 
   create(): void {
+    installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "ROOMS", "ONLINE LIST");
     this.add.text(90, 74, "房间列表", {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",

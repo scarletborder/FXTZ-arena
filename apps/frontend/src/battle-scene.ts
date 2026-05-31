@@ -30,13 +30,15 @@ import {
   shouldEnableMobileBattleControls,
 } from "./battle/mobile-controls";
 import { BattleView } from "./battle/view";
-import { resolveResultWinnerName } from "./battle/result";
 import { Depth } from "./utils/depth";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
 import { connectionManager } from "./menu/shared";
+import { installBattleAudioBridge, type BattleAudioBridge } from "./sound";
 import { CombatSyncManager } from "./network/combat";
 import { P2pConnection } from "./network/p2p";
 import { uiSettings } from "./store/settings";
+import { BattleAudioDirector } from "./battle/audio";
+import { resolveResultWinnerName } from "./battle/result";
 
 interface DebugFrameRecord {
   readonly frame: number;
@@ -100,6 +102,8 @@ export class BattleScene extends Phaser.Scene {
   private applyingBattleLayout = false;
   private pendingLayoutRefresh: Phaser.Time.TimerEvent | undefined;
   private rollbackVisualFrames = 0;
+  private readonly audioDirector = new BattleAudioDirector();
+  private battleAudioBridge: BattleAudioBridge | undefined;
 
   constructor() {
     super("battle");
@@ -124,6 +128,7 @@ export class BattleScene extends Phaser.Scene {
       this.previousScaleAutoCenter = undefined;
     }
     this.applyBattleLayout(createBattleLayout(), true);
+    this.battleAudioBridge = installBattleAudioBridge(this);
     this.input.setDefaultCursor("none");
     this.input.mouse?.disableContextMenu();
     this.keybinds = createBattleKeybinds(this);
@@ -438,6 +443,8 @@ export class BattleScene extends Phaser.Scene {
       this.scheduleBattleLayoutRefresh,
       this,
     );
+    this.battleAudioBridge?.dispose();
+    this.battleAudioBridge = undefined;
     this.pendingLayoutRefresh?.remove(false);
     this.pendingLayoutRefresh = undefined;
     if (this.previousScaleAutoCenter !== undefined) {
@@ -504,6 +511,9 @@ export class BattleScene extends Phaser.Scene {
     const outputs = this.runtime.outputQueue.drainAll();
     for (const output of outputs) {
       this.currentOutput = output;
+      this.audioDirector.sync(output.state, {
+        eventTypes: output.events.map((event) => event.type),
+      });
       const logRecord = this.debugLogger.recordFrame(output, {
         enabled: this.shouldRecordDebugLog(),
         localConfirmedFrame:

@@ -30,6 +30,7 @@ export type LaserProjectileParams = Omit<
 >;
 export interface SegmentProjectileParams {
   readonly owner: FighterKey;
+  readonly sourceCharacterId?: string;
   readonly textureKey?: string;
   readonly x1: number;
   readonly y1: number;
@@ -112,6 +113,7 @@ export class ProjectileSystem {
       createLaserProjectile({
         id: this.nextProjectileId++,
         owner: params.owner,
+        sourceCharacterId: params.sourceCharacterId,
         textureKey: params.textureKey,
         x: (params.x1 + params.x2) / 2,
         y: (params.y1 + params.y2) / 2,

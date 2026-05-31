@@ -12,7 +12,7 @@ import {
   bodyStyle,
   headingStyle,
 } from "./ui";
-import { connectionManager, type FightButton, type SceneKey, type TextFieldControl } from "./shared";
+import { connectionManager, installMenuAudioUnlock, type FightButton, type SceneKey, type TextFieldControl } from "./shared";
 import {
   setDebug,
   setMusicVolume,
@@ -69,6 +69,7 @@ export class SettingsScene extends Phaser.Scene {
   }
 
   create(): void {
+    installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "OPTIONS", "SYSTEM");
     createBackButton(this);
     this.add.text(90, 74, "设置", headingStyle(42));

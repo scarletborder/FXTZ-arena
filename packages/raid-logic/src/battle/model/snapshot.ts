@@ -262,6 +262,7 @@ function serializeProjectile(
     id: projectile.id,
     kind: projectile.kind,
     owner: projectile.owner,
+    sourceCharacterId: projectile.sourceCharacterId,
     textureKey: projectile.textureKey,
     x: projectile.x,
     y: projectile.y,
