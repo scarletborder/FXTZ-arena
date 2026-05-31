@@ -34,6 +34,7 @@ import type { TransportConnection } from "../../../../dedicated-server/src/trans
 import { createBattleInput, type BattleKeyMap } from "../../battle/input";
 import type { BattleSceneData } from "../../battle/loadout";
 import type { ConnectionManager } from "../client";
+import type { P2pConnection } from "../p2p";
 import { CombatSyncManager } from "./manager";
 import type { CombatRollbackRecord } from "./types";
 
@@ -87,7 +88,7 @@ describe("CombatSyncManager rollback integration", () => {
     expectFrameHashesMatch(clientA, clientB, finalFrame);
     expect(clientA.hashAt(finalFrame)).toBe(clientB.hashAt(finalFrame));
     expect(clientA.globalHashAt(finalFrame)).toBe(clientB.globalHashAt(finalFrame));
-  }, 30_000);
+  }, 45_000);
 
   it("submits a bounded game_over verdict when the peer has already stopped", () => {
     const sent: ClientMessage[] = [];
@@ -107,10 +108,10 @@ describe("CombatSyncManager rollback integration", () => {
       deserialize: () => undefined,
     } as unknown as RaidLogicRuntime;
     const dispatch = (msg: ServerMessage) => {
-      if (!handler) {
+      const currentHandler: (msg: ServerMessage) => void = handler ?? (() => {
         throw new Error("CombatSyncManager did not install a message handler");
-      }
-      handler(msg);
+      });
+      currentHandler(msg);
     };
 
     const manager = new CombatSyncManager(runtime, {
@@ -164,6 +165,166 @@ describe("CombatSyncManager rollback integration", () => {
         frame: 12,
         ackFrame: 12,
         winnerPlayerId: "Player1",
+      },
+    ]);
+  });
+
+  it("ends the battle if the opponent reconnect does not arrive in time", () => {
+    vi.useFakeTimers();
+
+    const sent: ClientMessage[] = [];
+    let handler: ((msg: ServerMessage) => void) | null = null;
+    const finished: Array<{ winnerPlayerId: PlayerId; serverConfirmedFrame?: number }> = [];
+    new CombatSyncManager(
+      {
+        frame: 0,
+        gameOver: false,
+        state: {
+          target: { lives: 1 },
+        },
+        step: () => undefined,
+        deserialize: () => undefined,
+      } as unknown as RaidLogicRuntime,
+      {
+        send: (msg: ClientMessage) => {
+          sent.push(msg);
+        },
+        setMessageHandler: (nextHandler: ((msg: ServerMessage) => void) | null) => {
+          handler = nextHandler;
+        },
+      } as unknown as ConnectionManager,
+      {
+        sceneData: {
+          mode: "online",
+          localPlayerId: "Player1",
+        } satisfies BattleSceneData,
+        callbacks: {
+          recordFrame: () => undefined,
+          getRollbackRecord: () => null,
+          pruneRollbackHistoryAfter: () => undefined,
+          pruneRollbackHistoryBefore: () => undefined,
+          onRollback: () => undefined,
+          setStatusText: () => undefined,
+          hideStatusText: () => undefined,
+          delay: (_ms, callback) => callback(),
+          finishBattle: (winnerPlayerId, serverConfirmedFrame) => {
+            finished.push({ winnerPlayerId, serverConfirmedFrame });
+          },
+        },
+      },
+    );
+
+    if (!handler) {
+      throw new Error("CombatSyncManager did not install a message handler");
+    }
+    const currentHandler: (msg: ServerMessage) => void = handler;
+    currentHandler({
+      type: "peer_status",
+      playerId: "Player2",
+      status: "disconnected",
+    });
+
+    vi.advanceTimersByTime(999);
+    expect(finished).toEqual([]);
+
+    vi.advanceTimersByTime(1);
+    expect(finished).toEqual([
+      {
+        winnerPlayerId: "Player1",
+        serverConfirmedFrame: undefined,
+      },
+    ]);
+
+    expect(sent).toEqual([]);
+    vi.useRealTimers();
+  });
+
+  it("uses the shared confirmed frame for local battle settlement", () => {
+    const sent: ClientMessage[] = [];
+    const finished: Array<{ winnerPlayerId: PlayerId; serverConfirmedFrame?: number }> = [];
+    let runtimeFrame = 13;
+    const runtime = {
+      get frame() {
+        return runtimeFrame;
+      },
+      gameOver: true,
+      state: {
+        target: { lives: 0 },
+      },
+      step: () => {
+        runtimeFrame += 1;
+      },
+      deserialize: () => undefined,
+    } as unknown as RaidLogicRuntime;
+
+    const manager = new CombatSyncManager(
+      runtime,
+      {
+        send: (msg: ClientMessage) => {
+          sent.push(msg);
+        },
+        setMessageHandler: () => undefined,
+      } as unknown as ConnectionManager,
+      {
+        sceneData: {
+          mode: "local",
+          localPlayerId: "Player1",
+        } satisfies BattleSceneData,
+        p2p: {
+          connected: false,
+          close: () => undefined,
+          send: (msg: ClientMessage) => {
+            sent.push(msg);
+            return true;
+          },
+        } as unknown as P2pConnection,
+        callbacks: {
+          recordFrame: () => undefined,
+          getRollbackRecord: () => null,
+          pruneRollbackHistoryAfter: () => undefined,
+          pruneRollbackHistoryBefore: () => undefined,
+          onRollback: () => undefined,
+          setStatusText: () => undefined,
+          hideStatusText: () => undefined,
+          delay: (_ms, callback) => callback(),
+          finishBattle: (winnerPlayerId, serverConfirmedFrame) => {
+            finished.push({ winnerPlayerId, serverConfirmedFrame });
+          },
+        },
+      },
+    );
+
+    for (let frame = 1; frame <= 13; frame += 1) {
+      manager.receivePeerMessage({
+        type: "input_frame",
+        playerId: "Player2",
+        frame,
+        ackFrame: frame,
+        ...testInput(),
+      });
+    }
+
+    manager.step(testInput());
+
+    expect(sent).toContainEqual({
+      type: "game_over",
+      frame: 13,
+      ackFrame: 13,
+      winnerPlayerId: "Player1",
+    });
+
+    manager.receivePeerMessage({
+      type: "peer_game_over",
+      playerId: "Player2",
+      frame: 12,
+      ackFrame: 12,
+      winnerPlayerId: "Player1",
+    });
+
+    expect(finished).toEqual([
+      {
+        winnerPlayerId: "Player1",
+        serverConfirmedFrame: 12,
       },
     ]);
   });

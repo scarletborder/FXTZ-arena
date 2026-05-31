@@ -5,7 +5,7 @@ import type { P2pConnection } from "../network/p2p";
 export type { BattleLoadouts, FighterLoadout } from "@repo/raid-logic";
 
 export interface BattleSceneData {
-  readonly mode?: "ai" | "training" | "online";
+  readonly mode?: "ai" | "training" | "online" | "local";
   readonly playerName?: string;
   readonly opponentName?: string;
   readonly returnScene?: string;

@@ -35,6 +35,7 @@ const COST_LIMIT = 10;
 export class SelectScene extends Phaser.Scene {
   private mode: SelectionData["mode"] = "ai";
   private playerId: string | undefined;
+  private localConfirmHandler: SelectionData["onLocalConfirm"] | undefined;
   private primaryId: CharacterId | undefined;
   private alternateId: CharacterId | undefined;
   private roleFilter: CharacterDefinition["roleClass"] | "all" = "all";
@@ -71,6 +72,7 @@ export class SelectScene extends Phaser.Scene {
   create(data: SelectionData): void {
     this.mode = data.mode;
     this.playerId = data.playerId;
+    this.localConfirmHandler = data.onLocalConfirm;
     this.primaryId = undefined;
     this.alternateId = undefined;
     this.leavingOnlineRoom = false;
@@ -80,7 +82,9 @@ export class SelectScene extends Phaser.Scene {
       ? "ONLINE VERSUS"
       : this.mode === "training"
         ? "TRAINING"
-        : "CPU VERSUS";
+        : this.mode === "local"
+          ? "LOCAL LAN"
+          : "CPU VERSUS";
     drawFightingBackdrop(this, "SELECT", subtitle);
 
     // Online mode: custom back button sends leave_room
@@ -90,7 +94,7 @@ export class SelectScene extends Phaser.Scene {
       //   this.scene.start("battle-start");
       // }, { accent: 0x5c7185 });
     } else {
-      createBackButton(this);
+      createBackButton(this, data.returnScene ?? "home");
     }
 
     this.layer = this.add.container(0, 0);
@@ -215,7 +219,7 @@ export class SelectScene extends Phaser.Scene {
     this.addCardRoster();
     this.addCostDisplay();
 
-    const label = this.mode === "online" ? "确认配装" : "确认出战";
+    const label = this.mode === "online" || this.mode === "local" ? "确认配装" : "确认出战";
     const confirmButton = createFightButton(this, 1036, 680, 250, 58, label, () => this.confirm(), {
       enabled: this.isValid(),
       accent: 0xe33d44,
@@ -746,6 +750,20 @@ export class SelectScene extends Phaser.Scene {
 
     if (this.mode === "online") {
       this.sendOnlineReady();
+      return;
+    }
+
+    if (this.mode === "local") {
+      const activeCardId = [...this.selectedCards].find((id) => getCardById(id).kind === "active");
+      this.localConfirmHandler?.({
+        primaryCharacterId: this.primaryId,
+        alternateCharacterId: this.alternateId,
+        abilityCardIds: [...this.selectedCards],
+        activeAbilityCardId: activeCardId,
+      });
+      this.confirmButton.setEnabled(false);
+      this.confirmButton.setLabel("等待对手…");
+      this.statusText.setText("已确认，等待对手…").setColor("#ffcf6e").setVisible(true);
       return;
     }
 

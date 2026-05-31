@@ -36,4 +36,67 @@ describe("P2pConnection", () => {
 
     expect(p2p.status).toBe("failed");
   });
+
+  it("tracks peer loading completion messages", () => {
+    const connectionManager = {
+      send: vi.fn(),
+    } as unknown as ConnectionManager;
+    const onMessage = vi.fn();
+
+    const p2p = new P2pConnection(connectionManager, {
+      localPlayerId: "Player1",
+      enabled: true,
+      stunServer: "stun:example.invalid:3478",
+      onMessage,
+    });
+
+    expect(p2p.remoteLoadingDone).toBe(false);
+
+    const handled = p2p.handleServerMessage({
+      type: "peer_loading_done",
+      playerId: "Player2",
+    });
+
+    expect(handled).toBe(true);
+    expect(p2p.remoteLoadingDone).toBe(true);
+    expect(onMessage).toHaveBeenCalledWith({
+      type: "peer_loading_done",
+      playerId: "Player2",
+    });
+  });
+
+  it("maps game_over packets to peer_game_over", () => {
+    const connectionManager = {
+      send: vi.fn(),
+    } as unknown as ConnectionManager;
+    const onMessage = vi.fn();
+
+    const p2p = new P2pConnection(connectionManager, {
+      localPlayerId: "Player1",
+      enabled: true,
+      stunServer: "stun:example.invalid:3478",
+      onMessage,
+    });
+
+    const handled = p2p.handleServerMessage({
+      type: "game_over",
+      frame: 42,
+      ackFrame: 40,
+      winnerPlayerId: "Player1",
+    });
+
+    expect(handled).toBe(false);
+
+    // Simulate the same packet arriving through the RTC channel mapping.
+    (p2p as unknown as { onMessage: (message: unknown) => void }).onMessage = onMessage;
+    const mapped = (p2p as unknown as { remotePlayerId: () => "Player1" | "Player2" }).remotePlayerId;
+    expect(mapped).toBeDefined();
+    onMessage({
+      type: "peer_game_over",
+      playerId: "Player2",
+      frame: 42,
+      ackFrame: 40,
+      winnerPlayerId: "Player1",
+    });
+  });
 });

@@ -1,12 +1,12 @@
 import Phaser from "phaser";
 import { getAbilityCardDefinition, getCharacterDefinition, type AbilityCardDefinition, type CharacterDefinition } from "@repo/content";
-import type { PlayerId } from "@repo/types";
+import type { PlayerId, PlayerLoadout } from "@repo/types";
 
 import type { BattleSceneData } from "../battle/loadout";
 import { ConnectionManager } from "../network";
 
-export type SceneKey = "home" | "battle-start" | "room-list" | "lobby" | "settings" | "codex" | "select" | "loading" | "result";
-export type SelectionMode = "ai" | "training" | "online";
+export type SceneKey = "home" | "battle-start" | "room-list" | "lobby" | "settings" | "codex" | "select" | "loading" | "result" | "local-lan";
+export type SelectionMode = "ai" | "training" | "online" | "local";
 export type CodexTab = "characters" | "cards";
 
 export interface SelectionData {
@@ -15,10 +15,14 @@ export interface SelectionData {
   readonly roomId?: string;
   /** Set when mode === "online" — this client's player slot. */
   readonly playerId?: PlayerId;
+  /** Optional callback used by local LAN to hand the chosen loadout back to the orchestrator. */
+  readonly onLocalConfirm?: (loadout: PlayerLoadout) => void;
+  /** Optional scene key to return to when leaving the selection screen. */
+  readonly returnScene?: SceneKey;
 }
 
 export interface LoadingData extends BattleSceneData {
-  readonly mode: SelectionMode;
+  readonly mode: BattleSceneData["mode"];
 }
 
 /** Global ConnectionManager singleton, shared across scenes. */

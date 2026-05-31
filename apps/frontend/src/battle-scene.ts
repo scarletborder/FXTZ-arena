@@ -130,7 +130,11 @@ export class BattleScene extends Phaser.Scene {
     this.runtime =
       data.runtime ??
       createRaidLogicRuntime({
-        mode: data.mode ?? "training",
+        mode: data.mode === "ai"
+          ? "ai"
+          : data.mode === "online" || data.mode === "local"
+            ? "online"
+            : "training",
         loadouts: data.loadouts,
         mapId: data.mapId ?? data.battleConfig?.mapId,
       });
@@ -141,11 +145,15 @@ export class BattleScene extends Phaser.Scene {
         this.logicReady = true;
       });
     }
-    this.view = new BattleView(this, data.mode ?? "training");
+    if (data.mode === "online" || data.mode === "local") {
+      this.view = new BattleView(this, "online");
+    } else {
+      this.view = new BattleView(this, data.mode ?? "training");
+    }
     this.lastInput = createBattleInput(this, this.keys, this.mobileControls);
     this.autoReloadObservedShotsFired = this.localFighterState().shotsFired;
     this.recordDebugFrame();
-    this.setupOnlineBattle(data);
+    this.setupNetworkBattle(data);
     ConsoleCmd.install(this);
     if (data.debug) {
       this.setDebugPhysicsEnabled(true);
@@ -181,7 +189,7 @@ export class BattleScene extends Phaser.Scene {
           readonly pointerX: number;
           readonly pointerY: number;
         };
-        if (this.sceneData.mode === "online" && this.logicReady) {
+        if ((this.sceneData.mode === "online" || this.sceneData.mode === "local") && this.logicReady) {
           this.combatSync?.step(this.lastInput);
         } else if (
           this.runtime.gameOver &&
@@ -218,6 +226,7 @@ export class BattleScene extends Phaser.Scene {
     }
     if (
       this.sceneData.mode !== "online" &&
+      this.sceneData.mode !== "local" &&
       this.runtime.gameOver &&
       !this.resultScheduled
     ) {
@@ -294,7 +303,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   spawnDebugPoint(size: DebugPointSize): boolean {
-    if (this.sceneData.mode === "online") {
+    if (this.sceneData.mode === "online" || this.sceneData.mode === "local") {
       return false;
     }
     const pointer = getBattlePointerWorld(this, this.mobileControls);
@@ -308,7 +317,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   setDebugPoint(pointCount: number): boolean {
-    if (this.sceneData.mode === "online") {
+    if (this.sceneData.mode === "online" || this.sceneData.mode === "local") {
       return false;
     }
     this.runtime.debugSetPoint(pointCount);
@@ -343,8 +352,9 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
-  private setupOnlineBattle(data: BattleSceneData): void {
-    if (data.mode !== "online") return;
+  private setupNetworkBattle(data: BattleSceneData): void {
+    if (data.mode !== "online" && data.mode !== "local") return;
+    const isLocalBattle = data.mode === "local";
     this.onlineStatusText = this.add
       .text(24, 24, "", {
         fontFamily: "Arial",
@@ -357,9 +367,10 @@ export class BattleScene extends Phaser.Scene {
       .setDepth(Depth.OnlineStatus)
       .setVisible(false);
 
-    const p2p = data.p2p ?? new P2pConnection(connectionManager, {
+    const battleConnectionManager = data.mode === "local" ? createLocalBattleConnectionManager() : connectionManager;
+    const p2p = data.p2p ?? new P2pConnection(battleConnectionManager, {
       localPlayerId: data.localPlayerId ?? "Player1",
-      enabled: data.battleConfig?.p2pEnabled === true,
+      enabled: data.mode === "local" ? true : data.battleConfig?.p2pEnabled === true,
       stunServer: uiSettings.stunServer,
       onStatus: () => undefined,
       onMessage: () => undefined,
@@ -367,18 +378,18 @@ export class BattleScene extends Phaser.Scene {
 
     p2p.setStatusHandler((status) => {
       if (status === "connecting") {
-        this.onlineStatusText?.setText("正在尝试 P2P 连接…").setVisible(true);
+        this.onlineStatusText?.setText(isLocalBattle ? "正在建立局域网 P2P 连接…" : "正在尝试 P2P 连接…").setVisible(true);
       } else if (status === "connected") {
-        this.onlineStatusText?.setText("P2P 已连接").setVisible(true);
+        this.onlineStatusText?.setText(isLocalBattle ? "局域网 P2P 已连接" : "P2P 已连接").setVisible(true);
         this.time.delayedCall(700, () => this.onlineStatusText?.setVisible(false));
       } else if (status === "failed") {
-        this.onlineStatusText?.setText("P2P 不可用，已回落到专用服务器").setVisible(true);
+        this.onlineStatusText?.setText(isLocalBattle ? "局域网 P2P 连接失败" : "P2P 不可用，已回落到专用服务器").setVisible(true);
         this.time.delayedCall(1100, () => this.onlineStatusText?.setVisible(false));
       }
     });
     p2p.setMessageHandler((message) => this.combatSync?.receivePeerMessage(message));
 
-    this.combatSync = new CombatSyncManager(this.runtime, connectionManager, {
+    this.combatSync = new CombatSyncManager(this.runtime, battleConnectionManager, {
       sceneData: data,
       p2p,
       callbacks: {
@@ -440,7 +451,7 @@ export class BattleScene extends Phaser.Scene {
     this.input?.setDefaultCursor("auto");
     this.keybinds?.destroy();
     ConsoleCmd.uninstall(this);
-    if (this.sceneData.mode === "online") {
+    if (this.sceneData.mode === "online" || this.sceneData.mode === "local") {
       this.combatSync?.destroy();
     }
     this.combatSync = undefined;
@@ -568,7 +579,7 @@ export class BattleScene extends Phaser.Scene {
 
   private createResultData(winnerPlayerId: PlayerId | null) {
     const localPlayerName = this.sceneData.playerName ?? uiSettings.username ?? "Player";
-    const opponentName = this.sceneData.opponentName ?? (this.sceneData.mode === "online" ? "Opponent" : "CPU");
+    const opponentName = this.sceneData.opponentName ?? (this.sceneData.mode === "online" || this.sceneData.mode === "local" ? "Opponent" : "CPU");
     const localFighterKey = this.combatSync?.localFighterKey() ?? "Player1";
     const localFighterState = localFighterKey === "Player1" ? this.currentOutput.state.player : this.currentOutput.state.target;
     const opponentFighterState = localFighterKey === "Player1" ? this.currentOutput.state.target : this.currentOutput.state.player;
@@ -614,9 +625,9 @@ export class BattleScene extends Phaser.Scene {
     const localConfirmedFrame =
       this.combatSync?.getConfirmedFrame() ?? serverConfirmedFrame;
     const targetFrame =
-      this.sceneData.mode === "online" ? serverConfirmedFrame : localConfirmedFrame;
+      this.sceneData.mode === "online" || this.sceneData.mode === "local" ? serverConfirmedFrame : localConfirmedFrame;
     const authoritativeFrame =
-      this.sceneData.mode === "online"
+      this.sceneData.mode === "online" || this.sceneData.mode === "local"
         ? Math.min(targetFrame, localConfirmedFrame, serverConfirmedFrame)
         : targetFrame;
     const hashComplete =
@@ -685,7 +696,7 @@ export class BattleScene extends Phaser.Scene {
     const localConfirmedFrame =
       this.combatSync?.getConfirmedFrame() ?? targetFrame;
     const authoritativeFrame =
-      this.sceneData.mode === "online"
+      this.sceneData.mode === "online" || this.sceneData.mode === "local"
         ? Math.min(targetFrame, localConfirmedFrame)
         : targetFrame;
     return this.writeDebugHashLogFile({
@@ -730,6 +741,13 @@ export class BattleScene extends Phaser.Scene {
       },
     });
   }
+}
+
+function createLocalBattleConnectionManager(): typeof connectionManager {
+  return {
+    send: () => undefined,
+    setMessageHandler: () => undefined,
+  } as unknown as typeof connectionManager;
 }
 
 function createResultPlayerSummary(name: string, fighterState: { shotsFired: number; bombUses: number; hitsTaken: number; }) {

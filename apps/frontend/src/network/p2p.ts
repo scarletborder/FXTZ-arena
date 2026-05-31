@@ -23,6 +23,7 @@ export class P2pConnection {
   private remoteIntent: boolean | null = null;
   private started = false;
   private readySent = false;
+  private peerLoadingDone = false;
   private currentStatus: P2pStatus = "idle";
   private terminalFailed = false;
   private pendingCandidates: RTCIceCandidateInit[] = [];
@@ -42,6 +43,10 @@ export class P2pConnection {
 
   get connected(): boolean {
     return this.currentStatus === "connected" && this.channel?.readyState === "open";
+  }
+
+  get remoteLoadingDone(): boolean {
+    return this.peerLoadingDone;
   }
 
   get status(): P2pStatus {
@@ -82,7 +87,7 @@ export class P2pConnection {
 
   handleServerMessage(message: ServerMessage): boolean {
     if (this.terminalFailed) {
-      return message.type === "peer_p2p_intent" || message.type === "peer_p2p_signal" || message.type === "peer_p2p_ready";
+      return message.type === "peer_p2p_intent" || message.type === "peer_p2p_signal" || message.type === "peer_p2p_ready" || message.type === "peer_loading_done" || message.type === "peer_game_over";
     }
 
     switch (message.type) {
@@ -101,6 +106,15 @@ export class P2pConnection {
         return true;
       case "peer_p2p_ready":
         return message.playerId !== this.options.localPlayerId;
+      case "peer_loading_done":
+        if (message.playerId === this.options.localPlayerId) return true;
+        this.peerLoadingDone = true;
+        this.onMessage(message);
+        return true;
+      case "peer_game_over":
+        if (message.playerId === this.options.localPlayerId) return true;
+        this.onMessage(message);
+        return true;
       default:
         return false;
     }
@@ -129,6 +143,7 @@ export class P2pConnection {
     this.channel = null;
     this.peer = null;
     this.pendingCandidates = [];
+    this.peerLoadingDone = false;
     this.setStatus(this.options.enabled ? "idle" : "disabled");
   }
 
@@ -201,7 +216,11 @@ export class P2pConnection {
       const decoded = decodeProtocolMessage(event.data);
       if (decoded && typeof decoded === "object" && "type" in decoded) {
         const message = decoded as ClientMessage | ServerMessage;
-        this.onMessage(peerMessageToServerMessage(message, this.remotePlayerId()));
+        const serverMessage = peerMessageToServerMessage(message, this.remotePlayerId());
+        if (serverMessage.type === "peer_loading_done" && serverMessage.playerId !== this.options.localPlayerId) {
+          this.peerLoadingDone = true;
+        }
+        this.onMessage(serverMessage);
       }
     };
   }
@@ -300,6 +319,7 @@ export class P2pConnection {
     this.channel = null;
     this.peer = null;
     this.pendingCandidates = [];
+    this.peerLoadingDone = false;
     this.setStatus(this.options.enabled ? "failed" : "disabled");
   }
 
@@ -328,6 +348,40 @@ function peerMessageToServerMessage(message: ClientMessage | ServerMessage, remo
     return {
       ...message,
       playerId: remotePlayerId,
+    };
+  }
+  if ("frame" in message && "ackFrame" in message && "winnerPlayerId" in message && !("playerId" in message)) {
+    const gameOver = message as {
+      readonly frame: number;
+      readonly ackFrame: number;
+      readonly winnerPlayerId: PlayerId;
+    };
+    return {
+      type: "peer_game_over",
+      playerId: remotePlayerId,
+      frame: gameOver.frame,
+      ackFrame: gameOver.ackFrame,
+      winnerPlayerId: gameOver.winnerPlayerId,
+    };
+  }
+  if (message.type === "loading_done") {
+    return {
+      type: "peer_loading_done",
+      playerId: remotePlayerId,
+    };
+  }
+  if ("frame" in message && "ackFrame" in message && "winnerPlayerId" in message && !("playerId" in message)) {
+    const gameOver = message as {
+      readonly frame: number;
+      readonly ackFrame: number;
+      readonly winnerPlayerId: PlayerId;
+    };
+    return {
+      type: "peer_game_over",
+      playerId: remotePlayerId,
+      frame: gameOver.frame,
+      ackFrame: gameOver.ackFrame,
+      winnerPlayerId: gameOver.winnerPlayerId,
     };
   }
   return message as ServerMessage;

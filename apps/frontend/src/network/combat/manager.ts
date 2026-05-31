@@ -21,11 +21,16 @@ export class CombatSyncManager {
   private lastPeerAckFrame = 0;
   private lastReportedConfirmedInputFrame = 0;
   private gameOverVerdictSent = false;
+  private localGameOverVerdict:
+    | { readonly frame: number; readonly ackFrame: number; readonly winnerPlayerId: PlayerId }
+    | undefined;
   private peerGameOverVerdict:
     | { readonly frame: number; readonly ackFrame: number; readonly winnerPlayerId: PlayerId }
     | undefined;
   private finishedByServer = false;
   private paused = false;
+  private localBattleFinished = false;
+  private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly runtime: RaidLogicRuntime,
@@ -40,6 +45,7 @@ export class CombatSyncManager {
   }
 
   destroy(): void {
+    this.clearReconnectTimeout();
     this.connectionManager.setMessageHandler(null);
     this.options.p2p?.close();
   }
@@ -108,17 +114,7 @@ export class CombatSyncManager {
     }
 
     if (msg.type === "peer_game_over" && msg.playerId === this.remotePlayerId) {
-      this.peerGameOverVerdict = {
-        frame: msg.frame,
-        ackFrame: msg.ackFrame,
-        winnerPlayerId: msg.winnerPlayerId,
-      };
-      this.lastPeerAckFrame = Math.max(this.lastPeerAckFrame, msg.ackFrame);
-      this.pruneOnlineHistory();
-      if (!this.gameOverVerdictSent) {
-        this.options.callbacks.setStatusText("对手已提交终局裁决，发送本地确认…");
-      }
-      this.trySendGameOverVerdict();
+      this.receivePeerGameOver(msg);
       return;
     }
 
@@ -126,7 +122,9 @@ export class CombatSyncManager {
       if (msg.status === "disconnected") {
         this.paused = true;
         this.options.callbacks.setStatusText("对手断线，等待重连…");
+        this.startReconnectTimeout();
       } else if (msg.status === "reconnected") {
+        this.clearReconnectTimeout();
         this.paused = false;
         this.options.callbacks.setStatusText("对手已重连");
         this.options.callbacks.delay(700, () => this.options.callbacks.hideStatusText());
@@ -141,10 +139,48 @@ export class CombatSyncManager {
     }
   }
 
+  private startReconnectTimeout(): void {
+    this.clearReconnectTimeout();
+    this.reconnectTimeout = setTimeout(() => {
+      this.reconnectTimeout = null;
+      if (this.finishedByServer || !this.paused) {
+        return;
+      }
+      this.options.callbacks.setStatusText("对手重连超时，战斗结束");
+      this.options.callbacks.delay(300, () => this.options.callbacks.finishBattle(this.localPlayerId));
+    }, 1_000);
+  }
+
+  private clearReconnectTimeout(): void {
+    if (this.reconnectTimeout !== null) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+  }
+
   receivePeerMessage(msg: ServerMessage): void {
     if (msg.type === "input_frame") {
       this.receiveInputFrameMessage(msg);
+      return;
     }
+
+    if (msg.type === "peer_game_over" && msg.playerId === this.remotePlayerId) {
+      this.receivePeerGameOver(msg);
+    }
+  }
+
+  private receivePeerGameOver(msg: Extract<ServerMessage, { type: "peer_game_over" }>): void {
+    this.peerGameOverVerdict = {
+      frame: msg.frame,
+      ackFrame: msg.ackFrame,
+      winnerPlayerId: msg.winnerPlayerId,
+    };
+    this.lastPeerAckFrame = Math.max(this.lastPeerAckFrame, msg.ackFrame);
+    this.pruneOnlineHistory();
+    if (!this.gameOverVerdictSent) {
+      this.options.callbacks.setStatusText("对手已提交终局裁决，发送本地确认…");
+    }
+    this.trySendGameOverVerdict();
   }
 
   private receiveInputFrameMessage(msg: Extract<ServerMessage, { type: "input_frame" }>): void {
@@ -248,6 +284,9 @@ export class CombatSyncManager {
 
   private trySendGameOverVerdict(): void {
     if (this.gameOverVerdictSent) {
+      if (this.sceneIsLocalBattle() && this.peerGameOverVerdict && !this.localBattleFinished) {
+        this.finishLocalBattle();
+      }
       return;
     }
 
@@ -257,21 +296,55 @@ export class CombatSyncManager {
       return;
     }
 
-    const frame = localGameOver
-      ? this.runtime.frame
-      : Math.min(this.runtime.frame, this.lastReceivedRemoteFrame, peerVerdict?.frame ?? this.runtime.frame);
-    const ackFrame = Math.min(this.lastReceivedRemoteFrame, frame);
-    const winnerPlayerId = localGameOver ? this.winnerPlayerId() : peerVerdict!.winnerPlayerId;
+    const localVerdict = this.createLocalGameOverVerdict(peerVerdict);
+    if (!localVerdict) {
+      return;
+    }
+    this.localGameOverVerdict = localVerdict;
 
     this.gameOverVerdictSent = true;
     this.paused = true;
     this.options.callbacks.setStatusText("已提交终局裁决，等待对手确认…");
-    this.connectionManager.send({
+    const verdict: ClientMessage = {
       type: "game_over",
-      frame,
-      ackFrame,
-      winnerPlayerId,
-    } satisfies ClientMessage);
+      frame: localVerdict.frame,
+      ackFrame: localVerdict.ackFrame,
+      winnerPlayerId: localVerdict.winnerPlayerId,
+    };
+
+    if (this.sceneIsLocalBattle()) {
+      this.options.p2p?.send(verdict);
+    } else {
+      this.connectionManager.send(verdict);
+    }
+
+    if (this.sceneIsLocalBattle() && this.peerGameOverVerdict) {
+      this.finishLocalBattle();
+    }
+  }
+
+  private finishLocalBattle(): void {
+    if (this.localBattleFinished || !this.peerGameOverVerdict) {
+      return;
+    }
+    const localVerdict = this.localGameOverVerdict ?? this.createLocalGameOverVerdict(this.peerGameOverVerdict);
+    if (!localVerdict) {
+      return;
+    }
+    this.localBattleFinished = true;
+    const winnerPlayerId = localVerdict.winnerPlayerId;
+    const confirmedFrame = Math.min(
+      localVerdict.frame,
+      localVerdict.ackFrame,
+      this.peerGameOverVerdict.frame,
+      this.peerGameOverVerdict.ackFrame,
+    );
+    this.options.callbacks.setStatusText("双方裁决完成，进入结算…");
+    this.options.callbacks.delay(450, () => this.options.callbacks.finishBattle(winnerPlayerId, confirmedFrame));
+  }
+
+  private sceneIsLocalBattle(): boolean {
+    return this.options.sceneData.mode === "local";
   }
 
   private winnerPlayerId(): PlayerId {
@@ -280,6 +353,21 @@ export class CombatSyncManager {
 
   private storeInput(playerId: PlayerId, frame: number, input: BattleInputState): void {
     this.inputs.get(playerId)?.set(frame, input);
+  }
+
+  private createLocalGameOverVerdict(
+    peerVerdict: { readonly frame: number; readonly ackFrame: number; readonly winnerPlayerId: PlayerId } | undefined,
+  ): { readonly frame: number; readonly ackFrame: number; readonly winnerPlayerId: PlayerId } | null {
+    if (!this.runtime.gameOver && !peerVerdict) {
+      return null;
+    }
+
+    const frame = this.runtime.gameOver
+      ? this.runtime.frame
+      : Math.min(this.runtime.frame, this.lastReceivedRemoteFrame, peerVerdict?.frame ?? this.runtime.frame);
+    const ackFrame = Math.min(this.lastReceivedRemoteFrame, frame);
+    const winnerPlayerId = this.runtime.gameOver ? this.winnerPlayerId() : peerVerdict!.winnerPlayerId;
+    return { frame, ackFrame, winnerPlayerId };
   }
 
   private createRedundantInputs(currentFrame: number): NonNullable<InputFrameMessage["UnreliableLinkExtra"]>["redundantInputs"] {

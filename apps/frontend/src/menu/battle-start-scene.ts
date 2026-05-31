@@ -38,8 +38,10 @@ export class BattleStartScene extends Phaser.Scene {
     this.quickMatchBtn = createFightButton(this, 332, 272, 330, 70, "快速匹配", () => this.onQuickMatch(), { enabled: false, subLabel: "匹配一个公开房间" });
     this.createRoomBtn = createFightButton(this, 332, 374, 330, 70, "创建房间", () => this.onCreateRoom(), { enabled: false, subLabel: "设置后等待对手加入" });
     this.roomListBtn = createFightButton(this, 332, 476, 330, 70, "房间列表", () => this.scene.start("room-list"), { enabled: false, subLabel: "浏览公开和加密房间" });
-    createFightButton(this, 946, 318, 360, 86, "人机对战", () => this.scene.start("select", { mode: "ai" } satisfies SelectionData), { subLabel: "选择配装后开战", accent: 0xe33d44 });
-    createFightButton(this, 946, 446, 360, 86, "靶场", () => this.scene.start("select", { mode: "training" } satisfies SelectionData), { subLabel: "无 cost 上限", accent: 0x26c6da });
+
+    createFightButton(this, 946, 298, 360, 86, "人机对战", () => this.scene.start("select", { mode: "ai" } satisfies SelectionData), { subLabel: "选择配装后开战", accent: 0xe33d44 });
+    createFightButton(this, 946, 416, 360, 86, "靶场", () => this.scene.start("select", { mode: "training" } satisfies SelectionData), { subLabel: "无 cost 上限", accent: 0x26c6da });
+    createFightButton(this, 946, 534, 360, 86, "本地局域网游玩", () => this.scene.start("local-lan"), { subLabel: "发现局域网玩家", accent: 0xffcf6e });
 
     const updateConnectionState = (s: ConnectionStatus) => {
       const connected = s === "connected";

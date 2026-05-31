@@ -248,6 +248,11 @@ export interface PeerP2pReadyMessage {
   playerId: PlayerId;
 }
 
+export interface PeerLoadingDoneMessage {
+  type: "peer_loading_done";
+  playerId: PlayerId;
+}
+
 export interface PeerStatusMessage {
   type: "peer_status";
   playerId: PlayerId;
@@ -294,6 +299,7 @@ export type ServerMessage =
   | PeerP2pIntentMessage
   | PeerP2pSignalMessage
   | PeerP2pReadyMessage
+  | PeerLoadingDoneMessage
   | InputFrameRelayMessage
   | PeerStatusMessage
   | PeerGameOverMessage
