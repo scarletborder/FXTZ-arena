@@ -30,6 +30,7 @@ import {
   shouldEnableMobileBattleControls,
 } from "./battle/mobile-controls";
 import { BattleView } from "./battle/view";
+import { resolveResultWinnerName } from "./battle/result";
 import { Depth } from "./utils/depth";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
 import { connectionManager } from "./menu/shared";
@@ -585,12 +586,14 @@ export class BattleScene extends Phaser.Scene {
     const opponentFighterState = localFighterKey === "Player1" ? this.currentOutput.state.target : this.currentOutput.state.player;
 
     return {
-      winnerName:
-        winnerPlayerId === null
-          ? (this.currentOutput.state.target.lives <= 0 ? localPlayerName : opponentName)
-          : winnerPlayerId === this.combatSync?.localPlayerId
-            ? localPlayerName
-            : opponentName,
+      winnerName: resolveResultWinnerName({
+        winnerPlayerId,
+        localPlayerId: this.combatSync?.localPlayerId ?? this.sceneData.localPlayerId ?? null,
+        localPlayerName,
+        opponentName,
+        playerDeaths: this.currentOutput.state.player.deaths,
+        targetDeaths: this.currentOutput.state.target.deaths,
+      }),
       durationSeconds: this.currentOutput.state.stats.elapsedTicks / 60,
       players: [
         createResultPlayerSummary(localPlayerName, localFighterState),
