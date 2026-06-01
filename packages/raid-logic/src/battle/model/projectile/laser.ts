@@ -2,14 +2,14 @@ import { fp } from "@shaisrc/fixed-point";
 
 import { bulletSpeedRankToPixelsPerTick } from "@repo/types";
 
-import type { FighterKey, ProjectileState } from "@repo/content";
+import type { CharacterDefinition, FighterKey, ProjectileState } from "@repo/content";
 import { fpMin } from "@repo/content";
 import { isProjectileOutOfWorld } from "./bullet";
 
 export function createLaserProjectile(params: {
   readonly id: number;
   readonly owner: FighterKey;
-  readonly sourceCharacterId?: string;
+  readonly sourceCharacterId?: CharacterDefinition["id"];
   readonly textureKey?: string;
   readonly kind?: "laser" | "spark";
   readonly x: number;
@@ -85,6 +85,9 @@ export function createLaserProjectile(params: {
     pausedUntil: params.pausedUntil ?? params.frame,
     retargetAt: undefined,
     retargetSpeed: undefined,
+    retargetX: undefined,
+    retargetY: undefined,
+    retargetAimOwner: undefined,
     widthGrowthPerTick: params.lengthGrowthPerTick ?? 0,
     maxWidth: params.maxLength,
     damage: params.damage ?? 1,
@@ -98,6 +101,7 @@ export function createLaserProjectile(params: {
     polarAngle: undefined,
     polarRadialSpeed: undefined,
     polarAngularSpeed: undefined,
+    polarFollowOwner: undefined,
   };
 }
 

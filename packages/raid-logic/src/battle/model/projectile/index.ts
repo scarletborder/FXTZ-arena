@@ -6,6 +6,7 @@ import {
 } from "@repo/types";
 
 import type {
+  CharacterDefinition,
   FighterKey,
   FighterState,
   ProjectileState,
@@ -30,7 +31,7 @@ export type LaserProjectileParams = Omit<
 >;
 export interface SegmentProjectileParams {
   readonly owner: FighterKey;
-  readonly sourceCharacterId?: string;
+  readonly sourceCharacterId?: CharacterDefinition["id"];
   readonly textureKey?: string;
   readonly x1: number;
   readonly y1: number;
@@ -47,6 +48,10 @@ export interface SegmentProjectileParams {
   readonly clearsProjectiles?: boolean;
   readonly piercesTargets?: boolean;
 }
+
+export type ProjectileAimByFighter = Readonly<
+  Record<FighterKey, { readonly x: number; readonly y: number }>
+>;
 
 export interface ProjectileHitTarget {
   readonly key: FighterKey;
@@ -145,6 +150,7 @@ export class ProjectileSystem {
     readonly target: FighterState;
     readonly hitTargets?: readonly ProjectileHitTarget[];
     readonly shields?: readonly ShieldState[];
+    readonly aimByFighter?: ProjectileAimByFighter;
     readonly onHit: (
       ctx: ProjectileCollisionContext<
         ProjectileState,
@@ -176,6 +182,7 @@ export class ProjectileSystem {
         } else {
           const target =
             projectile.owner === "Player1" ? params.target : params.player;
+          syncOwnerBoundProjectile(projectile, params);
           stepBulletProjectile(projectile, params.frame, target);
         }
       }
@@ -284,6 +291,35 @@ export class ProjectileSystem {
     }
 
     params.projectiles.splice(0, params.projectiles.length, ...remaining);
+  }
+}
+
+function syncOwnerBoundProjectile(
+  projectile: ProjectileState,
+  params: {
+    readonly frame: number;
+    readonly player: FighterState;
+    readonly target: FighterState;
+    readonly aimByFighter?: ProjectileAimByFighter;
+  },
+): void {
+  if (projectile.polarFollowOwner !== undefined) {
+    const owner =
+      projectile.polarFollowOwner === "Player1" ? params.player : params.target;
+    projectile.polarOriginX = owner.x;
+    projectile.polarOriginY = owner.y;
+  }
+
+  if (
+    projectile.retargetAt !== undefined &&
+    params.frame >= projectile.retargetAt &&
+    projectile.retargetAimOwner !== undefined
+  ) {
+    const aim = params.aimByFighter?.[projectile.retargetAimOwner];
+    if (aim) {
+      projectile.retargetX = aim.x;
+      projectile.retargetY = aim.y;
+    }
   }
 }
 

@@ -39,6 +39,9 @@ export interface BattleBulletSpawnParams {
   readonly pausedUntil?: number;
   readonly retargetAt?: number;
   readonly retargetSpeed?: number;
+  readonly retargetX?: number;
+  readonly retargetY?: number;
+  readonly retargetAimOwner?: FighterKey;
   readonly frame?: number;
   readonly couldClear?: boolean;
   readonly clearsProjectiles?: boolean;
@@ -49,6 +52,7 @@ export interface BattleBulletSpawnParams {
   readonly polarAngle?: number;
   readonly polarRadialSpeed?: number;
   readonly polarAngularSpeed?: number;
+  readonly polarFollowOwner?: FighterKey;
 }
 
 export interface BattleLaserSpawnParams {
@@ -82,6 +86,7 @@ export interface BattleLaserSpawnParams {
 
 export interface BattleSegmentSpawnParams {
   readonly owner: FighterKey;
+  readonly sourceCharacterId?: CharacterDefinition["id"];
   readonly textureKey?: string;
   readonly x1: number;
   readonly y1: number;

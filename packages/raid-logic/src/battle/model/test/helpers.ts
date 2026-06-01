@@ -146,6 +146,9 @@ export function testProjectile(
     pausedUntil: 0,
     retargetAt: undefined,
     retargetSpeed: undefined,
+    retargetX: undefined,
+    retargetY: undefined,
+    retargetAimOwner: undefined,
     widthGrowthPerTick: 0,
     maxWidth: undefined,
     damage: 1,
@@ -159,6 +162,7 @@ export function testProjectile(
     polarAngle: undefined,
     polarRadialSpeed: undefined,
     polarAngularSpeed: undefined,
+    polarFollowOwner: undefined,
     ...overrides,
   };
 }

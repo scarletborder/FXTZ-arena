@@ -110,6 +110,9 @@ export interface ProjectileState {
   pausedUntil: number;
   retargetAt: number | undefined;
   retargetSpeed: number | undefined;
+  retargetX: number | undefined;
+  retargetY: number | undefined;
+  retargetAimOwner: FighterKey | undefined;
   widthGrowthPerTick: number;
   maxWidth: number | undefined;
   readonly damage: number;
@@ -123,6 +126,7 @@ export interface ProjectileState {
   polarAngle: number | undefined;
   polarRadialSpeed: number | undefined;
   polarAngularSpeed: number | undefined;
+  polarFollowOwner: FighterKey | undefined;
 }
 
 export interface EffectState {

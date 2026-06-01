@@ -65,6 +65,9 @@ export class BattleAudioDirector {
       if (currentFighter.activeCharacter.id === "youmu") {
         AudioCmd.Play("se_slash");
       }
+      if (currentFighter.activeCharacter.id === "kaguya") {
+        AudioCmd.Play("se_lazer00");
+      }
     }
 
     if (currentFighter.activeCardUses > previousFighter.activeCardUses) {
@@ -207,7 +210,7 @@ function projectileCue(
     };
   }
 
-  if (characterId === "youmu" || characterId === "cirno" || characterId === "sakuya") {
+  if (characterId === "youmu" || characterId === "cirno" || characterId === "sakuya" || characterId === "kaguya") {
     return {
       key: "se_tan00",
       groupKey: `fire:${projectile.owner}:${characterId}`,

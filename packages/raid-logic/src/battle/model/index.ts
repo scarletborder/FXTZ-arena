@@ -78,6 +78,14 @@ export class BattleModel {
   };
   frame = 0;
   gameOver = false;
+  private readonly currentAimByFighter: Record<
+    FighterKey,
+    { readonly x: number; readonly y: number }
+  > = {
+    Player1: { x: TARGET_SPAWN.x, y: TARGET_SPAWN.y },
+    Player2: { x: PLAYER_SPAWN.x, y: PLAYER_SPAWN.y },
+    Neutral: { x: 0, y: 0 },
+  };
   private readonly neutralMobs: NeutralMob<
     NeutralMobState,
     BulletProjectileParams,
@@ -307,6 +315,7 @@ export class BattleModel {
       projectiles: this.projectiles,
       player: this.player,
       target: this.target,
+      aimByFighter: this.currentAimByFighter,
       hitTargets: this.currentHitTargets(),
       shields: this.currentShields(),
       computeRapierHits: physics
@@ -480,6 +489,7 @@ export class BattleModel {
 
     // Deterministic action order within a fighter's turn:
     fighter.selectActiveCharacter(input.alternateHeld);
+    this.currentAimByFighter[state.key] = { x: input.aimX, y: input.aimY };
     state.facing = fpAtan2(
       fp.fromFloat(input.aimY - state.y),
       fp.fromFloat(input.aimX - state.x),
@@ -521,6 +531,10 @@ export class BattleModel {
     });
 
     this.targetFighter.selectActiveCharacter(aiInput.alternateHeld);
+    this.currentAimByFighter[fighter.key] = {
+      x: aiInput.aimX,
+      y: aiInput.aimY,
+    };
     fighter.facing = fpAtan2(
       fp.fromFloat(aiInput.aimY - fighter.y),
       fp.fromFloat(aiInput.aimX - fighter.x),
@@ -579,6 +593,10 @@ export class BattleModel {
       fp.fromFloat(this.player.y - fighter.y),
       fp.fromFloat(this.player.x - fighter.x),
     );
+    this.currentAimByFighter[fighter.key] = {
+      x: this.player.x,
+      y: this.player.y,
+    };
     this.targetFighter.postUpdate(this.fighterActionContext(fighter));
     if (this.frame % 72 === 0) {
       this.targetFighter.fire(

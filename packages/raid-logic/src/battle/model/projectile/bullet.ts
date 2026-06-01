@@ -8,7 +8,12 @@ import {
   secondsToTicks,
 } from "@repo/types";
 
-import type { FighterKey, FighterState, ProjectileState } from "@repo/content";
+import type {
+  CharacterDefinition,
+  FighterKey,
+  FighterState,
+  ProjectileState,
+} from "@repo/content";
 import { fpAtan2, fpHypotFp, fpMax } from "@repo/content";
 
 const HOMING_START_DELAY_TICKS = secondsToTicks(0.2);
@@ -17,7 +22,7 @@ const HOMING_MAX_TURN_RADIANS_PER_TICK = Math.PI / TICK_RATE;
 export function createBulletProjectile(params: {
   readonly id: number;
   readonly owner: FighterKey;
-  readonly sourceCharacterId?: string;
+  readonly sourceCharacterId?: CharacterDefinition["id"];
   readonly textureKey?: string;
   readonly kind: "orb" | "knife" | "diamond" | "spark";
   readonly x: number;
@@ -34,6 +39,9 @@ export function createBulletProjectile(params: {
   readonly pausedUntil?: number;
   readonly retargetAt?: number;
   readonly retargetSpeed?: number;
+  readonly retargetX?: number;
+  readonly retargetY?: number;
+  readonly retargetAimOwner?: FighterKey;
   readonly couldClear?: boolean;
   readonly clearsProjectiles?: boolean;
   readonly piercesTargets?: boolean;
@@ -43,6 +51,7 @@ export function createBulletProjectile(params: {
   readonly polarAngle?: number;
   readonly polarRadialSpeed?: number;
   readonly polarAngularSpeed?: number;
+  readonly polarFollowOwner?: FighterKey;
 }): ProjectileState {
   const speed = bulletSpeedRankToPixelsPerTick(params.speedRank);
   const spawnOffset = params.spawnOffset ?? 28;
@@ -88,6 +97,9 @@ export function createBulletProjectile(params: {
     pausedUntil: params.pausedUntil ?? params.frame,
     retargetAt: params.retargetAt,
     retargetSpeed: params.retargetSpeed,
+    retargetX: params.retargetX,
+    retargetY: params.retargetY,
+    retargetAimOwner: params.retargetAimOwner,
     widthGrowthPerTick: 0,
     maxWidth: undefined,
     damage: params.damage ?? 1,
@@ -101,6 +113,7 @@ export function createBulletProjectile(params: {
     polarAngle: params.polarAngle,
     polarRadialSpeed: params.polarRadialSpeed,
     polarAngularSpeed: params.polarAngularSpeed,
+    polarFollowOwner: params.polarFollowOwner,
   };
 }
 
@@ -113,6 +126,16 @@ export function stepBulletProjectile(
     retargetProjectile(projectile, target);
     projectile.retargetAt = undefined;
     projectile.retargetSpeed = undefined;
+    projectile.retargetX = undefined;
+    projectile.retargetY = undefined;
+    projectile.retargetAimOwner = undefined;
+    projectile.polarOriginX = undefined;
+    projectile.polarOriginY = undefined;
+    projectile.polarRadius = undefined;
+    projectile.polarAngle = undefined;
+    projectile.polarRadialSpeed = undefined;
+    projectile.polarAngularSpeed = undefined;
+    projectile.polarFollowOwner = undefined;
   }
 
   if (
@@ -206,8 +229,10 @@ function retargetProjectile(
   projectile: ProjectileState,
   target: FighterState,
 ): void {
-  const fpDx = fp.sub(fp.fromFloat(target.x), fp.fromFloat(projectile.x));
-  const fpDy = fp.sub(fp.fromFloat(target.y), fp.fromFloat(projectile.y));
+  const targetX = projectile.retargetX ?? target.x;
+  const targetY = projectile.retargetY ?? target.y;
+  const fpDx = fp.sub(fp.fromFloat(targetX), fp.fromFloat(projectile.x));
+  const fpDy = fp.sub(fp.fromFloat(targetY), fp.fromFloat(projectile.y));
   const fpCurrentSpeed = fpHypotFp(
     fp.fromFloat(projectile.vx),
     fp.fromFloat(projectile.vy),

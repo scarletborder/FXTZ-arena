@@ -278,6 +278,9 @@ function serializeProjectile(
     anchorY: projectile.anchorY,
     ...ticker.serializeProjectileTimers(projectile),
     retargetSpeed: projectile.retargetSpeed,
+    retargetX: projectile.retargetX,
+    retargetY: projectile.retargetY,
+    retargetAimOwner: projectile.retargetAimOwner,
     widthGrowthPerTick: projectile.widthGrowthPerTick,
     maxWidth: projectile.maxWidth,
     damage: projectile.damage,
@@ -291,6 +294,7 @@ function serializeProjectile(
     polarAngle: projectile.polarAngle,
     polarRadialSpeed: projectile.polarRadialSpeed,
     polarAngularSpeed: projectile.polarAngularSpeed,
+    polarFollowOwner: projectile.polarFollowOwner,
   };
 }
 

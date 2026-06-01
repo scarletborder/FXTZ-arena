@@ -58,6 +58,9 @@ export function projectileOwnerCharacter(
   projectile: ProjectileState,
   fighters: ProjectileFighters,
 ): FighterState["activeCharacter"]["id"] {
+  if (projectile.sourceCharacterId) {
+    return projectile.sourceCharacterId;
+  }
   return projectile.owner === fighters.player.key
     ? fighters.player.activeCharacter.id
     : fighters.target.activeCharacter.id;
@@ -100,6 +103,8 @@ function mappedProjectileFrame(
       return cirnoProjectileFrame(projectile, frames);
     case "youmu":
       return youmuProjectileFrame(projectile, frames);
+    case "kaguya":
+      return kaguyaProjectileFrame(projectile, frames);
     default:
       return undefined;
   }
@@ -172,6 +177,17 @@ function youmuProjectileFrame(
     return imageSpec(frames, "bullet_type_4", 9);
   }
   return undefined;
+}
+
+function kaguyaProjectileFrame(
+  projectile: ProjectileState,
+  frames: ReadonlyMap<string, BulletFrame>,
+): ProjectileSpec | undefined {
+  if (projectile.kind !== "orb") return undefined;
+  if (projectile.width <= 24 && projectile.height <= 24) {
+    return imageSpec(frames, "bullet_type_18", projectile.id % 8);
+  }
+  return imageSpec(frames, "bullet_type_23", projectile.id % 4);
 }
 
 function imageSpec(
