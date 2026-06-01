@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { t } from "@repo/i18n";
 
 import { GRAZE_CIRCLE_ALPHA, GRAZE_CIRCLE_DIAMETER, PLAYER_CORE_RADIUS } from "@repo/constants";
 import type { FighterKey, FighterState } from "@repo/raid-logic";
@@ -107,7 +108,7 @@ export class FighterView {
       visual.statusTag.setText("[Reload]");
       visual.statusTag.setColor("#ffffff");
     } else {
-      visual.statusTag.setText(fighter.deadUntil > 0 ? "重整中" : `命数 ${Math.max(0, fighter.lives)}  bomb ${fighter.bombs}`);
+      visual.statusTag.setText(fighter.deadUntil > 0 ? t("battle.recovering") : t("battle.fighter_status", { lives: Math.max(0, fighter.lives), bombs: fighter.bombs }));
       visual.statusTag.setColor("#f6f1e6");
     }
     visual.core.setFillStyle(0xff4242, fighter.flashUntil > frame ? 0.22 : 1);

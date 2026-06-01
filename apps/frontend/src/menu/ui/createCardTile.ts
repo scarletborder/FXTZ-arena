@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { t } from "@repo/i18n";
 
 import type { AbilityCardDefinition } from "@repo/content";
 
@@ -19,8 +20,8 @@ export function createCardTile(
     width: 116,
     height: 104,
     title: card.name,
-    subtitle: `${card.kind === "active" ? "主动" : "被动"} cost${card.cost}`,
-    badge: card.kind === "active" ? "主动使用" : "被动",
+    subtitle: `${card.kind === "active" ? t("select.active") : t("select.passive")} cost${card.cost}`,
+    badge: card.kind === "active" ? t("codex.active_use") : t("select.passive"),
     selected,
     onClick,
     drawIcon: (target) => drawCardIcon(scene, target, 58, 34, card.kind, 0.76),

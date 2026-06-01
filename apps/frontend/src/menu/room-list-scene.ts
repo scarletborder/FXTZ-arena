@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { t } from "@repo/i18n";
 import type { PlayerId, RoomSummary, ServerMessage } from "@repo/types";
 
 import { createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop } from "./ui";
@@ -28,13 +29,13 @@ export class RoomListScene extends Phaser.Scene {
   create(): void {
     installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "ROOMS", "ONLINE LIST");
-    this.add.text(90, 74, "房间列表", {
+    this.add.text(90, 74, t("room_list.title"), {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: "42px",
       fontStyle: "900",
       color: "#f6f1e6",
     });
-    createFightButton(this, 1138, 62, 160, 44, "返回", () => this.scene.start("battle-start"), { accent: 0x5c7185 });
+    createFightButton(this, 1138, 62, 160, 44, t("room_list.back"), () => this.scene.start("battle-start"), { accent: 0x5c7185 });
 
     this.listLayer = this.add.container(0, 0);
     this.pageLabel = this.add.text(640, 680, "", {
@@ -43,7 +44,7 @@ export class RoomListScene extends Phaser.Scene {
       color: "#b7c7d8",
     }).setOrigin(0.5);
 
-    this.add.text(800, 634, "房间号", {
+    this.add.text(800, 634, t("room_list.room_id"), {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: "14px",
       color: "#9fb4c8",
@@ -56,7 +57,7 @@ export class RoomListScene extends Phaser.Scene {
     });
     this.activeField = field;
 
-    createFightButton(this, 1010, 681, 110, 46, "加入", () => this.tryJoin(this.roomIdValue), { accent: 0x34d399 });
+    createFightButton(this, 1010, 681, 110, 46, t("room_list.join"), () => this.tryJoin(this.roomIdValue), { accent: 0x34d399 });
     createFightButton(this, 1128, 681, 54, 46, "<", () => this.gotoPage(this.page - 1), { accent: 0x5c7185 });
     createFightButton(this, 1192, 681, 54, 46, ">", () => this.gotoPage(this.page + 1), { accent: 0x5c7185 });
 
@@ -111,13 +112,13 @@ export class RoomListScene extends Phaser.Scene {
       fontStyle: "700",
       color: "#f6f1e6",
     }));
-    this.listLayer.add(this.add.text(x + 24, y + 42, `房主: ${room.hostName || "-"}  ${room.playerCount}/${room.maxPlayers}  #${room.id}`, {
+    this.listLayer.add(this.add.text(x + 24, y + 42, t("room_list.host", { name: room.hostName || "-", count: room.playerCount, max: room.maxPlayers, id: room.id }), {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: "14px",
       color: "#9fb4c8",
     }));
     if (room.hasPassword) {
-      this.listLayer.add(this.add.text(x + width - 42, y + 22, "LOCK", {
+      this.listLayer.add(this.add.text(x + width - 42, y + 22, t("room_list.lock"), {
         fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
         fontSize: "14px",
         fontStyle: "700",
@@ -128,7 +129,7 @@ export class RoomListScene extends Phaser.Scene {
 
   private tryJoin(roomId: string, password?: string): void {
     if (!roomId) {
-      this.showToast("请输入房间号");
+      this.showToast(t("room_list.enter_room_id"));
       return;
     }
     this.pendingJoinRoomId = roomId;
@@ -144,7 +145,7 @@ export class RoomListScene extends Phaser.Scene {
     const bg = this.add.graphics();
     drawAngledPanel(bg, 430, 250, 420, 210, 0x111821, 0x5c7185, 0.98);
     c.add(bg);
-    c.add(this.add.text(640, 282, "输入密码", {
+    c.add(this.add.text(640, 282, t("room_list.password"), {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: "22px",
       fontStyle: "700",
@@ -159,12 +160,12 @@ export class RoomListScene extends Phaser.Scene {
     field.setActive(true);
     this.activeField = field;
     c.add(field.container);
-    c.add(createFightButton(this, 560, 420, 130, 42, "cancel", () => {
+    c.add(createFightButton(this, 560, 420, 130, 42, t("room_list.password_cancel"), () => {
       c.destroy();
       this.passwordDialog = null;
       this.activeField = null;
     }, { accent: 0x5c7185 }).container);
-    c.add(createFightButton(this, 720, 420, 130, 42, "confirm", () => {
+    c.add(createFightButton(this, 720, 420, 130, 42, t("room_list.password_confirm"), () => {
       c.destroy();
       this.passwordDialog = null;
       this.activeField = null;

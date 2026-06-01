@@ -14,6 +14,7 @@
   "dependencies": {
     "@repo/constants": "workspace:*",
     "@repo/content": "workspace:*",
+    "@repo/i18n": "workspace:*",
     "@repo/raid-logic": "workspace:*",
     "@repo/types": "workspace:*",
     "@shaisrc/fixed-point": "^0.1.0",

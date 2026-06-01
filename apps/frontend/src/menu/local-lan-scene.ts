@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { t } from "@repo/i18n";
 import { createDefaultRaidBattleConfig } from "@repo/raid-logic";
 import type { MapId, PlayerLoadout } from "@repo/types";
 
@@ -37,20 +38,20 @@ export class LocalLanScene extends Phaser.Scene {
     this.starting = false;
     drawFightingBackdrop(this, "LOCAL", "LAN MATCHMAKING");
     createBackButton(this);
-    this.add.text(90, 74, "本地局域网游玩", {
+    this.add.text(90, 74, t("local_lan.title"), {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: "42px",
       fontStyle: "900",
       color: "#f6f1e6",
     });
 
-    drawPanel(this, 72, 176, 1136, 456, "局域网游戏大厅");
-    this.statusLabel = this.add.text(96, 220, "正在连接公共信令服务器…", {
+    drawPanel(this, 72, 176, 1136, 456, t("local_lan.panel"));
+    this.statusLabel = this.add.text(96, 220, t("local_lan.connecting"), {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: "16px",
       color: "#b7c7d8",
     });
-    this.add.text(96, 248, "点击其他玩家发送申请；双方互相申请后自动进入房间。", {
+    this.add.text(96, 248, t("local_lan.help"), {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: "14px",
       color: "#9fb4c8",
@@ -79,18 +80,18 @@ export class LocalLanScene extends Phaser.Scene {
         }
         this.statusLabel.setText(
           status === "connecting"
-            ? "正在连接公共信令服务器…"
+            ? t("local_lan.connecting")
             : status === "connected"
-              ? "已连接公共信令服务器"
+              ? t("local_lan.connected")
               : status === "error"
-                ? "公共信令连接失败，检查Internet连接"
-                : "公共信令已断开",
+                ? t("local_lan.error")
+                : t("local_lan.disconnected"),
         ).setColor(status === "connected" ? "#34d399" : status === "connecting" ? "#f7b733" : "#ff5c66");
       },
     });
 
     void this.session.connect(uiSettings.username).catch(() => {
-      this.statusLabel.setText("公共信令连接失败，检查Internet连接").setColor("#ff5c66");
+      this.statusLabel.setText(t("local_lan.error")).setColor("#ff5c66");
     });
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -109,7 +110,7 @@ export class LocalLanScene extends Phaser.Scene {
 
     const peers = this.peers;
     if (peers.length === 0) {
-      this.listLayer.add(this.add.text(104, 330, "暂无在线玩家，等待其他玩家进入同一局域网大厅…\n注意关闭网络代理", {
+      this.listLayer.add(this.add.text(104, 330, t("local_lan.empty"), {
         fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
         fontSize: "18px",
         color: "#9fb4c8",
@@ -151,18 +152,18 @@ export class LocalLanScene extends Phaser.Scene {
 
   private describePeerState(state: LocalPeerState): string {
     if (state.matched) {
-      return "已配对，正在进入配装…";
+      return t("local_lan.matched");
     }
     if (state.incomingRequest && state.outgoingRequest) {
-      return "双方已互相申请";
+      return t("local_lan.mutual");
     }
     if (state.incomingRequest) {
-      return "对方已向你申请";
+      return t("local_lan.incoming");
     }
     if (state.outgoingRequest) {
-      return "已向对方发起申请";
+      return t("local_lan.outgoing");
     }
-    return "点击发送共同游玩申请";
+    return t("local_lan.invite");
   }
 
   private onPeerClicked(state: LocalPeerState): void {
@@ -171,12 +172,12 @@ export class LocalLanScene extends Phaser.Scene {
     }
 
     if (state.matched) {
-      this.showToast("已经配对完成，正在进入配装…");
+      this.showToast(t("local_lan.matched"));
       return;
     }
 
     this.session.requestPeer(state.peer.id);
-    this.showToast(`已向 ${state.peer.alias} 发送申请`);
+    this.showToast(t("local_lan.sent", { name: state.peer.alias }));
     this.renderPeers();
   }
 
@@ -206,7 +207,7 @@ export class LocalLanScene extends Phaser.Scene {
     const battleConfig = createDefaultRaidBattleConfig();
     this.selectedMapId = battleConfig.mapId;
     this.loadingToast?.destroy();
-    this.loadingToast = this.add.text(640, 650, `正在准备配装：${peer.alias}`, {
+    this.loadingToast = this.add.text(640, 650, t("local_lan.preparing", { name: peer.alias }), {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: "16px",
       color: "#ffcf6e",
@@ -245,7 +246,7 @@ export class LocalLanScene extends Phaser.Scene {
       : { player: this.remoteLoadout, target: this.localLoadout };
 
     this.scene.stop("select");
-    this.loadingToast?.setText(`正在加载战斗：${peer.alias}`);
+    this.loadingToast?.setText(t("local_lan.loading", { name: peer.alias }));
     this.scene.launch("loading", {
       mode: "local",
       playerName: uiSettings.username,

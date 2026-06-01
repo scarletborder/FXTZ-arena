@@ -1,0 +1,44 @@
+{
+  "name": "@repo/i18n",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "files": [
+    "dist",
+    "src/locales"
+  ],
+  "main": "./dist/es/index.js",
+  "module": "./dist/es/index.js",
+  "types": "./dist/es/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/es/index.d.ts",
+        "default": "./dist/es/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
+      }
+    },
+    "./locales/zh_cn.json": "./src/locales/zh_cn.json",
+    "./locales/en_us.json": "./src/locales/en_us.json"
+  },
+  "scripts": {
+    "build": "bunchee && node scripts/copy-locales.mjs",
+    "dev": "bunchee --watch",
+    "lint": "eslint src/",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "i18next": "^25.3.6"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^22.15.3",
+    "bunchee": "^6.4.0",
+    "eslint": "^9.39.0",
+    "typescript": "5.9.3"
+  }
+}

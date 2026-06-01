@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { t } from "@repo/i18n";
 import type { PlayerId } from "@repo/types";
 import {
   createRaidLogicRuntime,
@@ -384,12 +385,12 @@ export class BattleScene extends Phaser.Scene {
 
     p2p.setStatusHandler((status) => {
       if (status === "connecting") {
-        this.onlineStatusText?.setText(isLocalBattle ? "正在建立局域网 P2P 连接…" : "正在尝试 P2P 连接…").setVisible(true);
+        this.onlineStatusText?.setText(isLocalBattle ? t("battle.p2p_attempt_local") : t("battle.p2p_attempt_online")).setVisible(true);
       } else if (status === "connected") {
-        this.onlineStatusText?.setText(isLocalBattle ? "局域网 P2P 已连接" : "P2P 已连接").setVisible(true);
+        this.onlineStatusText?.setText(isLocalBattle ? t("battle.p2p_connected_local") : t("battle.p2p_connected_online")).setVisible(true);
         this.time.delayedCall(700, () => this.onlineStatusText?.setVisible(false));
       } else if (status === "failed") {
-        this.onlineStatusText?.setText(isLocalBattle ? "局域网 P2P 连接失败" : "P2P 不可用，已回落到专用服务器").setVisible(true);
+        this.onlineStatusText?.setText(isLocalBattle ? t("battle.p2p_failed_local") : t("battle.p2p_failed_online")).setVisible(true);
         this.time.delayedCall(1100, () => this.onlineStatusText?.setVisible(false));
       }
     });

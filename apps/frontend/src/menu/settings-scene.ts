@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { t } from "@repo/i18n";
 import { MAX_PLAYER_NAME_LENGTH, PUBLIC_SERVER } from "@repo/constants";
 
 import {
@@ -72,40 +73,40 @@ export class SettingsScene extends Phaser.Scene {
     installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "OPTIONS", "SYSTEM");
     createBackButton(this);
-    this.add.text(90, 74, "设置", headingStyle(42));
+    this.add.text(90, 74, t("settings.title"), headingStyle(42));
 
-    drawPanel(this, 74, 150, 354, 448, "通用");
-    drawPanel(this, 462, 150, 354, 448, "联机");
-    drawPanel(this, 850, 150, 354, 448, "关于");
+    drawPanel(this, 74, 150, 354, 448, t("settings.general"));
+    drawPanel(this, 462, 150, 354, 448, t("settings.online"));
+    drawPanel(this, 850, 150, 354, 448, t("settings.about"));
 
     // ─── General ───────────────────────────────────
 
-    this.add.text(104, 214, "用户名", bodyStyle("#f6f1e6", 18));
+    this.add.text(104, 214, t("settings.general.username.title"), bodyStyle("#f6f1e6", 18));
     this.createField(104, 252, 276, "username");
 
-    this.add.text(104, 310, "音乐(暂无)", bodyStyle("#f6f1e6", 18));
+    this.add.text(104, 310, t("settings.general.music.title"), bodyStyle("#f6f1e6", 18));
     this.createVolumeSlider(104, 344, 276, uiSettings.music, setMusicVolume);
 
-    this.add.text(104, 386, "音效(暂无)", bodyStyle("#f6f1e6", 18));
+    this.add.text(104, 386, t("settings.general.sound.title"), bodyStyle("#f6f1e6", 18));
     this.createVolumeSlider(104, 420, 276, uiSettings.sound, setSoundVolume);
 
     const debugText = this.add.text(104, 476, "", bodyStyle("#d7e3ef", 18));
     const updateDebug = () => {
-      debugText.setText(uiSettings.debug ? "debug 模式：开启" : "debug 模式：关闭");
+      debugText.setText(uiSettings.debug ? t("settings.general.debug.on") : t("settings.general.debug.off"));
     };
     updateDebug();
-    createFightButton(this, 242, 534, 250, 54, "切换 debug", () => {
+    createFightButton(this, 242, 534, 250, 54, t("settings.general.debug.toggle"), () => {
       setDebug(!uiSettings.debug);
       updateDebug();
     }, { accent: 0xf7b733 });
 
     // ─── Online ────────────────────────────────────
 
-    this.add.text(492, 214, "专用服务器地址", bodyStyle("#f6f1e6", 18));
+    this.add.text(492, 214, t("settings.online.server_address.title"), bodyStyle("#f6f1e6", 18));
     this.createField(492, 252, 276, "serverAddress");
     this.createPublicServerButton(774, 173);
-    this.add.text(492, 356, "默认监听本地专用服务器", bodyStyle("#b7c7d8", 17));
-    this.add.text(492, 396, "默认端口：22334", bodyStyle("#b7c7d8", 17));
+    this.add.text(492, 356, t("settings.online.server_address.helper"), bodyStyle("#b7c7d8", 17));
+    this.add.text(492, 396, t("settings.online.server_address.port"), bodyStyle("#b7c7d8", 17));
 
     this.connectionStatusText = this.add.text(492, 436, " ", bodyStyle("#ffcf6e", 17));
 
@@ -113,7 +114,7 @@ export class SettingsScene extends Phaser.Scene {
     this.connectBtn = createFightButton(this, 613, 510, 250, 50, " ", () => this.onToggleConnection(), {
       accent: 0x34d399,
     });
-    createFightButton(this, 613, 566, 250, 44, "测试连通性", () => this.showConnectivityDialog(), {
+    createFightButton(this, 613, 566, 250, 44, t("settings.online.test_connectivity"), () => this.showConnectivityDialog(), {
       accent: 0x5c7185,
     });
 
@@ -124,11 +125,11 @@ export class SettingsScene extends Phaser.Scene {
 
     // ─── About ─────────────────────────────────────
 
-    this.add.text(880, 214, "staff", bodyStyle("#f6f1e6", 19));
-    this.add.text(880, 258, "Design / Code: scarletborder\nUI Scene: Phaser4\nPhysics: Rapier-2d", bodyStyle("#d7e3ef", 17)).setLineSpacing(10);
-    this.add.text(880, 386, "项目网址", bodyStyle("#f6f1e6", 19));
+    this.add.text(880, 214, t("settings.about.staff"), bodyStyle("#f6f1e6", 19));
+    this.add.text(880, 258, t("settings.about.credits"), bodyStyle("#d7e3ef", 17)).setLineSpacing(10);
+    this.add.text(880, 386, t("settings.about.project_url"), bodyStyle("#f6f1e6", 19));
     this.add.text(880, 430, "github.com/scarletborder/FXTZ-arena", bodyStyle("#9fd8ff", 17));
-    this.add.text(880, 500, "版本", bodyStyle("#f6f1e6", 19));
+    this.add.text(880, 500, t("settings.about.version"), bodyStyle("#f6f1e6", 19));
     drawBuildLabel(this, 1174, 548);
 
     // ─── Keyboard ──────────────────────────────────
@@ -151,10 +152,10 @@ export class SettingsScene extends Phaser.Scene {
 
   private updateConnectionDisplay(status: ConnectionStatus): void {
     const statusMap: Record<ConnectionStatus, { text: string; color: string }> = {
-      disconnected: { text: "连接状态：未连接", color: "#b7c7d8" },
-      connecting: { text: "连接状态：正在连接…", color: "#f7b733" },
-      connected: { text: `连接状态：已连接 ${connectionManager.serverVersion ? `(${connectionManager.serverVersion})` : ""}`, color: "#34d399" },
-      error: { text: "连接状态：连接失败", color: "#ff5c66" },
+      disconnected: { text: t("settings.online.connection_status.disconnected"), color: "#b7c7d8" },
+      connecting: { text: t("settings.online.connection_status.connecting"), color: "#f7b733" },
+      connected: { text: `${t("settings.online.connection_status.connected")} ${connectionManager.serverVersion ? `(${connectionManager.serverVersion})` : ""}`, color: "#34d399" },
+      error: { text: t("settings.online.connection_status.error"), color: "#ff5c66" },
     };
     const info = statusMap[status] ?? statusMap.disconnected;
     if (!this.connectionStatusText?.active || !this.connectionStatusText.scene) {
@@ -163,7 +164,7 @@ export class SettingsScene extends Phaser.Scene {
     this.connectionStatusText.setText(info.text).setColor(info.color);
 
     const isConnected = status === "connected";
-    this.connectBtn?.setLabel(isConnected ? "断开连接" : "连接服务器");
+    this.connectBtn?.setLabel(isConnected ? t("settings.online.disconnect") : t("settings.online.connect"));
   }
 
   private onToggleConnection(): void {
@@ -293,14 +294,14 @@ export class SettingsScene extends Phaser.Scene {
     const panel = this.add.graphics();
     drawAngledPanel(panel, x, y, dialogWidth, dialogHeight, 0x101820, 0xffcf6e, 0.98);
 
-    const title = this.add.text(x + 30, y + 24, "选择公共服务器", bodyStyle("#ffcf6e", 22));
+    const title = this.add.text(x + 30, y + 24, t("settings.online.public_server"), bodyStyle("#ffcf6e", 22));
     const closeBtn = this.createDialogCloseButton(x + dialogWidth - 62, y + 22, () => {
       this.closePublicServerDialog();
     });
     layer.add([shade, panel, title, closeBtn]);
 
     if (servers.length === 0) {
-      layer.add(this.add.text(x + 30, y + 84, "暂无默认公共服务器", bodyStyle("#b7c7d8", 18)));
+      layer.add(this.add.text(x + 30, y + 84, t("settings.online.no_public_server"), bodyStyle("#b7c7d8", 18)));
     } else {
       servers.forEach((server, index) => {
         layer.add(this.createServerOptionRow(x + 28, y + 76 + index * rowHeight, dialogWidth - 56, rowHeight - 8, server, index));
@@ -358,7 +359,7 @@ export class SettingsScene extends Phaser.Scene {
     const selected = server.addr === uiSettings.serverAddress;
     const container = this.add.container(x, y);
     const background = this.add.graphics();
-    const label = this.add.text(18, 8, server.name || `公共服务器 ${index + 1}`, bodyStyle(selected ? "#ffcf6e" : "#f6f1e6", 17));
+    const label = this.add.text(18, 8, server.name || t("dialog.public_server_index", { index: index + 1 }), bodyStyle(selected ? "#ffcf6e" : "#f6f1e6", 17));
     const address = this.add.text(18, 31, server.addr, bodyStyle("#b7c7d8", 14)).setWordWrapWidth(width - 36);
     const hitArea = this.add.rectangle(0, 0, width, height, 0xffffff, 0.001)
       .setOrigin(0, 0)

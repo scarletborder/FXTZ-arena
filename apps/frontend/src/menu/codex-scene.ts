@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { getAllAbilityCardDefinitions, getAllCharacterDefinitions, type AbilityCardDefinition, type CharacterDefinition } from "@repo/content";
+import { t } from "@repo/i18n";
 
 import {
   createBackButton,
@@ -47,7 +48,7 @@ export class CodexScene extends Phaser.Scene {
     installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "CODEX", "DATA BANK");
     createBackButton(this);
-    this.add.text(90, 74, "图鉴", headingStyle(42));
+    this.add.text(90, 74, t("codex.title"), headingStyle(42));
 
     drawPanel(this, LIST_PANEL.x, LIST_PANEL.y, LIST_PANEL.width, LIST_PANEL.height, "");
     drawPanel(this, DETAIL_PANEL.x, DETAIL_PANEL.y, DETAIL_PANEL.width, DETAIL_PANEL.height, "");
@@ -76,13 +77,13 @@ export class CodexScene extends Phaser.Scene {
 
   private renderTabs(): void {
     const mainTabX = LIST_PANEL.x + 72;
-    this.listLayer.add(createSmallTab(this, mainTabX, 170, "角色", this.tab === "characters", () => {
+    this.listLayer.add(createSmallTab(this, mainTabX, 170, t("codex.characters"), this.tab === "characters", () => {
       this.tab = "characters";
       this.listScrollOffset = 0;
       this.detailScrollOffset = 0;
       this.render();
     }).container);
-    this.listLayer.add(createSmallTab(this, mainTabX + 92, 170, "能力卡", this.tab === "cards", () => {
+    this.listLayer.add(createSmallTab(this, mainTabX + 92, 170, t("codex.cards"), this.tab === "cards", () => {
       this.tab = "cards";
       this.listScrollOffset = 0;
       this.detailScrollOffset = 0;
@@ -91,16 +92,16 @@ export class CodexScene extends Phaser.Scene {
 
     const filters = this.tab === "characters"
       ? [
-        ["all", "全部"],
-        ["assault", "突击"],
-        ["suppress", "压制"],
-        ["scout", "侦察"],
-        ["sniper", "狙击"],
+        ["all", t("codex.all")],
+        ["assault", t("role.assault")],
+        ["suppress", t("role.suppress")],
+        ["scout", t("role.scout")],
+        ["sniper", t("role.sniper")],
       ] as const
       : [
-        ["all", "全部"],
-        ["active", "主动"],
-        ["passive", "被动"],
+        ["all", t("codex.all")],
+        ["active", t("codex.active")],
+        ["passive", t("codex.passive")],
       ] as const;
 
     const filterGap = 4;
@@ -167,7 +168,7 @@ export class CodexScene extends Phaser.Scene {
     mask.fillStyle(0xffffff, 1);
     mask.fillRect(listBounds.x, listBounds.y, listBounds.width, listBounds.height);
     listContainer.enableFilters();
-    listContainer.filters.internal.addMask(mask);
+    listContainer.filters?.internal.addMask(mask);
     this.listLayer.add(listContainer);
     const rows = Math.ceil(characters.length / columns) || 1;
     const topPadding = startY - listBounds.y;
@@ -195,7 +196,7 @@ export class CodexScene extends Phaser.Scene {
       const row = Math.floor(index / columns);
       const x = startX + col * (scaledWidth + gapX);
       const y = startY + row * (scaledHeight + gapY);
-      const item = createCodexTile(this, x, y, card.name, card.cost, card.kind === "active" ? "主动使用" : "被动", card.id === this.selectedCard.id, (target) => {
+      const item = createCodexTile(this, x, y, card.name, card.cost, card.kind === "active" ? t("codex.active_use") : t("codex.passive"), card.id === this.selectedCard.id, (target) => {
         drawCardIcon(this, target, 82, 48, card.kind, 1.0);
       }, () => {
         this.selectedCard = card;
@@ -218,7 +219,7 @@ export class CodexScene extends Phaser.Scene {
     mask.fillStyle(0xffffff, 1);
     mask.fillRect(listBounds.x, listBounds.y, listBounds.width, listBounds.height);
     listContainer.enableFilters();
-    listContainer.filters.internal.addMask(mask);
+    listContainer.filters?.internal.addMask(mask);
     this.listLayer.add(listContainer);
     const rows = Math.ceil(cards.length / columns) || 1;
     const topPadding = startY - listBounds.y;
@@ -247,7 +248,7 @@ export class CodexScene extends Phaser.Scene {
     content.add(this.createCharacterStatCard(bounds.x + leftWidth + gap, bounds.y, rightWidth, cardHeight, character));
 
     const descriptionY = bounds.y + cardHeight + 18;
-    const description = this.add.text(bounds.x, descriptionY, `\u63cf\u8ff0\uff1a${character.description}`, bodyStyle("#d7e3ef", 18))
+    const description = this.add.text(bounds.x, descriptionY, t("codex.description", { description: character.description }), bodyStyle("#d7e3ef", 18))
       .setLineSpacing(8)
       .setWordWrapWidth(bounds.width);
     content.add(description);
@@ -256,7 +257,7 @@ export class CodexScene extends Phaser.Scene {
     mask.fillStyle(0xffffff, 1);
     mask.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
     content.enableFilters();
-    content.filters.internal.addMask(mask);
+    content.filters?.internal.addMask(mask);
 
     this.detailLayer.add(content);
     this.registerDetailScrollArea(bounds, content, descriptionY - bounds.y + description.height, bounds.height);
@@ -275,8 +276,8 @@ export class CodexScene extends Phaser.Scene {
     card.add(graphics);
 
     const items = [
-      { label: "\u540d\u5b57", value: character.name },
-      { label: "\u804c\u4e1a", value: roleLabel(character.roleClass) },
+      { label: t("codex.name_label"), value: character.name },
+      { label: t("codex.role_label"), value: roleLabel(character.roleClass) },
     ] as const;
     items.forEach((item, index) => {
       const itemY = 20 + index * 82;
@@ -304,15 +305,15 @@ export class CodexScene extends Phaser.Scene {
     card.add(graphics);
 
     const stats = [
-      { label: "\u79fb\u901f", speed: character.moveSpeed },
-      { label: "\u5f39\u901f", speed: character.bulletSpeed },
-      { label: "\u5f39\u5bb9", value: String(character.ammoCapacity) },
-      { label: "\u5c04\u901f", speed: character.fireRate },
+      { label: t("select.move_speed"), speed: character.moveSpeed },
+      { label: t("select.bullet_speed"), speed: character.bulletSpeed },
+      { label: t("select.ammo"), value: String(character.ammoCapacity) },
+      { label: t("select.fire_rate"), speed: character.fireRate },
     ] as const;
 
     stats.forEach((stat, index) => {
       const itemY = 18 + index * 40;
-      card.add(this.add.text(18, itemY, `${stat.label}\uff1a`, bodyStyle("#9fb4c8", 15)));
+      card.add(this.add.text(18, itemY, `${stat.label}:`, bodyStyle("#9fb4c8", 15)));
       if ("speed" in stat) {
         card.add(this.createStatSquares(88, itemY + 4, stat.speed));
       } else {
@@ -343,13 +344,13 @@ export class CodexScene extends Phaser.Scene {
 
   private renderCardDetail(): void {
     const card = this.selectedCard;
-    const cooldown = card.cooldownTicks === 0 ? "无" : `${(card.cooldownTicks / 60).toFixed(1)} 秒`;
+    const cooldown = card.cooldownTicks === 0 ? t("codex.none") : t("codex.seconds", { seconds: (card.cooldownTicks / 60).toFixed(1) });
     const lines = [
-      `名字：${card.name}`,
-      `分类：${card.kind === "active" ? "主动使用" : "被动"}`,
-      `使用次数限制：${card.useLimit === "infinite" ? "无限" : card.useLimit}`,
-      `冷却时间：${cooldown}`,
-      `描述：${card.description}`,
+      t("codex.name", { name: card.name }),
+      t("codex.category", { kind: card.kind === "active" ? t("codex.active_use") : t("codex.passive") }),
+      t("codex.use_limit", { limit: card.useLimit === "infinite" ? t("codex.infinite") : card.useLimit }),
+      t("codex.cooldown", { cooldown }),
+      t("codex.description", { description: card.description }),
     ];
     this.renderDetailText(lines);
   }
@@ -372,7 +373,7 @@ export class CodexScene extends Phaser.Scene {
     mask.fillStyle(0xffffff, 1);
     mask.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
     content.enableFilters();
-    content.filters.internal.addMask(mask);
+    content.filters?.internal.addMask(mask);
 
     this.detailLayer.add(content);
     this.registerDetailScrollArea(bounds, content, text.height, bounds.height);
@@ -468,10 +469,10 @@ const DETAIL_CONTENT_TOP = DETAIL_PANEL.y + 32;
 
 function roleLabel(role: CharacterDefinition["roleClass"]): string {
   return {
-    assault: "突击",
-    suppress: "压制",
-    scout: "侦察",
-    sniper: "狙击",
+    assault: t("role.assault"),
+    suppress: t("role.suppress"),
+    scout: t("role.scout"),
+    sniper: t("role.sniper"),
   }[role];
 }
 

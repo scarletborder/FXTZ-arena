@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { t } from "@repo/i18n";
 
 import {
   bodyStyle,
@@ -7,18 +8,18 @@ import {
 import type { SettingsScene } from "./index";
 
 export function renderAboutTab(scene: SettingsScene, layer: Phaser.GameObjects.Container): void {
-  layer.add(sectionTitle(scene, 36, 34, "staff"));
+  layer.add(sectionTitle(scene, 36, 34, t("settings.about.staff")));
   layer.add(scene.add.text(
     36,
     86,
-    "Design / Code: scarletborder\nUI Scene: Phaser4\nPhysics: Rapier-2d",
+    t("settings.about.credits"),
     bodyStyle("#d7e3ef", 18),
   ).setLineSpacing(12));
 
-  layer.add(sectionTitle(scene, 36, 214, "项目网址"));
+  layer.add(sectionTitle(scene, 36, 214, t("settings.about.project_url")));
   layer.add(scene.add.text(36, 266, "github.com/scarletborder/FXTZ-arena", bodyStyle("#9fd8ff", 18)));
 
-  layer.add(sectionTitle(scene, 36, 334, "版本"));
+  layer.add(sectionTitle(scene, 36, 334, t("settings.about.version")));
   layer.add(drawBuildLabel(scene, 324, 384));
 }
 

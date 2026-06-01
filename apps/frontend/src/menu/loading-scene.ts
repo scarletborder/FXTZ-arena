@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { createRaidLogicRuntime } from "@repo/raid-logic";
+import { t } from "@repo/i18n";
 import type { ServerMessage } from "@repo/types";
 
 import { queueBattleAssets } from "../battle/assets";
@@ -46,11 +47,11 @@ export class LoadingScene extends Phaser.Scene {
 
   preload(): void {
     drawFightingBackdrop(this, "LOADING", "READY");
-    this.add.text(434, 278, "加载战斗资源", headingStyle(34));
+    this.add.text(434, 278, t("loading.title"), headingStyle(34));
     this.label = this.add.text(
       444,
       342,
-      "本地资源检查中",
+      t("loading.local_checking"),
       bodyStyle("#d7e3ef", 20),
     );
     this.bar = this.add.graphics();
@@ -67,8 +68,8 @@ export class LoadingScene extends Phaser.Scene {
       this.renderProgress();
       this.label?.setText(
         this.loadingData.mode === "online"
-          ? "资源加载完成，等待玩家同步"
-          : "资源加载完成",
+          ? t("loading.resources_ready_waiting")
+          : t("loading.resources_ready"),
       );
     });
 
@@ -78,8 +79,8 @@ export class LoadingScene extends Phaser.Scene {
       this.renderProgress();
       this.label?.setText(
         this.loadingData.mode === "online"
-          ? "资源加载完成，等待玩家同步"
-          : "资源加载完成",
+          ? t("loading.resources_ready_waiting")
+          : t("loading.resources_ready"),
       );
     }
   }
@@ -87,12 +88,12 @@ export class LoadingScene extends Phaser.Scene {
   create(data: LoadingData): void {
     this.loadingData = data;
     this.label?.setText(
-      data.mode === "online" ? "初始化战斗，同步前准备" : "初始化战斗",
+      data.mode === "online" ? t("loading.init_sync") : t("loading.init_local"),
     );
 
     if (data.mode === "online" || data.mode === "local") {
       this.createConnectionBadge();
-      this.setConnectionStatus("p2p 初始化中", 0xffcf6e);
+      this.setConnectionStatus(t("loading.p2p_init"), 0xffcf6e);
     }
 
     if (data.mode === "online" || data.mode === "local") {
@@ -122,12 +123,12 @@ export class LoadingScene extends Phaser.Scene {
             this.onlineReady = true;
             this.tryGoToBattle();
           } else if (msg.type === "room_state" && msg.status === "finished") {
-            this.label?.setText("对手已退出，战斗结束");
+            this.label?.setText(t("loading.peer_left_end"));
             this.time.delayedCall(900, () => this.scene.start("home"));
           } else if (msg.type === "peer_status" && msg.status === "disconnected") {
-            this.label?.setText("对手断线，等待重连");
+            this.label?.setText(t("loading.peer_disconnect_wait"));
           } else if (msg.type === "peer_status" && msg.status === "reconnected") {
-            this.label?.setText("对手已重连，等待玩家同步");
+            this.label?.setText(t("loading.peer_reconnected"));
           }
         });
       }
@@ -171,12 +172,12 @@ export class LoadingScene extends Phaser.Scene {
         this.onlineReady = true;
       } else {
         this.sendLoadingDone();
-        this.label?.setText("等待玩家同步");
+        this.label?.setText(t("loading.waiting_sync"));
       }
     } else if (this.loadingData.mode === "local") {
       this.onlineReady = true;
       this.maybeSendLoadingDone();
-      this.label?.setText("局域网 P2P 已连接，等待玩家同步");
+      this.label?.setText(t("loading.local_p2p_connected_wait"));
     }
 
     this.tryGoToBattle();
@@ -248,23 +249,23 @@ export class LoadingScene extends Phaser.Scene {
     }
     if (status === "connecting") {
       this.p2pReady = false;
-      this.setConnectionStatus("p2p 尝试中", 0xffcf6e);
-      this.label?.setText(this.loadingData.mode === "local" ? "正在建立局域网 P2P 连接…" : "正在尝试 P2P 连接…");
+      this.setConnectionStatus(t("loading.p2p_trying"), 0xffcf6e);
+      this.label?.setText(this.loadingData.mode === "local" ? t("loading.p2p_attempt") : t("loading.p2p_attempt_online"));
       return;
     }
 
     this.p2pReady = this.loadingData.mode === "local" ? status === "connected" : true;
 
     if (status === "connected") {
-      this.setConnectionStatus("p2p 已连接", 0x34d399);
-      this.label?.setText(this.loadingData.mode === "local" ? "局域网 P2P 已连接，等待玩家同步" : "P2P 已连接，等待玩家同步");
+      this.setConnectionStatus(t("loading.p2p_connected"), 0x34d399);
+      this.label?.setText(this.loadingData.mode === "local" ? t("loading.local_p2p_connected_wait") : t("loading.p2p_connected_wait_online"));
       this.maybeSendLoadingDone();
     } else if (status === "failed") {
-      this.setConnectionStatus("p2p 不可用", 0xff5c66);
-      this.label?.setText(this.loadingData.mode === "local" ? "局域网 P2P 连接失败" : "P2P 不可用，已回落到专用服务器");
+      this.setConnectionStatus(t("loading.p2p_unavailable"), 0xff5c66);
+      this.label?.setText(this.loadingData.mode === "local" ? t("loading.p2p_fallback_local") : t("loading.p2p_fallback_online"));
     } else if (status === "disabled") {
-      this.setConnectionStatus("p2p 已关闭", 0x9fb4c8);
-      this.label?.setText(this.loadingData.mode === "local" ? "局域网 P2P 已关闭" : "P2P 已关闭，使用专用服务器");
+      this.setConnectionStatus(t("loading.p2p_closed"), 0x9fb4c8);
+      this.label?.setText(this.loadingData.mode === "local" ? t("loading.p2p_closed_local") : t("loading.p2p_closed_online"));
     }
 
     this.tryGoToBattle();
@@ -287,7 +288,7 @@ export class LoadingScene extends Phaser.Scene {
     const badge = this.add.container(20, 20).setDepth(40);
     const background = this.add.graphics();
     drawAngledPanel(background, 0, 0, 264, 52, 0x101820, 0x5c7185, 0.96);
-    const text = this.add.text(18, 13, "p2p 初始化中", {
+    const text = this.add.text(18, 13, t("loading.p2p_init"), {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: "18px",
       fontStyle: "700",

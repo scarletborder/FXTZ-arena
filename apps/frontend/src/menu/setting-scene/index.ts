@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { t } from "@repo/i18n";
 
 import {
   bodyStyle,
@@ -13,9 +14,9 @@ import { renderGeneralTab } from "./general-tab";
 import { renderAboutTab } from "./about-tab";
 
 const TAB_DEFINITIONS: readonly SettingsTabDefinition[] = [
-  { key: "online", label: "联机", render: renderOnlineTab },
-  { key: "general", label: "通用", render: renderGeneralTab },
-  { key: "about", label: "关于", render: renderAboutTab },
+  { key: "online", label: t("settings.online"), render: renderOnlineTab },
+  { key: "general", label: t("settings.general"), render: renderGeneralTab },
+  { key: "about", label: t("settings.about"), render: renderAboutTab },
 ];
 
 export class SettingsScene extends Phaser.Scene {
@@ -37,7 +38,7 @@ export class SettingsScene extends Phaser.Scene {
   create(): void {
     drawFightingBackdrop(this, "OPTIONS", "SYSTEM");
     createBackButton(this);
-    this.add.text(90, 72, "设置", headingStyle(42));
+    this.add.text(90, 72, t("settings.title"), headingStyle(42));
 
     this.tabLayer = this.add.container(74, 138);
     this.contentLayer = this.add.container(74, 190);

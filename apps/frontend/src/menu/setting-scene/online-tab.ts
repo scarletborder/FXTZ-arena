@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { PUBLIC_SERVER } from "@repo/constants";
+import { t } from "@repo/i18n";
 
 import {
   bodyStyle,
@@ -114,14 +115,14 @@ export function renderOnlineTab(scene: SettingsScene, layer: Phaser.GameObjects.
   };
 
   const statusText = scene.add.text(36, 350, " ", bodyStyle("#ffcf6e", 17));
-  const probeStatusText = scene.add.text(222, 278, "尚未测试当前地址", bodyStyle("#b7c7d8", 16)).setWordWrapWidth(260);
+  const probeStatusText = scene.add.text(222, 278, t("settings.online.probe_idle"), bodyStyle("#b7c7d8", 16)).setWordWrapWidth(260);
   const trustButton = createFightButton(
     scene,
     526,
     288,
     142,
     40,
-    "去信任",
+    t("settings.online.trust"),
     () => {
       if (latestTrustUrl) {
         window.open(latestTrustUrl, "_blank", "noopener,noreferrer");
@@ -140,17 +141,17 @@ export function renderOnlineTab(scene: SettingsScene, layer: Phaser.GameObjects.
 
   const updateConnectionDisplay = (status: ConnectionStatus) => {
     const statusMap: Record<ConnectionStatus, { text: string; color: string }> = {
-      disconnected: { text: "连接状态：未连接", color: "#b7c7d8" },
-      connecting: { text: "连接状态：正在连接…", color: "#f7b733" },
-      connected: { text: `连接状态：已连接 ${connectionManager.serverVersion ? `(${connectionManager.serverVersion})` : ""}`, color: "#34d399" },
-      error: { text: "连接状态：连接失败", color: "#ff5c66" },
+      disconnected: { text: t("settings.online.connection_status.disconnected"), color: "#b7c7d8" },
+      connecting: { text: t("settings.online.connection_status.connecting"), color: "#f7b733" },
+      connected: { text: `${t("settings.online.connection_status.connected")} ${connectionManager.serverVersion ? `(${connectionManager.serverVersion})` : ""}`, color: "#34d399" },
+      error: { text: t("settings.online.connection_status.error"), color: "#ff5c66" },
     };
     const info = statusMap[status] ?? statusMap.disconnected;
     if (!statusText.active || !statusText.scene) {
       return;
     }
     statusText.setText(info.text).setColor(info.color);
-    connectButton.setLabel(status === "connected" ? "断开连接" : "连接服务器");
+    connectButton.setLabel(status === "connected" ? t("settings.online.disconnect") : t("settings.online.connect"));
   };
 
   const setTrustButtonVisible = (visible: boolean) => {
@@ -161,16 +162,16 @@ export function renderOnlineTab(scene: SettingsScene, layer: Phaser.GameObjects.
   const setProbeResult = (result: ProbeResult, trustUrl: string) => {
     latestTrustUrl = trustUrl;
     if (result.kind === "ok") {
-      probeStatusText.setText(`当前地址可连接，延迟 ${result.latencyMs ?? 0} ms`).setColor("#34d399");
+      probeStatusText.setText(t("settings.online.probe_ok", { ms: result.latencyMs ?? 0 })).setColor("#34d399");
       setTrustButtonVisible(false);
       return;
     }
     if (result.kind === "trust_required") {
-      probeStatusText.setText("当前地址可能需要手动信任证书").setColor("#ffcf6e");
+      probeStatusText.setText(t("settings.online.probe_trust_required")).setColor("#ffcf6e");
       setTrustButtonVisible(true);
       return;
     }
-    probeStatusText.setText("当前地址连接失败").setColor("#ff5c66");
+    probeStatusText.setText(t("settings.online.probe_failed")).setColor("#ff5c66");
     setTrustButtonVisible(false);
   };
 
@@ -179,22 +180,22 @@ export function renderOnlineTab(scene: SettingsScene, layer: Phaser.GameObjects.
     pendingProbeDispose = undefined;
     latestTrustUrl = "";
     setTrustButtonVisible(false);
-    probeStatusText.setText("正在测试当前地址…").setColor("#f7b733");
+    probeStatusText.setText(t("settings.online.probe_testing")).setColor("#f7b733");
     pendingProbeDispose = probeCustomServer(uiSettings.serverAddress, (result, trustUrl) => {
       pendingProbeDispose = undefined;
       setProbeResult(result, trustUrl);
     });
   };
 
-  const currentServerButton = createFightButton(scene, 124, 288, 154, 40, "测试当前地址", testCurrentServer, { accent: 0x5c7185 });
-  const publicServerLabel = scene.add.text(36, 230, "公共服务器", bodyStyle("#f6f1e6", 18));
+  const currentServerButton = createFightButton(scene, 124, 288, 154, 40, t("settings.online.test_current"), testCurrentServer, { accent: 0x5c7185 });
+  const publicServerLabel = scene.add.text(36, 230, t("settings.online.public_servers"), bodyStyle("#f6f1e6", 18));
   const publicServerButton = createRectangleButton(scene, 166, 240, 42, 36, "▼", openPublicServerDialog, { accent: 0x5c7185 });
-  const publicProbeButton = createFightButton(scene, 398, 250, 168, 40, "测试公共服", openConnectivityDialog, { accent: 0x5c7185 });
+  const publicProbeButton = createFightButton(scene, 398, 250, 168, 40, t("settings.online.test_public"), openConnectivityDialog, { accent: 0x5c7185 });
 
-  layer.add(sectionTitle(scene, 36, 34, "专用服务器"));
-  layer.add(scene.add.text(36, 86, "专用服务器地址", bodyStyle("#f6f1e6", 18)));
+  layer.add(sectionTitle(scene, 36, 34, t("settings.online.dedicated_server")));
+  layer.add(scene.add.text(36, 86, t("settings.online.server_address.title"), bodyStyle("#f6f1e6", 18)));
   serverAddressField = createField(36, 124, 500, "serverAddress");
-  layer.add(scene.add.text(36, 188, "默认监听本地专用服务器，默认端口：22334", bodyStyle("#b7c7d8", 16)));
+  layer.add(scene.add.text(36, 188, `${t("settings.online.server_address.helper")}，${t("settings.online.server_address.port")}`, bodyStyle("#b7c7d8", 16)));
   layer.add(publicServerLabel);
   layer.add(publicServerButton.container);
   layer.add(publicProbeButton.container);
@@ -226,7 +227,7 @@ export function renderOnlineTab(scene: SettingsScene, layer: Phaser.GameObjects.
 
 function renderP2pSection(scene: SettingsScene, layer: Phaser.GameObjects.Container, x: number, y: number): void {
   let stunDialog: Phaser.GameObjects.Container | undefined;
-  const p2pText = scene.add.text(x, y + 52, "启用 P2P：", bodyStyle("#d7e3ef", 18));
+  const p2pText = scene.add.text(x, y + 52, t("settings.online.p2p_enabled"), bodyStyle("#d7e3ef", 18));
   const p2pCheckbox = createCheckbox(scene, x + 100, y + 62, uiSettings.p2pEnabled, {
     onChange: (nextEnabled) => {
       setP2pEnabled(nextEnabled);
@@ -247,21 +248,21 @@ function renderP2pSection(scene: SettingsScene, layer: Phaser.GameObjects.Contai
     });
   };
   const addStun = () => {
-    const raw = window.prompt("新增 STUN 服务器", uiSettings.stunServer);
+    const raw = window.prompt(t("settings.online.add_stun"), uiSettings.stunServer);
     if (!raw) return;
     setStunServer(raw);
     setStunServers([uiSettings.stunServer, ...uiSettings.stunServers]);
     stunText.setText(uiSettings.stunServer);
   };
 
-  layer.add(sectionTitle(scene, x, y, "P2P 联机"));
+  layer.add(sectionTitle(scene, x, y, t("settings.online.p2p")));
   layer.add(p2pText);
   layer.add(p2pCheckbox.container);
-  layer.add(scene.add.text(x, y + 92, "STUN 服务器", bodyStyle("#f6f1e6", 18)));
+  layer.add(scene.add.text(x, y + 92, t("settings.online.stun_server"), bodyStyle("#f6f1e6", 18)));
   layer.add(stunText);
   layer.add(createRectangleButton(scene, x + 430, y + 141, 42, 34, "▼", openStunDialog, { accent: 0x5c7185 }).container);
   layer.add(createRectangleButton(scene, x + 484, y + 141, 42, 34, "+", addStun, { accent: 0x34d399 }).container);
-  layer.add(scene.add.text(x, y + 206, "P2P 超时或失败会自动回落到当前专用服务器连接 如果频繁失败禁用P2P可跳过尝试时间", bodyStyle("#b7c7d8", 16)).setWordWrapWidth(480));
+  layer.add(scene.add.text(x, y + 206, t("settings.online.p2p_hint"), bodyStyle("#b7c7d8", 16)).setWordWrapWidth(480));
 
   scene.addCleanup(closeStunDialog);
 }
@@ -303,14 +304,14 @@ function createPublicServerDialog(
   const panel = scene.add.graphics();
   drawAngledPanel(panel, x, y, dialogWidth, dialogHeight, 0x101820, 0xffcf6e, 0.98);
 
-  const title = scene.add.text(x + 30, y + 24, "选择公共服务器", bodyStyle("#ffcf6e", 22));
+  const title = scene.add.text(x + 30, y + 24, t("settings.online.public_server"), bodyStyle("#ffcf6e", 22));
   const closeBtn = createDialogCloseButton(scene, x + dialogWidth - 62, y + 22, () => {
     layer.destroy();
   });
   layer.add([shade, panel, title, closeBtn]);
 
   if (servers.length === 0) {
-    layer.add(scene.add.text(x + 30, y + 84, "暂无默认公共服务器", bodyStyle("#b7c7d8", 18)));
+    layer.add(scene.add.text(x + 30, y + 84, t("settings.online.no_public_server"), bodyStyle("#b7c7d8", 18)));
   } else {
     servers.forEach((server, index) => {
       layer.add(createServerOptionRow(scene, x + 28, y + 76 + index * rowHeight, dialogWidth - 56, rowHeight - 8, server, index, serverAddressField, () => {
@@ -346,7 +347,7 @@ function createStunServerDialog(
     .setInteractive({ useHandCursor: false });
   const panel = scene.add.graphics();
   drawAngledPanel(panel, x, y, dialogWidth, dialogHeight, 0x101820, 0xffcf6e, 0.98);
-  const title = scene.add.text(x + 30, y + 24, "选择 STUN 服务器", bodyStyle("#ffcf6e", 22));
+  const title = scene.add.text(x + 30, y + 24, t("settings.online.select_stun"), bodyStyle("#ffcf6e", 22));
   const closeBtn = createDialogCloseButton(scene, x + dialogWidth - 62, y + 22, () => {
     layer.destroy();
   });
@@ -461,7 +462,7 @@ function createServerOptionRow(
   const selected = server.addr === uiSettings.serverAddress;
   const container = scene.add.container(x, y);
   const background = scene.add.graphics();
-  const label = scene.add.text(18, 8, server.name || `公共服务器 ${index + 1}`, bodyStyle(selected ? "#ffcf6e" : "#f6f1e6", 17));
+  const label = scene.add.text(18, 8, server.name || t("dialog.public_server_index", { index: index + 1 }), bodyStyle(selected ? "#ffcf6e" : "#f6f1e6", 17));
   const address = scene.add.text(18, 31, server.addr, bodyStyle("#b7c7d8", 14)).setWordWrapWidth(width - 36);
   const hitArea = scene.add.rectangle(0, 0, width, height, 0xffffff, 0.001)
     .setOrigin(0, 0)

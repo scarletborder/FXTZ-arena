@@ -1,0 +1,98 @@
+{
+  "language": { "display": "English" },
+  "menu": {
+    "start_game": "Start Game", "practice_range": "Practice Range", "codex": "Codex", "about": "About", "settings": "Settings",
+    "subtitle": "FXTZ Arena ~ Vanity of the Arena Girls", "ai_declaration": "This game uses AI for art and coding", "language": "Language", "back": "Back"
+  },
+  "battle_start": {
+    "title": "Start Game", "online": "ONLINE", "local": "LOCAL", "quick_match": "Quick Match", "create_room": "Create Room", "room_list": "Room List",
+    "ai_battle": "Vs CPU", "training": "Practice Range", "local_lan": "Local LAN Play", "match_public_room": "Match a public room",
+    "wait_opponent_after_create": "Wait for an opponent after setup", "browse_rooms": "Browse public and private rooms", "choose_loadout": "Choose loadout before battle",
+    "no_cost_limit": "No cost limit", "discover_lan_players": "Discover LAN players", "connected": "Connected", "connecting": "Connecting...",
+    "error": "Connection failed", "disconnected": "Disconnected", "matching": "Matching...", "create_room_title": "Create Room",
+    "room_name": "Room name", "default_room_name": "{{name}}'s Room", "room_password": "Password (optional)", "lives": "Lives",
+    "create": "Create", "cancel": "Cancel", "creating_room": "Creating room..."
+  },
+  "settings": {
+    "title": "Settings", "general": "General", "online": "Online", "about": "About",
+    "general.username.title": "Username", "general.music.title": "Music", "general.sound.title": "Sound", "general.debug.title": "Debug",
+    "general.language.title": "Language", "general.language.subtitle": "Choose the UI language", "general.language.dialog_title": "Select Language",
+    "general.debug.on": "Debug mode: on", "general.debug.off": "Debug mode: off", "general.debug.toggle": "Toggle debug",
+    "online.server_address.title": "Dedicated server address", "online.server_address.helper": "Defaults to a local dedicated server", "online.server_address.port": "Default port: 22334",
+    "online.connection_status.disconnected": "Connection status: disconnected", "online.connection_status.connecting": "Connection status: connecting…",
+    "online.connection_status.connected": "Connection status: connected", "online.connection_status.error": "Connection status: failed",
+    "online.connect": "Connect", "online.disconnect": "Disconnect", "online.test_connectivity": "Test connectivity",
+    "online.public_server": "Select public server", "online.no_public_server": "No default public server", "online.probe_idle": "Current address not tested",
+    "online.trust": "Trust", "online.probe_ok": "Current address reachable, latency {{ms}} ms", "online.probe_trust_required": "Current address may require manual certificate trust",
+    "online.probe_failed": "Current address failed", "online.probe_testing": "Testing current address…", "online.test_current": "Test current",
+    "online.public_servers": "Public servers", "online.test_public": "Test public", "online.dedicated_server": "Dedicated server",
+    "online.p2p_enabled": "Enable P2P:", "online.add_stun": "Add STUN server", "online.p2p": "P2P",
+    "online.stun_server": "STUN server", "online.p2p_hint": "If P2P times out or fails, the game falls back to the current dedicated server. Disable P2P to skip that attempt time.",
+    "online.select_stun": "Select STUN server", "about.staff": "staff", "about.credits": "Design / Code: scarletborder\nUI Scene: Phaser4\nPhysics: Rapier-2d",
+    "about.project_url": "Project URL", "about.version": "Version"
+  },
+  "dialog": { "close": "Close", "public_server": "Select public server", "public_server_index": "Public server {{index}}" },
+  "public_server": {
+    "connectivity": "Public server connectivity", "hint": "Testing all public servers. You can retest from Settings.\nSome public servers require manual certificate trust: Trust -> Advanced -> Continue.",
+    "retest": "Retest", "none": "No public servers configured", "trust": "Trust", "testing": "Testing...", "trusted": "Trusted",
+    "latency": "Latency", "trust_required": "Certificate trust required", "failed": "Connection failed"
+  },
+  "result": {
+    "title": "Results", "stats": "Battle Stats", "winner": "Winner: {{name}}", "duration": "Match time: {{seconds}} sec",
+    "back": "Back to Start", "rematch": "Rematch", "rematch_disabled": "Unavailable", "shots": "Shots: {{count}}",
+    "bomb_uses": "Bomb uses: {{count}}", "hits_taken": "Hits taken: {{count}}"
+  },
+  "local_lan": {
+    "title": "Local LAN Play", "panel": "LAN Lobby", "connecting": "Connecting to public signaling server…", "connected": "Connected to public signaling server",
+    "error": "Public signaling failed. Check your Internet connection", "disconnected": "Public signaling disconnected", "help": "Click another player to send a request. Mutual requests enter a room automatically.",
+    "empty": "No online players yet. Waiting for others in the same LAN lobby…\nTry disabling network proxy", "matched": "Matched, entering loadout…",
+    "mutual": "Both players requested each other", "incoming": "They requested you", "outgoing": "Request sent", "invite": "Click to send a play request",
+    "sent": "Request sent to {{name}}", "preparing": "Preparing loadout: {{name}}", "loading": "Loading battle: {{name}}"
+  },
+  "room_list": {
+    "title": "Room List", "back": "Back", "room_id": "Room ID", "join": "Join", "password": "Enter Password",
+    "password_cancel": "Cancel", "password_confirm": "Confirm", "enter_room_id": "Enter a room ID",
+    "host": "Host: {{name}}  {{count}}/{{max}}  #{{id}}", "lock": "LOCK"
+  },
+  "room_lobby": {
+    "title": "Waiting Room", "copy": "Copy", "copied": "Room ID copied", "start": "Start Game", "ready": "Ready", "cancel_ready": "Cancel Ready",
+    "waiting": "Waiting…", "selecting": "Choosing loadout…", "room_info": "Room Info", "room_name": "Room name: {{name}}",
+    "host": "Host: {{name}}", "lives": "Lives: {{count}}", "cost_limit": "Cost limit: {{count}}", "status": "Status: {{status}}",
+    "status_waiting": "Waiting", "status_selecting": "Loadout", "status_unknown": "Unknown", "players": "Players", "host_badge": "Host",
+    "waiting_player": "Waiting…", "default_player": "Player-1", "wait_opponent": "Waiting for opponent…", "wait_ready": "Waiting for opponent ready…",
+    "ready_wait_start": "Ready, waiting for host to start", "ready_hint": "Click ready when prepared", "peer_left": "Opponent left the room"
+  },
+  "select": {
+    "confirmed": "Opponent confirmed", "opponent": "Opponent", "error": "Error: {{message}}", "peer_left": "Opponent left the room",
+    "primary_mode": "Primary Mode", "alternate_mode": "Special Mode", "confirm_battle": "Confirm Battle", "confirm_loadout": "Confirm Loadout",
+    "unselected": "Unselected", "characters": "Characters", "cards": "Ability Cards", "all": "All", "active": "Active", "passive": "Passive",
+    "wait_opponent": "Waiting…", "confirmed_waiting": "Confirmed, waiting…", "dummy": "Target", "cpu": "CPU",
+    "ammo": "Ammo", "move": "Move", "move_speed": "Move", "fire_rate": "Fire rate", "bullet_speed": "Bullet speed",
+    "uses": "Uses", "cooldown": "Cooldown"
+  },
+  "codex": {
+    "title": "Codex", "characters": "Characters", "cards": "Ability Cards", "all": "All", "active": "Active", "passive": "Passive",
+    "active_use": "Active Use", "none": "None", "seconds": "{{seconds}} sec", "name": "Name: {{name}}",
+    "category": "Category: {{kind}}", "use_limit": "Use limit: {{limit}}", "infinite": "Infinite", "cooldown": "Cooldown: {{cooldown}}",
+    "description": "Description: {{description}}", "name_label": "Name", "role_label": "Role"
+  },
+  "role": { "assault": "Assault", "suppress": "Suppress", "scout": "Scout", "sniper": "Sniper" },
+  "speed": { "low": "Low", "medium": "Medium", "high": "High" },
+  "loading": {
+    "title": "Loading Battle Assets", "local_checking": "Checking local assets", "resources_ready_waiting": "Assets loaded, waiting for player sync",
+    "resources_ready": "Assets loaded", "init_local": "Initializing battle", "init_sync": "Initializing battle before sync", "p2p_init": "P2P initializing",
+    "peer_left_end": "Opponent left, battle ended", "peer_disconnect_wait": "Opponent disconnected, waiting for reconnect", "peer_reconnected": "Opponent reconnected, waiting for player sync",
+    "waiting_sync": "Waiting for player sync", "local_p2p_connected_wait": "LAN P2P connected, waiting for player sync", "p2p_trying": "P2P trying",
+    "p2p_attempt": "Establishing LAN P2P connection…", "p2p_attempt_online": "Trying P2P connection…", "p2p_connected": "P2P connected",
+    "p2p_connected_wait": "LAN P2P connected, waiting for player sync", "p2p_connected_wait_online": "P2P connected, waiting for player sync",
+    "p2p_unavailable": "P2P unavailable", "p2p_fallback_local": "LAN P2P connection failed", "p2p_fallback_online": "P2P unavailable, fell back to dedicated server",
+    "p2p_closed": "P2P disabled", "p2p_closed_local": "LAN P2P disabled", "p2p_closed_online": "P2P disabled, using dedicated server"
+  },
+  "battle": {
+    "p2p_attempt_local": "Establishing LAN P2P connection…", "p2p_attempt_online": "Trying P2P connection…", "p2p_connected_local": "LAN P2P connected",
+    "p2p_connected_online": "P2P connected", "p2p_failed_local": "LAN P2P connection failed", "p2p_failed_online": "P2P unavailable, fell back to dedicated server",
+    "adjudication_done": "Both adjudications complete, entering results…", "peer_disconnected": "Opponent disconnected, waiting for reconnect…", "peer_reconnected": "Opponent reconnected",
+    "peer_left": "Opponent left, battle ended", "reconnect_timeout": "Opponent reconnect timed out, battle ended", "peer_adjudicated": "Opponent submitted final adjudication, sending local confirmation…",
+    "local_adjudicated": "Submitted final adjudication, waiting for opponent…", "recovering": "Recovering", "fighter_status": "Lives {{lives}}  bomb {{bombs}}"
+  }
+}

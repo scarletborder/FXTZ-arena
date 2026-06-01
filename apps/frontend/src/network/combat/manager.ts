@@ -1,5 +1,6 @@
 import type { PlayerId, ServerMessage } from "@repo/types";
 import type { ClientMessage, InputFrameMessage } from "@repo/types";
+import { t } from "@repo/i18n";
 import type { BattleInputState, RaidLogicRuntime } from "@repo/raid-logic";
 
 import type { ConnectionManager } from "../client";
@@ -108,7 +109,7 @@ export class CombatSyncManager {
     if (msg.type === "battle_finished") {
       this.markServerConfirmedFrame(msg.confirmedFrame);
       this.finishedByServer = true;
-      this.options.callbacks.setStatusText("双方裁决完成，进入结算…");
+      this.options.callbacks.setStatusText(t("battle.adjudication_done"));
       this.options.callbacks.delay(450, () => this.options.callbacks.finishBattle(msg.winnerPlayerId, msg.confirmedFrame));
       return;
     }
@@ -121,12 +122,12 @@ export class CombatSyncManager {
     if (msg.type === "peer_status" && msg.playerId === this.remotePlayerId) {
       if (msg.status === "disconnected") {
         this.paused = true;
-        this.options.callbacks.setStatusText("对手断线，等待重连…");
+        this.options.callbacks.setStatusText(t("battle.peer_disconnected"));
         this.startReconnectTimeout();
       } else if (msg.status === "reconnected") {
         this.clearReconnectTimeout();
         this.paused = false;
-        this.options.callbacks.setStatusText("对手已重连");
+        this.options.callbacks.setStatusText(t("battle.peer_reconnected"));
         this.options.callbacks.delay(700, () => this.options.callbacks.hideStatusText());
       }
       return;
@@ -134,7 +135,7 @@ export class CombatSyncManager {
 
     if (msg.type === "room_state" && msg.status === "finished" && !this.finishedByServer) {
       this.paused = true;
-      this.options.callbacks.setStatusText("对手已退出，战斗结束");
+      this.options.callbacks.setStatusText(t("battle.peer_left"));
       this.options.callbacks.delay(900, () => this.options.callbacks.finishBattle(this.localPlayerId));
     }
   }
@@ -146,7 +147,7 @@ export class CombatSyncManager {
       if (this.finishedByServer || !this.paused) {
         return;
       }
-      this.options.callbacks.setStatusText("对手重连超时，战斗结束");
+      this.options.callbacks.setStatusText(t("battle.reconnect_timeout"));
       this.options.callbacks.delay(300, () => this.options.callbacks.finishBattle(this.localPlayerId));
     }, 1_000);
   }
@@ -178,7 +179,7 @@ export class CombatSyncManager {
     this.lastPeerAckFrame = Math.max(this.lastPeerAckFrame, msg.ackFrame);
     this.pruneOnlineHistory();
     if (!this.gameOverVerdictSent) {
-      this.options.callbacks.setStatusText("对手已提交终局裁决，发送本地确认…");
+      this.options.callbacks.setStatusText(t("battle.peer_adjudicated"));
     }
     this.trySendGameOverVerdict();
   }
@@ -304,7 +305,7 @@ export class CombatSyncManager {
 
     this.gameOverVerdictSent = true;
     this.paused = true;
-    this.options.callbacks.setStatusText("已提交终局裁决，等待对手确认…");
+    this.options.callbacks.setStatusText(t("battle.local_adjudicated"));
     const verdict: ClientMessage = {
       type: "game_over",
       frame: localVerdict.frame,
@@ -339,7 +340,7 @@ export class CombatSyncManager {
       this.peerGameOverVerdict.frame,
       this.peerGameOverVerdict.ackFrame,
     );
-    this.options.callbacks.setStatusText("双方裁决完成，进入结算…");
+    this.options.callbacks.setStatusText(t("battle.adjudication_done"));
     this.options.callbacks.delay(450, () => this.options.callbacks.finishBattle(winnerPlayerId, confirmedFrame));
   }
 

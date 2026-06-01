@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { t } from "@repo/i18n";
 
 import {
   createFightButton,
@@ -29,7 +30,7 @@ export class RoomLobbyScene extends Phaser.Scene {
 
     drawFightingBackdrop(this, "LOBBY", "WAITING ROOM");
 
-    this.add.text(90, 74, "等待房间", {
+    this.add.text(90, 74, t("room_lobby.title"), {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: "42px",
       fontStyle: "900",
@@ -37,7 +38,7 @@ export class RoomLobbyScene extends Phaser.Scene {
     });
 
     // Custom back button: send leave_room before navigating
-    createFightButton(this, 1138, 62, 160, 44, "返回", () => {
+    createFightButton(this, 1138, 62, 160, 44, t("menu.back"), () => {
       connectionManager.send({ type: "leave_room" });
       this.scene.start("battle-start");
     }, { accent: 0x5c7185 });
@@ -53,9 +54,9 @@ export class RoomLobbyScene extends Phaser.Scene {
       fontSize: "16px",
       color: "#b7c7d8",
     });
-    createFightButton(this, 520, 96, 86, 34, "复制", () => {
+    createFightButton(this, 520, 96, 86, 34, t("room_lobby.copy"), () => {
       void navigator.clipboard?.writeText(connectionManager.roomId ?? "");
-      this.showToast("已复制房间号");
+      this.showToast(t("room_lobby.copied"));
     }, { accent: 0x5c7185 });
 
     // Content container for all panels and info text
@@ -65,7 +66,7 @@ export class RoomLobbyScene extends Phaser.Scene {
     // contentContainer, so they survive re-renders and stay on top of panels.
 
     this.startBtn = createFightButton(
-      this, 640, 640, 220, 50, "开始游戏", () => {
+      this, 640, 640, 220, 50, t("room_lobby.start"), () => {
         connectionManager.send({ type: "start_game" });
       },
       { enabled: false, accent: 0x34d399 },
@@ -73,7 +74,7 @@ export class RoomLobbyScene extends Phaser.Scene {
     this.startBtn.container.setVisible(false);
 
     this.readyBtn = createFightButton(
-      this, 640, 640, 220, 50, "准备", () => {
+      this, 640, 640, 220, 50, t("room_lobby.ready"), () => {
         this.selfReady = !this.selfReady;
         connectionManager.send({ type: "lobby_ready", ready: this.selfReady });
         this.renderLobby();
@@ -101,9 +102,9 @@ export class RoomLobbyScene extends Phaser.Scene {
 
     this.statusLabel.setText(
       connectionManager.roomStatus === "waiting"
-        ? "等待中…"
+        ? t("room_lobby.waiting")
         : connectionManager.roomStatus === "selecting"
-          ? "正在选择配装…"
+          ? t("room_lobby.selecting")
           : connectionManager.roomStatus ?? "",
     );
 
@@ -112,15 +113,15 @@ export class RoomLobbyScene extends Phaser.Scene {
     const myName = uiSettings.username;
 
     // ── Left panel: room info ──────────────────────────────
-    this.drawPanelToContainer(72, 176, 400, 300, "房间信息");
+    this.drawPanelToContainer(72, 176, 400, 300, t("room_lobby.room_info"));
 
     const infoLines: string[] = [];
-    if (connectionManager.roomName) infoLines.push(`房间名: ${connectionManager.roomName}`);
-    if (connectionManager.hostName) infoLines.push(`房主: ${connectionManager.hostName}`);
-    if (connectionManager.lifeCount !== null) infoLines.push(`命数: ${connectionManager.lifeCount}`);
-    if (connectionManager.costLimit !== null) infoLines.push(`Cost 上限: ${connectionManager.costLimit}`);
-    const statusText = connectionManager.roomStatus === "waiting" ? "等待中" : connectionManager.roomStatus === "selecting" ? "配装中" : connectionManager.roomStatus ?? "未知";
-    infoLines.push(`状态: ${statusText}`);
+    if (connectionManager.roomName) infoLines.push(t("room_lobby.room_name", { name: connectionManager.roomName }));
+    if (connectionManager.hostName) infoLines.push(t("room_lobby.host", { name: connectionManager.hostName }));
+    if (connectionManager.lifeCount !== null) infoLines.push(t("room_lobby.lives", { count: connectionManager.lifeCount }));
+    if (connectionManager.costLimit !== null) infoLines.push(t("room_lobby.cost_limit", { count: connectionManager.costLimit }));
+    const statusText = connectionManager.roomStatus === "waiting" ? t("room_lobby.status_waiting") : connectionManager.roomStatus === "selecting" ? t("room_lobby.status_selecting") : connectionManager.roomStatus ?? t("room_lobby.status_unknown");
+    infoLines.push(t("room_lobby.status", { status: statusText }));
 
     infoLines.forEach((line, i) => {
       this.contentContainer.add(
@@ -133,16 +134,16 @@ export class RoomLobbyScene extends Phaser.Scene {
     });
 
     // ── Right panel: player slots ──────────────────────────
-    this.drawPanelToContainer(548, 176, 660, 300, "玩家");
+    this.drawPanelToContainer(548, 176, 660, 300, t("room_lobby.players"));
 
     if (isHost) {
       // 1P = self (green), 2P = opponent (no subtitle)
-      this.drawPlayerSlot(556, 208, "1P", myName, "房主", true, true);
+      this.drawPlayerSlot(556, 208, "1P", myName, t("room_lobby.host_badge"), true, true);
       const guestOccupied = !!opponentName;
-      this.drawPlayerSlot(556, 332, "2P", opponentName ?? "等待中…", "", guestOccupied, false);
+      this.drawPlayerSlot(556, 332, "2P", opponentName ?? t("room_lobby.waiting"), "", guestOccupied, false);
     } else {
-      // 1P = host (shows "房主"), 2P = self (green, no subtitle)
-      this.drawPlayerSlot(556, 208, "1P", connectionManager.hostName ?? "玩家-1", "房主", true, false);
+      // 1P = host (shows t("room_lobby.host_badge")), 2P = self (green, no subtitle)
+      this.drawPlayerSlot(556, 208, "1P", connectionManager.hostName ?? t("room_lobby.default_player"), t("room_lobby.host_badge"), true, false);
       const guestOccupied = !!opponentName;
       this.drawPlayerSlot(556, 332, "2P", myName, "", guestOccupied, true);
     }
@@ -154,8 +155,8 @@ export class RoomLobbyScene extends Phaser.Scene {
       const canStart = !!opponentName && (connectionManager.opponentReady === true);
       this.startBtn.setEnabled(canStart);
 
-      const hint = !opponentName ? "等待对手加入…"
-        : !connectionManager.opponentReady ? "等待对手准备…"
+      const hint = !opponentName ? t("room_lobby.wait_opponent")
+        : !connectionManager.opponentReady ? t("room_lobby.wait_ready")
           : "";
       if (hint) {
         this.contentContainer.add(
@@ -169,10 +170,10 @@ export class RoomLobbyScene extends Phaser.Scene {
     } else {
       this.startBtn.container.setVisible(false);
       this.readyBtn.container.setVisible(true);
-      this.readyBtn.setLabel(this.selfReady ? "取消准备" : "准备");
+      this.readyBtn.setLabel(this.selfReady ? t("room_lobby.cancel_ready") : t("room_lobby.ready"));
 
       this.contentContainer.add(
-        this.add.text(640, 610, this.selfReady ? "已准备，等待房主开始游戏" : "准备好后请点击准备", {
+        this.add.text(640, 610, this.selfReady ? t("room_lobby.ready_wait_start") : t("room_lobby.ready_hint"), {
           fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
           fontSize: "14px",
           color: "#b7c7d8",
@@ -276,7 +277,7 @@ export class RoomLobbyScene extends Phaser.Scene {
   private leaveOnlineRoomView(): void {
     if (this.leavingOnlineRoom) return;
     this.leavingOnlineRoom = true;
-    this.showToast("对方已经退出房间");
+    this.showToast(t("room_lobby.peer_left"));
     this.time.delayedCall(150, () => {
       if (this.scene.isActive("lobby")) {
         this.scene.start("battle-start");

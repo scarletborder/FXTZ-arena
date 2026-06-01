@@ -1,5 +1,6 @@
-﻿import Phaser from "phaser";
+import Phaser from "phaser";
 import { MAX_ROOM_NAME_LENGTH } from "@repo/constants";
+import { t } from "@repo/i18n";
 import type { PlayerId } from "@repo/types";
 
 import type { ConnectionStatus } from "../network";
@@ -28,21 +29,21 @@ export class BattleStartScene extends Phaser.Scene {
     installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "BATTLE", "VERSUS ENTRY");
     createBackButton(this);
-    this.add.text(90, 74, "开始战斗", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "42px", fontStyle: "900", color: "#f6f1e6" });
+    this.add.text(90, 74, t("battle_start.title"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "42px", fontStyle: "900", color: "#f6f1e6" });
 
     this.indicator = this.add.graphics();
     this.statusLabel = this.add.text(90, 130, "", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "14px", color: "#b7c7d8" });
     this.drawIndicator("disconnected");
 
-    drawPanel(this, 72, 176, 520, 432, "ONLINE");
-    drawPanel(this, 686, 176, 520, 432, "LOCAL");
-    this.quickMatchBtn = createFightButton(this, 332, 272, 330, 70, "快速匹配", () => this.onQuickMatch(), { enabled: false, subLabel: "匹配一个公开房间" });
-    this.createRoomBtn = createFightButton(this, 332, 374, 330, 70, "创建房间", () => this.onCreateRoom(), { enabled: false, subLabel: "设置后等待对手加入" });
-    this.roomListBtn = createFightButton(this, 332, 476, 330, 70, "房间列表", () => this.scene.start("room-list"), { enabled: false, subLabel: "浏览公开和加密房间" });
+    drawPanel(this, 72, 176, 520, 432, t("battle_start.online"));
+    drawPanel(this, 686, 176, 520, 432, t("battle_start.local"));
+    this.quickMatchBtn = createFightButton(this, 332, 272, 330, 70, t("battle_start.quick_match"), () => this.onQuickMatch(), { enabled: false, subLabel: t("battle_start.match_public_room") });
+    this.createRoomBtn = createFightButton(this, 332, 374, 330, 70, t("battle_start.create_room"), () => this.onCreateRoom(), { enabled: false, subLabel: t("battle_start.wait_opponent_after_create") });
+    this.roomListBtn = createFightButton(this, 332, 476, 330, 70, t("battle_start.room_list"), () => this.scene.start("room-list"), { enabled: false, subLabel: t("battle_start.browse_rooms") });
 
-    createFightButton(this, 946, 298, 360, 86, "人机对战", () => this.scene.start("select", { mode: "ai" } satisfies SelectionData), { subLabel: "选择配装后开战", accent: 0xe33d44 });
-    createFightButton(this, 946, 416, 360, 86, "靶场", () => this.scene.start("select", { mode: "training" } satisfies SelectionData), { subLabel: "无 cost 上限", accent: 0x26c6da });
-    createFightButton(this, 946, 534, 360, 86, "本地局域网游玩", () => this.scene.start("local-lan"), { subLabel: "发现局域网玩家", accent: 0xffcf6e });
+    createFightButton(this, 946, 298, 360, 86, t("battle_start.ai_battle"), () => this.scene.start("select", { mode: "ai" } satisfies SelectionData), { subLabel: t("battle_start.choose_loadout"), accent: 0xe33d44 });
+    createFightButton(this, 946, 416, 360, 86, t("battle_start.training"), () => this.scene.start("select", { mode: "training" } satisfies SelectionData), { subLabel: t("battle_start.no_cost_limit"), accent: 0x26c6da });
+    createFightButton(this, 946, 534, 360, 86, t("battle_start.local_lan"), () => this.scene.start("local-lan"), { subLabel: t("battle_start.discover_lan_players"), accent: 0xffcf6e });
 
     const updateConnectionState = (s: ConnectionStatus) => {
       const connected = s === "connected";
@@ -72,7 +73,7 @@ export class BattleStartScene extends Phaser.Scene {
     const color = status === "connected" ? 0x34d399 : status === "connecting" ? 0xf7b733 : 0xff5c66;
     this.indicator.fillStyle(color, 1);
     this.indicator.fillCircle(96, 142, 5);
-    this.statusLabel.setText(status === "connected" ? `已连接${connectionManager.serverVersion ? ` (${connectionManager.serverVersion})` : ""}` : status === "connecting" ? "正在连接..." : status === "error" ? "连接失败" : "未连接");
+    this.statusLabel.setText(status === "connected" ? `${t("battle_start.connected")}${connectionManager.serverVersion ? ` (${connectionManager.serverVersion})` : ""}` : status === "connecting" ? t("battle_start.connecting") : status === "error" ? t("battle_start.error") : t("battle_start.disconnected"));
   }
 
   private onServerMessage(msg: unknown): void {
@@ -88,7 +89,7 @@ export class BattleStartScene extends Phaser.Scene {
 
   private onQuickMatch(): void {
     connectionManager.send({ type: "quick_match", username: uiSettings.username, p2pEnabled: uiSettings.p2pEnabled });
-    this.showToast("正在匹配...");
+    this.showToast(t("battle_start.matching"));
   }
 
   private onCreateRoom(): void {
@@ -114,10 +115,10 @@ export class BattleStartScene extends Phaser.Scene {
     const bg = this.add.graphics();
     drawAngledPanel(bg, px, py, pw, ph, 0x111821, 0x5c7185, 0.98);
     c.add(bg);
-    c.add(this.add.text(cx, py + 28, "创建房间", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "22px", fontStyle: "700", color: "#ffcf6e" }).setOrigin(0.5));
-    let roomName = Array.from(`${uiSettings.username} 的房间`).slice(0, MAX_ROOM_NAME_LENGTH).join("");
+    c.add(this.add.text(cx, py + 28, t("battle_start.create_room"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "22px", fontStyle: "700", color: "#ffcf6e" }).setOrigin(0.5));
+    let roomName = Array.from(t("battle_start.default_room_name", { name: uiSettings.username })).slice(0, MAX_ROOM_NAME_LENGTH).join("");
     let roomPassword = "";
-    c.add(this.add.text(cx - 140, py + 78, "房间名", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
+    c.add(this.add.text(cx - 140, py + 78, t("battle_start.room_name"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
     const nameField = createTextField(this, cx - 140, py + 108, 280, {
       value: roomName,
       maxLength: MAX_ROOM_NAME_LENGTH,
@@ -126,26 +127,26 @@ export class BattleStartScene extends Phaser.Scene {
     });
     c.add(nameField.container);
     this.activeField = nameField;
-    c.add(this.add.text(cx - 140, py + 158, "密码(可选)", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
+    c.add(this.add.text(cx - 140, py + 158, t("battle_start.room_password"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
     const passwordField = createTextField(this, cx - 140, py + 188, 280, {
       value: roomPassword,
       onFocus: (field) => { this.activeField = field; },
       onChange: (v) => { roomPassword = v; },
     });
     c.add(passwordField.container);
-    c.add(this.add.text(cx + 20, py + 248, "命数", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
+    c.add(this.add.text(cx + 20, py + 248, t("battle_start.lives"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
     const lifeLabel = this.add.text(cx + 140, py + 248, "2", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#34d399" });
     c.add(lifeLabel);
     c.add(this.add.text(cx + 100, py + 248, "<", { fontFamily: "Arial", fontSize: "16px", color: "#b7c7d8" }).setInteractive({ useHandCursor: true }).on("pointerdown", () => lifeLabel.setText(String(Math.max(1, parseInt(lifeLabel.text, 10) - 1)))));
     c.add(this.add.text(cx + 164, py + 248, ">", { fontFamily: "Arial", fontSize: "16px", color: "#b7c7d8" }).setInteractive({ useHandCursor: true }).on("pointerdown", () => lifeLabel.setText(String(Math.min(9, parseInt(lifeLabel.text, 10) + 1)))));
-    c.add(createFightButton(this, cx - 80, py + ph - 60, 140, 44, "创建", () => {
+    c.add(createFightButton(this, cx - 80, py + ph - 60, 140, 44, t("battle_start.create"), () => {
       connectionManager.send({ type: "create_room", name: roomName, username: uiSettings.username, password: roomPassword || undefined, mapId: "arena_standard", lifeCount: parseInt(lifeLabel.text, 10), costLimit: 10, p2pEnabled: uiSettings.p2pEnabled });
       c.destroy();
       this.formContainer = null;
       this.activeField = null;
-      this.showToast("正在创建房间...");
+      this.showToast(t("battle_start.creating_room"));
     }, { accent: 0x34d399 }).container);
-    c.add(createFightButton(this, cx + 80, py + ph - 60, 140, 44, "取消", () => {
+    c.add(createFightButton(this, cx + 80, py + ph - 60, 140, 44, t("battle_start.cancel"), () => {
       c.destroy();
       this.formContainer = null;
       this.activeField = null;

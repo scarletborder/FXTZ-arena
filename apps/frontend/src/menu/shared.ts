@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { getAbilityCardDefinition, getCharacterDefinition, type AbilityCardDefinition, type CharacterDefinition } from "@repo/content";
+import { t } from "@repo/i18n";
 import type { PlayerId, PlayerLoadout } from "@repo/types";
 
 import type { BattleSceneData } from "../battle/loadout";
@@ -90,18 +91,18 @@ export interface CharacterTileControl {
 
 export function roleLabel(role: CharacterDefinition["roleClass"]): string {
   return {
-    assault: "突击",
-    suppress: "压制",
-    scout: "侦察",
-    sniper: "狙击",
+    assault: t("role.assault"),
+    suppress: t("role.suppress"),
+    scout: t("role.scout"),
+    sniper: t("role.sniper"),
   }[role];
 }
 
 export function speedLabel(speed: CharacterDefinition["moveSpeed"]): string {
   return {
-    low: "低",
-    medium: "中",
-    high: "高",
+    low: t("speed.low"),
+    medium: t("speed.medium"),
+    high: t("speed.high"),
   }[speed];
 }
 

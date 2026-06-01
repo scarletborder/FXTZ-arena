@@ -1,6 +1,6 @@
-import Phaser from "phaser";
-
 import type { SettingsScene } from "./index";
+
+import Phaser from "phaser";
 
 export type SettingsTabKey = "online" | "general" | "about";
 
@@ -12,4 +12,8 @@ export interface SettingsTabDefinition {
 
 export interface SettingsSceneCleanup {
   addCleanup(cleanup: () => void): void;
+}
+
+export interface SettingsDialogHost {
+  setActiveDialog(dialog: Phaser.GameObjects.Container | undefined): void;
 }

@@ -1,11 +1,11 @@
 import Phaser from "phaser";
+import { t } from "@repo/i18n";
 
 import {
   bodyStyle,
   createFightButton,
   createTextField,
 } from "../ui";
-import { MAX_PLAYER_NAME_LENGTH } from "@repo/constants";
 import {
   setDebug,
   setMusicVolume,
@@ -15,6 +15,7 @@ import {
 } from "../../store/settings";
 import type { TextFieldControl } from "../shared";
 import type { SettingsScene } from "./index";
+import { showLanguageDialog } from "../language-dialog";
 
 interface SliderControl {
   readonly container: Phaser.GameObjects.Container;
@@ -50,27 +51,33 @@ export function renderGeneralTab(scene: SettingsScene, layer: Phaser.GameObjects
     }
   };
 
-  layer.add(sectionTitle(scene, 36, 34, "账号"));
-  layer.add(scene.add.text(36, 86, "用户名", bodyStyle("#f6f1e6", 18)));
+  layer.add(sectionTitle(scene, 36, 34, t("settings.general")));
+  layer.add(scene.add.text(36, 86, t("settings.general.username.title"), bodyStyle("#f6f1e6", 18)));
   layer.add(usernameField.container);
 
-  layer.add(sectionTitle(scene, 36, 190, "音量"));
-  layer.add(scene.add.text(36, 242, "音乐", bodyStyle("#f6f1e6", 18)));
+  layer.add(sectionTitle(scene, 36, 190, t("settings.general")));
+  layer.add(scene.add.text(36, 242, t("settings.general.music.title"), bodyStyle("#f6f1e6", 18)));
   layer.add(createVolumeSlider(scene, 36, 280, 360, uiSettings.music, setMusicVolume).container);
-  layer.add(scene.add.text(36, 334, "音效", bodyStyle("#f6f1e6", 18)));
+  layer.add(scene.add.text(36, 334, t("settings.general.sound.title"), bodyStyle("#f6f1e6", 18)));
   layer.add(createVolumeSlider(scene, 36, 372, 360, uiSettings.sound, setSoundVolume).container);
 
-  layer.add(sectionTitle(scene, 616, 34, "调试"));
+  layer.add(sectionTitle(scene, 616, 34, t("settings.general.debug.title")));
   const debugText = scene.add.text(616, 86, " ", bodyStyle("#d7e3ef", 18));
   const updateDebug = () => {
-    debugText.setText(uiSettings.debug ? "debug 模式：开启" : "debug 模式：关闭");
+    debugText.setText(uiSettings.debug ? t("settings.general.debug.on") : t("settings.general.debug.off"));
   };
   updateDebug();
   layer.add(debugText);
-  layer.add(createFightButton(scene, 741, 150, 250, 54, "切换 debug", () => {
+  layer.add(createFightButton(scene, 741, 150, 250, 54, t("settings.general.debug.toggle"), () => {
     setDebug(!uiSettings.debug);
     updateDebug();
   }, { accent: 0xf7b733 }).container);
+
+  const languageLabel = scene.add.text(616, 242, t("settings.general.language.title"), bodyStyle("#f6f1e6", 18));
+  const languageHint = scene.add.text(616, 280, t("settings.general.language.subtitle"), bodyStyle("#b7c7d8", 15));
+  layer.add([languageLabel, languageHint, createFightButton(scene, 741, 338, 250, 54, t("settings.general.language.title"), () => {
+    showLanguageDialog(scene);
+  }, { accent: 0x34d399 }).container]);
 
   scene.input.keyboard?.on("keydown", onKeyDown);
   window.addEventListener("paste", onPaste);
@@ -191,3 +198,4 @@ function createVolumeSlider(
 function clampVolume(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
+const MAX_PLAYER_NAME_LENGTH = 32;

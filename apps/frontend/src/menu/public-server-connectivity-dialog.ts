@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { PUBLIC_SERVER, type PublicServer } from "@repo/constants";
+import { t } from "@repo/i18n";
 
 import { findServerCertificateFingerprint } from "../network/fingerprint";
 import { isWebTransportAddress, normalizeServerAddress } from "../network/address";
@@ -54,14 +55,14 @@ export function showPublicServerConnectivityDialog(
   const panel = scene.add.graphics();
   drawAngledPanel(panel, x, y, dialogWidth, dialogHeight, 0x101820, 0xffcf6e, 0.98);
 
-  const title = scene.add.text(x + 32, y + 24, "公共服务器连通性", bodyStyle("#ffcf6e", 22));
+  const title = scene.add.text(x + 32, y + 24, t("settings.online.public_server"), bodyStyle("#ffcf6e", 22));
   const hint = scene.add.text(
     x + 32,
     y + 62,
-    "正在测试所有公共服务器，你可以在[设置]页面重新测试\n部分公开服务器需手动信任证书，[去信任]->[高级]->[继续访问]",
+    t("public_server.hint"),
     bodyStyle("#d7e3ef", 16),
   ).setWordWrapWidth(dialogWidth - 220);
-  const retestButton = createFightButton(scene, x + dialogWidth - 152, y + 40, 128, 36, "重新测试", () => startProbes(), { accent: 0x34d399 });
+  const retestButton = createFightButton(scene, x + dialogWidth - 152, y + 40, 128, 36, t("public_server.retest"), () => startProbes(), { accent: 0x34d399 });
   const closeBtn = createDialogCloseButton(scene, x + dialogWidth - 64, y + 22, () => {
     layer.destroy();
   });
@@ -69,7 +70,7 @@ export function showPublicServerConnectivityDialog(
   layer.add([shade, panel, title, hint, retestButton.container, closeBtn]);
 
   if (servers.length === 0) {
-    layer.add(scene.add.text(x + 32, y + 112, "暂无公共服务器配置", bodyStyle("#b7c7d8", 18)));
+    layer.add(scene.add.text(x + 32, y + 112, t("public_server.none"), bodyStyle("#b7c7d8", 18)));
   } else {
     servers.forEach((server, index) => {
       const row = createServerRow(scene, x + 30, y + 118 + index * rowHeight, dialogWidth - 60, rowHeight - 10, server, index);
@@ -159,7 +160,7 @@ function createServerRow(
   const container = scene.add.container(x, y);
   const background = scene.add.graphics();
   drawAngledPanel(background, 0, 0, width, height, 0x0f141d, 0x34475c, 1);
-  const name = scene.add.text(18, 8, server.name || `公共服务器 ${index + 1}`, bodyStyle("#f6f1e6", 17));
+  const name = scene.add.text(18, 8, server.name || t("dialog.public_server_index", { index: index + 1 }), bodyStyle("#f6f1e6", 17));
   const address = scene.add.text(18, 33, server.addr, bodyStyle("#b7c7d8", 13)).setWordWrapWidth(width - buttonWidth - 180);
   const status = scene.add.text(width - buttonWidth - 156, 19, "", bodyStyle("#f7b733", 15)).setWordWrapWidth(142);
   const trustButton = createFightButton(
@@ -168,7 +169,7 @@ function createServerRow(
     height / 2,
     buttonWidth,
     34,
-    "去信任",
+    t("public_server.trust"),
     () => window.open(server.trustUrl, "_blank", "noopener,noreferrer"),
     { accent: 0x34d399 },
   );
@@ -180,13 +181,13 @@ function createServerRow(
 
   const control: ServerRowControl = {
     setTesting(): void {
-      status.setText("测试中...");
+      status.setText(t("public_server.testing"));
       status.setColor("#f7b733");
       setTrustButtonVisible(false);
     },
     setResult(result: ProbeResult): void {
       if (result.kind === "ok") {
-        const prefix = server.selfAuth ? "已信任" : "延迟";
+        const prefix = server.selfAuth ? t("public_server.trusted") : t("public_server.latency");
         const latency = result.latencyMs ?? 0;
         status.setText(server.selfAuth ? `${prefix} ${latency} ms` : `${prefix} ${latency} ms`);
         status.setColor("#34d399");
@@ -195,13 +196,13 @@ function createServerRow(
       }
 
       if (result.kind === "trust_required") {
-        status.setText("需要信任证书");
+        status.setText(t("public_server.trust_required"));
         status.setColor("#ffcf6e");
         setTrustButtonVisible(true);
         return;
       }
 
-      status.setText("连接失败");
+      status.setText(t("public_server.failed"));
       status.setColor("#ff5c66");
       setTrustButtonVisible(false);
     },

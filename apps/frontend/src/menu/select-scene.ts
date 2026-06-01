@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { t } from "@repo/i18n";
 import {
   getAllAbilityCardDefinitions,
   getAllCharacterDefinitions,
@@ -91,7 +92,7 @@ export class SelectScene extends Phaser.Scene {
 
     // Online mode: custom back button sends leave_room
     if (this.mode === "online") {
-      // createFightButton(this, 1138, 62, 160, 44, "返回", () => {
+      // createFightButton(this, 1138, 62, 160, 44, t("menu.back"), () => {
       //   connectionManager.send({ type: "leave_room" });
       //   this.scene.start("battle-start");
       // }, { accent: 0x5c7185 });
@@ -128,7 +129,7 @@ export class SelectScene extends Phaser.Scene {
     const m = msg as unknown as Record<string, unknown>;
     switch (m.type) {
       case "opponent_ready":
-        this.statusText.setText("对手已确认").setColor("#34d399");
+        this.statusText.setText(t("select.confirmed")).setColor("#34d399");
         break;
 
       case "battle_start": {
@@ -143,7 +144,7 @@ export class SelectScene extends Phaser.Scene {
         this.scene.start("loading", {
           mode: "online",
           playerName: me?.username ?? uiSettings.username,
-          opponentName: opponent?.username ?? "对手",
+          opponentName: opponent?.username ?? t("select.opponent"),
           returnScene: "battle-start",
           loadouts: {
             player: {
@@ -181,7 +182,7 @@ export class SelectScene extends Phaser.Scene {
         break;
       }
       case "error":
-        this.statusText.setText(`错误: ${(msg as { message: string }).message}`).setColor("#ff5c66");
+        this.statusText.setText(t("select.error", { message: (msg as { message: string }).message })).setColor("#ff5c66");
         this.confirmButton.setEnabled(true);
         break;
     }
@@ -191,7 +192,7 @@ export class SelectScene extends Phaser.Scene {
     if (this.leavingOnlineRoom) return;
     this.leavingOnlineRoom = true;
     if (!this.scene.isActive()) return;
-    this.statusText.setVisible(true).setText("对方已经退出房间").setColor("#ff5c66");
+    this.statusText.setVisible(true).setText(t("select.peer_left")).setColor("#ff5c66");
     this.time.delayedCall(150, () => {
       if (this.scene.isActive("select")) {
         this.scene.start("battle-start");
@@ -209,11 +210,11 @@ export class SelectScene extends Phaser.Scene {
 
     this.layer.add(this.statusText);
 
-    this.addDropBox(1020, 170, "常驻模式", this.primaryId, () => {
+    this.addDropBox(1020, 170, t("select.primary_mode"), this.primaryId, () => {
       this.primaryId = undefined;
       this.render();
     });
-    this.addDropBox(1020, 330, "特殊模式", this.alternateId, () => {
+    this.addDropBox(1020, 330, t("select.alternate_mode"), this.alternateId, () => {
       this.alternateId = undefined;
       this.render();
     });
@@ -221,7 +222,7 @@ export class SelectScene extends Phaser.Scene {
     this.addCardRoster();
     this.addCostDisplay();
 
-    const label = this.mode === "online" || this.mode === "local" ? "确认配装" : "确认出战";
+    const label = this.mode === "online" || this.mode === "local" ? t("select.confirm_loadout") : t("select.confirm_battle");
     const confirmButton = createFightButton(this, 1036, 680, 250, 58, label, () => this.confirm(), {
       enabled: this.isValid(),
       accent: 0xe33d44,
@@ -253,7 +254,7 @@ export class SelectScene extends Phaser.Scene {
       const character = getCharacterById(characterId);
       box.add(this.add.text(width / 2, 84, character.name, bodyStyle("#f6f1e6", 19)).setOrigin(0.5));
     } else {
-      box.add(this.add.text(width / 2, 84, "未选择", bodyStyle("#6e8496", 18)).setOrigin(0.5));
+      box.add(this.add.text(width / 2, 84, t("select.unselected"), bodyStyle("#6e8496", 18)).setOrigin(0.5));
     }
     const hitArea = this.add.rectangle(0, 0, width, height, 0xffffff, 0.001)
       .setOrigin(0, 0)
@@ -269,13 +270,13 @@ export class SelectScene extends Phaser.Scene {
 
   private addCharacterRoster(): void {
     const panel = { x: 66, y: 40, width: 612, height: 392 };
-    drawPanelToLayer(this, this.layer, panel.x, panel.y, panel.width, panel.height, "角色");
+    drawPanelToLayer(this, this.layer, panel.x, panel.y, panel.width, panel.height, t("select.characters"));
     const roleFilters = [
-      ["all", "全部"],
-      ["assault", "突击"],
-      ["suppress", "压制"],
-      ["scout", "侦察"],
-      ["sniper", "狙击"],
+      ["all", t("select.all")],
+      ["assault", t("role.assault")],
+      ["suppress", t("role.suppress")],
+      ["scout", t("role.scout")],
+      ["sniper", t("role.sniper")],
     ] as const;
     const roleFilterStartX = panel.x + panel.width - 346;
     roleFilters.forEach((filter, index) => {
@@ -343,7 +344,7 @@ export class SelectScene extends Phaser.Scene {
     mask.fillStyle(0xffffff, 1);
     mask.fillRect(listBounds.x, listBounds.y, listBounds.width, listBounds.height);
     listContainer.enableFilters();
-    listContainer.filters.internal.addMask(mask);
+    listContainer.filters?.internal.addMask(mask);
     this.layer.add(listContainer);
     this.registerScrollArea(
       "characters",
@@ -356,11 +357,11 @@ export class SelectScene extends Phaser.Scene {
 
   private addCardRoster(): void {
     const panel = { x: 66, y: 440, width: 820, height: 272 };
-    drawPanelToLayer(this, this.layer, panel.x, panel.y, panel.width, panel.height, "能力卡");
+    drawPanelToLayer(this, this.layer, panel.x, panel.y, panel.width, panel.height, t("select.cards"));
     const cardFilters = [
-      ["all", "全部"],
-      ["active", "主动"],
-      ["passive", "被动"],
+      ["all", t("select.all")],
+      ["active", t("select.active")],
+      ["passive", t("select.passive")],
     ] as const;
     const filterStartX = panel.x + panel.width - 240;
     cardFilters.forEach((filter, index) => {
@@ -428,7 +429,7 @@ export class SelectScene extends Phaser.Scene {
     mask.fillStyle(0xffffff, 1);
     mask.fillRect(listBounds.x, listBounds.y, listBounds.width, listBounds.height);
     listContainer.enableFilters();
-    listContainer.filters.internal.addMask(mask);
+    listContainer.filters?.internal.addMask(mask);
     this.layer.add(listContainer);
     this.registerScrollArea(
       "cards",
@@ -549,25 +550,25 @@ export class SelectScene extends Phaser.Scene {
       meta: `${roleLabel(character.roleClass)}  cost${character.cost}`,
       description: character.description,
       detailLines: [
-        `\u5f39\u5bb9: ${character.ammoCapacity}`,
+        `${t("select.ammo")}: ${character.ammoCapacity}`,
       ],
       statBars: [
-        { label: "\u79fb\u52a8", value: character.moveSpeed },
-        { label: "\u5c04\u901f", value: character.fireRate },
-        { label: "\u5f39\u901f", value: character.bulletSpeed },
+        { label: t("select.move"), value: character.moveSpeed },
+        { label: t("select.fire_rate"), value: character.fireRate },
+        { label: t("select.bullet_speed"), value: character.bulletSpeed },
       ],
     });
   }
 
   private showCardTip(card: AbilityCardDefinition): void {
-    const cooldown = card.cooldownTicks === 0 ? "\u65e0" : `${(card.cooldownTicks / 60).toFixed(1)}\u79d2`;
+    const cooldown = card.cooldownTicks === 0 ? t("codex.none") : t("codex.seconds", { seconds: (card.cooldownTicks / 60).toFixed(1) });
     this.showTip({
       title: card.name,
-      meta: `${card.kind === "active" ? "\u4e3b\u52a8\u4f7f\u7528" : "\u88ab\u52a8"}  cost${card.cost}`,
+      meta: `${card.kind === "active" ? t("codex.active_use") : t("select.passive")}  cost${card.cost}`,
       description: card.description,
       detailLines: [
-        `\u4f7f\u7528\u6b21\u6570: ${card.useLimit === "infinite" ? "\u65e0\u9650" : card.useLimit}`,
-        `\u51b7\u5374: ${cooldown}`,
+        `${t("select.uses")}: ${card.useLimit === "infinite" ? t("codex.infinite") : card.useLimit}`,
+        `${t("select.cooldown")}: ${cooldown}`,
       ],
     });
   }
@@ -764,8 +765,8 @@ export class SelectScene extends Phaser.Scene {
         activeAbilityCardId: activeCardId,
       });
       this.confirmButton.setEnabled(false);
-      this.confirmButton.setLabel("等待对手…");
-      this.statusText.setText("已确认，等待对手…").setColor("#ffcf6e").setVisible(true);
+      this.confirmButton.setLabel(t("select.wait_opponent"));
+      this.statusText.setText(t("select.confirmed_waiting")).setColor("#ffcf6e").setVisible(true);
       return;
     }
 
@@ -786,7 +787,7 @@ export class SelectScene extends Phaser.Scene {
     this.scene.start("loading", {
       mode: this.mode,
       playerName: uiSettings.username,
-      opponentName: this.mode === "training" ? "靶子" : "CPU",
+      opponentName: this.mode === "training" ? t("select.dummy") : t("select.cpu"),
       returnScene: "battle-start",
       loadouts,
       mapId: this.mode === "training" ? "shooting_range" : "arena_standard",
@@ -808,8 +809,8 @@ export class SelectScene extends Phaser.Scene {
     if (!this.scene.isActive()) return;
 
     this.confirmButton.setEnabled(false);
-    this.confirmButton.setLabel("等待对手…");
-    this.statusText.setText("已确认，等待对手…").setColor("#ffcf6e").setVisible(true);
+    this.confirmButton.setLabel(t("select.wait_opponent"));
+    this.statusText.setText(t("select.confirmed_waiting")).setColor("#ffcf6e").setVisible(true);
   }
 }
 
@@ -819,10 +820,10 @@ function clamp(value: number, min: number, max: number): number {
 
 function roleLabel(role: CharacterDefinition["roleClass"]): string {
   return {
-    assault: "\u7a81\u51fb",
-    suppress: "\u538b\u5236",
-    scout: "\u4fa6\u5bdf",
-    sniper: "\u72d9\u51fb",
+    assault: t("role.assault"),
+    suppress: t("role.suppress"),
+    scout: t("role.scout"),
+    sniper: t("role.sniper"),
   }[role];
 }
 
