@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { ServerMessage } from "@repo/types";
+
 import type { ConnectionManager } from "./client";
 import { P2pConnection } from "./p2p";
 
@@ -83,7 +85,7 @@ describe("P2pConnection", () => {
       frame: 42,
       ackFrame: 40,
       winnerPlayerId: "Player1",
-    });
+    } as unknown as ServerMessage);
 
     expect(handled).toBe(false);
 
