@@ -1,7 +1,9 @@
 import type { PlayerId } from "@repo/types";
+import { IS_DESKTOP_APP } from "@repo/constants";
 import type { BattleInputState, BattleOutputFrame } from "@repo/raid-logic";
 
 import type { BattleSceneData } from "../loadout";
+import { saveDesktopDebugLog } from "../../platform/desktop-debug-log";
 import type {
   CombatConfirmedFrameInputRecord,
   CombatFrameInputRecord,
@@ -195,6 +197,19 @@ export class BattleDebugLogger {
     };
     const filename = createDebugLogFilename(params.sceneData, params.localPlayerId, params.targetFrame);
     const text = `${JSON.stringify(payload, null, 2)}\n`;
+
+    if (IS_DESKTOP_APP) {
+      void saveDesktopDebugLog(filename, text)
+        .then((savedPath) => {
+          if (savedPath) {
+            console.log(`[FXTZ] Debug log file: ${savedPath}`);
+          }
+        })
+        .catch((error: unknown) => {
+          console.warn("[FXTZ] Desktop debug log save failed", error);
+        });
+      return filename;
+    }
 
     if (typeof document === "undefined" || typeof Blob === "undefined" || typeof URL === "undefined") {
       console.warn(`[FXTZ] Debug log file is unavailable in this runtime: ${filename}`);

@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { MAX_ROOM_NAME_LENGTH } from "@repo/constants";
+import { IS_DESKTOP_APP, MAX_ROOM_NAME_LENGTH } from "@repo/constants";
 import { t } from "@repo/i18n";
 import type { PlayerId } from "@repo/types";
 
@@ -39,7 +39,12 @@ export class BattleStartScene extends Phaser.Scene {
     drawPanel(this, 686, 176, 520, 432, t("battle_start.local"));
     this.quickMatchBtn = createFightButton(this, 332, 272, 330, 70, t("battle_start.quick_match"), () => this.onQuickMatch(), { enabled: false, subLabel: t("battle_start.match_public_room") });
     this.createRoomBtn = createFightButton(this, 332, 374, 330, 70, t("battle_start.create_room"), () => this.onCreateRoom(), { enabled: false, subLabel: t("battle_start.wait_opponent_after_create") });
-    this.roomListBtn = createFightButton(this, 332, 476, 330, 70, t("battle_start.room_list"), () => this.scene.start("room-list"), { enabled: false, subLabel: t("battle_start.browse_rooms") });
+    this.roomListBtn = createFightButton(this, 332, 462, 330, 62, t("battle_start.room_list"), () => this.scene.start("room-list"), { enabled: false, subLabel: t("battle_start.browse_rooms") });
+    createFightButton(this, 332, 548, 330, 58, t("battle_start.udp_connect"), () => this.scene.start("udp-connect"), {
+      enabled: IS_DESKTOP_APP,
+      subLabel: IS_DESKTOP_APP ? t("battle_start.udp_connect_ready") : t("battle_start.use_desktop_client"),
+      accent: 0x26c6da,
+    });
 
     createFightButton(this, 946, 298, 360, 86, t("battle_start.ai_battle"), () => this.scene.start("select", { mode: "ai" } satisfies SelectionData), { subLabel: t("battle_start.choose_loadout"), accent: 0xe33d44 });
     createFightButton(this, 946, 416, 360, 86, t("battle_start.training"), () => this.scene.start("select", { mode: "training" } satisfies SelectionData), { subLabel: t("battle_start.no_cost_limit"), accent: 0x26c6da });

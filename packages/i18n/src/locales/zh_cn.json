@@ -11,7 +11,15 @@
     "no_cost_limit": "无 cost 上限", "discover_lan_players": "发现局域网玩家", "connected": "已连接", "connecting": "正在连接...",
     "error": "连接失败", "disconnected": "未连接", "matching": "正在匹配...", "create_room_title": "创建房间",
     "room_name": "房间名", "default_room_name": "{{name}} 的房间", "room_password": "密码(可选)", "lives": "命数",
-    "create": "创建", "cancel": "取消", "creating_room": "正在创建房间..."
+    "create": "创建", "cancel": "取消", "creating_room": "正在创建房间...", "udp_connect": "UDP 连接",
+    "use_desktop_client": "请使用客户端软件", "udp_connect_ready": "使用原生 UDP 直连"
+  },
+  "udp_connect": {
+    "title": "UDP 连接", "as_host": "作为主机", "port": "开放端口", "start_listen": "开始监听",
+    "waiting": "等待连接中", "stop": "停止", "as_guest": "作为客机", "address": "对方地址",
+    "address_tip": "范例：192.168.1.23:10800 或 example.com:10800", "connect": "连接",
+    "address_required": "请输入 ip:port", "connect_sent": "已发送 UDP 握手包",
+    "received_from": "收到来自 {{addr}} 的 UDP 数据"
   },
   "settings": {
     "title": "设置", "general": "通用", "online": "联机", "about": "关于",

@@ -1,0 +1,17 @@
+{
+  "name": "desktop",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter frontend build:desktop && tauri dev",
+    "build": "pnpm --filter frontend build:desktop && tauri build --no-bundle",
+    "publish-desktop": "pnpm build && node ./scripts/collect-artifacts.js"
+  },
+  "dependencies": {
+    "frontend": "workspace:*"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

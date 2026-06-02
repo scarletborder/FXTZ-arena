@@ -11,7 +11,15 @@
     "no_cost_limit": "No cost limit", "discover_lan_players": "Discover LAN players", "connected": "Connected", "connecting": "Connecting...",
     "error": "Connection failed", "disconnected": "Disconnected", "matching": "Matching...", "create_room_title": "Create Room",
     "room_name": "Room name", "default_room_name": "{{name}}'s Room", "room_password": "Password (optional)", "lives": "Lives",
-    "create": "Create", "cancel": "Cancel", "creating_room": "Creating room..."
+    "create": "Create", "cancel": "Cancel", "creating_room": "Creating room...", "udp_connect": "UDP Connect",
+    "use_desktop_client": "Use the desktop client", "udp_connect_ready": "Native UDP direct link"
+  },
+  "udp_connect": {
+    "title": "UDP Connect", "as_host": "As Host", "port": "Open port", "start_listen": "Start Listening",
+    "waiting": "Waiting for connection", "stop": "Stop", "as_guest": "As Guest", "address": "Peer address",
+    "address_tip": "Example: 192.168.1.23:10800 or example.com:10800", "connect": "Connect",
+    "address_required": "Enter ip:port", "connect_sent": "UDP handshake packet sent",
+    "received_from": "Received UDP data from {{addr}}"
   },
   "settings": {
     "title": "Settings", "general": "General", "online": "Online", "about": "About",

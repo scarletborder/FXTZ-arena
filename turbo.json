@@ -6,10 +6,12 @@
     "APP_VERSION",
     "APP_COMMIT",
     "APP_BASE",
+    "APP_TARGET",
     "DOCS_URL",
     "VITE_APP_VERSION",
     "VITE_APP_COMMIT",
     "VITE_APP_BASE",
+    "VITE_APP_TARGET",
     "VITE_DOCS_URL"
   ],
   "tasks": {

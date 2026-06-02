@@ -3,10 +3,12 @@ type BuildEnv = Partial<Record<
   | "APP_COMMIT"
   | "APP_BASE"
   | "DOCS_URL"
+  | "APP_TARGET"
   | "VITE_APP_VERSION"
   | "VITE_APP_COMMIT"
   | "VITE_APP_BASE"
-  | "VITE_DOCS_URL",
+  | "VITE_DOCS_URL"
+  | "VITE_APP_TARGET",
   string
 >>;
 
@@ -30,3 +32,5 @@ export const APP_COMMIT = readBuildEnv("VITE_APP_COMMIT", "APP_COMMIT", "local")
 export const APP_BUILD_LABEL = `${APP_VERSION}+${APP_COMMIT}`;
 export const APP_BASE = readBuildEnv("VITE_APP_BASE", "APP_BASE", "/");
 export const DOCS_URL = readBuildEnv("VITE_DOCS_URL", "DOCS_URL", "https://mvz443-team.github.io/docs/");
+export const APP_TARGET = readBuildEnv("VITE_APP_TARGET", "APP_TARGET", "browser") === "desktop" ? "desktop" : "browser";
+export const IS_DESKTOP_APP = APP_TARGET === "desktop";
