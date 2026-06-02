@@ -81,8 +81,7 @@ jobs:
         run: |
           mkdir -p release/dedicated-server/dist
           (cd apps/frontend/dist && zip -r "../../../release/fxtz-arena-frontend-${BUILD_LABEL}.zip" .)
-          cp apps/dedicated-server/dist/index.js release/dedicated-server/dist/index.js
-          cp apps/dedicated-server/dist/index.js.map release/dedicated-server/dist/index.js.map
+          cp -r apps/dedicated-server/dist release/dedicated-server/dist
           cp apps/dedicated-server/package.json release/dedicated-server/package.json
           tar -czf "release/fxtz-arena-dedicated-server-${BUILD_LABEL}.tar.gz" -C release/dedicated-server .
 
