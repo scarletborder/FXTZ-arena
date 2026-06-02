@@ -18,6 +18,7 @@ import { fpAtan2, fpHypotFp, fpMax } from "@repo/content";
 
 const HOMING_START_DELAY_TICKS = secondsToTicks(0.2);
 const HOMING_MAX_TURN_RADIANS_PER_TICK = Math.PI / TICK_RATE;
+const PROJECTILE_WORLD_PADDING = ARENA_WIDTH * 0.2;
 
 export function createBulletProjectile(params: {
   readonly id: number;
@@ -271,9 +272,9 @@ export function isProjectileOutOfWorld(projectile: ProjectileState): boolean {
     return false;
   }
   return (
-    projectile.x < 0 ||
-    projectile.x > ARENA_WIDTH ||
-    projectile.y < 0 ||
-    projectile.y > ARENA_HEIGHT
+    projectile.x < -PROJECTILE_WORLD_PADDING ||
+    projectile.x > ARENA_WIDTH + PROJECTILE_WORLD_PADDING ||
+    projectile.y < -PROJECTILE_WORLD_PADDING ||
+    projectile.y > ARENA_HEIGHT + PROJECTILE_WORLD_PADDING
   );
 }

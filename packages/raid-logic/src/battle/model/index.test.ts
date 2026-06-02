@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ExampleFairy } from "@repo/content";
 import {
+  ARENA_HEIGHT,
+  ARENA_WIDTH,
   GRAZE_CIRCLE_DIAMETER,
   HIT_CIRCLE_DIAMETER,
   POINT_REWARD_VALUES,
@@ -453,6 +455,31 @@ describe("BattleModel ability cards", () => {
     expect(model.player.pointCount).toBe(2);
     expect(model.player.grazedProjectileIds).toEqual([1]);
     expect(model.player.lives).toBe(2);
+  });
+
+  it("keeps projectiles alive while they are inside the expanded world padding", async () => {
+    const model = await createBattleModel("reimu", "marisa");
+    const padding = ARENA_WIDTH * 0.2;
+    model.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Player2",
+        x: ARENA_WIDTH + padding - 1,
+        y: ARENA_HEIGHT + padding - 1,
+        pausedUntil: 999,
+      }),
+      testProjectile({
+        id: 2,
+        owner: "Player2",
+        x: ARENA_WIDTH + padding + 1,
+        y: ARENA_HEIGHT + padding + 1,
+        pausedUntil: 999,
+      }),
+    );
+
+    model.step(input());
+
+    expect(model.projectiles.map((projectile) => projectile.id)).toEqual([1]);
   });
 
   it("keeps hit resolution ahead of graze resolution", async () => {
