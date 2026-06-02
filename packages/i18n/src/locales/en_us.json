@@ -22,10 +22,13 @@
     "received_from": "Received UDP data from {{addr}}"
   },
   "settings": {
-    "title": "Settings", "general": "General", "online": "Online", "about": "About",
+    "title": "Settings", "general": "General", "online": "Online", "about": "About", "debug": "Debug",
     "general.username.title": "Username", "general.music.title": "Music", "general.sound.title": "Sound", "general.debug.title": "Debug",
     "general.language.title": "Language", "general.language.subtitle": "Choose the UI language", "general.language.dialog_title": "Select Language",
     "general.debug.on": "Debug mode: on", "general.debug.off": "Debug mode: off", "general.debug.toggle": "Toggle debug",
+    "debug.toggle.title": "Debug", "debug.toggle.on": "Debug mode: on", "debug.toggle.off": "Debug mode: off", "debug.toggle.button": "Toggle debug",
+    "debug.log_path.title": "Log Storage Path", "debug.log_path.desktop_path": "Path: {{path}}", "debug.log_path.select": "Select Folder",
+    "debug.log_path.browser_hint": "Logs can be viewed in browser debug tools",
     "online.server_address.title": "Dedicated server address", "online.server_address.helper": "Defaults to a local dedicated server", "online.server_address.port": "Default port: 22334",
     "online.connection_status.disconnected": "Connection status: disconnected", "online.connection_status.connecting": "Connection status: connecting…",
     "online.connection_status.connected": "Connection status: connected", "online.connection_status.error": "Connection status: failed",

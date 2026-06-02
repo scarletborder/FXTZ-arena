@@ -1,12 +1,11 @@
 import { IS_DESKTOP_APP } from "@repo/constants";
+import { uiSettings } from "../store/settings";
 
 type LogLevel = "INFO" | "WARN" | "ERROR" | "DEBUG";
 
 interface TauriCoreApi {
   invoke<T>(command: string, args?: Record<string, unknown>): Promise<T>;
 }
-
-const LOG_PATH = "D:/arena.log";
 
 const formatLogValue = (value: unknown): string => {
   if (value instanceof Error) {
@@ -22,10 +21,15 @@ const formatLogValue = (value: unknown): string => {
   }
 };
 
+const getLogPath = (): string => {
+  const dir = uiSettings.logPath || "D:/";
+  return `${dir.replace(/\\+$/, "").replace(/\/+$/, "")}/arena.log`;
+};
+
 const appendLogLine = async (line: string): Promise<void> => {
   try {
     const core = await import("@tauri-apps/api/core") as TauriCoreApi;
-    await core.invoke("append_client_log", { line, path: LOG_PATH });
+    await core.invoke("append_client_log", { line, path: getLogPath() });
   } catch {
     // Ignore log write errors to keep the app running.
   }
@@ -50,6 +54,10 @@ export const installDesktopConsoleLogger = (): void => {
   };
 
   const write = (level: LogLevel, args: unknown[]): void => {
+    if (!uiSettings.debug) {
+      // Only write to file when debug mode is enabled.
+      return;
+    }
     const timestamp = new Date().toISOString();
     const body = args.map(formatLogValue).join(" ");
     void appendLogLine(`${timestamp} [${level}] ${body}\n`);

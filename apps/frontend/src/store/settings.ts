@@ -3,6 +3,7 @@ import { MAX_PLAYER_NAME_LENGTH, PUBLIC_SERVER } from "@repo/constants";
 export interface UiSettings {
   username: string;
   debug: boolean;
+  logPath: string;
   serverAddress: string;
   p2pEnabled: boolean;
   stunServer: string;
@@ -15,6 +16,7 @@ export interface UiSettings {
 const STORAGE_KEYS = {
   username: "fxtz_username",
   debug: "fxtz_debug",
+  logPath: "fxtz_log_path",
   serverAddress: "fxtz_server_address",
   p2pEnabled: "fxtz_p2p_enabled",
   stunServer: "fxtz_stun_server",
@@ -112,6 +114,7 @@ function normalizeVolume(value: number, fallback = 100): number {
 export const uiSettings: UiSettings = {
   username: normalizeUsername(readString(STORAGE_KEYS.username, "Player")),
   debug: readBoolean(STORAGE_KEYS.debug, false),
+  logPath: readString(STORAGE_KEYS.logPath, "D:/"),
   serverAddress: readString(STORAGE_KEYS.serverAddress, DEFAULT_SERVER_ADDRESS),
   p2pEnabled: readBoolean(STORAGE_KEYS.p2pEnabled, true),
   stunServer: "",
@@ -135,6 +138,11 @@ export function setUsername(username: string): void {
 export function setDebug(debug: boolean): void {
   uiSettings.debug = debug;
   writeBoolean(STORAGE_KEYS.debug, debug);
+}
+
+export function setLogPath(logPath: string): void {
+  uiSettings.logPath = logPath;
+  writeString(STORAGE_KEYS.logPath, logPath);
 }
 
 export function setServerAddress(serverAddress: string): void {

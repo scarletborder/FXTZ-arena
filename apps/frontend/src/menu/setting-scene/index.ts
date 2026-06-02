@@ -12,10 +12,12 @@ import type { SettingsTabDefinition, SettingsTabKey } from "./types";
 import { renderOnlineTab } from "./online-tab";
 import { renderGeneralTab } from "./general-tab";
 import { renderAboutTab } from "./about-tab";
+import { renderDebugTab } from "./debug-tab";
 
 const TAB_DEFINITIONS: readonly SettingsTabDefinition[] = [
   { key: "online", label: t("settings.online"), render: renderOnlineTab },
   { key: "general", label: t("settings.general"), render: renderGeneralTab },
+  { key: "debug", label: t("settings.debug"), render: renderDebugTab },
   { key: "about", label: t("settings.about"), render: renderAboutTab },
 ];
 

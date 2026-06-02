@@ -101,11 +101,24 @@ fn save_debug_log(filename: String, text: String) -> Result<Option<String>, Stri
 }
 
 #[tauri::command]
+fn select_log_directory() -> Result<Option<String>, String> {
+    let path = rfd::FileDialog::new().pick_folder();
+    Ok(path.map(|p| p.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
 fn append_client_log(line: String, path: String) -> Result<(), String> {
+    // Ensure parent directory exists
+    let p = std::path::Path::new(&path);
+    if let Some(parent) = p.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        }
+    }
     let mut file = fs::OpenOptions::new()
         .create(true)
         .append(true)
-        .open(path)
+        .open(&path)
         .map_err(|error| error.to_string())?;
     file.write_all(line.as_bytes())
         .map_err(|error| error.to_string())?;
@@ -130,6 +143,7 @@ pub fn run() {
             udp_stop,
             save_debug_log,
             append_client_log,
+            select_log_directory,
             link::wt::wt_connect,
             link::wt::wt_send,
             link::wt::wt_close,

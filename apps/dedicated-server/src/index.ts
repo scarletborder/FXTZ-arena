@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createServerConfig } from "./config";
@@ -11,68 +11,6 @@ import type { TransportServer } from "./transport/interface";
 import type { WsTransportTlsOptions } from "./transport/ws-server";
 import { WtTransportServer } from "./transport/wt-server";
 import { WsTransportServer } from "./transport/ws-server";
-
-const LOG_PATH = "D:/arena-server.log";
-const originalConsole = {
-  log: console.log,
-  info: console.info,
-  warn: console.warn,
-  error: console.error,
-  debug: console.debug,
-};
-
-const logLine = (level: "INFO" | "WARN" | "ERROR" | "DEBUG", args: unknown[]): void => {
-  const timestamp = new Date().toISOString();
-  const body = args.map(formatLogValue).join(" ");
-  const line = `${timestamp} [${level}] ${body}\n`;
-  try {
-    appendFileSync(LOG_PATH, line, "utf8");
-  } catch {
-    // Ignore log write errors to avoid crashing the server.
-  }
-};
-
-const formatLogValue = (value: unknown): string => {
-  if (value instanceof Error) {
-    return value.stack || value.message;
-  }
-  if (typeof value === "string") {
-    return value;
-  }
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
-};
-
-console.log = (...args: unknown[]) => {
-  originalConsole.log(...args);
-  logLine("INFO", args);
-};
-console.info = (...args: unknown[]) => {
-  originalConsole.info(...args);
-  logLine("INFO", args);
-};
-console.warn = (...args: unknown[]) => {
-  originalConsole.warn(...args);
-  logLine("WARN", args);
-};
-console.error = (...args: unknown[]) => {
-  originalConsole.error(...args);
-  logLine("ERROR", args);
-};
-console.debug = (...args: unknown[]) => {
-  originalConsole.debug(...args);
-  logLine("DEBUG", args);
-};
-
-process.on("uncaughtException", (error) => {
-  logLine("ERROR", ["uncaughtException", error]);
-});
-process.on("unhandledRejection", (reason) => {
-  logLine("ERROR", ["unhandledRejection", reason]);
-});
 
 const config = createServerConfig();
 

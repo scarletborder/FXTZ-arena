@@ -22,10 +22,13 @@
     "received_from": "收到来自 {{addr}} 的 UDP 数据"
   },
   "settings": {
-    "title": "设置", "general": "通用", "online": "联机", "about": "关于",
+    "title": "设置", "general": "通用", "online": "联机", "about": "关于", "debug": "调试",
     "general.username.title": "用户名", "general.music.title": "音乐", "general.sound.title": "音效", "general.debug.title": "调试",
     "general.language.title": "语言", "general.language.subtitle": "选择界面显示语言 Choose display language", "general.language.dialog_title": "选择语言",
     "general.debug.on": "debug 模式：开启", "general.debug.off": "debug 模式：关闭", "general.debug.toggle": "切换 debug",
+    "debug.toggle.title": "Debug", "debug.toggle.on": "debug 模式：开启", "debug.toggle.off": "debug 模式：关闭", "debug.toggle.button": "切换 debug",
+    "debug.log_path.title": "日志存储路径", "debug.log_path.desktop_path": "路径：{{path}}", "debug.log_path.select": "选择目录",
+    "debug.log_path.browser_hint": "日志在浏览器调试中查看",
     "online.server_address.title": "专用服务器地址", "online.server_address.helper": "默认监听本地专用服务器", "online.server_address.port": "默认端口：22334",
     "online.connection_status.disconnected": "连接状态：未连接", "online.connection_status.connecting": "连接状态：正在连接…",
     "online.connection_status.connected": "连接状态：已连接", "online.connection_status.error": "连接状态：连接失败",

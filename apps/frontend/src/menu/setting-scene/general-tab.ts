@@ -7,7 +7,6 @@ import {
   createTextField,
 } from "../ui";
 import {
-  setDebug,
   setMusicVolume,
   setSoundVolume,
   setUsername,
@@ -61,21 +60,9 @@ export function renderGeneralTab(scene: SettingsScene, layer: Phaser.GameObjects
   layer.add(scene.add.text(36, 334, t("settings.general.sound.title"), bodyStyle("#f6f1e6", 18)));
   layer.add(createVolumeSlider(scene, 36, 372, 360, uiSettings.sound, setSoundVolume).container);
 
-  layer.add(sectionTitle(scene, 616, 34, t("settings.general.debug.title")));
-  const debugText = scene.add.text(616, 86, " ", bodyStyle("#d7e3ef", 18));
-  const updateDebug = () => {
-    debugText.setText(uiSettings.debug ? t("settings.general.debug.on") : t("settings.general.debug.off"));
-  };
-  updateDebug();
-  layer.add(debugText);
-  layer.add(createFightButton(scene, 741, 150, 250, 54, t("settings.general.debug.toggle"), () => {
-    setDebug(!uiSettings.debug);
-    updateDebug();
-  }, { accent: 0xf7b733 }).container);
-
-  const languageLabel = scene.add.text(616, 242, t("settings.general.language.title"), bodyStyle("#f6f1e6", 18));
-  const languageHint = scene.add.text(616, 280, t("settings.general.language.subtitle"), bodyStyle("#b7c7d8", 15));
-  layer.add([languageLabel, languageHint, createFightButton(scene, 741, 338, 250, 54, t("settings.general.language.title"), () => {
+  const languageLabel = scene.add.text(616, 34, t("settings.general.language.title"), bodyStyle("#f6f1e6", 18));
+  const languageHint = scene.add.text(616, 72, t("settings.general.language.subtitle"), bodyStyle("#b7c7d8", 15));
+  layer.add([languageLabel, languageHint, createFightButton(scene, 741, 130, 250, 54, t("settings.general.language.title"), () => {
     showLanguageDialog(scene);
   }, { accent: 0x34d399 }).container]);
 
