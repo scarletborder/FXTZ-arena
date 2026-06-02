@@ -38,6 +38,7 @@ export interface FighterState {
   deadUntil: number;
   actionLockedUntil: number;
   nonFireActionLockedUntil: number;
+  switchLockedUntil: number;
   movementLockedUntil: number;
   projectilePauseUntil: number;
   timeStopUntil: number;

@@ -138,7 +138,8 @@ export class BattleFighter {
   selectActiveCharacter(alternateHeld: boolean): void {
     if (
       this.state.actionLockedUntil > 0 ||
-      this.state.nonFireActionLockedUntil > 0
+      this.state.nonFireActionLockedUntil > 0 ||
+      this.state.switchLockedUntil > 0
     ) {
       return;
     }

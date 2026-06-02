@@ -5,6 +5,7 @@ import {
   KAGUYA_BOMB_BULLET_SIZE,
   KAGUYA_BOMB_DAMAGE,
   KAGUYA_BOMB_EXTENSION_HIT_CIRCLE_MULTIPLIER,
+  KAGUYA_BOMB_LOCK_TICKS,
   KAGUYA_BOMB_SHOT_INTERVAL_FRAMES,
   KAGUYA_BOMB_SHOTS_PER_POINT,
   KAGUYA_BOMB_SIDE_HIT_CIRCLE_MULTIPLIER,
@@ -149,5 +150,41 @@ describe("BattleModel Kaguya", () => {
     const sideLength = hitCircleUnits(KAGUYA_BOMB_SIDE_HIT_CIRCLE_MULTIPLIER);
     const extension = hitCircleUnits(KAGUYA_BOMB_EXTENSION_HIT_CIRCLE_MULTIPLIER);
     expect(sideLength).toBeGreaterThan(extension);
+  });
+
+  it("locks Kaguya switching and repeat bomb while bomb volleys continue but allows fire and reload", async () => {
+    const model = await createBattleModel("kaguya", "reimu");
+
+    model.step(input({ bombPressed: true }));
+
+    expect(model.player.bombCooldownUntil).toBe(KAGUYA_BOMB_LOCK_TICKS);
+    expect(model.player.switchLockedUntil).toBe(KAGUYA_BOMB_LOCK_TICKS);
+    expect(model.player.bombUses).toBe(1);
+
+    model.step(
+      input({
+        alternateHeld: true,
+        bombPressed: true,
+        shootPressed: true,
+        aimX: model.target.x,
+        aimY: model.target.y,
+      }),
+    );
+
+    expect(model.player.activeCharacter.id).toBe("kaguya");
+    expect(model.player.bombUses).toBe(1);
+    expect(model.player.shotsFired).toBe(1);
+    expect(model.player.ammo).toBe(0);
+
+    model.step(input({ reloadPressed: true }));
+
+    expect(model.player.reloadRemaining).toBeGreaterThan(0);
+
+    for (let tick = 0; tick < KAGUYA_BOMB_LOCK_TICKS; tick += 1) {
+      model.step(input());
+    }
+    model.step(input({ alternateHeld: true }));
+
+    expect(model.player.activeCharacter.id).toBe("reimu");
   });
 });

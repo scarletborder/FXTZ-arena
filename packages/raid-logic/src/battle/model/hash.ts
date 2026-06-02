@@ -219,6 +219,7 @@ function writeFighter(
   hasher.writeNumber(fighter.deadUntil);
   hasher.writeNumber(fighter.actionLockedUntil);
   hasher.writeNumber(fighter.nonFireActionLockedUntil);
+  hasher.writeNumber(fighter.switchLockedUntil);
   hasher.writeNumber(fighter.movementLockedUntil);
   hasher.writeNumber(fighter.projectilePauseUntil);
   hasher.writeNumber(fighter.timeStopUntil);

@@ -40,6 +40,9 @@ export const KAGUYA_BOMB_EXTENSION_HIT_CIRCLE_MULTIPLIER = 24;
 export const KAGUYA_BOMB_BULLET_SIZE = 24;
 export const KAGUYA_BOMB_SHOT_INTERVAL_FRAMES = 16;
 export const KAGUYA_BOMB_SHOTS_PER_POINT = 32;
+export const KAGUYA_BOMB_LOCK_TICKS =
+  KAGUYA_BOMB_WARNING_TICKS +
+  KAGUYA_BOMB_SHOTS_PER_POINT * KAGUYA_BOMB_SHOT_INTERVAL_FRAMES;
 export const KAGUYA_BOMB_DAMAGE = 8;
 export const KAGUYA_BOMB_WARNING_HALF_WIDTH = 3;
 
@@ -97,7 +100,11 @@ export class KaguyaBattleCharacter extends BattleCharacter {
     aimX: number,
     aimY: number,
   ): void {
-    this.startBomb(ctx, fighter);
+    this.startBomb(ctx, fighter, KAGUYA_BOMB_LOCK_TICKS);
+    fighter.switchLockedUntil = Math.max(
+      fighter.switchLockedUntil,
+      KAGUYA_BOMB_LOCK_TICKS,
+    );
     const vertices = equilateralTriangleVertices(
       aimX,
       aimY,

@@ -36,6 +36,7 @@ export function createFighter(
     deadUntil: 0,
     actionLockedUntil: 0,
     nonFireActionLockedUntil: 0,
+    switchLockedUntil: 0,
     movementLockedUntil: 0,
     projectilePauseUntil: 0,
     timeStopUntil: 0,
@@ -113,6 +114,9 @@ export function tickFighterTimers(fighter: FighterState): void {
   }
   if (fighter.nonFireActionLockedUntil > 0) {
     fighter.nonFireActionLockedUntil -= 1;
+  }
+  if (fighter.switchLockedUntil > 0) {
+    fighter.switchLockedUntil -= 1;
   }
   if (fighter.movementLockedUntil > 0) {
     fighter.movementLockedUntil -= 1;

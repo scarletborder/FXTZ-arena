@@ -224,6 +224,7 @@ function serializeFighter(
     deadUntil: fighter.deadUntil,
     actionLockedUntil: fighter.actionLockedUntil,
     nonFireActionLockedUntil: fighter.nonFireActionLockedUntil,
+    switchLockedUntil: fighter.switchLockedUntil,
     movementLockedUntil: fighter.movementLockedUntil,
     projectilePauseUntil: fighter.projectilePauseUntil,
     timeStopUntil: fighter.timeStopUntil,
