@@ -48,8 +48,8 @@ export function createBattleInput(
   return {
     moveX,
     moveY,
-    aimX: pointerWorld.x,
-    aimY: pointerWorld.y,
+    aimX: Math.trunc(pointerWorld.x),
+    aimY: Math.trunc(pointerWorld.y),
     shootPressed: shootPressed && !emptyShotReloadPressed,
     bombPressed: mobileState?.bombPressed ?? pointer.rightButtonDown(),
     activeCardPressed:

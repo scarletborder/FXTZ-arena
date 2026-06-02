@@ -213,8 +213,8 @@ export class BattleScene extends Phaser.Scene {
     const pointerWorld = getBattlePointerWorld(this, this.mobileControls);
     this.lastInput = {
       ...this.lastInput,
-      aimX: pointerWorld.x,
-      aimY: pointerWorld.y,
+      aimX: Math.trunc(pointerWorld.x),
+      aimY: Math.trunc(pointerWorld.y),
       pointerX: pointerWorld.x,
       pointerY: pointerWorld.y,
     };
@@ -223,7 +223,7 @@ export class BattleScene extends Phaser.Scene {
       this.lastInput,
       this.combatSync?.localFighterKey() ?? "Player1",
       this.accumulator / FIXED_STEP_MS,
-      this.rollbackVisualFrames > 0 ? 0.35 : 1,
+      this.rollbackVisualFrames > 0 ? 0.7 : 1,
     );
     if (this.rollbackVisualFrames > 0) {
       this.rollbackVisualFrames -= 1;
@@ -417,8 +417,12 @@ export class BattleScene extends Phaser.Scene {
         pruneRollbackHistoryBefore: (frame) =>
           this.pruneDebugHistoryBefore(frame),
         onRollback: () => {
-          this.accumulator = 0;
-          this.rollbackVisualFrames = 4;
+          // Don't snap accumulator — keep the current render blend so
+          // the visual position interpolates smoothly through rolls.
+          // A small visual-only catch-up (rollbackVisualFrames) tells
+          // the render path to use ~0.7 blend instead of 1, giving a
+          // subtle 2-frame ease toward corrected positions.
+          this.rollbackVisualFrames = 2;
         },
         setStatusText: (text) =>
           this.onlineStatusText?.setText(text).setVisible(true),

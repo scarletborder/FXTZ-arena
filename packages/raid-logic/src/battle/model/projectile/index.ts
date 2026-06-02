@@ -151,6 +151,8 @@ export class ProjectileSystem {
     readonly hitTargets?: readonly ProjectileHitTarget[];
     readonly shields?: readonly ShieldState[];
     readonly aimByFighter?: ProjectileAimByFighter;
+    /** Mutable ref set to true when a projectile retarget reads aim. */
+    readonly aimConsumedRef?: { value: boolean };
     readonly onHit: (
       ctx: ProjectileCollisionContext<
         ProjectileState,
@@ -301,6 +303,7 @@ function syncOwnerBoundProjectile(
     readonly player: FighterState;
     readonly target: FighterState;
     readonly aimByFighter?: ProjectileAimByFighter;
+    readonly aimConsumedRef?: { value: boolean };
   },
 ): void {
   if (projectile.polarFollowOwner !== undefined) {
@@ -319,7 +322,17 @@ function syncOwnerBoundProjectile(
     if (aim) {
       projectile.retargetX = aim.x;
       projectile.retargetY = aim.y;
+      if (params.aimConsumedRef) {
+        params.aimConsumedRef.value = true;
+      }
     }
+    // READ ONCE: clear the owner reference so subsequent frames don't
+    // re-read aim.  The retarget coordinate is now "frozen" at whatever
+    // the fighter's aim was at the retarget instant.  This prevents
+    // tiny mouse-wiggles from continuously perturbing the bullet path
+    // on every frame, and ensures the bullet trajectory is fully
+    // deterministic once the retarget moment has passed.
+    projectile.retargetAimOwner = undefined;
   }
 }
 

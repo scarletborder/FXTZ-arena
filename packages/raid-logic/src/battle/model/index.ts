@@ -78,6 +78,15 @@ export class BattleModel {
   };
   frame = 0;
   gameOver = false;
+  /**
+   * Set to true during stepFrame when a system reads aim coordinates in
+   * a way that would alter the simulation output (shoot, bomb, active
+   * card, or an existing projectile retargeting toward the owner's aim).
+   * Read by the hash so facing is included only when it materially
+   * matters, and by CombatSyncManager so sameIntent compares aim on
+   * frames where it changed the simulation.
+   */
+  aimConsumedThisFrame = false;
   private readonly currentAimByFighter: Record<
     FighterKey,
     { readonly x: number; readonly y: number }
@@ -285,6 +294,7 @@ export class BattleModel {
 
     this.capturePreviousFighterState();
     this.frame += 1;
+    this.aimConsumedThisFrame = false;
     this.ticker.setCurrentFrame(this.frame);
     this.stats.elapsedTicks += 1;
 
@@ -310,12 +320,14 @@ export class BattleModel {
     // --- Phase 3: Post-update ---
     this.resolveProjectileClashes();
     const physics = this.physics;
+    const projAimConsumed = { value: false };
     this.projectileSystem.stepProjectiles({
       frame: this.frame,
       projectiles: this.projectiles,
       player: this.player,
       target: this.target,
       aimByFighter: this.currentAimByFighter,
+      aimConsumedRef: projAimConsumed,
       hitTargets: this.currentHitTargets(),
       shields: this.currentShields(),
       computeRapierHits: physics
@@ -337,6 +349,9 @@ export class BattleModel {
       onGraze: (ctx) => this.onProjectileGraze(ctx),
       clearProjectiles: (projectiles) => this.stepClearRings(projectiles),
     });
+    if (projAimConsumed.value) {
+      this.aimConsumedThisFrame = true;
+    }
     this.removeInactiveNeutralMobs();
     this.stepPoints();
     physics?.syncPointBodies(this.points);
@@ -344,12 +359,12 @@ export class BattleModel {
     this.effectSystem.stepEffects(this.effects, this.frame);
   }
 
-  hash(): number {
-    return hashBattleModel(this);
+  hash(includeFacingForAim = false): number {
+    return hashBattleModel(this, includeFacingForAim);
   }
 
-  hashHex(): string {
-    return hashToHex(this.hash());
+  hashHex(includeFacingForAim = false): string {
+    return hashToHex(this.hash(includeFacingForAim));
   }
 
   toOutputState(): BattleOutputState {
@@ -502,11 +517,13 @@ export class BattleModel {
     if (input.activeCardPressed) {
       if (fighter.useActiveCard(ctx)) {
         this.registerActiveCardCooldown(state);
+        this.aimConsumedThisFrame = true;
       }
     }
     if (input.bombPressed) {
       const previousTimeStopUntil = state.timeStopUntil;
       fighter.useBomb(ctx, input.aimX, input.aimY);
+      this.aimConsumedThisFrame = true;
       if (
         state.activeCharacter.bombId === "sakuya_time_stop" &&
         state.timeStopUntil > previousTimeStopUntil
@@ -518,6 +535,7 @@ export class BattleModel {
     }
     if (input.shootPressed) {
       fighter.fire(ctx, input.aimX, input.aimY);
+      this.aimConsumedThisFrame = true;
     }
   }
 

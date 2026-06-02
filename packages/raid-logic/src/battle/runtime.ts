@@ -47,6 +47,13 @@ export interface RaidLogicRuntime {
   readonly frame: number;
   readonly gameOver: boolean;
   readonly physicsReady: boolean;
+  /**
+   * True after the most recent step() when the simulation consumed aim
+   * coordinates (shoot, bomb, active card, or projectile retarget) in a
+   * way that makes the exact aim values material to the output hash.
+   * Read by CombatSyncManager to drive the aim-consuming-frames set.
+   */
+  readonly aimConsumedThisFrame: boolean;
   initialize(): Promise<void>;
   readDebugBodies(): ReturnType<BattlePhysics["readAllBodies"]>;
   debugSpawnPoint(params: {
@@ -98,6 +105,10 @@ class BattleRuntime implements RaidLogicRuntime {
 
   get physicsReady(): boolean {
     return this.model.isPhysicsReady();
+  }
+
+  get aimConsumedThisFrame(): boolean {
+    return this.model.aimConsumedThisFrame;
   }
 
   initialize(): Promise<void> {
@@ -185,20 +196,21 @@ class BattleRuntime implements RaidLogicRuntime {
   }
 
   hash(): number {
-    return this.model.hash();
+    return this.model.hash(this.model.aimConsumedThisFrame);
   }
 
   hashHex(): string {
-    return this.model.hashHex();
+    return this.model.hashHex(this.model.aimConsumedThisFrame);
   }
 
   private enqueueOutput(
     events: readonly BattleOutputEvent[],
   ): BattleOutputFrame {
+    const includeFacing = this.model.aimConsumedThisFrame;
     const frame = {
       frame: this.model.frame,
-      hash: this.model.hash(),
-      hashHex: this.model.hashHex(),
+      hash: this.model.hash(includeFacing),
+      hashHex: this.model.hashHex(includeFacing),
       state: this.model.toOutputState(),
       snapshot: this.model.serialize(),
       events,

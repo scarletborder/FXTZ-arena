@@ -29,6 +29,14 @@ export class CombatSyncManager {
     | { readonly frame: number; readonly ackFrame: number; readonly winnerPlayerId: PlayerId }
     | undefined;
   private finishedByServer = false;
+  /**
+   * Frames where the simulation actually consumed aim coordinates
+   * (shoot, bomb, active card, or projectile retarget).  For these
+   * frames the aim values are material and must be compared during
+   * the predicted-vs-actual check; for all other frames the aim
+   * comparison is skipped because mouse-wiggles can't alter state.
+   */
+  private readonly aimConsumingFrames = new Set<number>();
   private paused = false;
   private localBattleFinished = false;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -56,8 +64,10 @@ export class CombatSyncManager {
   }
 
   step(localInput: BattleInputState): void {
-    this.consumeReceiveSceneQueue();
     if (this.paused || this.finishedByServer) {
+      // Still drain the receive queue so it doesn't accumulate stale
+      // remote inputs that could trigger a delayed flood of rollbacks.
+      this.queues.drainReceived(() => undefined);
       return;
     }
 
@@ -66,12 +76,20 @@ export class CombatSyncManager {
       return;
     }
 
+    // 1. Enqueue & send local input FIRST so rollback replay (triggered
+    //    by consumeReceiveSceneQueue below) always has the latest local
+    //    input for the current frame.
     const frame = this.runtime.frame + 1;
     this.queues.enqueuePending({
       frame,
       input: cloneInput(localInput),
     });
     this.consumeSendSceneQueue();
+
+    // 2. Drain & apply remote input.  If a rollback fires here the
+    //    replayed frames will pull the just-stored local input via
+    //    getInputForFrame, so the correction is already "current".
+    this.consumeReceiveSceneQueue();
 
     this.stepRuntimeFrame(frame);
     this.options.callbacks.recordFrame();
@@ -94,6 +112,9 @@ export class CombatSyncManager {
       // Player1 (host / lower playerId) has priority over Player2
       hostIsPlayer: true,
     });
+    if (this.runtime.aimConsumedThisFrame) {
+      this.aimConsumingFrames.add(frame);
+    }
   }
 
   private handleServerMessage(msg: ServerMessage): void {
@@ -189,7 +210,7 @@ export class CombatSyncManager {
       playerId: msg.playerId,
       frame: msg.frame,
       ackFrame: msg.ackFrame,
-      input: cloneInput(msg),
+      input: truncateAim(cloneInput(msg)),
     });
 
     for (const redundant of msg.UnreliableLinkExtra?.redundantInputs ?? []) {
@@ -197,7 +218,7 @@ export class CombatSyncManager {
         playerId: msg.playerId,
         frame: redundant.frame,
         ackFrame: msg.ackFrame,
-        input: cloneInput(redundant),
+        input: truncateAim(cloneInput(redundant)),
       });
     }
   }
@@ -242,10 +263,15 @@ export class CombatSyncManager {
     this.storeInput(playerId, frame, input);
     this.advanceRemoteContiguousFrame();
 
-    if (frame <= this.runtime.frame && !existing && predicted && !sameInput(predicted, input)) {
-      this.rollbackTo(frame);
-      if (!this.runtime.gameOver && !this.paused) {
-        this.options.callbacks.hideStatusText();
+    if (frame <= this.runtime.frame && !existing && predicted) {
+      const aimMismatch = this.aimConsumingFrames.has(frame)
+        ? !sameIntentWithAim(predicted, input)
+        : !sameIntent(predicted, input);
+      if (aimMismatch) {
+        this.rollbackTo(frame);
+        if (!this.runtime.gameOver && !this.paused) {
+          this.options.callbacks.hideStatusText();
+        }
       }
     }
     this.pruneOnlineHistory();
@@ -431,6 +457,11 @@ export class CombatSyncManager {
         this.predictedInputs.delete(key);
       }
     }
+    for (const frame of this.aimConsumingFrames) {
+      if (frame < confirmedFrame) {
+        this.aimConsumingFrames.delete(frame);
+      }
+    }
   }
 
   private advanceRemoteContiguousFrame(): void {
@@ -483,15 +514,81 @@ function cloneInput(input: BattleInputState): BattleInputState {
   };
 }
 
-function sameInput(left: BattleInputState, right: BattleInputState): boolean {
-  return left.moveX === right.moveX
-    && left.moveY === right.moveY
-    && left.aimX === right.aimX
-    && left.aimY === right.aimY
-    && left.shootPressed === right.shootPressed
-    && left.bombPressed === right.bombPressed
-    && left.activeCardPressed === right.activeCardPressed
-    && left.reloadPressed === right.reloadPressed
-    && left.alternateHeld === right.alternateHeld
-    && left.infoHeld === right.infoHeld;
+/**
+ * Truncate aim coordinates to integers so both peers run logic against
+ * the same pixel-grid positions.  Without this, remote inputs that were
+ * serialised from a JSON float (e.g. 312.7) and parsed back on the
+ * other side can differ from the local prediction by ~0.3px, which —
+ * while visually meaningless — was enough to trigger a full rollback.
+ */
+function truncateAim(input: BattleInputState): BattleInputState {
+  return {
+    ...input,
+    aimX: Math.trunc(input.aimX),
+    aimY: Math.trunc(input.aimY),
+  };
+}
+
+/**
+ * Decide whether two inputs represent the same "intent" for rollback purposes.
+ *
+ * Always-compared fields (discrete / boolean):
+ *   moveX, moveY, shootPressed, bombPressed, activeCardPressed,
+ *   reloadPressed, alternateHeld, infoHeld
+ *
+ * Conditionally-compared field (aimX, aimY):
+ *   The player moves the mouse every single frame, so aim coordinates
+ *   change almost continuously.  But aim only *matters* when something
+ *   uses it: shooting, bombing, or activating a card.  If neither the
+ *   predicted nor the actual frame carries an aim-consuming action,
+ *   skip the aim comparison entirely — an aim difference without an
+ *   action to consume it cannot change the simulation outcome.
+ *
+ *   When an aim-consuming action IS present, allow a small dead-zone
+ *   so that sub-pixel noise on network round-trip doesn't trigger a
+ *   costly rollback cycle.
+ */
+const AIM_DIFFERENCE_WIGGLE_ROOM = 8;
+
+function hasAimConsumingAction(input: BattleInputState): boolean {
+  return input.shootPressed || input.bombPressed || input.activeCardPressed;
+}
+
+/**
+ * Like sameIntent but always compares aim coordinates (used for frames
+ * that the BattleModel has flagged as aim-consuming via projectile
+ * retarget or other automatic mechanisms not visible at the input level).
+ */
+function sameIntentWithAim(left: BattleInputState, right: BattleInputState): boolean {
+  if (left.moveX !== right.moveX) return false;
+  if (left.moveY !== right.moveY) return false;
+  if (left.shootPressed !== right.shootPressed) return false;
+  if (left.bombPressed !== right.bombPressed) return false;
+  if (left.activeCardPressed !== right.activeCardPressed) return false;
+  if (left.reloadPressed !== right.reloadPressed) return false;
+  if (left.alternateHeld !== right.alternateHeld) return false;
+  if (left.infoHeld !== right.infoHeld) return false;
+
+  return Math.abs(left.aimX - right.aimX) < AIM_DIFFERENCE_WIGGLE_ROOM
+      && Math.abs(left.aimY - right.aimY) < AIM_DIFFERENCE_WIGGLE_ROOM;
+}
+
+function sameIntent(left: BattleInputState, right: BattleInputState): boolean {
+  // Discrete inputs — always compare.
+  if (left.moveX !== right.moveX) return false;
+  if (left.moveY !== right.moveY) return false;
+  if (left.shootPressed !== right.shootPressed) return false;
+  if (left.bombPressed !== right.bombPressed) return false;
+  if (left.activeCardPressed !== right.activeCardPressed) return false;
+  if (left.reloadPressed !== right.reloadPressed) return false;
+  if (left.alternateHeld !== right.alternateHeld) return false;
+  if (left.infoHeld !== right.infoHeld) return false;
+
+  // Aim only matters when something consumes it.
+  if (!hasAimConsumingAction(left) && !hasAimConsumingAction(right)) {
+    return true;
+  }
+
+  return Math.abs(left.aimX - right.aimX) < AIM_DIFFERENCE_WIGGLE_ROOM
+      && Math.abs(left.aimY - right.aimY) < AIM_DIFFERENCE_WIGGLE_ROOM;
 }
