@@ -5,6 +5,7 @@ const bundleDir = resolve("src-tauri/target/release/bundle");
 const releaseDir = resolve("src-tauri/target/release");
 const outputDir = resolve("../../dist-desktop");
 const artifactPattern = /\.(msi|exe|dmg|deb|rpm|AppImage)$/;
+const portableBinaryName = "fxtz-arena-desktop";
 const zipPath = join(outputDir, "fxtz-arena-desktop.zip");
 const collectedArtifacts = [];
 const CRC_TABLE = Array.from({ length: 256 }, (_, index) => {
@@ -28,7 +29,7 @@ function collect(dir, options = { recursive: true }) {
       }
       continue;
     }
-    if (artifactPattern.test(entry)) {
+    if (isArtifact(entry)) {
       const destination = copyArtifact(fullPath, join(outputDir, basename(entry)));
       collectedArtifacts.push(destination);
       console.log(`[desktop] collected ${destination}`);
@@ -72,7 +73,7 @@ function sleep(ms) {
 collect(releaseDir, { recursive: false });
 collect(bundleDir, { recursive: true });
 
-const zipEntries = collectedArtifacts.map((path) => ({ name: basename(path), path }));
+const zipEntries = collectedArtifacts.map((path) => ({ name: basename(path), path, mode: statSync(path).mode }));
 
 if (zipEntries.length > 0) {
   writeFileSync(zipPath, createZip(zipEntries));
@@ -119,7 +120,7 @@ function createZip(entries) {
     centralHeader.writeUInt16LE(0, 32);
     centralHeader.writeUInt16LE(0, 34);
     centralHeader.writeUInt16LE(0, 36);
-    centralHeader.writeUInt32LE(0, 38);
+    centralHeader.writeUInt32LE(((entry.mode & 0xffff) << 16) >>> 0, 38);
     centralHeader.writeUInt32LE(offset, 42);
     name.copy(centralHeader, 46);
     centralDirectory.push(centralHeader);
@@ -140,6 +141,10 @@ function createZip(entries) {
   endRecord.writeUInt16LE(0, 20);
 
   return Buffer.concat([...chunks, ...centralDirectory, endRecord]);
+}
+
+function isArtifact(entry) {
+  return artifactPattern.test(entry) || entry === portableBinaryName;
 }
 
 function crc32(data) {
