@@ -92,7 +92,7 @@ export class CombatSyncManager {
     this.consumeReceiveSceneQueue();
 
     this.stepRuntimeFrame(frame);
-    this.options.callbacks.recordFrame();
+    this.options.callbacks.recordFrame(this.runtime.aimConsumedThisFrame);
     this.pruneOnlineHistory();
     this.trySendGameOverVerdict();
   }
@@ -286,11 +286,16 @@ export class CombatSyncManager {
     this.runtime.deserialize(record.snapshot);
     this.options.callbacks.onRollback();
     this.options.callbacks.pruneRollbackHistoryAfter(restoreFrame);
-    this.options.callbacks.recordFrame();
+    // Entries for frames past the restore point are now stale — the
+    // replay loop below will re-populate the correct set as it steps.
+    for (const f of this.aimConsumingFrames) {
+      if (f > restoreFrame) this.aimConsumingFrames.delete(f);
+    }
+    this.options.callbacks.recordFrame(this.aimConsumingFrames.has(restoreFrame));
 
     for (let frame = restoreFrame + 1; frame <= currentFrame; frame += 1) {
       this.stepRuntimeFrame(frame);
-      this.options.callbacks.recordFrame();
+      this.options.callbacks.recordFrame(this.runtime.aimConsumedThisFrame);
     }
   }
 

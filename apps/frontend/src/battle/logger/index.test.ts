@@ -20,8 +20,8 @@ describe("BattleDebugLogger", () => {
       player: input(845.3833799776838, 428.8524590163934),
       target: input(600, 360),
     }, true);
-    logger.recordFrame(output(0), { enabled: true, localConfirmedFrame: 0 });
-    logger.recordFrame(output(1), { enabled: true, localConfirmedFrame: 0 });
+    logger.recordFrame(output(0), { enabled: true, localConfirmedFrame: 0, isAimConsuming: false });
+    logger.recordFrame(output(1), { enabled: true, localConfirmedFrame: 0, isAimConsuming: false });
     logger.recordConfirmedFrame({
       enabled: true,
       frame: 0,

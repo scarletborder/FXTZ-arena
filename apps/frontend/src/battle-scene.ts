@@ -400,7 +400,6 @@ export class BattleScene extends Phaser.Scene {
       sceneData: data,
       p2p,
       callbacks: {
-        recordFrame: () => this.recordDebugFrame(),
         recordStepInputs: (record) =>
           this.debugLogger.recordStepInputs(
             record,
@@ -411,6 +410,7 @@ export class BattleScene extends Phaser.Scene {
             record,
             this.shouldRecordDebugLog(),
           ),
+        recordFrame: (aimConsumed) => this.recordDebugFrame(aimConsumed),
         getRollbackRecord: (frame) => this.debugHistory.get(frame) ?? null,
         pruneRollbackHistoryAfter: (frame) =>
           this.pruneDebugHistoryAfter(frame),
@@ -512,7 +512,7 @@ export class BattleScene extends Phaser.Scene {
     this.scene.start("result", this.createResultData(winnerPlayerId));
   }
 
-  private recordDebugFrame(): void {
+  private recordDebugFrame(aimConsumed = false): void {
     const outputs = this.runtime.outputQueue.drainAll();
     for (const output of outputs) {
       this.currentOutput = output;
@@ -523,6 +523,7 @@ export class BattleScene extends Phaser.Scene {
         enabled: this.shouldRecordDebugLog(),
         localConfirmedFrame:
           this.combatSync?.getConfirmedFrame() ?? output.frame,
+        isAimConsuming: aimConsumed,
       });
       this.debugHistory.set(output.frame, {
         frame: output.frame,
@@ -539,6 +540,7 @@ export class BattleScene extends Phaser.Scene {
             logRecord?.localConfirmedFrame ??
             this.combatSync?.getConfirmedFrame() ??
             output.frame,
+          isAimConsuming: logRecord?.isAimConsuming ?? false,
           player1Input: logRecord?.player1Input ?? null,
           player2Input: logRecord?.player2Input ?? null,
         });
@@ -648,27 +650,33 @@ export class BattleScene extends Phaser.Scene {
       this.sceneData.mode === "online" || this.sceneData.mode === "local"
         ? Math.min(targetFrame, localConfirmedFrame, serverConfirmedFrame)
         : targetFrame;
-    const hashComplete =
-      this.recordConfirmedDebugHashesThrough(authoritativeFrame) &&
-      authoritativeFrame >= targetFrame;
+    // Sample up to the authoritative frame — only frames that are
+    // confirmed on both peers are included in the final hash.
+    const sampled = this.recordConfirmedDebugHashesThrough(authoritativeFrame);
+    const sampledUpTo = this.debugConfirmedHash.lastSampledFrame;
 
     const rows = this.debugLogger.getConfirmedRows(authoritativeFrame);
 
     const label = `FXTZ Debug Hash Bundle (mode=${this.sceneData.mode ?? "offline"
-      }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${localConfirmedFrame}, serverConfirmedFrame=${serverConfirmedFrame}, authoritativeFrame=${authoritativeFrame}, cachedRows=${rows.length})`;
+      }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${localConfirmedFrame}, serverConfirmedFrame=${serverConfirmedFrame}, authoritativeFrame=${authoritativeFrame}, sampledUpTo=${sampledUpTo}, cachedRows=${rows.length})`;
 
     console.group(label);
     console.log(
-      `finalGlobalHash(BLAKE3)\t${hashComplete ? this.debugConfirmedHash.digestHex(targetFrame) : "<incomplete>"}`,
+      `finalGlobalHash(BLAKE3)\t${sampled ? this.debugConfirmedHash.digestHex(sampledUpTo) : "<incomplete>"}`,
     );
     console.log(
-      `sampledConfirmedFrames\t0-${this.debugConfirmedHash.lastSampledFrame} (${this.debugConfirmedHash.samples})`,
+      `sampledConfirmedFrames\t0-${sampledUpTo} (${this.debugConfirmedHash.samples})`,
     );
-    if (!hashComplete) {
+    if (!sampled) {
       console.warn(
-        `Unable to sample authoritative frames through ${targetFrame}; local authoritative frame is ${authoritativeFrame}.`,
+        `Unable to sample all frames through ${authoritativeFrame}; sampled up to ${sampledUpTo}.`,
       );
     }
+    if (this.debugLiveHashEnabled) {
+      const comps = this.runtime.hashComponentsDebug();
+      console.log(`componentHashes\t${JSON.stringify(comps)}`);
+    }
+
     for (const row of rows) {
       console.log(`${row.frame}\t${row.hash}`);
     }
@@ -679,7 +687,8 @@ export class BattleScene extends Phaser.Scene {
       serverConfirmedFrame,
       authoritativeFrame,
       localConfirmedFrame,
-      hashComplete,
+      sampled,
+      sampledUpTo,
     });
   }
 
@@ -717,15 +726,15 @@ export class BattleScene extends Phaser.Scene {
       this.sceneData.mode === "online" || this.sceneData.mode === "local"
         ? Math.min(targetFrame, localConfirmedFrame)
         : targetFrame;
+    const sampled = this.recordConfirmedDebugHashesThrough(authoritativeFrame);
     return this.writeDebugHashLogFile({
       winnerPlayerId: null,
       targetFrame,
       serverConfirmedFrame: null,
       authoritativeFrame,
       localConfirmedFrame,
-      hashComplete:
-        this.recordConfirmedDebugHashesThrough(authoritativeFrame) &&
-        authoritativeFrame >= targetFrame,
+      sampled,
+      sampledUpTo: this.debugConfirmedHash.lastSampledFrame,
     });
   }
 
@@ -735,10 +744,11 @@ export class BattleScene extends Phaser.Scene {
     readonly serverConfirmedFrame: number | null;
     readonly authoritativeFrame: number;
     readonly localConfirmedFrame: number;
-    readonly hashComplete: boolean;
+    readonly sampled: boolean;
+    readonly sampledUpTo: number;
   }): string | null {
-    const finalGlobalHash = params.hashComplete
-      ? this.debugConfirmedHash.digestHex(params.targetFrame)
+    const finalGlobalHash = params.sampled
+      ? this.debugConfirmedHash.digestHex(params.sampledUpTo)
       : null;
     return this.debugLogger.writeFile({
       sceneData: this.sceneData,
@@ -755,7 +765,7 @@ export class BattleScene extends Phaser.Scene {
         from: 0,
         to: this.debugConfirmedHash.lastSampledFrame,
         count: this.debugConfirmedHash.samples,
-        complete: params.hashComplete,
+        complete: params.sampled,
       },
     });
   }

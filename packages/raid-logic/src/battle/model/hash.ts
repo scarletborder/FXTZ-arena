@@ -78,7 +78,7 @@ class DeterministicHasher {
   }
 }
 
-export function hashBattleModel(model: BattleModel, includeFacingForAim = false): number {
+export function hashBattleModel(model: BattleModel): number {
   const hasher = new DeterministicHasher();
   hasher.writeNumber(model.frame);
   hasher.writeNumber(model.gameOver ? 1 : 0);
@@ -87,13 +87,6 @@ export function hashBattleModel(model: BattleModel, includeFacingForAim = false)
   hasher.writeNumber(model.getNextClearRingId());
   writeFighter(hasher, model.player);
   writeFighter(hasher, model.target);
-  if (includeFacingForAim) {
-    // On frames where aim was consumed by the simulation the exact
-    // facing angle (derived from aimX/aimY) matters for determinism
-    // verification because it affects bullet/spawn positions.
-    writeFixed(hasher, model.player.facing);
-    writeFixed(hasher, model.target.facing);
-  }
   writeNeutralMobs(hasher, model.neutralMobStates());
   writePoints(hasher, model.pointStates());
   writeClearRings(hasher, model.clearRings);
@@ -102,6 +95,39 @@ export function hashBattleModel(model: BattleModel, includeFacingForAim = false)
   writeEffects(hasher, model.effects);
   writeStats(hasher, model.stats);
   return hasher.digest();
+}
+
+/**
+ * Debug helper: hash each component of the battle model separately and return
+ * the individual digests.  When two peers disagree on the global hash, this
+ * tells you which subsystem diverged.
+ */
+export function hashBattleModelComponents(
+  model: BattleModel,
+): Record<string, string> {
+  const hash = (label: string, fn: (h: DeterministicHasher) => void): string => {
+    const h = new DeterministicHasher();
+    fn(h);
+    return hashToHex(h.digest());
+  };
+
+  return {
+    frame: hash("frame", (h) => h.writeNumber(model.frame)),
+    counters: hash("counters", (h) => {
+      h.writeNumber(model.getNextNeutralMobId());
+      h.writeNumber(model.getNextPointId());
+      h.writeNumber(model.getNextClearRingId());
+    }),
+    player: hash("player", (h) => writeFighter(h, model.player)),
+    target: hash("target", (h) => writeFighter(h, model.target)),
+    neutralMobs: hash("mobs", (h) => writeNeutralMobs(h, model.neutralMobStates())),
+    points: hash("points", (h) => writePoints(h, model.pointStates())),
+    clearRings: hash("rings", (h) => writeClearRings(h, model.clearRings)),
+    spawner: hash("spawner", (h) => writeSpawnerState(h, model.mobSpawnerState())),
+    projectiles: hash("projs", (h) => writeProjectiles(h, model.projectiles)),
+    effects: hash("effects", (h) => writeEffects(h, model.effects)),
+    stats: hash("stats", (h) => writeStats(h, model.stats)),
+  };
 }
 
 function writeNeutralMobs(

@@ -68,6 +68,8 @@ export interface RaidLogicRuntime {
   deserialize(snapshot: BattleModelSnapshot): BattleOutputFrame;
   hash(): number;
   hashHex(): string;
+  /** Debug: hash each component separately. */
+  hashComponentsDebug(): Record<string, string>;
 }
 
 class BattleRuntime implements RaidLogicRuntime {
@@ -196,21 +198,24 @@ class BattleRuntime implements RaidLogicRuntime {
   }
 
   hash(): number {
-    return this.model.hash(this.model.aimConsumedThisFrame);
+    return this.model.hash();
   }
 
   hashHex(): string {
-    return this.model.hashHex(this.model.aimConsumedThisFrame);
+    return this.model.hashHex();
+  }
+
+  hashComponentsDebug(): Record<string, string> {
+    return this.model.hashComponentsDebug();
   }
 
   private enqueueOutput(
     events: readonly BattleOutputEvent[],
   ): BattleOutputFrame {
-    const includeFacing = this.model.aimConsumedThisFrame;
     const frame = {
       frame: this.model.frame,
-      hash: this.model.hash(includeFacing),
-      hashHex: this.model.hashHex(includeFacing),
+      hash: this.model.hash(),
+      hashHex: this.model.hashHex(),
       state: this.model.toOutputState(),
       snapshot: this.model.serialize(),
       events,

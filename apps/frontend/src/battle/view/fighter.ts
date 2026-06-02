@@ -4,7 +4,7 @@ import { t } from "@repo/i18n";
 import { GRAZE_CIRCLE_ALPHA, GRAZE_CIRCLE_DIAMETER, PLAYER_CORE_RADIUS } from "@repo/constants";
 import type { FighterKey, FighterState } from "@repo/raid-logic";
 import { Depth } from "../../utils/depth";
-import { smoothValue } from "./smooth";
+import { smoothValue, smoothValueWithMaxStep } from "./smooth";
 
 interface FighterVisual {
   readonly body: Phaser.GameObjects.Sprite;
@@ -15,6 +15,11 @@ interface FighterVisual {
 
 const COMBAT_DISPLAY_SIZE = 104;
 const ANIMATION_FRAME_TICKS = 10;
+
+/** Max pixels the body sprite may move per frame during rollback catch-up (~⅓ character width). */
+const ROLLBACK_MAX_STEP = 35;
+/** Errors below this threshold snap directly — imperceptible offsets don't linger. */
+const ROLLBACK_SNAP_THRESHOLD = 4;
 
 export class FighterView {
   private readonly visuals: Record<"player" | "target", FighterVisual>;
@@ -85,8 +90,8 @@ export class FighterView {
     visual.body.setVisible(visible);
     visual.body.clearTint();
     const blinkAlpha = fighter.invulnerableUntil > 0 && Math.floor(frame / 5) % 2 === 0 ? 0.28 : 1;
-    const renderX = smoothValue(visual.body.x, x, rollbackBlend);
-    const renderY = smoothValue(visual.body.y, y, rollbackBlend);
+    const renderX = smoothValueWithMaxStep(visual.body.x, x, ROLLBACK_MAX_STEP, ROLLBACK_SNAP_THRESHOLD);
+    const renderY = smoothValueWithMaxStep(visual.body.y, y, ROLLBACK_MAX_STEP, ROLLBACK_SNAP_THRESHOLD);
     visual.body.setPosition(renderX, renderY);
     visual.body.setAlpha(visible ? smoothValue(visual.body.alpha, blinkAlpha, rollbackBlend) : 0);
     visual.core.setPosition(smoothValue(visual.core.x, x, rollbackBlend), smoothValue(visual.core.y, y, rollbackBlend));

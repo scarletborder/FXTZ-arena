@@ -15,6 +15,7 @@ export interface DebugFrameLogRecord {
   readonly hash: string;
   readonly events: readonly string[];
   readonly localConfirmedFrame: number;
+  readonly isAimConsuming: boolean;
   readonly player1Input: BattleInputState | null;
   readonly player2Input: BattleInputState | null;
 }
@@ -96,6 +97,7 @@ export class BattleDebugLogger {
     params: {
       readonly enabled: boolean;
       readonly localConfirmedFrame: number;
+      readonly isAimConsuming: boolean;
     },
   ): DebugFrameLogRecord | null {
     if (!params.enabled) {
@@ -109,6 +111,7 @@ export class BattleDebugLogger {
       hash: output.hashHex,
       events: output.events.map((event) => event.type),
       localConfirmedFrame: params.localConfirmedFrame,
+      isAimConsuming: params.isAimConsuming,
       player1Input: inputRecord ? cloneDebugInput(inputRecord.player) : null,
       player2Input: inputRecord ? cloneDebugInput(inputRecord.target) : null,
     };
@@ -137,8 +140,13 @@ export class BattleDebugLogger {
       sequence: this.confirmedSequence,
       frame: params.frame,
       hash: params.hash,
-      events: source?.events ?? ["confirmed"],
+      // Authoritative frames are always "frame_advanced" — the
+      // simulation has settled and this hash is the final truth
+      // for this frame, regardless of whether the most recent
+      // output was a re-play from a rollback ("snapshot_restored").
+      events: ["frame_advanced"],
       localConfirmedFrame: params.confirmedThrough,
+      isAimConsuming: source?.isAimConsuming ?? false,
       authoritative: true,
       confirmedThrough: params.confirmedThrough,
       player1Input: inputRecord ? cloneDebugInput(inputRecord.player) : null,

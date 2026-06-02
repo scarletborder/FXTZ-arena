@@ -36,7 +36,7 @@ import {
   stepClearRings,
   type ClearRingState,
 } from "./entities/clear-ring";
-import { hashBattleModel, hashToHex } from "./hash";
+import { hashBattleModel, hashBattleModelComponents, hashToHex } from "./hash";
 import { BattlePhysics } from "./physics-adapter";
 import {
   createPointState,
@@ -87,6 +87,12 @@ export class BattleModel {
    * frames where it changed the simulation.
    */
   aimConsumedThisFrame = false;
+
+  /** Exposed for hash — the integer-truncated aim coordinates per fighter. */
+  get currentAim(): Record<FighterKey, { readonly x: number; readonly y: number }> {
+    return this.currentAimByFighter;
+  }
+
   private readonly currentAimByFighter: Record<
     FighterKey,
     { readonly x: number; readonly y: number }
@@ -359,12 +365,20 @@ export class BattleModel {
     this.effectSystem.stepEffects(this.effects, this.frame);
   }
 
-  hash(includeFacingForAim = false): number {
-    return hashBattleModel(this, includeFacingForAim);
+  hash(): number {
+    return hashBattleModel(this);
   }
 
-  hashHex(includeFacingForAim = false): string {
-    return hashToHex(this.hash(includeFacingForAim));
+  hashHex(): string {
+    return hashToHex(this.hash());
+  }
+
+  /**
+   * Debug: hash each subsystem separately so a peer-desync can be narrowed
+   * down to fighters, projectiles, effects, etc.
+   */
+  hashComponentsDebug(): Record<string, string> {
+    return hashBattleModelComponents(this);
   }
 
   toOutputState(): BattleOutputState {

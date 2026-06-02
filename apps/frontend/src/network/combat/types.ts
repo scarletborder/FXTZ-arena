@@ -34,7 +34,7 @@ export interface CombatConfirmedFrameInputRecord extends CombatFrameInputRecord 
 }
 
 export interface CombatSyncCallbacks {
-  recordFrame(): void;
+  recordFrame(aimConsumed: boolean): void;
   recordStepInputs?(record: CombatFrameInputRecord): void;
   recordConfirmedInputs?(record: CombatConfirmedFrameInputRecord): void;
   getRollbackRecord(frame: number): CombatRollbackRecord | null;
