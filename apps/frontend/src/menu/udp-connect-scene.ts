@@ -60,7 +60,7 @@ export class UdpConnectScene extends Phaser.Scene {
     divider.lineStyle(2, 0x34475c, 0.9);
     divider.lineBetween(188, 390, 1092, 390);
 
-    drawPanel(this, 156, 418, 968, 208, t("udp_connect.as_guest"));
+    drawPanel(this, 156, 418, 968, 252, t("udp_connect.as_guest"));
     this.add.text(198, 488, t("udp_connect.address"), {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: "18px",
@@ -77,6 +77,28 @@ export class UdpConnectScene extends Phaser.Scene {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: "15px",
       color: "#9fb4c8",
+    });
+    const clipboardLabel = this.add.text(198, 620, t("udp_connect.connect_clipboard"), {
+      fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+      fontSize: "16px",
+      color: "#34d399",
+    }).setInteractive({ useHandCursor: true });
+    clipboardLabel.on("pointerover", () => clipboardLabel.setColor("#ffcf6e"));
+    clipboardLabel.on("pointerout", () => clipboardLabel.setColor("#34d399"));
+    clipboardLabel.on("pointerup", async () => {
+      if (!IS_DESKTOP_APP) return;
+      try {
+        const text = await navigator.clipboard.readText();
+        if (!text.includes(":")) {
+          this.showToast(t("udp_connect.address_required"));
+          return;
+        }
+        this.guestAddress = text.trim();
+        addressField.setValue(this.guestAddress);
+        await this.connectGuest();
+      } catch (error) {
+        this.showToast(error instanceof Error ? error.message : String(error));
+      }
     });
     createFightButton(this, 840, 552, 220, 52, t("udp_connect.connect"), () => void this.connectGuest(), { accent: 0x34d399 });
 

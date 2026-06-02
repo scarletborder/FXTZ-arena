@@ -18,7 +18,7 @@
     "title": "UDP Connect", "as_host": "As Host", "port": "Open port", "start_listen": "Start Listening",
     "waiting": "Waiting for connection", "stop": "Stop", "as_guest": "As Guest", "address": "Peer address",
     "address_tip": "Example: 192.168.1.23:10800 or example.com:10800", "connect": "Connect",
-    "address_required": "Enter ip:port", "connect_sent": "UDP handshake packet sent",
+    "address_required": "Enter ip:port", "connect_clipboard": "Connect from Clipboard", "connect_sent": "UDP handshake packet sent",
     "received_from": "Received UDP data from {{addr}}"
   },
   "settings": {
