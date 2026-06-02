@@ -6,6 +6,23 @@ const buildLabel = `${version}+${commit}`;
 
 console.log(`[desktop] building frontend ${buildLabel}`);
 
+const prebuild = spawnSync(
+  "pnpm",
+  ["-r", "--filter", "./packages/*", "run", "build", "--if-present"],
+  {
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  },
+);
+
+if (prebuild.error) {
+  throw prebuild.error;
+}
+
+if (typeof prebuild.status === "number" && prebuild.status !== 0) {
+  process.exit(prebuild.status);
+}
+
 const result = spawnSync("pnpm", ["--filter", "frontend", "build:desktop"], {
   stdio: "inherit",
   shell: process.platform === "win32",

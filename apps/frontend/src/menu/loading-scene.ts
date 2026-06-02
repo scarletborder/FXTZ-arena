@@ -4,7 +4,7 @@ import { t } from "@repo/i18n";
 import type { ServerMessage } from "@repo/types";
 
 import { queueBattleAssets } from "../battle/assets";
-import { P2pConnection, type P2pStatus } from "../network/p2p";
+import { P2pConnection, type PeerConnection, type P2pStatus } from "../network/p2p";
 import { connectionManager, type LoadingData, type SceneKey } from "./shared";
 import { uiSettings } from "../store/settings";
 import {
@@ -24,7 +24,7 @@ export class LoadingScene extends Phaser.Scene {
   private onlineReady = false;
   private p2pReady = false;
   private peerLoadingReady = false;
-  private p2p: P2pConnection | undefined;
+  private p2p: PeerConnection | undefined;
   private transitioning = false;
   private loadingDoneSent = false;
   private runtimeReady = false;

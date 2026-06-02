@@ -1,5 +1,5 @@
 import type { BattleConfig, ClientMessage, PlayerId, ServerMessage } from "@repo/types";
-import { APP_BUILD_LABEL } from "@repo/constants";
+import { APP_BUILD_LABEL, IS_DESKTOP_APP } from "@repo/constants";
 import { isWebTransportAddress, normalizeServerAddress } from "./address";
 import { findServerCertificateFingerprint } from "./fingerprint";
 import { WsNetworkTransport, WtNetworkTransport } from "./transport";
@@ -142,7 +142,7 @@ export class ConnectionManager {
       ? new WtNetworkTransport(
         normalizedAddress,
         { open: onOpen, close: onClose, error: onError, message: onMessage },
-        findServerCertificateFingerprint(normalizedAddress),
+        IS_DESKTOP_APP ? undefined : findServerCertificateFingerprint(normalizedAddress),
       )
       : new WsNetworkTransport(normalizedAddress, { open: onOpen, close: onClose, error: onError, message: onMessage });
     this.transport.open();

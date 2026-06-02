@@ -5,6 +5,18 @@ import type { ConnectionManager } from "./client";
 
 export type P2pStatus = "disabled" | "idle" | "connecting" | "connected" | "failed";
 
+export interface PeerConnection {
+  readonly connected: boolean;
+  readonly remoteLoadingDone: boolean;
+  readonly status: P2pStatus;
+  start(): void;
+  close(): void;
+  setStatusHandler(handler: ((status: P2pStatus) => void) | undefined): void;
+  setMessageHandler(handler: (message: ServerMessage) => void): void;
+  handleServerMessage(message: ServerMessage): boolean;
+  send(message: ClientMessage): boolean;
+}
+
 export interface P2pConnectionOptions {
   readonly localPlayerId: PlayerId;
   readonly enabled: boolean;
@@ -16,7 +28,7 @@ export interface P2pConnectionOptions {
 
 const DEFAULT_TIMEOUT_MS = 20_000;
 
-export class P2pConnection {
+export class P2pConnection implements PeerConnection {
   private peer: RTCPeerConnection | null = null;
   private channel: RTCDataChannel | null = null;
   private timeout: ReturnType<typeof setTimeout> | null = null;

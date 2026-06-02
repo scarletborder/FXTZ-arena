@@ -1,3 +1,5 @@
+import { IS_DESKTOP_APP } from "@repo/constants";
+
 import { findServerCertificateFingerprint } from "../../network/fingerprint";
 import { isWebTransportAddress, normalizeServerAddress } from "../../network/address";
 import { WsNetworkTransport, WtNetworkTransport } from "../../network/transport";
@@ -49,7 +51,7 @@ export function probeCustomServer(
           error: () => finish(trustRequiredResult),
           message: () => undefined,
         },
-        findServerCertificateFingerprint(address),
+        IS_DESKTOP_APP ? undefined : findServerCertificateFingerprint(address),
       )
       : new WsNetworkTransport(address, {
         open: () => finish({ kind: "ok", latencyMs: Math.max(1, Math.round(performance.now() - startedAt)) }),
@@ -80,6 +82,9 @@ export function probeCustomServer(
 }
 
 function mayNeedTrust(address: string): boolean {
+  if (IS_DESKTOP_APP) {
+    return false;
+  }
   return /^wss:\/\//i.test(address) || /^https:\/\//i.test(address);
 }
 

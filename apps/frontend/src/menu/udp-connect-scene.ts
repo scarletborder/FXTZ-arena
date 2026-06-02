@@ -4,8 +4,7 @@ import { t } from "@repo/i18n";
 import { createDefaultRaidBattleConfig } from "@repo/raid-logic";
 import type { MapId, PlayerLoadout } from "@repo/types";
 
-import type { ConnectionManager } from "../network/client";
-import { P2pConnection } from "../network/p2p";
+import type { PeerConnection } from "../network/p2p";
 import { type UdpDirectSession, UdpDirectSession as UdpSession } from "../network/udp-direct-session";
 import { uiSettings } from "../store/settings";
 import { installMenuAudioUnlock, type SceneKey, type TextFieldControl } from "./shared";
@@ -19,7 +18,7 @@ export class UdpConnectScene extends Phaser.Scene {
   private session: UdpDirectSession | null = null;
   private matchedPeerName: string | null = null;
   private localPlayerId: "Player1" | "Player2" = "Player1";
-  private currentP2p: P2pConnection | null = null;
+  private currentPeer: PeerConnection | null = null;
   private localLoadout: PlayerLoadout | null = null;
   private remoteLoadout: PlayerLoadout | null = null;
   private selectedMapId: MapId = "arena_standard";
@@ -134,7 +133,7 @@ export class UdpConnectScene extends Phaser.Scene {
   }
 
   private launchSelection(peerName: string, localPlayerId: "Player1" | "Player2"): void {
-    if (!this.session || this.currentP2p) {
+    if (!this.session || this.currentPeer) {
       return;
     }
 
@@ -145,16 +144,10 @@ export class UdpConnectScene extends Phaser.Scene {
     this.localLoadout = null;
     this.remoteLoadout = null;
 
-    const p2p = new P2pConnection(this.session.createP2pBridge(localPlayerId) as unknown as ConnectionManager, {
-      localPlayerId,
-      enabled: true,
-      stunServer: uiSettings.stunServer,
-      onStatus: () => undefined,
-      onMessage: () => undefined,
-    });
-    this.currentP2p = p2p;
-    this.session.setPeerPacketHandler((message) => p2p.handleServerMessage(message));
-    p2p.start();
+    const peer = this.session.createDirectPeer(localPlayerId);
+    this.currentPeer = peer;
+    this.session.setPeerPacketHandler((message) => peer.handleServerMessage(message));
+    peer.start();
 
     const battleConfig = createDefaultRaidBattleConfig();
     this.selectedMapId = battleConfig.mapId;
@@ -175,15 +168,15 @@ export class UdpConnectScene extends Phaser.Scene {
   private resetSession(): void {
     this.session?.close();
     this.session = null;
-    this.currentP2p?.close();
-    this.currentP2p = null;
+    this.currentPeer?.close();
+    this.currentPeer = null;
     this.matchedPeerName = null;
     this.localLoadout = null;
     this.remoteLoadout = null;
   }
 
   private tryLaunchLoading(): void {
-    if (!this.session || !this.currentP2p || !this.localLoadout || !this.remoteLoadout || !this.matchedPeerName) {
+    if (!this.session || !this.currentPeer || !this.localLoadout || !this.remoteLoadout || !this.matchedPeerName) {
       return;
     }
 
@@ -201,7 +194,7 @@ export class UdpConnectScene extends Phaser.Scene {
       mapId: this.selectedMapId,
       debug: uiSettings.debug,
       localPlayerId: this.localPlayerId,
-      p2p: this.currentP2p,
+      p2p: this.currentPeer,
     });
   }
 
