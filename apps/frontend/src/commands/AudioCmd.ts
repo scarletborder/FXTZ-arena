@@ -1,3 +1,5 @@
+import { uiSettings } from "../store/settings";
+
 export interface AudioPlayOptions {
   readonly loop?: boolean;
   readonly groupKey?: string;
@@ -11,16 +13,16 @@ export interface AudioPlayOptions {
 
 export type AudioCommand =
   | {
-      readonly type: "play";
-      readonly key: string;
-      readonly options: AudioPlayOptions;
-    }
+    readonly type: "play";
+    readonly key: string;
+    readonly options: AudioPlayOptions;
+  }
   | {
-      readonly type: "unlock";
-    }
+    readonly type: "unlock";
+  }
   | {
-      readonly type: "reset";
-    };
+    readonly type: "reset";
+  };
 
 export type AudioCommandListener = (command: AudioCommand) => void;
 
@@ -40,10 +42,17 @@ function subscribe(listener: AudioCommandListener): () => void {
 }
 
 function Play(key: string, options: AudioPlayOptions = {}): void {
+  const scaledVolume = resolveSoundVolume(options.volume);
+  if (scaledVolume <= 0) {
+    return;
+  }
   emit({
     type: "play",
     key,
-    options,
+    options: {
+      ...options,
+      volume: scaledVolume,
+    },
   });
 }
 
@@ -63,3 +72,16 @@ const AudioCmd = {
 };
 
 export default AudioCmd;
+
+function resolveSoundVolume(baseVolume: number | undefined): number {
+  const normalizedBase = clampVolume(baseVolume ?? 1);
+  const settingScale = clampVolume(uiSettings.sound / 100);
+  return clampVolume(normalizedBase * settingScale);
+}
+
+function clampVolume(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(1, value));
+}
