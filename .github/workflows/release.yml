@@ -79,7 +79,7 @@ jobs:
         env:
           BUILD_LABEL: ${{ steps.meta.outputs.build_label }}
         run: |
-          mkdir -p release/dedicated-server/dist
+          mkdir -p release/dedicated-server
           (cd apps/frontend/dist && zip -r "../../../release/fxtz-arena-frontend-${BUILD_LABEL}.zip" .)
           cp -r apps/dedicated-server/dist release/dedicated-server/dist
           cp apps/dedicated-server/package.json release/dedicated-server/package.json
@@ -101,7 +101,7 @@ jobs:
 
   build-desktop:
     needs: [build]
-    runs-on: windows-latest  # 需要 Windows 环境来构建 Tauri 应用
+    runs-on: windows-latest
     outputs:
       build_label: ${{ steps.meta.outputs.build_label }}
     steps:
@@ -126,15 +126,16 @@ jobs:
 
       - name: Resolve build metadata
         id: meta
+        shell: bash # 强制使用 bash 而不是 PowerShell
         run: |
           TAG_NAME="${GITHUB_REF_NAME}"
           APP_VERSION="${TAG_NAME}"
           APP_COMMIT="$(git rev-list --count HEAD)"
           BUILD_LABEL="${APP_VERSION}+${APP_COMMIT}"
-          
-          echo "version=${APP_VERSION}" >> "$env:GITHUB_OUTPUT"
-          echo "commit=${APP_COMMIT}" >> "$env:GITHUB_OUTPUT"
-          echo "build_label=${BUILD_LABEL}" >> "$env:GITHUB_OUTPUT"
+
+          echo "version=${APP_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "commit=${APP_COMMIT}" >> "$GITHUB_OUTPUT"
+          echo "build_label=${BUILD_LABEL}" >> "$GITHUB_OUTPUT"
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -151,19 +152,24 @@ jobs:
           VITE_APP_VERSION: ${{ steps.meta.outputs.version }}
           VITE_APP_COMMIT: ${{ steps.meta.outputs.commit }}
           VITE_DOCS_URL: "https://mvz443-team.github.io/docs/"
+          BUILD_LABEL: ${{ steps.meta.outputs.build_label }} # 传递 build label 给脚本
         working-directory: apps/desktop
         run: pnpm run publish-desktop
 
       - name: Prepare release artifacts
+        shell: bash
         env:
           BUILD_LABEL: ${{ steps.meta.outputs.build_label }}
         run: |
           mkdir -p release
           # Rename the zip file to include build label
-          if (Test-Path "dist-desktop/fxtz-arena-desktop.zip") {
-            Copy-Item "dist-desktop/fxtz-arena-desktop.zip" "release/fxtz-arena-desktop-${env:BUILD_LABEL}.zip"
-            Write-Host "Desktop artifact prepared: fxtz-arena-desktop-${env:BUILD_LABEL}.zip"
-          }
+          if [ -f "dist-desktop/fxtz-arena-desktop.zip" ]; then
+            cp "dist-desktop/fxtz-arena-desktop.zip" "release/fxtz-arena-desktop-${BUILD_LABEL}.zip"
+            echo "Desktop artifact prepared: fxtz-arena-desktop-${BUILD_LABEL}.zip"
+          else
+            echo "Warning: fxtz-arena-desktop.zip not found"
+            ls -la dist-desktop/ || echo "dist-desktop directory not found"
+          fi
 
       - name: Upload desktop artifact to release
         uses: softprops/action-gh-release@v2
