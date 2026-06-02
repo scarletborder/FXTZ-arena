@@ -49,10 +49,10 @@ const EQUILATERAL_CIRCUMRADIUS_DIVISOR = Math.sqrt(3);
 @Vanilla.RegisterCharacter("kaguya")
 export class KaguyaBattleCharacter extends BattleCharacter {
   readonly id = "kaguya" as CharacterDefinition["id"];
-  readonly name = "辉夜";
+  readonly name = "kaguya";
   readonly cost = KAGUYA_COST;
   readonly roleClass = "scout" as CharacterDefinition["roleClass"];
-  readonly moveSpeed = "high" as CharacterDefinition["moveSpeed"];
+  readonly moveSpeed = "medium" as CharacterDefinition["moveSpeed"];
   readonly fireRate = "low" as CharacterDefinition["fireRate"];
   readonly ammoCapacity = KAGUYA_AMMO_CAPACITY;
   readonly reloadTicksPerAmmo = KAGUYA_RELOAD_TICKS_PER_AMMO;
@@ -62,7 +62,7 @@ export class KaguyaBattleCharacter extends BattleCharacter {
     "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = "high" as CharacterDefinition["bulletSpeed"];
   readonly description =
-    "· 永远与须臾的公主\n· 以环绕弹幕锁定目标点的侦察机体\n· bomb在三角警戒后释放高速齐射";
+    "· 永远与须臾的罪人\n此角色由“人鱼乳业”设计";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/kaguya/combat.png",
     attackPreviewAsset: "assets/characters/kaguya/combat.png",
