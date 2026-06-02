@@ -20,9 +20,7 @@
         "types": "./dist/cjs/index.d.cts",
         "default": "./dist/cjs/index.cjs"
       }
-    },
-    "./locales/zh_cn.json": "./src/locales/zh_cn.json",
-    "./locales/en_us.json": "./src/locales/en_us.json"
+    }
   },
   "scripts": {
     "build": "bunchee && node scripts/copy-locales.mjs",
