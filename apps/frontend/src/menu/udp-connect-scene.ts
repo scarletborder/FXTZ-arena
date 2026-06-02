@@ -1,8 +1,13 @@
 import Phaser from "phaser";
 import { IS_DESKTOP_APP } from "@repo/constants";
 import { t } from "@repo/i18n";
+import { createDefaultRaidBattleConfig } from "@repo/raid-logic";
+import type { MapId, PlayerLoadout } from "@repo/types";
 
-import { listenUdp, sendUdp, stopUdp, subscribeUdp } from "../network/desktop-udp";
+import type { ConnectionManager } from "../network/client";
+import { P2pConnection } from "../network/p2p";
+import { type UdpDirectSession, UdpDirectSession as UdpSession } from "../network/udp-direct-session";
+import { uiSettings } from "../store/settings";
 import { installMenuAudioUnlock, type SceneKey, type TextFieldControl } from "./shared";
 import { createBackButton, createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop, drawPanel } from "./ui";
 
@@ -11,7 +16,13 @@ export class UdpConnectScene extends Phaser.Scene {
   private listenPort = "10800";
   private guestAddress = "";
   private waitDialog: Phaser.GameObjects.Container | null = null;
-  private unlistenUdp: (() => void) | null = null;
+  private session: UdpDirectSession | null = null;
+  private matchedPeerName: string | null = null;
+  private localPlayerId: "Player1" | "Player2" = "Player1";
+  private currentP2p: P2pConnection | null = null;
+  private localLoadout: PlayerLoadout | null = null;
+  private remoteLoadout: PlayerLoadout | null = null;
+  private selectedMapId: MapId = "arena_standard";
 
   private readonly onKeyDown = (event: KeyboardEvent) => this.activeField?.handleKey(event);
   private readonly onPaste = (event: ClipboardEvent) => this.activeField?.handlePaste(event.clipboardData?.getData("text") ?? "");
@@ -75,9 +86,7 @@ export class UdpConnectScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       window.removeEventListener("keydown", this.onKeyDown);
       window.removeEventListener("paste", this.onPaste);
-      this.unlistenUdp?.();
-      this.unlistenUdp = null;
-      void stopUdp().catch(() => undefined);
+      this.resetSession();
     });
   }
 
@@ -85,11 +94,16 @@ export class UdpConnectScene extends Phaser.Scene {
     if (!IS_DESKTOP_APP) return;
     const port = Number.parseInt(this.listenPort, 10) || 10800;
     try {
-      await listenUdp(port);
-      this.unlistenUdp?.();
-      this.unlistenUdp = await subscribeUdp((packet) => {
-        this.showToast(t("udp_connect.received_from", { addr: packet.addr }));
+      this.resetSession();
+      this.session = new UdpSession("host", {
+        onPacket: (addr) => this.showToast(t("udp_connect.received_from", { addr })),
+        onMatch: (peer) => this.launchSelection(peer.alias, "Player1"),
+        onBattleReady: (_peer, loadout) => {
+          this.remoteLoadout = loadout;
+          this.tryLaunchLoading();
+        },
       });
+      await this.session.host(port, uiSettings.username);
       this.showWaitingDialog();
     } catch (error) {
       this.showToast(error instanceof Error ? error.message : String(error));
@@ -103,12 +117,92 @@ export class UdpConnectScene extends Phaser.Scene {
       return;
     }
     try {
-      await listenUdp(0);
-      await sendUdp(this.guestAddress, new TextEncoder().encode("fxtz-udp-hello"));
+      this.resetSession();
+      this.session = new UdpSession("guest", {
+        onPacket: (addr) => this.showToast(t("udp_connect.received_from", { addr })),
+        onMatch: (peer) => this.launchSelection(peer.alias, "Player2"),
+        onBattleReady: (_peer, loadout) => {
+          this.remoteLoadout = loadout;
+          this.tryLaunchLoading();
+        },
+      });
+      await this.session.connect(this.guestAddress, uiSettings.username);
       this.showToast(t("udp_connect.connect_sent"));
     } catch (error) {
       this.showToast(error instanceof Error ? error.message : String(error));
     }
+  }
+
+  private launchSelection(peerName: string, localPlayerId: "Player1" | "Player2"): void {
+    if (!this.session || this.currentP2p) {
+      return;
+    }
+
+    this.waitDialog?.destroy();
+    this.waitDialog = null;
+    this.matchedPeerName = peerName;
+    this.localPlayerId = localPlayerId;
+    this.localLoadout = null;
+    this.remoteLoadout = null;
+
+    const p2p = new P2pConnection(this.session.createP2pBridge(localPlayerId) as unknown as ConnectionManager, {
+      localPlayerId,
+      enabled: true,
+      stunServer: uiSettings.stunServer,
+      onStatus: () => undefined,
+      onMessage: () => undefined,
+    });
+    this.currentP2p = p2p;
+    this.session.setPeerPacketHandler((message) => p2p.handleServerMessage(message));
+    p2p.start();
+
+    const battleConfig = createDefaultRaidBattleConfig();
+    this.selectedMapId = battleConfig.mapId;
+    this.scene.switch("select", {
+      mode: "local",
+      playerName: uiSettings.username,
+      opponentName: peerName,
+      returnScene: "udp-connect",
+      debug: uiSettings.debug,
+      onLocalConfirm: (loadout: PlayerLoadout) => {
+        this.localLoadout = loadout;
+        this.session?.sendBattleReady(loadout);
+        this.tryLaunchLoading();
+      },
+    });
+  }
+
+  private resetSession(): void {
+    this.session?.close();
+    this.session = null;
+    this.currentP2p?.close();
+    this.currentP2p = null;
+    this.matchedPeerName = null;
+    this.localLoadout = null;
+    this.remoteLoadout = null;
+  }
+
+  private tryLaunchLoading(): void {
+    if (!this.session || !this.currentP2p || !this.localLoadout || !this.remoteLoadout || !this.matchedPeerName) {
+      return;
+    }
+
+    const loadouts = this.localPlayerId === "Player1"
+      ? { player: this.localLoadout, target: this.remoteLoadout }
+      : { player: this.remoteLoadout, target: this.localLoadout };
+
+    this.scene.stop("select");
+    this.scene.launch("loading", {
+      mode: "local",
+      playerName: uiSettings.username,
+      opponentName: this.matchedPeerName,
+      returnScene: "udp-connect",
+      loadouts,
+      mapId: this.selectedMapId,
+      debug: uiSettings.debug,
+      localPlayerId: this.localPlayerId,
+      p2p: this.currentP2p,
+    });
   }
 
   private showWaitingDialog(): void {
@@ -126,9 +220,7 @@ export class UdpConnectScene extends Phaser.Scene {
       color: "#f6f1e6",
     }).setOrigin(0.5));
     c.add(createFightButton(this, 640, 410, 160, 46, t("udp_connect.stop"), () => {
-      void stopUdp().catch(() => undefined);
-      this.unlistenUdp?.();
-      this.unlistenUdp = null;
+      this.resetSession();
       this.waitDialog?.destroy();
       this.waitDialog = null;
     }, { accent: 0xff5c66 }).container);

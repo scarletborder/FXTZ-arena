@@ -2,7 +2,7 @@ use std::{
     fs,
     net::UdpSocket,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex,
     },
     thread,
@@ -21,6 +21,7 @@ struct UdpPayload {
 struct UdpState {
     socket: Mutex<Option<Arc<UdpSocket>>>,
     running: Arc<AtomicBool>,
+    session: Arc<AtomicU64>,
 }
 
 #[tauri::command]
@@ -33,13 +34,15 @@ fn udp_listen(app: tauri::AppHandle, state: State<'_, UdpState>, port: u16) -> R
         .map_err(|error| error.to_string())?;
     let local_addr = socket.local_addr().map_err(|error| error.to_string())?.to_string();
 
+    let session = state.session.fetch_add(1, Ordering::SeqCst) + 1;
     state.running.store(true, Ordering::SeqCst);
     *state.socket.lock().map_err(|error| error.to_string())? = Some(socket.clone());
 
     let running = state.running.clone();
+    let state_session = state.inner().session.clone();
     thread::spawn(move || {
         let mut buf = [0u8; 65535];
-        while running.load(Ordering::SeqCst) {
+        while running.load(Ordering::SeqCst) && state_session.load(Ordering::SeqCst) == session {
             match socket.recv_from(&mut buf) {
                 Ok((size, src)) => {
                     let _ = app.emit(
@@ -96,6 +99,7 @@ fn save_debug_log(filename: String, text: String) -> Result<Option<String>, Stri
 
 fn stop_udp_socket(state: &UdpState) -> Result<(), String> {
     state.running.store(false, Ordering::SeqCst);
+    state.session.fetch_add(1, Ordering::SeqCst);
     *state.socket.lock().map_err(|error| error.to_string())? = None;
     Ok(())
 }
