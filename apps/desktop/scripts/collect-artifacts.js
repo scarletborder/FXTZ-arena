@@ -1,12 +1,12 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
+import { execSync } from "node:child_process";
 
 const bundleDir = resolve("src-tauri/target/release/bundle");
 const releaseDir = resolve("src-tauri/target/release");
 const outputDir = resolve("../../dist-desktop");
 const artifactPattern = /\.(msi|exe|dmg|deb|rpm|AppImage)$/;
 const portableBinaryName = "fxtz-arena-desktop";
-const zipPath = join(outputDir, "fxtz-arena-desktop.zip");
 const collectedArtifacts = [];
 const CRC_TABLE = Array.from({ length: 256 }, (_, index) => {
   let value = index;
@@ -15,6 +15,24 @@ const CRC_TABLE = Array.from({ length: 256 }, (_, index) => {
   }
   return value >>> 0;
 });
+
+// Get version info from environment or git
+function getBuildLabel() {
+  // Try to get from environment variables first (GitHub Actions)
+  if (process.env.BUILD_LABEL) {
+    return process.env.BUILD_LABEL;
+  }
+  
+  // Try to get from git for local builds
+  try {
+    const tagName = execSync('git describe --tags --abbrev=0', { encoding: 'utf8' }).trim();
+    const commitCount = execSync('git rev-list --count HEAD', { encoding: 'utf8' }).trim();
+    return `${tagName}+${commitCount}`;
+  } catch (error) {
+    console.warn('[desktop] Could not determine build label from git, using default');
+    return 'dev';
+  }
+}
 
 mkdirSync(outputDir, { recursive: true });
 
@@ -73,11 +91,15 @@ function sleep(ms) {
 collect(releaseDir, { recursive: false });
 collect(bundleDir, { recursive: true });
 
+const buildLabel = getBuildLabel();
+const zipPath = join(outputDir, `fxtz-arena-desktop-${buildLabel}.zip`);
 const zipEntries = collectedArtifacts.map((path) => ({ name: basename(path), path, mode: statSync(path).mode }));
 
 if (zipEntries.length > 0) {
   writeFileSync(zipPath, createZip(zipEntries));
   console.log(`[desktop] zipped ${zipPath}`);
+} else {
+  console.warn('[desktop] No artifacts collected, zip not created');
 }
 
 function createZip(entries) {
