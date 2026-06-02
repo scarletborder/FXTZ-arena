@@ -63,8 +63,10 @@ export function createEntryTile(
   hitArea.on("pointerdown", () => {
     draw();
   });
-  hitArea.on("pointerup", () => {
-    options.onClick();
+  hitArea.on("pointerup", (pointer: Phaser.Input.Pointer) => {
+    if (pointer.getDistance() <= 10) {
+      options.onClick();
+    }
   });
   draw();
   return {

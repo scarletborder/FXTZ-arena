@@ -26,6 +26,9 @@ export class CodexScene extends Phaser.Scene {
   private listScrollOffset = 0;
   private detailScrollOffset = 0;
   private scrollAreas: Array<{ bounds: Phaser.Geom.Rectangle; scroll: (deltaY: number) => void }> = [];
+  private dragScroll:
+    | { readonly pointerId: number; readonly area: { bounds: Phaser.Geom.Rectangle; scroll: (deltaY: number) => void }; lastY: number }
+    | undefined;
   private readonly onWheel = (
     pointer: Phaser.Input.Pointer,
     _gameObjects: unknown,
@@ -37,6 +40,30 @@ export class CodexScene extends Phaser.Scene {
         area.scroll(deltaY);
         break;
       }
+    }
+  };
+  private readonly onPointerDown = (pointer: Phaser.Input.Pointer): void => {
+    for (const area of this.scrollAreas) {
+      if (Phaser.Geom.Rectangle.Contains(area.bounds, pointer.x, pointer.y)) {
+        this.dragScroll = { pointerId: pointer.id, area, lastY: pointer.y };
+        break;
+      }
+    }
+  };
+  private readonly onPointerMove = (pointer: Phaser.Input.Pointer): void => {
+    if (!this.dragScroll || this.dragScroll.pointerId !== pointer.id || !pointer.isDown) {
+      return;
+    }
+    const deltaY = this.dragScroll.lastY - pointer.y;
+    if (Math.abs(deltaY) > 0) {
+      this.dragScroll.area.scroll(deltaY);
+      this.dragScroll.lastY = pointer.y;
+      pointer.event?.preventDefault();
+    }
+  };
+  private readonly onPointerUp = (pointer: Phaser.Input.Pointer): void => {
+    if (this.dragScroll?.pointerId === pointer.id) {
+      this.dragScroll = undefined;
     }
   };
 
@@ -55,8 +82,16 @@ export class CodexScene extends Phaser.Scene {
     this.listLayer = this.add.container(0, 0);
     this.detailLayer = this.add.container(0, 0);
     this.input.on("wheel", this.onWheel);
+    this.input.on("pointerdown", this.onPointerDown);
+    this.input.on("pointermove", this.onPointerMove);
+    this.input.on("pointerup", this.onPointerUp);
+    this.input.on("pointerupoutside", this.onPointerUp);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.off("wheel", this.onWheel);
+      this.input.off("pointerdown", this.onPointerDown);
+      this.input.off("pointermove", this.onPointerMove);
+      this.input.off("pointerup", this.onPointerUp);
+      this.input.off("pointerupoutside", this.onPointerUp);
     });
     this.render();
   }
@@ -65,6 +100,7 @@ export class CodexScene extends Phaser.Scene {
     this.listLayer.removeAll(true);
     this.detailLayer.removeAll(true);
     this.scrollAreas = [];
+    this.dragScroll = undefined;
     this.renderTabs();
     if (this.tab === "characters") {
       this.renderCharacterList();
