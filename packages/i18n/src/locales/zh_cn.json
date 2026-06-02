@@ -24,7 +24,7 @@
   "settings": {
     "title": "设置", "general": "通用", "online": "联机", "about": "关于",
     "general.username.title": "用户名", "general.music.title": "音乐", "general.sound.title": "音效", "general.debug.title": "调试",
-    "general.language.title": "语言", "general.language.subtitle": "选择界面显示语言", "general.language.dialog_title": "选择语言",
+    "general.language.title": "语言", "general.language.subtitle": "选择界面显示语言 Choose display language", "general.language.dialog_title": "选择语言",
     "general.debug.on": "debug 模式：开启", "general.debug.off": "debug 模式：关闭", "general.debug.toggle": "切换 debug",
     "online.server_address.title": "专用服务器地址", "online.server_address.helper": "默认监听本地专用服务器", "online.server_address.port": "默认端口：22334",
     "online.connection_status.disconnected": "连接状态：未连接", "online.connection_status.connecting": "连接状态：正在连接…",
