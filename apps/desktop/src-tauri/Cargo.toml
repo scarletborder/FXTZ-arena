@@ -16,3 +16,5 @@ tauri-build = { version = "2", features = [] }
 rfd = "0.15"
 serde = { version = "1", features = ["derive"] }
 tauri = { version = "2", features = [] }
+wtransport = { version = "0.7", features = ["dangerous-configuration"] }
+tokio = { version = "1", features = ["rt", "macros", "io-util", "sync", "time"] }

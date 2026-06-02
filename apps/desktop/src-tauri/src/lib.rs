@@ -1,5 +1,6 @@
 use std::{
     fs,
+    io::Write,
     net::UdpSocket,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -10,6 +11,8 @@ use std::{
 };
 
 use tauri::{Emitter, State};
+
+mod link;
 
 #[derive(Clone, serde::Serialize)]
 struct UdpPayload {
@@ -97,6 +100,18 @@ fn save_debug_log(filename: String, text: String) -> Result<Option<String>, Stri
     Ok(Some(path.to_string_lossy().to_string()))
 }
 
+#[tauri::command]
+fn append_client_log(line: String, path: String) -> Result<(), String> {
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|error| error.to_string())?;
+    file.write_all(line.as_bytes())
+        .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
 fn stop_udp_socket(state: &UdpState) -> Result<(), String> {
     state.running.store(false, Ordering::SeqCst);
     state.session.fetch_add(1, Ordering::SeqCst);
@@ -108,7 +123,17 @@ fn stop_udp_socket(state: &UdpState) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .manage(UdpState::default())
-        .invoke_handler(tauri::generate_handler![udp_listen, udp_send, udp_stop, save_debug_log])
+        .manage(link::wt::WtState::default())
+        .invoke_handler(tauri::generate_handler![
+            udp_listen,
+            udp_send,
+            udp_stop,
+            save_debug_log,
+            append_client_log,
+            link::wt::wt_connect,
+            link::wt::wt_send,
+            link::wt::wt_close,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -60,6 +60,10 @@ export class BattleStartScene extends Phaser.Scene {
     this.unsubscribeStatus = connectionManager.addStatusListener(updateConnectionState);
     updateConnectionState(connectionManager.status);
     connectionManager.setMessageHandler((msg) => this.onServerMessage(msg));
+    console.log("[FXTZ] Connecting to server", {
+      address: uiSettings.serverAddress,
+      username: uiSettings.username,
+    });
     connectionManager.connect(uiSettings.serverAddress, uiSettings.username);
 
     window.addEventListener("keydown", this.onKeyDown);

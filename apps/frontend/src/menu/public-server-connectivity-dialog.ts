@@ -1,10 +1,10 @@
 import Phaser from "phaser";
-import { PUBLIC_SERVER, type PublicServer } from "@repo/constants";
+import { IS_DESKTOP_APP, PUBLIC_SERVER, type PublicServer } from "@repo/constants";
 import { t } from "@repo/i18n";
 
 import { findServerCertificateFingerprint } from "../network/fingerprint";
 import { isWebTransportAddress, normalizeServerAddress } from "../network/address";
-import { WsNetworkTransport, WtNetworkTransport } from "../network/transport";
+import { WsNetworkTransport, WtDesktopTransport, WtNetworkTransport } from "../network/transport";
 import type { BaseNetworkTransport } from "../network/transport";
 import { bodyStyle, createFightButton, drawAngledPanel } from "./ui";
 
@@ -235,9 +235,8 @@ function probeServer(server: PublicServerProbe, onResult: (result: ProbeResult) 
   try {
     const address = normalizeServerAddress(server.addr);
     transport = isWebTransportAddress(address)
-      ? new WtNetworkTransport(
-        address,
-        {
+      ? IS_DESKTOP_APP
+        ? new WtDesktopTransport(address, {
           open: () => {
             finish({ kind: "ok", latencyMs: Math.max(1, Math.round(performance.now() - startedAt)) });
           },
@@ -248,9 +247,23 @@ function probeServer(server: PublicServerProbe, onResult: (result: ProbeResult) 
             finish({ kind: server.selfAuth ? "trust_required" : "error" });
           },
           message: () => undefined,
-        },
-        findServerCertificateFingerprint(address),
-      )
+        })
+        : new WtNetworkTransport(
+          address,
+          {
+            open: () => {
+              finish({ kind: "ok", latencyMs: Math.max(1, Math.round(performance.now() - startedAt)) });
+            },
+            close: () => {
+              finish({ kind: server.selfAuth ? "trust_required" : "error" });
+            },
+            error: () => {
+              finish({ kind: server.selfAuth ? "trust_required" : "error" });
+            },
+            message: () => undefined,
+          },
+          findServerCertificateFingerprint(address),
+        )
       : new WsNetworkTransport(address, {
         open: () => {
           finish({ kind: "ok", latencyMs: Math.max(1, Math.round(performance.now() - startedAt)) });

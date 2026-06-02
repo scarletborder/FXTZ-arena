@@ -2,7 +2,7 @@ import type { BattleConfig, ClientMessage, PlayerId, ServerMessage } from "@repo
 import { APP_BUILD_LABEL, IS_DESKTOP_APP } from "@repo/constants";
 import { isWebTransportAddress, normalizeServerAddress } from "./address";
 import { findServerCertificateFingerprint } from "./fingerprint";
-import { WsNetworkTransport, WtNetworkTransport } from "./transport";
+import { WsNetworkTransport, WtDesktopTransport, WtNetworkTransport } from "./transport";
 import type { BaseNetworkTransport } from "./transport";
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
@@ -23,6 +23,7 @@ export class ConnectionManager {
   private lastAddress: string | null = null;
   private lastUsername = "Player";
   private manualDisconnect = false;
+  private fingerprintRetryAttempted = false;
 
   /** Latest known server protocol version. */
   serverVersion: string | null = null;
@@ -91,6 +92,16 @@ export class ConnectionManager {
     }
 
     const normalizedAddress = normalizeServerAddress(address);
+    const useWebTransport = isWebTransportAddress(normalizedAddress);
+    const fingerprint = findServerCertificateFingerprint(normalizedAddress);
+    this.fingerprintRetryAttempted = false;
+    console.log("[FXTZ] ConnectionManager.connect", {
+      inputAddress: address,
+      normalizedAddress,
+      useWebTransport,
+      hasFingerprint: Boolean(fingerprint),
+      isDesktop: IS_DESKTOP_APP,
+    });
 
     this.lastAddress = normalizedAddress;
     this.lastUsername = username;
@@ -98,6 +109,7 @@ export class ConnectionManager {
     this.setStatus("connecting");
 
     const onOpen = () => {
+      console.log("[FXTZ] Connection opened", { address: normalizedAddress, useWebTransport });
       this.setStatus("connected");
       this.startPing();
 
@@ -119,6 +131,11 @@ export class ConnectionManager {
     };
 
     const onClose = () => {
+      console.log("[FXTZ] Connection closed", {
+        address: normalizedAddress,
+        useWebTransport,
+        manualDisconnect: this.manualDisconnect,
+      });
       this.stopPing();
       this.transport = null;
       this.setStatus("disconnected");
@@ -129,8 +146,17 @@ export class ConnectionManager {
       this.scheduleReconnect();
     };
 
-    const onError = () => {
+    const onError = (error: Error) => {
+      console.warn("[FXTZ] Connection error", {
+        address: normalizedAddress,
+        useWebTransport,
+        error: error.message,
+      });
       this.setStatus("error");
+      if (!this.fingerprintRetryAttempted && useWebTransport && !fingerprint && !IS_DESKTOP_APP) {
+        this.fingerprintRetryAttempted = true;
+        void this.retryWebTransportWithFingerprint(normalizedAddress, username, onOpen, onClose, onError, onMessage);
+      }
     };
 
     const onMessage = (msg: ServerMessage) => {
@@ -138,14 +164,52 @@ export class ConnectionManager {
       this._handler?.(msg);
     };
 
-    this.transport = isWebTransportAddress(normalizedAddress)
-      ? new WtNetworkTransport(
-        normalizedAddress,
-        { open: onOpen, close: onClose, error: onError, message: onMessage },
-        IS_DESKTOP_APP ? undefined : findServerCertificateFingerprint(normalizedAddress),
-      )
+    this.transport = useWebTransport
+      ? IS_DESKTOP_APP
+        ? new WtDesktopTransport(normalizedAddress, { open: onOpen, close: onClose, error: onError, message: onMessage })
+        : new WtNetworkTransport(
+          normalizedAddress,
+          { open: onOpen, close: onClose, error: onError, message: onMessage },
+          fingerprint,
+        )
       : new WsNetworkTransport(normalizedAddress, { open: onOpen, close: onClose, error: onError, message: onMessage });
     this.transport.open();
+  }
+
+  private async retryWebTransportWithFingerprint(
+    normalizedAddress: string,
+    username: string,
+    onOpen: () => void,
+    onClose: () => void,
+    onError: (error: Error) => void,
+    onMessage: (msg: ServerMessage) => void,
+  ): Promise<void> {
+    try {
+      const fingerprintUrl = buildFingerprintUrl(normalizedAddress);
+      console.log("[FXTZ] Fetching fingerprint", { fingerprintUrl });
+      const response = await fetch(fingerprintUrl, { cache: "no-store" });
+      if (!response.ok) {
+        console.warn("[FXTZ] Fingerprint request failed", { status: response.status });
+        return;
+      }
+      const fingerprint = (await response.text()).trim();
+      if (!fingerprint) {
+        console.warn("[FXTZ] Fingerprint response empty");
+        return;
+      }
+      console.log("[FXTZ] Retrying WebTransport with fingerprint", { normalizedAddress });
+      this.transport?.close();
+      this.transport = IS_DESKTOP_APP
+        ? new WtDesktopTransport(normalizedAddress, { open: onOpen, close: onClose, error: onError, message: onMessage })
+        : new WtNetworkTransport(
+          normalizedAddress,
+          { open: onOpen, close: onClose, error: onError, message: onMessage },
+          fingerprint,
+        );
+      this.transport.open();
+    } catch (error) {
+      console.warn("[FXTZ] Fingerprint retry failed", { error: this.asErrorMessage(error) });
+    }
   }
 
   /** Close the server connection. */
@@ -273,4 +337,16 @@ export class ConnectionManager {
       this.reconnectTimer = null;
     }
   }
+
+  private asErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+  }
+}
+
+function buildFingerprintUrl(normalizedAddress: string): string {
+  const url = new URL(normalizedAddress);
+  url.pathname = "/fingerprint";
+  url.search = "";
+  url.hash = "";
+  return url.toString();
 }

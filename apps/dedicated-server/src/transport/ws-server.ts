@@ -9,13 +9,34 @@ let nextConnectionId = 0;
 
 type NodeServer = HttpServer | HttpsServer;
 
+interface HttpMetadata {
+  readonly fingerprint?: string;
+  readonly webTransportEnabled: boolean;
+}
+
 export interface WsTransportTlsOptions {
   readonly cert: Buffer | string;
   readonly key: Buffer | string;
 }
 
-function handleHttpRequest(req: IncomingMessage, res: ServerResponse): void {
+function handleHttpRequest(req: IncomingMessage, res: ServerResponse, meta: HttpMetadata): void {
   const path = new URL(req.url ?? "/", "http://localhost").pathname;
+  if (req.method === "GET" && path === "/fingerprint") {
+    if (!meta.webTransportEnabled || !meta.fingerprint) {
+      res.writeHead(404, {
+        "content-type": "text/plain; charset=utf-8",
+        "cache-control": "no-store",
+      });
+      res.end("Not found\n");
+      return;
+    }
+    res.writeHead(200, {
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": "no-store",
+    });
+    res.end(`${meta.fingerprint}\n`);
+    return;
+  }
   if (req.method === "GET" && path === "/echo") {
     res.writeHead(200, {
       "content-type": "text/html; charset=utf-8",
@@ -119,9 +140,15 @@ export class WsTransportServer implements TransportServer {
   private servers: WebSocketServer[];
   private connHandlers: Array<(conn: TransportConnection) => void> = [];
 
-  constructor(port: number, hosts: readonly string[], tls?: WsTransportTlsOptions) {
+  constructor(
+    port: number,
+    hosts: readonly string[],
+    tls?: WsTransportTlsOptions,
+    meta: HttpMetadata = { webTransportEnabled: false },
+  ) {
     this.httpServers = hosts.map((host) => {
-      const httpServer = tls ? createSecureServer(tls, handleHttpRequest) : createServer(handleHttpRequest);
+      const handler = (req: IncomingMessage, res: ServerResponse) => handleHttpRequest(req, res, meta);
+      const httpServer = tls ? createSecureServer(tls, handler) : createServer(handler);
       httpServer.listen({
         host,
         port,

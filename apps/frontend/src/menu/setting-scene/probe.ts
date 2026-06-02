@@ -2,7 +2,7 @@ import { IS_DESKTOP_APP } from "@repo/constants";
 
 import { findServerCertificateFingerprint } from "../../network/fingerprint";
 import { isWebTransportAddress, normalizeServerAddress } from "../../network/address";
-import { WsNetworkTransport, WtNetworkTransport } from "../../network/transport";
+import { WsNetworkTransport, WtDesktopTransport, WtNetworkTransport } from "../../network/transport";
 import type { BaseNetworkTransport } from "../../network/transport";
 
 const PROBE_TIMEOUT_MS = 6_000;
@@ -43,16 +43,23 @@ export function probeCustomServer(
       : { kind: "error" };
 
     transport = isWebTransportAddress(address)
-      ? new WtNetworkTransport(
-        address,
-        {
+      ? IS_DESKTOP_APP
+        ? new WtDesktopTransport(address, {
           open: () => finish({ kind: "ok", latencyMs: Math.max(1, Math.round(performance.now() - startedAt)) }),
           close: () => finish(trustRequiredResult),
           error: () => finish(trustRequiredResult),
           message: () => undefined,
-        },
-        IS_DESKTOP_APP ? undefined : findServerCertificateFingerprint(address),
-      )
+        })
+        : new WtNetworkTransport(
+          address,
+          {
+            open: () => finish({ kind: "ok", latencyMs: Math.max(1, Math.round(performance.now() - startedAt)) }),
+            close: () => finish(trustRequiredResult),
+            error: () => finish(trustRequiredResult),
+            message: () => undefined,
+          },
+          findServerCertificateFingerprint(address),
+        )
       : new WsNetworkTransport(address, {
         open: () => finish({ kind: "ok", latencyMs: Math.max(1, Math.round(performance.now() - startedAt)) }),
         close: () => finish(trustRequiredResult),

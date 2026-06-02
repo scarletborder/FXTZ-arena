@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createServerConfig } from "./config";
@@ -11,6 +11,68 @@ import type { TransportServer } from "./transport/interface";
 import type { WsTransportTlsOptions } from "./transport/ws-server";
 import { WtTransportServer } from "./transport/wt-server";
 import { WsTransportServer } from "./transport/ws-server";
+
+const LOG_PATH = "D:/arena-server.log";
+const originalConsole = {
+  log: console.log,
+  info: console.info,
+  warn: console.warn,
+  error: console.error,
+  debug: console.debug,
+};
+
+const logLine = (level: "INFO" | "WARN" | "ERROR" | "DEBUG", args: unknown[]): void => {
+  const timestamp = new Date().toISOString();
+  const body = args.map(formatLogValue).join(" ");
+  const line = `${timestamp} [${level}] ${body}\n`;
+  try {
+    appendFileSync(LOG_PATH, line, "utf8");
+  } catch {
+    // Ignore log write errors to avoid crashing the server.
+  }
+};
+
+const formatLogValue = (value: unknown): string => {
+  if (value instanceof Error) {
+    return value.stack || value.message;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
+console.log = (...args: unknown[]) => {
+  originalConsole.log(...args);
+  logLine("INFO", args);
+};
+console.info = (...args: unknown[]) => {
+  originalConsole.info(...args);
+  logLine("INFO", args);
+};
+console.warn = (...args: unknown[]) => {
+  originalConsole.warn(...args);
+  logLine("WARN", args);
+};
+console.error = (...args: unknown[]) => {
+  originalConsole.error(...args);
+  logLine("ERROR", args);
+};
+console.debug = (...args: unknown[]) => {
+  originalConsole.debug(...args);
+  logLine("DEBUG", args);
+};
+
+process.on("uncaughtException", (error) => {
+  logLine("ERROR", ["uncaughtException", error]);
+});
+process.on("unhandledRejection", (reason) => {
+  logLine("ERROR", ["unhandledRejection", reason]);
+});
 
 const config = createServerConfig();
 
@@ -40,14 +102,15 @@ const certificatePaths = config.certPath && config.keyPath
     ? ensurePemDirCertificatePaths(config.pemDir)
     : undefined;
 const cert = certificatePaths ? readFileSync(certificatePaths.certPath) : undefined;
-if (certificatePaths && cert) {
-  writeCertificateFingerprint(certificatePaths.certPath, cert);
+const fingerprint = certificatePaths && cert ? getCertificateFingerprint(cert) : undefined;
+if (certificatePaths && cert && fingerprint) {
+  writeCertificateFingerprint(certificatePaths.certPath, fingerprint);
 }
 const tls = certificatePaths && cert
   ? {
-      cert,
-      key: readFileSync(certificatePaths.keyPath),
-    }
+    cert,
+    key: readFileSync(certificatePaths.keyPath),
+  }
   : undefined;
 
 if (certificatePaths) {
@@ -61,7 +124,10 @@ if (config.webTransport && !tls) {
 }
 
 const transports: TransportServer[] = [
-  new WsTransportServer(config.port, listenHosts, tls),
+  new WsTransportServer(config.port, listenHosts, tls, {
+    fingerprint,
+    webTransportEnabled: config.webTransport,
+  }),
 ];
 if (config.webTransport && tls) {
   transports.push(new WtTransportServer(config.port, listenHosts, tls satisfies WsTransportTlsOptions));
@@ -104,8 +170,11 @@ function formatHostForUrl(host: string): string {
   return host.includes(":") && !host.startsWith("[") ? `[${host}]` : host;
 }
 
-function writeCertificateFingerprint(certPath: string, cert: Buffer): void {
-  const fingerprint = createHash("sha256").update(certificateDerBytes(cert)).digest("hex").toUpperCase();
+function getCertificateFingerprint(cert: Buffer): string {
+  return createHash("sha256").update(certificateDerBytes(cert)).digest("hex").toUpperCase();
+}
+
+function writeCertificateFingerprint(certPath: string, fingerprint: string): void {
   const fingerprintPath = join(dirname(certPath), "fingerprint.txt");
   writeFileSync(fingerprintPath, `${fingerprint}\n`, "utf8");
   console.log(`TLS certificate fingerprint: ${fingerprint} (${fingerprintPath})`);
