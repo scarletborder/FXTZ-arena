@@ -8,7 +8,7 @@ console.log(`[desktop] building frontend ${buildLabel}`);
 
 const prebuild = spawnSync(
   "pnpm",
-  ["--filter", "{./packages/*}", "run", "--if-present", "build"],
+  ["--filter", "@repo/*", "run", "--if-present", "build"],
   {
     stdio: "inherit",
     shell: process.platform === "win32",
