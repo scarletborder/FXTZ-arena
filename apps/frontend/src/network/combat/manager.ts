@@ -72,6 +72,7 @@ export class CombatSyncManager {
     }
 
     if (this.runtime.gameOver) {
+      this.consumeReceiveSceneQueue();
       this.trySendGameOverVerdict();
       return;
     }
@@ -80,9 +81,10 @@ export class CombatSyncManager {
     //    by consumeReceiveSceneQueue below) always has the latest local
     //    input for the current frame.
     const frame = this.runtime.frame + 1;
+    const input = canonicalizeInput(localInput);
     this.queues.enqueuePending({
       frame,
-      input: cloneInput(localInput),
+      input,
     });
     this.consumeSendSceneQueue();
 
@@ -210,7 +212,7 @@ export class CombatSyncManager {
       playerId: msg.playerId,
       frame: msg.frame,
       ackFrame: msg.ackFrame,
-      input: truncateAim(cloneInput(msg)),
+      input: canonicalizeInput(msg),
     });
 
     for (const redundant of msg.UnreliableLinkExtra?.redundantInputs ?? []) {
@@ -218,7 +220,7 @@ export class CombatSyncManager {
         playerId: msg.playerId,
         frame: redundant.frame,
         ackFrame: msg.ackFrame,
-        input: truncateAim(cloneInput(redundant)),
+        input: canonicalizeInput(redundant),
       });
     }
   }
@@ -239,11 +241,12 @@ export class CombatSyncManager {
   }
 
   private sendInput(frame: number, input: BattleInputState): void {
+    const canonicalInput = canonicalizeInput(input);
     const message: InputFrameMessage = {
       type: "input_frame",
       frame,
       ackFrame: this.lastReceivedRemoteFrame,
-      ...input,
+      ...canonicalInput,
     };
     const redundantInputs = this.options.p2p?.connected ? this.createRedundantInputs(frame) : [];
     if (redundantInputs.length > 0) {
@@ -258,15 +261,21 @@ export class CombatSyncManager {
   private receiveRemoteInput(playerId: PlayerId, frame: number, input: BattleInputState): void {
     if (playerId === this.localPlayerId) return;
 
+    const actualInput = canonicalizeInput(input);
     const predicted = this.predictedInputs.get(inputKey(playerId, frame));
     const existing = this.inputs.get(playerId)?.get(frame);
-    this.storeInput(playerId, frame, input);
+    this.storeInput(playerId, frame, actualInput);
     this.advanceRemoteContiguousFrame();
 
-    if (frame <= this.runtime.frame && !existing && predicted) {
+    if (frame <= this.runtime.frame) {
+      const previous = existing ?? predicted;
+      if (!previous) {
+        this.pruneOnlineHistory();
+        return;
+      }
       const aimMismatch = this.aimConsumingFrames.has(frame)
-        ? !sameIntentWithAim(predicted, input)
-        : !sameIntent(predicted, input);
+        ? !sameIntentWithAim(previous, actualInput)
+        : !sameIntent(previous, actualInput);
       if (aimMismatch) {
         this.rollbackTo(frame);
         if (!this.runtime.gameOver && !this.paused) {
@@ -384,7 +393,7 @@ export class CombatSyncManager {
   }
 
   private storeInput(playerId: PlayerId, frame: number, input: BattleInputState): void {
-    this.inputs.get(playerId)?.set(frame, input);
+    this.inputs.get(playerId)?.set(frame, canonicalizeInput(input));
   }
 
   private createLocalGameOverVerdict(
@@ -448,22 +457,27 @@ export class CombatSyncManager {
       });
       this.lastReportedConfirmedInputFrame = frame;
     }
-    this.options.callbacks.pruneRollbackHistoryBefore(confirmedFrame);
+    const safelyConfirmedInputFrame = this.lastReportedConfirmedInputFrame;
+    if (safelyConfirmedInputFrame <= 0) {
+      return;
+    }
+
+    this.options.callbacks.pruneRollbackHistoryBefore(safelyConfirmedInputFrame);
     for (const inputMap of this.inputs.values()) {
       for (const [frame] of inputMap) {
-        if (frame < confirmedFrame) {
+        if (frame < safelyConfirmedInputFrame) {
           inputMap.delete(frame);
         }
       }
     }
     for (const key of this.predictedInputs.keys()) {
       const frame = Number(key.split(":")[1]);
-      if (frame < confirmedFrame) {
+      if (frame < safelyConfirmedInputFrame) {
         this.predictedInputs.delete(key);
       }
     }
     for (const frame of this.aimConsumingFrames) {
-      if (frame < confirmedFrame) {
+      if (frame < safelyConfirmedInputFrame) {
         this.aimConsumingFrames.delete(frame);
       }
     }
@@ -526,11 +540,18 @@ function cloneInput(input: BattleInputState): BattleInputState {
  * other side can differ from the local prediction by ~0.3px, which —
  * while visually meaningless — was enough to trigger a full rollback.
  */
-function truncateAim(input: BattleInputState): BattleInputState {
+function canonicalizeInput(input: BattleInputState): BattleInputState {
   return {
-    ...input,
+    moveX: input.moveX,
+    moveY: input.moveY,
     aimX: Math.trunc(input.aimX),
     aimY: Math.trunc(input.aimY),
+    shootPressed: input.shootPressed,
+    bombPressed: input.bombPressed,
+    activeCardPressed: input.activeCardPressed,
+    reloadPressed: input.reloadPressed,
+    alternateHeld: input.alternateHeld,
+    infoHeld: input.infoHeld,
   };
 }
 
@@ -549,12 +570,9 @@ function truncateAim(input: BattleInputState): BattleInputState {
  *   skip the aim comparison entirely — an aim difference without an
  *   action to consume it cannot change the simulation outcome.
  *
- *   When an aim-consuming action IS present, allow a small dead-zone
- *   so that sub-pixel noise on network round-trip doesn't trigger a
- *   costly rollback cycle.
+ *   When an aim-consuming action IS present, compare the canonical
+ *   integer aim exactly: these coordinates entered the simulation.
  */
-const AIM_DIFFERENCE_WIGGLE_ROOM = 8;
-
 function hasAimConsumingAction(input: BattleInputState): boolean {
   return input.shootPressed || input.bombPressed || input.activeCardPressed;
 }
@@ -574,8 +592,7 @@ function sameIntentWithAim(left: BattleInputState, right: BattleInputState): boo
   if (left.alternateHeld !== right.alternateHeld) return false;
   if (left.infoHeld !== right.infoHeld) return false;
 
-  return Math.abs(left.aimX - right.aimX) < AIM_DIFFERENCE_WIGGLE_ROOM
-      && Math.abs(left.aimY - right.aimY) < AIM_DIFFERENCE_WIGGLE_ROOM;
+  return left.aimX === right.aimX && left.aimY === right.aimY;
 }
 
 function sameIntent(left: BattleInputState, right: BattleInputState): boolean {
@@ -594,6 +611,5 @@ function sameIntent(left: BattleInputState, right: BattleInputState): boolean {
     return true;
   }
 
-  return Math.abs(left.aimX - right.aimX) < AIM_DIFFERENCE_WIGGLE_ROOM
-      && Math.abs(left.aimY - right.aimY) < AIM_DIFFERENCE_WIGGLE_ROOM;
+  return left.aimX === right.aimX && left.aimY === right.aimY;
 }

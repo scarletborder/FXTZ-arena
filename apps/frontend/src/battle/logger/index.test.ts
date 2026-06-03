@@ -48,6 +48,7 @@ describe("BattleDebugLogger", () => {
       authoritativeFrame: 1,
       localConfirmedFrame: 1,
       finalGlobalHash: "hash",
+      finalGlobalInputHash: "input-hash",
       sampledConfirmedFrames: {
         from: 0,
         to: 1,
@@ -61,16 +62,19 @@ describe("BattleDebugLogger", () => {
       .find((line) => line.includes("\"frames\""));
     expect(payloadText).toBeDefined();
     const payload = JSON.parse(payloadText!) as {
-      frames: Array<{ frame: number; player1Input: { aimX: number } | null }>;
+      frames: Array<{ frame: number; inputHash: string; player1Input: { aimX: number } | null }>;
       localFrames?: unknown[];
       revisions?: unknown[];
       finalGlobalHash: string | null;
+      finalGlobalInputHash: string | null;
     };
     expect(payload.frames.map((frame) => frame.frame)).toEqual([0, 1]);
+    expect(payload.frames.every((frame) => typeof frame.inputHash === "string")).toBe(true);
     expect(payload.frames[1]?.player1Input?.aimX).toBe(845.3833799776838);
     expect(payload.localFrames).toBeUndefined();
     expect(payload.revisions).toBeUndefined();
     expect(payload.finalGlobalHash).toBe("hash");
+    expect(payload.finalGlobalInputHash).toBe("input-hash");
 
     logSpy.mockRestore();
     warnSpy.mockRestore();

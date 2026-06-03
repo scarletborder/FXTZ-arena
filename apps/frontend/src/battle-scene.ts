@@ -86,6 +86,7 @@ export class BattleScene extends Phaser.Scene {
   private resultScheduled = false;
   private sceneData: BattleSceneData = {};
   private debugConfirmedHash = new ConfirmedFrameHashAccumulator();
+  private debugConfirmedInputHash = new ConfirmedFrameHashAccumulator();
   private readonly debugHashBacklog = new Map<number, string>();
   private readonly debugHistory = new Map<number, DebugFrameRecord>();
   private readonly debugLogger = new BattleDebugLogger();
@@ -117,6 +118,7 @@ export class BattleScene extends Phaser.Scene {
     this.sceneData = data;
     this.resultScheduled = false;
     this.debugConfirmedHash = new ConfirmedFrameHashAccumulator();
+    this.debugConfirmedInputHash = new ConfirmedFrameHashAccumulator();
     this.debugHashBacklog.clear();
     this.debugHistory.clear();
     this.debugLogger.reset();
@@ -665,6 +667,9 @@ export class BattleScene extends Phaser.Scene {
       `finalGlobalHash(BLAKE3)\t${sampled ? this.debugConfirmedHash.digestHex(sampledUpTo) : "<incomplete>"}`,
     );
     console.log(
+      `finalGlobalInputHash(BLAKE3)\t${sampled ? this.debugConfirmedInputHash.digestHex(sampledUpTo) : "<incomplete>"}`,
+    );
+    console.log(
       `sampledConfirmedFrames\t0-${sampledUpTo} (${this.debugConfirmedHash.samples})`,
     );
     if (!sampled) {
@@ -678,7 +683,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     for (const row of rows) {
-      console.log(`${row.frame}\t${row.hash}`);
+      console.log(`${row.frame}\t${row.hash}\t${row.inputHash}`);
     }
     console.groupEnd();
     this.writeDebugHashLogFile({
@@ -708,11 +713,15 @@ export class BattleScene extends Phaser.Scene {
         frame: nextFrame,
         hashHex: hash,
       });
-      this.debugLogger.recordConfirmedFrame({
+      const confirmedRecord = this.debugLogger.recordConfirmedFrame({
         enabled: this.shouldRecordDebugLog(),
         frame: nextFrame,
         hash,
         confirmedThrough: frame,
+      });
+      this.debugConfirmedInputHash.addSample({
+        frame: nextFrame,
+        hashHex: confirmedRecord?.inputHash ?? "00000000",
       });
       this.debugHashBacklog.delete(nextFrame);
     }
@@ -750,6 +759,9 @@ export class BattleScene extends Phaser.Scene {
     const finalGlobalHash = params.sampled
       ? this.debugConfirmedHash.digestHex(params.sampledUpTo)
       : null;
+    const finalGlobalInputHash = params.sampled
+      ? this.debugConfirmedInputHash.digestHex(params.sampledUpTo)
+      : null;
     return this.debugLogger.writeFile({
       sceneData: this.sceneData,
       winnerPlayerId: params.winnerPlayerId,
@@ -761,6 +773,7 @@ export class BattleScene extends Phaser.Scene {
       authoritativeFrame: params.authoritativeFrame,
       localConfirmedFrame: params.localConfirmedFrame,
       finalGlobalHash,
+      finalGlobalInputHash,
       sampledConfirmedFrames: {
         from: 0,
         to: this.debugConfirmedHash.lastSampledFrame,

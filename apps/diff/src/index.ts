@@ -4,11 +4,14 @@ import { inspect } from "node:util";
 
 interface BattleDebugLog {
   readonly frames?: readonly RawFrameRecord[];
+  readonly finalGlobalHash?: unknown;
+  readonly finalGlobalInputHash?: unknown;
 }
 
 interface RawFrameRecord {
   readonly frame?: unknown;
   readonly hash?: unknown;
+  readonly inputHash?: unknown;
   readonly player1Input?: unknown;
   readonly player2Input?: unknown;
   readonly playerInput?: unknown;
@@ -18,8 +21,15 @@ interface RawFrameRecord {
 interface FrameRecord {
   readonly frame: number;
   readonly hash: string | null;
+  readonly inputHash: string | null;
   readonly player1Input: unknown;
   readonly player2Input: unknown;
+}
+
+interface DebugLogRecord {
+  readonly frames: Map<number, FrameRecord>;
+  readonly finalGlobalHash: string | null;
+  readonly finalGlobalInputHash: string | null;
 }
 
 interface FrameDiff {
@@ -42,14 +52,16 @@ async function main(): Promise<void> {
 
   const left = await readDebugLog(p1Path);
   const right = await readDebugLog(p2Path);
-  const diffs = diffLogs(left, right);
+  const summaryIssues = diffSummary(left, right);
+  const diffs = diffLogs(left.frames, right.frames);
 
-  if (diffs.length === 0) {
-    console.log(`FXTZ diff: no hash/input differences (${left.size} vs ${right.size} frames).`);
+  if (summaryIssues.length === 0 && diffs.length === 0) {
+    console.log(`FXTZ diff: no hash/input differences (${left.frames.size} vs ${right.frames.size} frames).`);
     return;
   }
 
   console.log(`FXTZ diff: ${diffs.length} differing frame(s)`);
+  printSummaryDiff(summaryIssues, left, right);
   for (const diff of diffs) {
     printDiff(diff);
   }
@@ -78,7 +90,7 @@ function parseArgs(argv: readonly string[]): Map<string, string> {
   return result;
 }
 
-async function readDebugLog(filePath: string): Promise<Map<number, FrameRecord>> {
+async function readDebugLog(filePath: string): Promise<DebugLogRecord> {
   const absolutePath = path.resolve(filePath);
   const raw = await readFile(absolutePath, "utf8");
   const parsed = JSON.parse(raw) as BattleDebugLog;
@@ -95,11 +107,27 @@ async function readDebugLog(filePath: string): Promise<Map<number, FrameRecord>>
     frames.set(frame, {
       frame,
       hash: typeof rawFrame.hash === "string" ? rawFrame.hash : null,
+      inputHash: typeof rawFrame.inputHash === "string" ? rawFrame.inputHash : null,
       player1Input: rawFrame.player1Input ?? rawFrame.playerInput ?? null,
       player2Input: rawFrame.player2Input ?? rawFrame.targetInput ?? null,
     });
   }
-  return frames;
+  return {
+    frames,
+    finalGlobalHash: typeof parsed.finalGlobalHash === "string" ? parsed.finalGlobalHash : null,
+    finalGlobalInputHash: typeof parsed.finalGlobalInputHash === "string" ? parsed.finalGlobalInputHash : null,
+  };
+}
+
+function diffSummary(left: DebugLogRecord, right: DebugLogRecord): string[] {
+  const issues: string[] = [];
+  if (left.finalGlobalHash !== right.finalGlobalHash) {
+    issues.push("finalGlobalHash");
+  }
+  if (left.finalGlobalInputHash !== right.finalGlobalInputHash) {
+    issues.push("finalGlobalInputHash");
+  }
+  return issues;
 }
 
 function diffLogs(left: Map<number, FrameRecord>, right: Map<number, FrameRecord>): FrameDiff[] {
@@ -116,6 +144,9 @@ function diffLogs(left: Map<number, FrameRecord>, right: Map<number, FrameRecord
     } else {
       if (p1.hash !== p2.hash) {
         issues.push("hash");
+      }
+      if (p1.inputHash !== p2.inputHash) {
+        issues.push("inputHash");
       }
       if (!sameValue(p1.player1Input, p2.player1Input)) {
         issues.push("player1Input");
@@ -156,10 +187,27 @@ function normalize(value: unknown): unknown {
   return value;
 }
 
+function printSummaryDiff(issues: readonly string[], left: DebugLogRecord, right: DebugLogRecord): void {
+  if (issues.length === 0) {
+    return;
+  }
+
+  console.log(`summary: ${issues.join(", ")}`);
+  if (issues.includes("finalGlobalHash")) {
+    console.log(`  finalGlobalHash: ${left.finalGlobalHash ?? "<missing>"} != ${right.finalGlobalHash ?? "<missing>"}`);
+  }
+  if (issues.includes("finalGlobalInputHash")) {
+    console.log(`  finalGlobalInputHash: ${left.finalGlobalInputHash ?? "<missing>"} != ${right.finalGlobalInputHash ?? "<missing>"}`);
+  }
+}
+
 function printDiff(diff: FrameDiff): void {
   console.log(`\nframe ${diff.frame}: ${diff.issues.join(", ")}`);
   if (diff.issues.includes("hash")) {
     console.log(`  hash: ${diff.p1?.hash ?? "<missing>"} != ${diff.p2?.hash ?? "<missing>"}`);
+  }
+  if (diff.issues.includes("inputHash")) {
+    console.log(`  inputHash: ${diff.p1?.inputHash ?? "<missing>"} != ${diff.p2?.inputHash ?? "<missing>"}`);
   }
   if (diff.issues.includes("player1Input")) {
     console.log("  player1Input:");

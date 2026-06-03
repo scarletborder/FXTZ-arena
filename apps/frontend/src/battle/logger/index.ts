@@ -1,6 +1,11 @@
 import type { PlayerId } from "@repo/types";
 import { IS_DESKTOP_APP } from "@repo/constants";
-import type { BattleInputState, BattleOutputFrame } from "@repo/raid-logic";
+import {
+  type DeterministicHasher,
+  stableHash,
+  type BattleInputState,
+  type BattleOutputFrame,
+} from "@repo/raid-logic";
 
 import type { BattleSceneData } from "../loadout";
 import { saveDesktopDebugLog } from "../../platform/desktop-debug-log";
@@ -23,11 +28,13 @@ export interface DebugFrameLogRecord {
 export interface AuthoritativeFrameLogRecord extends DebugFrameLogRecord {
   readonly authoritative: true;
   readonly confirmedThrough: number;
+  readonly inputHash: string;
 }
 
 export interface DebugHashLogRow {
   readonly frame: number;
   readonly hash: string;
+  readonly inputHash: string;
 }
 
 export interface DebugLogExportParams {
@@ -40,6 +47,7 @@ export interface DebugLogExportParams {
   readonly authoritativeFrame: number;
   readonly localConfirmedFrame: number;
   readonly finalGlobalHash: string | null;
+  readonly finalGlobalInputHash: string | null;
   readonly sampledConfirmedFrames: {
     readonly from: number;
     readonly to: number;
@@ -126,20 +134,21 @@ export class BattleDebugLogger {
     readonly frame: number;
     readonly hash: string;
     readonly confirmedThrough: number;
-  }): void {
+  }): AuthoritativeFrameLogRecord | null {
     if (!params.enabled) {
-      return;
+      return null;
     }
     if (params.confirmedThrough < params.frame) {
-      return;
+      return null;
     }
 
     const source = this.frameLog.get(params.frame) ?? null;
     const inputRecord = this.confirmedInputs.get(params.frame) ?? null;
-    this.confirmedFrameLog.set(params.frame, {
+    const record: AuthoritativeFrameLogRecord = {
       sequence: this.confirmedSequence,
       frame: params.frame,
       hash: params.hash,
+      inputHash: hashInputsHex(inputRecord),
       // Authoritative frames are always "frame_advanced" — the
       // simulation has settled and this hash is the final truth
       // for this frame, regardless of whether the most recent
@@ -151,8 +160,10 @@ export class BattleDebugLogger {
       confirmedThrough: params.confirmedThrough,
       player1Input: inputRecord ? cloneDebugInput(inputRecord.player) : null,
       player2Input: inputRecord ? cloneDebugInput(inputRecord.target) : null,
-    });
+    };
+    this.confirmedFrameLog.set(params.frame, record);
     this.confirmedSequence += 1;
+    return record;
   }
 
   pruneAfter(frame: number): void {
@@ -180,6 +191,7 @@ export class BattleDebugLogger {
       .map((record) => ({
         frame: record.frame,
         hash: record.hash,
+        inputHash: record.inputHash,
       }));
   }
 
@@ -200,6 +212,7 @@ export class BattleDebugLogger {
       targetFrame: params.targetFrame,
       authoritativeFrame: params.authoritativeFrame,
       finalGlobalHash: params.finalGlobalHash,
+      finalGlobalInputHash: params.finalGlobalInputHash,
       sampledConfirmedFrames: params.sampledConfirmedFrames,
       frames,
     };
@@ -253,6 +266,36 @@ function cloneDebugInput(input: BattleInputState): BattleInputState {
     alternateHeld: input.alternateHeld,
     infoHeld: input.infoHeld,
   };
+}
+
+function hashInputsHex(record: CombatConfirmedFrameInputRecord | null): string {
+  const hash = stableHash((hasher) => {
+    hasher.writeString("fxtz-arena:authoritative-input:v1");
+    if (!record) {
+      hasher.writeNumber(0);
+      return;
+    }
+    hasher.writeNumber(record.frame);
+    writeInputHash(hasher, record.player);
+    writeInputHash(hasher, record.target);
+  });
+  return hash.toString(16).padStart(8, "0");
+}
+
+function writeInputHash(
+  hasher: DeterministicHasher,
+  input: BattleInputState,
+): void {
+  hasher.writeNumber(input.moveX);
+  hasher.writeNumber(input.moveY);
+  hasher.writeNumber(Math.trunc(input.aimX));
+  hasher.writeNumber(Math.trunc(input.aimY));
+  hasher.writeNumber(input.shootPressed ? 1 : 0);
+  hasher.writeNumber(input.bombPressed ? 1 : 0);
+  hasher.writeNumber(input.activeCardPressed ? 1 : 0);
+  hasher.writeNumber(input.reloadPressed ? 1 : 0);
+  hasher.writeNumber(input.alternateHeld ? 1 : 0);
+  hasher.writeNumber(input.infoHeld ? 1 : 0);
 }
 
 function createDebugLogFilename(sceneData: BattleSceneData, localPlayerId: PlayerId | null, targetFrame: number): string {
