@@ -108,8 +108,8 @@ export class BattleMobileControls {
     return {
       moveX: this.moveX,
       moveY: this.moveY,
-      aimX: this.aimX,
-      aimY: this.aimY,
+      aimX: Math.trunc(this.aimX),
+      aimY: Math.trunc(this.aimY),
       shootPressed: this.heldButtons.has("shoot"),
       bombPressed: this.consumeButton("bomb"),
       activeCardPressed: this.consumeButton("activeCard"),
@@ -120,8 +120,8 @@ export class BattleMobileControls {
 
   aimWorld(): { readonly x: number; readonly y: number } {
     return {
-      x: this.aimX,
-      y: this.aimY,
+      x: Math.trunc(this.aimX),
+      y: Math.trunc(this.aimY),
     };
   }
 
