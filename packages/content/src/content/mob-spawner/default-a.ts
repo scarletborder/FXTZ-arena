@@ -1,5 +1,7 @@
 import { secondsToTicks } from "../seconds-to-ticks";
 import { ExampleFairy, type ExampleFairyMovementVariant } from "./mobs/example-fairy";
+import { HorizontalFairy, type HorizontalFairyMovementVariant } from "./mobs/horizontal-fairy";
+import { EliteFairy, type EliteFairySide } from "./mobs/elite-fairy";
 import { NeutralMobSpawner, type BattleNeutralMob, type NeutralMobSpawnerContext, type NeutralMobSpawnerState } from "./base";
 import type { PointRewardSize } from "@repo/constants";
 import type { NeutralMobState } from "@repo/types";
@@ -10,8 +12,13 @@ export interface DefaultMobSpawnerAState extends NeutralMobSpawnerState {
 
 const WAVE_START_FRAME = secondsToTicks(5);
 const WAVE_INTERVAL = secondsToTicks(15);
+const WAVE_CYCLE_LENGTH = 5; // 2 example-fairy + 2 horizontal-fairy + 1 elite-fairy
+
 const MOB_COUNT = 8;
 const MOB_INTERVAL_TICKS = secondsToTicks(0.2);
+
+const ELITE_COUNT = 2;
+
 const VOLLEY_OFFSETS: readonly number[] = [
   secondsToTicks(2),
   secondsToTicks(5),
@@ -39,10 +46,16 @@ export class DefaultMobSpawnerA extends NeutralMobSpawner<DefaultMobSpawnerAStat
   }
 
   createMobFromSnapshot(snapshot: NeutralMobState): BattleNeutralMob | undefined {
-    if (snapshot.kind !== "example_fairy") {
-      return undefined;
+    switch (snapshot.kind) {
+      case "example_fairy":
+        return ExampleFairy.fromSnapshot(snapshot);
+      case "horizontal_fairy":
+        return HorizontalFairy.fromSnapshot(snapshot);
+      case "elite_fairy":
+        return EliteFairy.fromSnapshot(snapshot);
+      default:
+        return undefined;
     }
-    return ExampleFairy.fromSnapshot(snapshot);
   }
 
   private spawnWaveMembers(ctx: NeutralMobSpawnerContext): void {
@@ -50,26 +63,64 @@ export class DefaultMobSpawnerA extends NeutralMobSpawner<DefaultMobSpawnerAStat
     if (waveIndex === undefined) {
       return;
     }
+
+    const cycleIndex = waveIndex % WAVE_CYCLE_LENGTH;
     const waveStart = WAVE_START_FRAME + waveIndex * WAVE_INTERVAL;
     const withinWave = ctx.frame - waveStart;
     if (withinWave < 0 || withinWave % MOB_INTERVAL_TICKS !== 0) {
       return;
     }
-    const mobIndex = withinWave / MOB_INTERVAL_TICKS;
-    if (!Number.isInteger(mobIndex) || mobIndex < 0 || mobIndex >= MOB_COUNT) {
-      return;
-    }
-    const variant: ExampleFairyMovementVariant = waveIndex % 2 === 0 ? "left" : "right";
-    const pointRewardSize: PointRewardSize = mobIndex === MOB_COUNT - 1 ? "medium" : "small";
-    ctx.spawnMob(new ExampleFairy({
-      waveId: waveIndex + 1,
-      id: ctx.allocateMobId({
+
+    if (cycleIndex <= 3) {
+      // Regular waves (example-fairy and horizontal-fairy): 8 mobs at 0.2s interval
+      const mobIndex = withinWave / MOB_INTERVAL_TICKS;
+      if (!Number.isInteger(mobIndex) || mobIndex < 0 || mobIndex >= MOB_COUNT) {
+        return;
+      }
+
+      const pointRewardSize: PointRewardSize = mobIndex === MOB_COUNT - 1 ? "medium" : "small";
+
+      if (cycleIndex === 0 || cycleIndex === 1) {
+        const variant: ExampleFairyMovementVariant = cycleIndex === 0 ? "left" : "right";
+        ctx.spawnMob(new ExampleFairy({
+          waveId: waveIndex + 1,
+          id: ctx.allocateMobId({
+            waveId: waveIndex + 1,
+            waveMemberIndex: mobIndex,
+          }),
+          movementVariant: variant,
+          pointRewardSize,
+        }));
+      } else {
+        const variant: HorizontalFairyMovementVariant = cycleIndex === 2 ? "left_to_right" : "right_to_left";
+        ctx.spawnMob(new HorizontalFairy({
+          waveId: waveIndex + 1,
+          id: ctx.allocateMobId({
+            waveId: waveIndex + 1,
+            waveMemberIndex: mobIndex,
+          }),
+          movementVariant: variant,
+          pointRewardSize,
+        }));
+      }
+    } else {
+      // Elite-fairy wave (cycleIndex === 4): 2 mobs
+      const mobIndex = withinWave / MOB_INTERVAL_TICKS;
+      if (!Number.isInteger(mobIndex) || mobIndex < 0 || mobIndex >= ELITE_COUNT) {
+        return;
+      }
+
+      const side: EliteFairySide = mobIndex === 0 ? "left" : "right";
+      ctx.spawnMob(new EliteFairy({
         waveId: waveIndex + 1,
-        waveMemberIndex: mobIndex,
-      }),
-      movementVariant: variant,
-      pointRewardSize,
-    }));
+        id: ctx.allocateMobId({
+          waveId: waveIndex + 1,
+          waveMemberIndex: mobIndex,
+        }),
+        side,
+        pointRewardSize: "large",
+      }));
+    }
   }
 
   private queueWaveVolleys(ctx: NeutralMobSpawnerContext): void {

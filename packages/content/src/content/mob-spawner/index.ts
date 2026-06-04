@@ -2,6 +2,8 @@ export * from "./base";
 export * from "./default-a";
 export * from "./shooting-range-spawn";
 export * from "./mobs/example-fairy";
+export * from "./mobs/horizontal-fairy";
+export * from "./mobs/elite-fairy";
 export * from "./mobs/immortal-fairy";
 
 import { DefaultMobSpawnerA } from "./default-a";
