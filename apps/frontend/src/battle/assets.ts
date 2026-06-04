@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { getAllCharacterDefinitions } from "@repo/content";
+import { DEFAULT_MAPS, getAllCharacterDefinitions } from "@repo/content";
 
 import { assetUrl } from "../utils/assets";
 
@@ -30,7 +30,9 @@ export function queueBattleAssets(scene: Phaser.Scene): number {
 
   json("bullet-config", assetUrl("assets/bullet/bullet_config.json"));
   json("enemy-config", assetUrl("assets/enemy/enemy_config.json"));
-  image("arena-standard-bg", assetUrl("assets/bg/arena_standard.jpg"));
+  for (const map of DEFAULT_MAPS) {
+    image(map.background.textureKey, assetUrl(map.background.assetPath));
+  }
   if (!scene.cache.json.exists("sfx")) {
     scene.load.audioSprite(
       "sfx",

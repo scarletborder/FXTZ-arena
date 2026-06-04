@@ -21,7 +21,7 @@ export class UdpConnectScene extends Phaser.Scene {
   private currentPeer: PeerConnection | null = null;
   private localLoadout: PlayerLoadout | null = null;
   private remoteLoadout: PlayerLoadout | null = null;
-  private selectedMapId: MapId = "arena_standard";
+  private selectedMapId: MapId = "hakurei_shrine";
 
   private readonly onKeyDown = (event: KeyboardEvent) => this.activeField?.handleKey(event);
   private readonly onPaste = (event: ClipboardEvent) => this.activeField?.handlePaste(event.clipboardData?.getData("text") ?? "");

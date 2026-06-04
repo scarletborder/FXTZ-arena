@@ -8,10 +8,11 @@ import {
   ARENA_TOP,
   ARENA_WIDTH_PX,
 } from "@repo/constants";
+import { getCombatMapDefinition } from "@repo/content";
+import type { MapId } from "@repo/types";
 
 export type BattleViewMode = "ai" | "training" | "online";
 
-const ARENA_BACKGROUND_TEXTURE = "arena-standard-bg";
 const BACKGROUND_PAN_LERP = 0.08;
 
 export class BattleStage {
@@ -19,11 +20,13 @@ export class BattleStage {
   private readonly backgroundWidth: number;
   private readonly backgroundHeight: number;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, mapId: MapId | undefined) {
+    const backgroundTexture =
+      getCombatMapDefinition(mapId ?? "hakurei_shrine")?.background.textureKey;
     let hasBackground = false;
-    if (scene.textures.exists(ARENA_BACKGROUND_TEXTURE)) {
+    if (backgroundTexture && scene.textures.exists(backgroundTexture)) {
       hasBackground = true;
-      const texture = scene.textures.get(ARENA_BACKGROUND_TEXTURE);
+      const texture = scene.textures.get(backgroundTexture);
       const source = texture.getSourceImage() as
         | HTMLImageElement
         | HTMLCanvasElement
@@ -31,7 +34,7 @@ export class BattleStage {
       this.backgroundWidth = source?.width ?? ARENA_WIDTH_PX;
       this.backgroundHeight = source?.height ?? ARENA_HEIGHT_PX;
       this.background = scene.add
-        .image(ARENA_LEFT, ARENA_TOP, ARENA_BACKGROUND_TEXTURE)
+        .image(ARENA_LEFT, ARENA_TOP, backgroundTexture)
         .setOrigin(0, 0)
         .setDepth(0);
       const maskShape = scene.add.graphics();
@@ -83,9 +86,10 @@ export class BattleStage {
 export function createBattleStage(
   scene: Phaser.Scene,
   mode: BattleViewMode,
+  mapId?: MapId,
 ): BattleStage {
   void mode;
-  return new BattleStage(scene);
+  return new BattleStage(scene, mapId);
 }
 
 function createStageOverlay(scene: Phaser.Scene, hasBackground: boolean): void {

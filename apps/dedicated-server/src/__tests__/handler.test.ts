@@ -138,7 +138,7 @@ describe("MessageHandler", () => {
       handler.handle(conn, {
         type: "create_room",
         name: "My Room",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 3,
         costLimit: 15,
       });
@@ -166,7 +166,7 @@ describe("MessageHandler", () => {
       handler.handle(conn, {
         type: "create_room",
         name: longName,
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 3,
         costLimit: 15,
       });
@@ -186,7 +186,7 @@ describe("MessageHandler", () => {
         type: "create_room",
         name: "My Room",
         username: "Alice",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 3,
         costLimit: 15,
       });
@@ -208,14 +208,14 @@ describe("MessageHandler", () => {
       handler.handle(conn1, {
         type: "create_room",
         name: "Room 1",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
       handler.handle(conn2, {
         type: "create_room",
         name: "Room 2",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -234,7 +234,7 @@ describe("MessageHandler", () => {
       handler.handle(conn, {
         type: "create_room",
         name: "Room 1",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -243,7 +243,7 @@ describe("MessageHandler", () => {
       handler.handle(conn, {
         type: "create_room",
         name: "Room 2",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -266,7 +266,7 @@ describe("MessageHandler", () => {
       handler.handle(conn1, {
         type: "create_room",
         name: "Test",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -303,7 +303,7 @@ describe("MessageHandler", () => {
         type: "create_room",
         name: "Test",
         username: "Alice",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -351,7 +351,7 @@ describe("MessageHandler", () => {
         type: "create_room",
         name: "Locked",
         password: "secret",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -381,7 +381,7 @@ describe("MessageHandler", () => {
         type: "create_room",
         name: "Locked",
         password: "secret",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -412,7 +412,7 @@ describe("MessageHandler", () => {
       handler.handle(conn1, {
         type: "create_room",
         name: "Test",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -448,7 +448,7 @@ describe("MessageHandler", () => {
       handler.handle(host1, {
         type: "create_room",
         name: "Open",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -456,7 +456,7 @@ describe("MessageHandler", () => {
         type: "create_room",
         name: "Locked",
         password: "secret",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -491,7 +491,7 @@ describe("MessageHandler", () => {
       handler.handle(conn1, {
         type: "create_room",
         name: "Quick Match Room",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -527,7 +527,7 @@ describe("MessageHandler", () => {
       handler.handle(conn, {
         type: "create_room",
         name: "My Room",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -550,7 +550,7 @@ describe("MessageHandler", () => {
       handler.handle(conn, {
         type: "create_room",
         name: "Test",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -589,7 +589,7 @@ describe("MessageHandler", () => {
       handler.handle(conn1, {
         type: "create_room",
         name: "Test",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -624,7 +624,7 @@ describe("MessageHandler", () => {
       handler.handle(conn1, {
         type: "create_room",
         name: "Active Leave",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -665,7 +665,7 @@ describe("MessageHandler", () => {
       handler.handle(conn1, {
         type: "create_room",
         name: "Selection Leave",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -684,7 +684,7 @@ describe("MessageHandler", () => {
       handler.handle(conn1, {
         type: "create_room",
         name: "Fresh Room",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -708,7 +708,7 @@ describe("MessageHandler", () => {
       handler.handle(conn1, {
         type: "create_room",
         name: "Battle Ready",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -855,7 +855,7 @@ describe("MessageHandler", () => {
       handler.handle(conn1, {
         type: "create_room",
         name: "Test",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -925,7 +925,7 @@ describe("MessageHandler", () => {
       handler.handle(conn1, {
         type: "create_room",
         name: "Fight",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -1022,7 +1022,7 @@ describe("MessageHandler", () => {
       handler.handle(conn1, {
         type: "create_room",
         name: "Test",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -1066,7 +1066,7 @@ describe("MessageHandler", () => {
       handler.handle(conn1, {
         type: "create_room",
         name: "Verdict Fight",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -1197,7 +1197,7 @@ describe("MessageHandler", () => {
       handler.handle(conn, {
         type: "create_room",
         name: "Test",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -1221,7 +1221,7 @@ describe("MessageHandler", () => {
       handler.handle(conn1, {
         type: "create_room",
         name: "Test",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });
@@ -1255,7 +1255,7 @@ describe("MessageHandler", () => {
       handler.handle(conn1, {
         type: "create_room",
         name: "Reconnect Fight",
-        mapId: "arena_standard",
+        mapId: "hakurei_shrine",
         lifeCount: 2,
         costLimit: 10,
       });

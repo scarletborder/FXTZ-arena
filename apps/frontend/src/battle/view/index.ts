@@ -12,6 +12,7 @@ import type {
   BodyDebugData,
   FighterKey,
 } from "@repo/raid-logic";
+import type { MapId } from "@repo/types";
 import { CrosshairView } from "./crosshair";
 import { EffectsView } from "./effects";
 import { FighterView } from "./fighter";
@@ -37,9 +38,9 @@ export class BattleView {
   private readonly debugGraphics: Phaser.GameObjects.Graphics;
   private debugPhysicsEnabled = false;
 
-  constructor(scene: Phaser.Scene, mode: BattleViewMode = "training") {
+  constructor(scene: Phaser.Scene, mode: BattleViewMode = "training", mapId?: MapId) {
     createBattleTextures(scene);
-    this.stage = createBattleStage(scene, mode);
+    this.stage = createBattleStage(scene, mode, mapId);
     this.fighters = new FighterView(scene);
     this.mobs = new MobView(scene);
     this.points = new PointView(scene);

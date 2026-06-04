@@ -4,13 +4,13 @@ import { ImmortalFairy } from "./mobs/immortal-fairy";
 import type { NeutralMobState } from "@repo/types";
 
 export interface ShootingRangeSpawnState extends NeutralMobSpawnerState {
-  readonly spawnerId: "shooting_range_spawn";
+  readonly spawnerId: "shoot_range_spawn";
 }
 
 const SPAWN_FRAME = secondsToTicks(1);
 
 export class ShootingRangeSpawn extends NeutralMobSpawner<ShootingRangeSpawnState> {
-  readonly id = "shooting_range_spawn";
+  readonly id = "shoot_range_spawn";
 
   step(ctx: NeutralMobSpawnerContext): void {
     if (ctx.frame !== SPAWN_FRAME) {

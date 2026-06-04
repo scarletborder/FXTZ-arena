@@ -10,7 +10,7 @@
     "wait_opponent_after_create": "Wait for an opponent after setup", "browse_rooms": "Browse public and private rooms", "choose_loadout": "Choose loadout before battle",
     "no_cost_limit": "No cost limit", "discover_lan_players": "Discover LAN players", "connected": "Connected", "connecting": "Connecting...",
     "error": "Connection failed", "disconnected": "Disconnected", "matching": "Matching...", "create_room_title": "Create Room",
-    "room_name": "Room name", "default_room_name": "{{name}}'s Room", "room_password": "Password (optional)", "lives": "Lives",
+    "room_name": "Room name", "default_room_name": "{{name}}'s Room", "room_password": "Password (optional)", "lives": "Lives", "map": "Map", "select_map": "Select Map",
     "create": "Create", "cancel": "Cancel", "creating_room": "Creating room...", "udp_connect": "UDP Connect",
     "use_desktop_client": "Use the desktop client", "udp_connect_ready": "Native UDP direct link"
   },

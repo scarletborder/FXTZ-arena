@@ -12,6 +12,7 @@ export type CodexTab = "characters" | "cards";
 
 export interface SelectionData {
   readonly mode: SelectionMode;
+  readonly mapId?: import("@repo/types").MapId;
   /** Set when mode === "online" — the room this client is in. */
   readonly roomId?: string;
   /** Set when mode === "online" — this client's player slot. */

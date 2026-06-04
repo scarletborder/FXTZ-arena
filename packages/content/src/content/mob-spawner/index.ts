@@ -18,7 +18,7 @@ export function resolveMobSpawner(spawnerId: string): NeutralMobSpawner | undefi
   switch (spawnerId) {
     case "default-a":
       return new DefaultMobSpawnerA();
-    case "shooting_range_spawn":
+    case "shoot_range_spawn":
       return new ShootingRangeSpawn();
     default:
       return undefined;

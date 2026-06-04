@@ -4,7 +4,7 @@ import { RoomManager } from "../room/manager";
 
 const defaultParams = {
   name: "Test Room",
-  mapId: "arena_standard" as const,
+  mapId: "hakurei_shrine" as const,
   lifeCount: 2,
   costLimit: 10,
 };
@@ -18,7 +18,7 @@ describe("RoomManager", () => {
     expect(room.id.length).toBe(8);
     expect(room.name).toBe("Test Room");
     expect(room.password).toBeNull();
-    expect(room.mapId).toBe("arena_standard");
+    expect(room.mapId).toBe("hakurei_shrine");
     expect(room.lifeCount).toBe(2);
     expect(room.costLimit).toBe(10);
     expect(room.status).toBe("waiting");

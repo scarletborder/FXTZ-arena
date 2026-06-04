@@ -58,7 +58,7 @@ describe("Full Game Lifecycle Integration", () => {
     handler.handle(p1, {
       type: "create_room",
       name: "Alice's Battle",
-      mapId: "arena_standard",
+      mapId: "hakurei_shrine",
       lifeCount: 3,
       costLimit: 12,
     });
@@ -147,7 +147,7 @@ describe("Full Game Lifecycle Integration", () => {
     // Verify battle config
     const config = p1Battle!.config;
     expect(config.battleId).toBe(p2Battle!.config.battleId);
-    expect(config.mapId).toBe("arena_standard");
+    expect(config.mapId).toBe("hakurei_shrine");
     expect(config.seed).toBeGreaterThanOrEqual(0);
     expect(config.fps).toBe(60);
     expect(config.lifeCount).toBe(3);
@@ -229,7 +229,7 @@ describe("Full Game Lifecycle Integration", () => {
     handler.handle(p1, {
       type: "create_room",
       name: "Test",
-      mapId: "arena_standard",
+      mapId: "hakurei_shrine",
       lifeCount: 2,
       costLimit: 10,
     });
@@ -275,7 +275,7 @@ describe("Full Game Lifecycle Integration", () => {
     handler.handle(p1, {
       type: "create_room",
       name: "Full Room",
-      mapId: "arena_standard",
+      mapId: "hakurei_shrine",
       lifeCount: 2,
       costLimit: 10,
     });

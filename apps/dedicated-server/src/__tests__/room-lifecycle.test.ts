@@ -10,7 +10,7 @@ function createTestRoom(overrides?: Partial<InternalRoom>): InternalRoom {
     id: "test-001",
     name: "Test Room",
     password: null,
-    mapId: "arena_standard",
+    mapId: "hakurei_shrine",
     lifeCount: 2,
     costLimit: 10,
     status: "selecting",
@@ -63,7 +63,7 @@ describe("RoomLifecycle", () => {
       expect(room.seed).toBeGreaterThanOrEqual(0);
 
       if (result.bothReady) {
-        expect(result.battleConfig.mapId).toBe("arena_standard");
+        expect(result.battleConfig.mapId).toBe("hakurei_shrine");
         expect(result.battleConfig.players).toHaveLength(2);
         expect(result.battleConfig.players[0].playerId).toBe("Player1");
         expect(result.battleConfig.players[1].playerId).toBe("Player2");

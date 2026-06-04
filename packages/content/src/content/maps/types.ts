@@ -5,8 +5,14 @@ export interface MapDefinition {
   readonly name: string;
   readonly width: number;
   readonly height: number;
+  readonly background: MapBackgroundDefinition;
   readonly spawnPoints: readonly SpawnPointDefinition[];
   readonly mobSpawnerId?: string;
+}
+
+export interface MapBackgroundDefinition {
+  readonly textureKey: string;
+  readonly assetPath: string;
 }
 
 export interface SpawnPointDefinition {

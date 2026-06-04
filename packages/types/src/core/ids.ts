@@ -14,6 +14,10 @@ export type AbilityCardId =
   | "spirit_strike_card"
   | "extension"
   | "graze_lover";
-export type MapId = "arena_standard" | "shooting_range";
+export type MapId =
+  | "hakurei_shrine"
+  | "mana_forest"
+  | "x_shoot_range"
+  | "shoot_range";
 export type BattlePlayerId = "Player1" | "Player2" | "Neutral";
 export type PlayerId = BattlePlayerId;

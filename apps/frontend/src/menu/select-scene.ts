@@ -36,6 +36,7 @@ const COST_LIMIT = 10;
 
 export class SelectScene extends Phaser.Scene {
   private mode: SelectionData["mode"] = "ai";
+  private selectedMapId: SelectionData["mapId"];
   private playerId: string | undefined;
   private localConfirmHandler: SelectionData["onLocalConfirm"] | undefined;
   private primaryId: CharacterId | undefined;
@@ -101,6 +102,7 @@ export class SelectScene extends Phaser.Scene {
   create(data: SelectionData): void {
     installMenuAudioUnlock(this);
     this.mode = data.mode;
+    this.selectedMapId = data.mapId;
     this.playerId = data.playerId;
     this.localConfirmHandler = data.onLocalConfirm;
     this.primaryId = undefined;
@@ -826,7 +828,7 @@ export class SelectScene extends Phaser.Scene {
       opponentName: this.mode === "training" ? t("select.dummy") : t("select.cpu"),
       returnScene: "battle-start",
       loadouts,
-      mapId: this.mode === "training" ? "shooting_range" : "arena_standard",
+      mapId: this.mode === "training" ? "shoot_range" : this.selectedMapId ?? "hakurei_shrine",
       debug: uiSettings.debug,
     });
   }

@@ -8,7 +8,7 @@ function createRoom(overrides?: Partial<InternalRoom>): InternalRoom {
     id: "room-001",
     name: "Test Room",
     password: null,
-    mapId: "arena_standard",
+    mapId: "hakurei_shrine",
     lifeCount: 2,
     costLimit: 10,
     status: "waiting",

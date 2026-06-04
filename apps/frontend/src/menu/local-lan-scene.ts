@@ -27,7 +27,7 @@ export class LocalLanScene extends Phaser.Scene {
   private currentP2p: P2pConnection | null = null;
   private localLoadout: PlayerLoadout | null = null;
   private remoteLoadout: PlayerLoadout | null = null;
-  private selectedMapId: MapId = "arena_standard";
+  private selectedMapId: MapId = "hakurei_shrine";
 
   constructor() {
     super("local-lan" satisfies SceneKey);

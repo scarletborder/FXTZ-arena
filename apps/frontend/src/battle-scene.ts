@@ -155,9 +155,9 @@ export class BattleScene extends Phaser.Scene {
       });
     }
     if (data.mode === "online" || data.mode === "local") {
-      this.view = new BattleView(this, "online");
+      this.view = new BattleView(this, "online", data.mapId ?? data.battleConfig?.mapId);
     } else {
-      this.view = new BattleView(this, data.mode ?? "training");
+      this.view = new BattleView(this, data.mode ?? "training", data.mapId ?? data.battleConfig?.mapId);
     }
     this.lastInput = createBattleInput(this, this.keys, this.mobileControls);
     this.autoReloadObservedShotsFired = this.localFighterState().shotsFired;

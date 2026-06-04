@@ -32,7 +32,7 @@ export function createDefaultBattleConfig(
 ): BattleConfig {
   return {
     battleId,
-    mapId: "arena_standard",
+    mapId: "hakurei_shrine",
     seed: 1,
     fps: TICK_RATE,
     lifeCount: DEFAULT_LIVES,

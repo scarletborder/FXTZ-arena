@@ -510,7 +510,7 @@ class DedicatedServerHarness {
     this.send("Player1", {
       type: "create_room",
       name: "sync",
-      mapId: "arena_standard",
+      mapId: "hakurei_shrine",
       lifeCount: 2,
       costLimit: 12,
     });
