@@ -33,3 +33,27 @@ export function smoothValueWithMaxStep(
   const step = Math.min(distance * 0.5, maxStep);
   return current + Math.sign(delta) * step;
 }
+
+export function smoothPointWithMaxStep(
+  currentX: number,
+  currentY: number,
+  targetX: number,
+  targetY: number,
+  maxStep: number,
+  snapThreshold: number,
+): { readonly x: number; readonly y: number } {
+  const deltaX = targetX - currentX;
+  const deltaY = targetY - currentY;
+  const distance = Math.hypot(deltaX, deltaY);
+
+  if (distance <= snapThreshold) {
+    return { x: targetX, y: targetY };
+  }
+
+  const step = Math.min(distance * 0.5, maxStep);
+  const ratio = step / distance;
+  return {
+    x: currentX + deltaX * ratio,
+    y: currentY + deltaY * ratio,
+  };
+}

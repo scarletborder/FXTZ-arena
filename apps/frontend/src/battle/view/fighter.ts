@@ -4,7 +4,7 @@ import { t } from "@repo/i18n";
 import { GRAZE_CIRCLE_ALPHA, GRAZE_CIRCLE_DIAMETER, PLAYER_CORE_RADIUS } from "@repo/constants";
 import type { FighterKey, FighterState } from "@repo/raid-logic";
 import { Depth } from "../../utils/depth";
-import { smoothValue, smoothValueWithMaxStep } from "./smooth";
+import { smoothPointWithMaxStep, smoothValue } from "./smooth";
 
 interface FighterVisual {
   readonly body: Phaser.GameObjects.Sprite;
@@ -16,8 +16,8 @@ interface FighterVisual {
 const COMBAT_DISPLAY_SIZE = 104;
 const ANIMATION_FRAME_TICKS = 10;
 
-/** Max pixels the body sprite may move per frame during rollback catch-up (~⅓ character width). */
-const ROLLBACK_MAX_STEP = 35;
+/** Max pixels visible fighter parts may move per frame during rollback catch-up. */
+const ROLLBACK_MAX_STEP = 24;
 /** Errors below this threshold snap directly — imperceptible offsets don't linger. */
 const ROLLBACK_SNAP_THRESHOLD = 4;
 
@@ -90,11 +90,12 @@ export class FighterView {
     visual.body.setVisible(visible);
     visual.body.clearTint();
     const blinkAlpha = fighter.invulnerableUntil > 0 && Math.floor(frame / 5) % 2 === 0 ? 0.28 : 1;
-    const renderX = smoothValueWithMaxStep(visual.body.x, x, ROLLBACK_MAX_STEP, ROLLBACK_SNAP_THRESHOLD);
-    const renderY = smoothValueWithMaxStep(visual.body.y, y, ROLLBACK_MAX_STEP, ROLLBACK_SNAP_THRESHOLD);
+    const renderPosition = smoothPointWithMaxStep(visual.body.x, visual.body.y, x, y, ROLLBACK_MAX_STEP, ROLLBACK_SNAP_THRESHOLD);
+    const renderX = renderPosition.x;
+    const renderY = renderPosition.y;
     visual.body.setPosition(renderX, renderY);
     visual.body.setAlpha(visible ? smoothValue(visual.body.alpha, blinkAlpha, rollbackBlend) : 0);
-    visual.core.setPosition(smoothValue(visual.core.x, x, rollbackBlend), smoothValue(visual.core.y, y, rollbackBlend));
+    visual.core.setPosition(renderX, renderY);
     visual.core.setAlpha(visible ? smoothValue(visual.core.alpha, 1, rollbackBlend) : 0);
     visual.core.setVisible(visible);
     this.updateGrazeVisual(visual.graze, fighter, renderX, renderY, frame, visible && isPlayer);
@@ -107,7 +108,7 @@ export class FighterView {
           ? 1
           : 0.9
         : 0;
-    visual.statusTag.setPosition(smoothValue(visual.statusTag.x, x, rollbackBlend), smoothValue(visual.statusTag.y, y - 48, rollbackBlend));
+    visual.statusTag.setPosition(renderX, renderY - 48);
     visual.statusTag.setAlpha(smoothValue(visual.statusTag.alpha, statusAlpha, rollbackBlend));
     if (fighter.reloadRemaining > 0 && fighter.deadUntil === 0) {
       visual.statusTag.setText("[Reload]");
