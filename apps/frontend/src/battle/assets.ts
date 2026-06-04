@@ -30,6 +30,7 @@ export function queueBattleAssets(scene: Phaser.Scene): number {
 
   json("bullet-config", assetUrl("assets/bullet/bullet_config.json"));
   json("enemy-config", assetUrl("assets/enemy/enemy_config.json"));
+  image("arena-standard-bg", assetUrl("assets/bg/arena_standard.jpg"));
   if (!scene.cache.json.exists("sfx")) {
     scene.load.audioSprite(
       "sfx",

@@ -18,7 +18,11 @@ import { FighterView } from "./fighter";
 import { MobView } from "./mobs";
 import { PointView } from "./points";
 import { ProjectileView } from "./projectile";
-import { createBattleStage, type BattleViewMode } from "./stage";
+import {
+  createBattleStage,
+  type BattleStage,
+  type BattleViewMode,
+} from "./stage";
 import { createBattleTextures } from "./textures";
 import { Depth } from "../../utils/depth";
 
@@ -29,12 +33,13 @@ export class BattleView {
   private readonly effects: EffectsView;
   private readonly mobs: MobView;
   private readonly points: PointView;
+  private readonly stage: BattleStage;
   private readonly debugGraphics: Phaser.GameObjects.Graphics;
   private debugPhysicsEnabled = false;
 
   constructor(scene: Phaser.Scene, mode: BattleViewMode = "training") {
     createBattleTextures(scene);
-    createBattleStage(scene, mode);
+    this.stage = createBattleStage(scene, mode);
     this.fighters = new FighterView(scene);
     this.mobs = new MobView(scene);
     this.points = new PointView(scene);
@@ -56,6 +61,7 @@ export class BattleView {
   ): void {
     const localFighter =
       localFighterKey === "Player1" ? state.player : state.target;
+    this.stage.render(state.player, state.target);
     this.fighters.render(
       state.player,
       state.target,
