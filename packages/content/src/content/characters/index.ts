@@ -4,8 +4,6 @@ export * from "./types";
 export * from "./character-library";
 export * from "./base";
 export type { CharacterActionContext } from "./base";
-export * from "./kaguya";
-export * from "./reisen";
 
 // Side-effect imports trigger @Vanilla.RegisterCharacter decorators
 import "./reimu";
