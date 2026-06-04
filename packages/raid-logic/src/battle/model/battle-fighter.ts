@@ -32,6 +32,7 @@ import {
 } from "@repo/content";
 import {
   createBattleCharacter,
+  REISEN_SHIELD_MOVE_SPEED,
   type BattleCharacter,
   type CharacterActionContext,
 } from "@repo/content";
@@ -139,7 +140,8 @@ export class BattleFighter {
     if (
       this.state.actionLockedUntil > 0 ||
       this.state.nonFireActionLockedUntil > 0 ||
-      this.state.switchLockedUntil > 0
+      this.state.switchLockedUntil > 0 ||
+      this.state.reisenShieldLayers > 0
     ) {
       return;
     }
@@ -161,9 +163,11 @@ export class BattleFighter {
     if (this.state.movementLockedUntil > 0) {
       return;
     }
-    const speed = speedRankToPixelsPerTick(
-      this.state.moveSpeedOverride ?? this.activeCharacter.moveSpeed,
-    );
+    const moveSpeed =
+      this.state.reisenShieldLayers > 0
+        ? REISEN_SHIELD_MOVE_SPEED
+        : (this.state.moveSpeedOverride ?? this.activeCharacter.moveSpeed);
+    const speed = speedRankToPixelsPerTick(moveSpeed);
     this.state.x = fp.toFloat(
       fpClamp(
         fp.add(
@@ -317,6 +321,9 @@ export class BattleFighter {
     for (const card of this.battleCards) {
       card.onHit(hitContext);
     }
+    if (hitContext.resolution.ignored) {
+      return "accepted";
+    }
     return applyHit({
       ...params,
       defaultBombs: hitContext.resolution.defaultBombs,
@@ -384,6 +391,7 @@ export class BattleFighter {
       },
       resolution: {
         defaultBombs: DEFAULT_BOMBS,
+        ignored: false,
       },
     };
   }

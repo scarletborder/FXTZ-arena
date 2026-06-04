@@ -35,6 +35,8 @@ export interface FighterState {
   invulnerableUntil: number;
   invulnerableDelayRemaining: number;
   invulnerableDelayDuration: number;
+  hitCircleRadiusMultiplier: number;
+  reisenShieldLayers: number;
   deadUntil: number;
   actionLockedUntil: number;
   nonFireActionLockedUntil: number;

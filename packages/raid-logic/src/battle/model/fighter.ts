@@ -33,6 +33,8 @@ export function createFighter(
     invulnerableUntil: 0,
     invulnerableDelayRemaining: 0,
     invulnerableDelayDuration: 0,
+    hitCircleRadiusMultiplier: 1,
+    reisenShieldLayers: 0,
     deadUntil: 0,
     actionLockedUntil: 0,
     nonFireActionLockedUntil: 0,

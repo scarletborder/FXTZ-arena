@@ -105,7 +105,10 @@ export function hashBattleModel(model: BattleModel): number {
 export function hashBattleModelComponents(
   model: BattleModel,
 ): Record<string, string> {
-  const hash = (label: string, fn: (h: DeterministicHasher) => void): string => {
+  const hash = (
+    label: string,
+    fn: (h: DeterministicHasher) => void,
+  ): string => {
     const h = new DeterministicHasher();
     fn(h);
     return hashToHex(h.digest());
@@ -120,10 +123,14 @@ export function hashBattleModelComponents(
     }),
     player: hash("player", (h) => writeFighter(h, model.player)),
     target: hash("target", (h) => writeFighter(h, model.target)),
-    neutralMobs: hash("mobs", (h) => writeNeutralMobs(h, model.neutralMobStates())),
+    neutralMobs: hash("mobs", (h) =>
+      writeNeutralMobs(h, model.neutralMobStates()),
+    ),
     points: hash("points", (h) => writePoints(h, model.pointStates())),
     clearRings: hash("rings", (h) => writeClearRings(h, model.clearRings)),
-    spawner: hash("spawner", (h) => writeSpawnerState(h, model.mobSpawnerState())),
+    spawner: hash("spawner", (h) =>
+      writeSpawnerState(h, model.mobSpawnerState()),
+    ),
     projectiles: hash("projs", (h) => writeProjectiles(h, model.projectiles)),
     effects: hash("effects", (h) => writeEffects(h, model.effects)),
     stats: hash("stats", (h) => writeStats(h, model.stats)),
@@ -256,6 +263,8 @@ function writeFighter(
   hasher.writeNumber(fighter.invulnerableUntil);
   hasher.writeNumber(fighter.invulnerableDelayRemaining);
   hasher.writeNumber(fighter.invulnerableDelayDuration);
+  writeFixed(hasher, fighter.hitCircleRadiusMultiplier);
+  hasher.writeNumber(fighter.reisenShieldLayers);
   hasher.writeNumber(fighter.deadUntil);
   hasher.writeNumber(fighter.actionLockedUntil);
   hasher.writeNumber(fighter.nonFireActionLockedUntil);

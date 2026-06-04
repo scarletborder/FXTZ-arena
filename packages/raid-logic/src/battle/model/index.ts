@@ -89,7 +89,10 @@ export class BattleModel {
   aimConsumedThisFrame = false;
 
   /** Exposed for hash — the integer-truncated aim coordinates per fighter. */
-  get currentAim(): Record<FighterKey, { readonly x: number; readonly y: number }> {
+  get currentAim(): Record<
+    FighterKey,
+    { readonly x: number; readonly y: number }
+  > {
     return this.currentAimByFighter;
   }
 
@@ -836,7 +839,8 @@ export class BattleModel {
           params.pausedUntil === undefined ? owner.projectilePauseUntil : 0;
         const spawnParams = {
           ...params,
-          sourceCharacterId: params.sourceCharacterId ?? self.activeCharacter.id,
+          sourceCharacterId:
+            params.sourceCharacterId ?? self.activeCharacter.id,
           frame: spawnFrame,
           pausedUntil: params.pausedUntil ?? spawnFrame,
         };
@@ -856,7 +860,8 @@ export class BattleModel {
           params.pausedUntil === undefined ? owner.projectilePauseUntil : 0;
         const spawnParams = {
           ...params,
-          sourceCharacterId: params.sourceCharacterId ?? self.activeCharacter.id,
+          sourceCharacterId:
+            params.sourceCharacterId ?? self.activeCharacter.id,
           frame: spawnFrame,
           pausedUntil: params.pausedUntil ?? spawnFrame,
         };
@@ -876,7 +881,8 @@ export class BattleModel {
           params.pausedUntil === undefined ? owner.projectilePauseUntil : 0;
         const spawnParams = {
           ...params,
-          sourceCharacterId: params.sourceCharacterId ?? self.activeCharacter.id,
+          sourceCharacterId:
+            params.sourceCharacterId ?? self.activeCharacter.id,
           frame: spawnFrame,
           pausedUntil: params.pausedUntil ?? spawnFrame,
         };
@@ -1224,13 +1230,13 @@ export class BattleModel {
         key: this.player.key,
         x: this.player.x,
         y: this.player.y,
-        hitRadius: PLAYER_CORE_RADIUS,
+        hitRadius: fighterHitRadius(this.player),
       },
       {
         key: this.target.key,
         x: this.target.x,
         y: this.target.y,
-        hitRadius: PLAYER_CORE_RADIUS,
+        hitRadius: fighterHitRadius(this.target),
       },
       ...this.neutralMobs
         .filter((mob) => mob.state.active)
@@ -1246,6 +1252,10 @@ export class BattleModel {
         })),
     ];
   }
+}
+
+function fighterHitRadius(fighter: FighterState): number {
+  return PLAYER_CORE_RADIUS * fighter.hitCircleRadiusMultiplier;
 }
 
 function neutralMobIdFromHitTarget(

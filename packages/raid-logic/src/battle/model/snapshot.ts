@@ -221,6 +221,8 @@ function serializeFighter(
     invulnerableUntil: fighter.invulnerableUntil,
     invulnerableDelayRemaining: fighter.invulnerableDelayRemaining,
     invulnerableDelayDuration: fighter.invulnerableDelayDuration,
+    hitCircleRadiusMultiplier: fighter.hitCircleRadiusMultiplier,
+    reisenShieldLayers: fighter.reisenShieldLayers,
     deadUntil: fighter.deadUntil,
     actionLockedUntil: fighter.actionLockedUntil,
     nonFireActionLockedUntil: fighter.nonFireActionLockedUntil,

@@ -5,6 +5,7 @@
 
 export interface HitResolutionContext {
   defaultBombs: number;
+  ignored?: boolean;
 }
 
 export interface ClearProjectilesAroundParams {

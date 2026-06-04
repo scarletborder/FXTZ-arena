@@ -1,10 +1,25 @@
-import { PhysicsWorld, ensureRapierInit, type BodyDebugData } from "../../physics-world";
+import {
+  PhysicsWorld,
+  ensureRapierInit,
+  type BodyDebugData,
+} from "../../physics-world";
 
 import { fp } from "@shaisrc/fixed-point";
 
-import { ARENA_HEIGHT, ARENA_WIDTH, GRAZE_CIRCLE_DIAMETER, PLAYER_CORE_RADIUS } from "@repo/types";
+import {
+  ARENA_HEIGHT,
+  ARENA_WIDTH,
+  GRAZE_CIRCLE_DIAMETER,
+  PLAYER_CORE_RADIUS,
+} from "@repo/types";
 
-import type { FighterKey, FighterState, PointState, ProjectileState, ShieldState } from "@repo/content";
+import type {
+  FighterKey,
+  FighterState,
+  PointState,
+  ProjectileState,
+  ShieldState,
+} from "@repo/content";
 import type { NeutralMobState } from "@repo/types";
 
 /**
@@ -111,7 +126,10 @@ export class BattlePhysics {
     const projectileMap = new Map<number, ProjectileState>();
     for (const p of projectiles) {
       // Skip infinite-width beams — Rapier can't represent them.
-      if ((p.kind === "laser" || p.kind === "spark") && !Number.isFinite(p.width)) {
+      if (
+        (p.kind === "laser" || p.kind === "spark") &&
+        !Number.isFinite(p.width)
+      ) {
         const bodyId = `proj-graze:${p.id}`;
         const length = Math.hypot(ARENA_WIDTH, ARENA_HEIGHT) * 2;
         this.world.addBody({
@@ -122,7 +140,10 @@ export class BattlePhysics {
           vx: 0,
           vy: 0,
           halfWidth: length / 2,
-          halfHeight: Math.max(1, fp.toFloat(fp.div(fp.fromFloat(p.height), fp.fromInt(2)))),
+          halfHeight: Math.max(
+            1,
+            fp.toFloat(fp.div(fp.fromFloat(p.height), fp.fromInt(2))),
+          ),
           angleRad: p.angle,
         });
         this.projBodyIds.add(bodyId);
@@ -138,8 +159,14 @@ export class BattlePhysics {
         y: p.y,
         vx: 0,
         vy: 0,
-        halfWidth: Math.max(1, fp.toFloat(fp.div(fp.fromFloat(p.width), fp.fromInt(2)))),
-        halfHeight: Math.max(1, fp.toFloat(fp.div(fp.fromFloat(p.height), fp.fromInt(2)))),
+        halfWidth: Math.max(
+          1,
+          fp.toFloat(fp.div(fp.fromFloat(p.width), fp.fromInt(2))),
+        ),
+        halfHeight: Math.max(
+          1,
+          fp.toFloat(fp.div(fp.fromFloat(p.height), fp.fromInt(2))),
+        ),
         angleRad: p.angle,
       });
       this.projBodyIds.add(bodyId);
@@ -155,8 +182,14 @@ export class BattlePhysics {
         y: shield.y,
         vx: 0,
         vy: 0,
-        halfWidth: Math.max(1, fp.toFloat(fp.div(fp.fromFloat(shield.width), fp.fromInt(2)))),
-        halfHeight: Math.max(1, fp.toFloat(fp.div(fp.fromFloat(shield.height), fp.fromInt(2)))),
+        halfWidth: Math.max(
+          1,
+          fp.toFloat(fp.div(fp.fromFloat(shield.width), fp.fromInt(2))),
+        ),
+        halfHeight: Math.max(
+          1,
+          fp.toFloat(fp.div(fp.fromFloat(shield.height), fp.fromInt(2))),
+        ),
         angleRad: shield.angle,
       });
       this.shieldBodyIds.add(bodyId);
@@ -298,8 +331,8 @@ export class BattlePhysics {
       y: fighter.y,
       vx: 0,
       vy: 0,
-      halfWidth: PLAYER_CORE_RADIUS, // radius for ball
-      halfHeight: PLAYER_CORE_RADIUS,
+      halfWidth: PLAYER_CORE_RADIUS * fighter.hitCircleRadiusMultiplier,
+      halfHeight: PLAYER_CORE_RADIUS * fighter.hitCircleRadiusMultiplier,
     });
   }
 
@@ -379,7 +412,11 @@ function resolveCollision(
   if (otherId.startsWith("mob:")) {
     const mobId = Number(otherId.slice("mob:".length));
     if (mobMap?.has(mobId)) {
-      return { projectileId: projectileNum, victimKey: "Neutral", victimMobId: mobId };
+      return {
+        projectileId: projectileNum,
+        victimKey: "Neutral",
+        victimMobId: mobId,
+      };
     }
     return null;
   }

@@ -5,7 +5,8 @@ export type CharacterId =
   | "cirno"
   | "youmu"
   | "ellen"
-  | "kaguya";
+  | "kaguya"
+  | "reisen";
 export type AbilityCardId =
   | "extra_life"
   | "ember"
