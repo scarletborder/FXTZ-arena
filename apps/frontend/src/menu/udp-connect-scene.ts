@@ -1,12 +1,12 @@
 import Phaser from "phaser";
 import { IS_DESKTOP_APP } from "@repo/constants";
 import { t } from "@repo/i18n";
-import { createDefaultRaidBattleConfig } from "@repo/raid-logic";
 import type { MapId, PlayerLoadout } from "@repo/types";
 
 import type { PeerConnection } from "../network/p2p";
 import { type UdpDirectSession, UdpDirectSession as UdpSession } from "../network/udp-direct-session";
 import { uiSettings } from "../store/settings";
+import { showMapDialog } from "./map-dialog";
 import { installMenuAudioUnlock, type SceneKey, type TextFieldControl } from "./shared";
 import { createBackButton, createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop, drawPanel } from "./ui";
 
@@ -14,6 +14,7 @@ export class UdpConnectScene extends Phaser.Scene {
   private activeField: TextFieldControl | null = null;
   private listenPort = "10800";
   private guestAddress = "";
+  private mapDialogContainer: Phaser.GameObjects.Container | null = null;
   private waitDialog: Phaser.GameObjects.Container | null = null;
   private session: UdpDirectSession | null = null;
   private matchedPeerName: string | null = null;
@@ -54,7 +55,7 @@ export class UdpConnectScene extends Phaser.Scene {
       onChange: (value) => { this.listenPort = value.replace(/\D/g, "").slice(0, 5); },
     });
     this.add.existing(portField.container);
-    createFightButton(this, 840, 284, 220, 52, t("udp_connect.start_listen"), () => void this.startListening(), { accent: 0x34d399 });
+    createFightButton(this, 840, 284, 220, 52, t("udp_connect.host_game"), () => this.showHostMapDialog(), { accent: 0x34d399 });
 
     const divider = this.add.graphics();
     divider.lineStyle(2, 0x34475c, 0.9);
@@ -107,8 +108,19 @@ export class UdpConnectScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       window.removeEventListener("keydown", this.onKeyDown);
       window.removeEventListener("paste", this.onPaste);
+      this.mapDialogContainer?.destroy();
+      this.mapDialogContainer = null;
       this.resetSession();
     });
+  }
+
+  private showHostMapDialog(): void {
+    showMapDialog(this, this.mapDialogContainer, (container) => {
+      this.mapDialogContainer = container;
+    }, (mapId) => {
+      this.selectedMapId = mapId;
+      void this.startListening();
+    }, { confirmLabel: t("udp_connect.start_listen"), accent: 0x34d399 });
   }
 
   private async startListening(): Promise<void> {
@@ -171,8 +183,6 @@ export class UdpConnectScene extends Phaser.Scene {
     this.session.setPeerPacketHandler((message) => peer.handleServerMessage(message));
     peer.start();
 
-    const battleConfig = createDefaultRaidBattleConfig();
-    this.selectedMapId = battleConfig.mapId;
     this.scene.switch("select", {
       mode: "local",
       playerName: uiSettings.username,

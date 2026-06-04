@@ -1,0 +1,205 @@
+import Phaser from "phaser";
+import { getAvailableCombatMaps, type MapDefinition } from "@repo/content";
+import { t } from "@repo/i18n";
+import type { MapId } from "@repo/types";
+
+import { createFightButton, drawAngledPanel } from "./ui";
+
+export function showMapDialog(
+  scene: Phaser.Scene,
+  currentContainer: Phaser.GameObjects.Container | null,
+  onContainerChange: (container: Phaser.GameObjects.Container | null) => void,
+  onSelect: (mapId: MapId) => void,
+  options: { readonly confirmLabel?: string; readonly accent?: number } = {},
+): void {
+  currentContainer?.destroy();
+  const maps = getAvailableCombatMaps();
+  let selectedMapId: MapId = maps[0]?.id ?? "hakurei_shrine";
+  const c = scene.add.container(0, 0);
+  onContainerChange(c);
+  c.add(scene.add.rectangle(640, 360, 1280, 720, 0x000000, 0.6).setInteractive());
+  const bg = scene.add.graphics();
+  const accent = options.accent ?? 0xe33d44;
+  drawAngledPanel(bg, 430, 238, 420, 264, 0x111821, accent, 0.98);
+  c.add(bg);
+  c.add(scene.add.text(640, 282, t("battle_start.select_map"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "24px", fontStyle: "700", color: "#ffcf6e" }).setOrigin(0.5));
+  const dropdown = createMapDropdown(scene, 510, 330, 260, maps, selectedMapId, (mapId) => {
+    selectedMapId = mapId;
+  });
+  c.add(dropdown.container);
+  c.add(createFightButton(scene, 560, 452, 140, 42, t("battle_start.cancel"), () => {
+    c.destroy();
+    onContainerChange(null);
+  }, { accent: 0x5c7185 }).container);
+  c.add(createFightButton(scene, 720, 452, 140, 42, options.confirmLabel ?? t("select.confirm_battle"), () => {
+    c.destroy();
+    onContainerChange(null);
+    onSelect(selectedMapId);
+  }, { accent }).container);
+}
+
+export function createMapDropdown(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  width: number,
+  maps: readonly MapDefinition[],
+  initialMapId: MapId,
+  onChange: (mapId: MapId) => void,
+): { readonly container: Phaser.GameObjects.Container } {
+  const height = 42;
+  const optionHeight = 38;
+  const maxOptionsHeight = 152;
+  const optionsHeight = Math.min(maxOptionsHeight, maps.length * optionHeight);
+  const maxScroll = Math.max(0, maps.length * optionHeight - optionsHeight);
+  let selectedMapId = initialMapId;
+  let open = false;
+  let scrollOffset = 0;
+  let draggingPointerId: number | undefined;
+  let lastDragY = 0;
+  let dragDistance = 0;
+  const container = scene.add.container(x, y);
+  const background = scene.add.graphics();
+  const label = scene.add.text(14, height / 2, mapName(maps, selectedMapId), {
+    fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+    fontSize: "17px",
+    fontStyle: "700",
+    color: "#f6f1e6",
+  }).setOrigin(0, 0.5);
+  const arrow = scene.add.text(width - 24, height / 2, "v", {
+    fontFamily: "Arial",
+    fontSize: "18px",
+    fontStyle: "700",
+    color: "#ffcf6e",
+  }).setOrigin(0.5);
+  const optionsLayer = scene.add.container(0, height + 6).setVisible(false).setDepth(10000);
+  const optionsContent = scene.add.container(0, 0);
+  const redrawOptions: Array<() => void> = [];
+  const hitArea = scene.add.rectangle(0, 0, width, height, 0xffffff, 0.001)
+    .setOrigin(0, 0)
+    .setInteractive({ useHandCursor: true });
+
+  const redraw = () => {
+    background.clear();
+    background.fillStyle(open ? 0x202a38 : 0x151b26, 0.98);
+    background.fillRect(0, 0, width, height);
+    background.lineStyle(2, open ? 0xffcf6e : 0x5c7185, 1);
+    background.strokeRect(0, 0, width, height);
+    arrow.setText(open ? "^" : "v");
+    optionsLayer.setVisible(open);
+    container.setDepth(open ? 10000 : 0);
+    container.parentContainer?.bringToTop(container);
+  };
+
+  const setScrollOffset = (nextOffset: number) => {
+    scrollOffset = Phaser.Math.Clamp(nextOffset, 0, maxScroll);
+    optionsContent.y = -scrollOffset;
+  };
+
+  const beginDrag = (pointer: Phaser.Input.Pointer) => {
+    if (!open || maxScroll <= 0) return;
+    draggingPointerId = pointer.id;
+    lastDragY = pointer.y;
+    dragDistance = 0;
+  };
+
+  const moveDrag = (pointer: Phaser.Input.Pointer) => {
+    if (!open || draggingPointerId !== pointer.id || !pointer.isDown) return;
+    const deltaY = lastDragY - pointer.y;
+    dragDistance += Math.abs(deltaY);
+    setScrollOffset(scrollOffset + deltaY);
+    lastDragY = pointer.y;
+    pointer.event?.preventDefault();
+  };
+
+  const endDrag = (pointer: Phaser.Input.Pointer) => {
+    if (draggingPointerId === pointer.id) draggingPointerId = undefined;
+  };
+
+  maps.forEach((map, index) => {
+    const option = scene.add.container(0, index * optionHeight);
+    const optionBg = scene.add.graphics();
+    const optionText = scene.add.text(14, optionHeight / 2, map.name, {
+      fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+      fontSize: "16px",
+      color: "#f6f1e6",
+    }).setOrigin(0, 0.5);
+    const optionHit = scene.add.rectangle(0, 0, width, optionHeight, 0xffffff, 0.001)
+      .setOrigin(0, 0)
+      .setInteractive({ useHandCursor: true });
+    const drawOption = (hovered = false) => {
+      optionBg.clear();
+      optionBg.fillStyle(hovered ? 0x263244 : 0x101820, 0.98);
+      optionBg.fillRect(0, 0, width, optionHeight);
+      optionBg.lineStyle(1, map.id === selectedMapId ? 0xffcf6e : 0x34475c, 0.95);
+      optionBg.strokeRect(0, 0, width, optionHeight);
+      optionText.setColor(map.id === selectedMapId ? "#ffcf6e" : "#f6f1e6");
+    };
+    redrawOptions.push(() => drawOption(false));
+    optionHit.on("pointerdown", (pointer: Phaser.Input.Pointer) => beginDrag(pointer));
+    optionHit.on("pointerover", () => drawOption(true));
+    optionHit.on("pointerout", () => drawOption(false));
+    optionHit.on("pointerup", (pointer: Phaser.Input.Pointer) => {
+      if (dragDistance > 6) {
+        endDrag(pointer);
+        return;
+      }
+      selectedMapId = map.id;
+      label.setText(map.name);
+      open = false;
+      onChange(map.id);
+      redrawOptions.forEach((redrawOption) => redrawOption());
+      redraw();
+    });
+    option.add([optionBg, optionText, optionHit]);
+    optionsContent.add(option);
+    drawOption(false);
+  });
+
+  const maskShape = scene.make.graphics({ x: 0, y: 0 });
+  maskShape.fillStyle(0xffffff, 1);
+  maskShape.fillRect(x, y + height + 6, width, optionsHeight);
+  optionsContent.enableFilters();
+  optionsContent.filters?.internal.addMask(maskShape);
+  const viewportHitArea = scene.add.rectangle(0, 0, width, optionsHeight, 0xffffff, 0.001)
+    .setOrigin(0, 0)
+    .setInteractive({ useHandCursor: true });
+  optionsLayer.add([viewportHitArea, optionsContent]);
+
+  hitArea.on("pointerup", () => {
+    open = !open;
+    redraw();
+  });
+
+  const onWheel = (
+    pointer: Phaser.Input.Pointer,
+    _gameObjects: unknown,
+    _deltaX: number,
+    deltaY: number,
+  ) => {
+    const bounds = new Phaser.Geom.Rectangle(x, y + height + 6, width, optionsHeight);
+    if (open && Phaser.Geom.Rectangle.Contains(bounds, pointer.x, pointer.y)) {
+      setScrollOffset(scrollOffset + deltaY);
+    }
+  };
+  scene.input.on("wheel", onWheel);
+  viewportHitArea.on("pointerdown", (pointer: Phaser.Input.Pointer) => beginDrag(pointer));
+  scene.input.on("pointermove", moveDrag);
+  scene.input.on("pointerup", endDrag);
+  scene.input.on("pointerupoutside", endDrag);
+
+  container.once(Phaser.GameObjects.Events.DESTROY, () => {
+    scene.input.off("wheel", onWheel);
+    scene.input.off("pointermove", moveDrag);
+    scene.input.off("pointerup", endDrag);
+    scene.input.off("pointerupoutside", endDrag);
+    maskShape.destroy();
+  });
+  container.add([background, label, arrow, hitArea, optionsLayer]);
+  redraw();
+  return { container };
+}
+
+function mapName(maps: readonly MapDefinition[], mapId: MapId): string {
+  return maps.find((map) => map.id === mapId)?.name ?? mapId;
+}

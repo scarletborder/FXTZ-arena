@@ -15,7 +15,7 @@
     "use_desktop_client": "请使用客户端软件", "udp_connect_ready": "使用IP直连"
   },
   "udp_connect": {
-    "title": "UDP 连接", "as_host": "作为主机", "port": "开放端口", "start_listen": "开始监听",
+    "title": "UDP 连接", "as_host": "作为主机", "port": "开放端口", "host_game": "主持游戏", "start_listen": "开始监听",
     "waiting": "等待连接中", "stop": "停止", "as_guest": "作为客机", "address": "对方地址",
     "address_tip": "范例：192.168.1.23:10800 或 example.com:10800", "connect": "连接",
     "address_required": "请输入 ip:port", "connect_clipboard": "从剪贴板地址连接", "connect_sent": "已发送 UDP 握手包",
