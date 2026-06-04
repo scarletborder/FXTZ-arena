@@ -79,11 +79,17 @@ jobs:
         env:
           BUILD_LABEL: ${{ steps.meta.outputs.build_label }}
         run: |
-          mkdir -p release/dedicated-server
-          (cd apps/frontend/dist && zip -r "../../../release/fxtz-arena-frontend-${BUILD_LABEL}.zip" .)
-          cp -r apps/dedicated-server/dist release/dedicated-server/dist
-          cp apps/dedicated-server/package.json release/dedicated-server/package.json
-          tar -czf "release/fxtz-arena-dedicated-server-${BUILD_LABEL}.tar.gz" -C release/dedicated-server .
+          mkdir -p release
+          # 查找实际生成的 zip 文件（带版本号）
+          ZIP_FILE=$(ls dist-desktop/fxtz-arena-desktop-*.zip 2>/dev/null | head -n 1)
+          if [ -f "$ZIP_FILE" ]; then
+            cp "$ZIP_FILE" "release/fxtz-arena-desktop-${BUILD_LABEL}.zip"
+            echo "Desktop artifact prepared: fxtz-arena-desktop-${BUILD_LABEL}.zip from $ZIP_FILE"
+          else
+            echo "Warning: No fxtz-arena-desktop-*.zip found in dist-desktop/"
+            ls -la dist-desktop/ || echo "dist-desktop directory not found"
+            exit 1
+          fi
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
