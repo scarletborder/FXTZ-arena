@@ -23,7 +23,7 @@ export class HomeScene extends Phaser.Scene {
       { label: t("menu.start_game"), onClick: () => this.scene.start("battle-start") },
       { label: t("menu.practice_range"), onClick: () => this.scene.start("select", { mode: "training" } satisfies SelectionData) },
       { label: t("menu.codex"), onClick: () => this.scene.start("codex") },
-      { label: t("menu.about"), onClick: () => window.open("https://blog.scarletborder.cn/2026/05/fxtz-arena.html", "_blank", "noopener,noreferrer") },
+      { label: t("menu.manual"), onClick: () => this.scene.start("manual") },
       { label: t("menu.settings"), onClick: () => this.scene.start("settings") },
     ];
 

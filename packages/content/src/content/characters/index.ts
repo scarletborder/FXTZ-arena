@@ -13,7 +13,7 @@ import "./cirno";
 import "./youmu";
 import "./ellen";
 import "./kaguya";
-import "./reisen";
+export * from "./reisen";
 
 import type { BattleCharacter } from "./base";
 import { characterLibrary } from "./character-library";
