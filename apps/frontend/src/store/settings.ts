@@ -119,8 +119,8 @@ export const uiSettings: UiSettings = {
   p2pEnabled: readBoolean(STORAGE_KEYS.p2pEnabled, true),
   stunServer: "",
   stunServers: [],
-  music: readVolume(STORAGE_KEYS.music, 100),
-  sound: readVolume(STORAGE_KEYS.sound, 100),
+  music: readVolume(STORAGE_KEYS.music, 60),
+  sound: readVolume(STORAGE_KEYS.sound, 60),
   selfAuthed: readBoolean(STORAGE_KEYS.selfAuthed, false),
 };
 uiSettings.stunServers = normalizeStunServers(readStringArray(STORAGE_KEYS.stunServers, [DEFAULT_STUN_SERVER]));
