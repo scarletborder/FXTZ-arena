@@ -333,6 +333,7 @@ function writeProjectiles(
     writeFixed(hasher, projectile.height);
     writeFixed(hasher, projectile.renderWidth ?? 0);
     writeFixed(hasher, projectile.renderHeight ?? 0);
+    hasher.writeString(projectile.laserRenderMode ?? "");
     writeFixed(hasher, projectile.anchorX ?? 0);
     writeFixed(hasher, projectile.anchorY ?? 0);
     hasher.writeNumber(projectile.visibleFrom);

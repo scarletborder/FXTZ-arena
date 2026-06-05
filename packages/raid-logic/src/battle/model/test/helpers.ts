@@ -138,6 +138,7 @@ export function testProjectile(
     previousWidth: 12,
     height: 12,
     renderWidth: undefined,
+    laserRenderMode: undefined,
     anchorX: undefined,
     anchorY: undefined,
     visibleFrom: 0,

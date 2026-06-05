@@ -39,6 +39,7 @@ export function createBulletProjectile(params: {
   readonly speedRank: "low" | "medium" | "high";
   readonly width: number;
   readonly height: number;
+  readonly laserRenderMode?: ProjectileState["laserRenderMode"];
   readonly frame: number;
   readonly homingTicks: number;
   readonly damage?: number;
@@ -63,7 +64,9 @@ export function createBulletProjectile(params: {
 }): ProjectileState {
   const speed = bulletSpeedRankToPixelsPerTick(params.speedRank);
   const spawnOffset = params.spawnOffset ?? 28;
-  const metrics = getBulletAssetMetrics(params.textureKey);
+  const metrics = params.laserRenderMode
+    ? undefined
+    : getBulletAssetMetrics(params.textureKey);
   const hitSize = normalizeBulletHitSize(
     { width: params.width, height: params.height },
     metrics,
@@ -106,6 +109,7 @@ export function createBulletProjectile(params: {
     height: physicsSize.height,
     renderWidth: renderSize?.width,
     renderHeight: renderSize?.height,
+    laserRenderMode: params.laserRenderMode,
     anchorX: undefined,
     anchorY: undefined,
     visibleFrom: params.frame,

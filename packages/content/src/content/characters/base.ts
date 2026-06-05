@@ -8,6 +8,7 @@ import type {
   EffectState,
   FighterKey,
   FighterState,
+  LaserRenderMode,
   ProjectileState,
   TrainingStats,
 } from "../battle-types";
@@ -32,6 +33,7 @@ export interface BattleBulletSpawnParams {
   readonly speedRank: "low" | "medium" | "high";
   readonly width: number;
   readonly height: number;
+  readonly laserRenderMode?: LaserRenderMode;
   readonly homingTicks: number;
   readonly damage?: number;
   readonly spawnOffset?: number;
@@ -67,6 +69,7 @@ export interface BattleLaserSpawnParams {
   readonly width?: number;
   readonly height?: number;
   readonly renderHeight?: number;
+  readonly laserRenderMode?: LaserRenderMode;
   readonly expireTicks?: number;
   readonly initialLength?: number;
   readonly maxLength?: number;

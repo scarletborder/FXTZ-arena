@@ -4,6 +4,7 @@ import type { BattlePlayerId, NeutralMobState } from "@repo/types";
 
 export type FighterKey = BattlePlayerId;
 export type ProjectileKind = "orb" | "knife" | "diamond" | "laser" | "spark";
+export type LaserRenderMode = "scaled" | "tiled";
 
 export interface ShieldState {
   readonly owner: FighterKey;
@@ -105,6 +106,7 @@ export interface ProjectileState {
   readonly height: number;
   readonly renderWidth?: number;
   readonly renderHeight?: number;
+  readonly laserRenderMode?: LaserRenderMode;
   readonly anchorX: number | undefined;
   readonly anchorY: number | undefined;
   visibleFrom: number;

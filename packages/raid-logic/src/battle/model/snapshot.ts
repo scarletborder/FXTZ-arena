@@ -278,6 +278,7 @@ function serializeProjectile(
     height: projectile.height,
     renderWidth: projectile.renderWidth,
     renderHeight: projectile.renderHeight,
+    laserRenderMode: projectile.laserRenderMode,
     anchorX: projectile.anchorX,
     anchorY: projectile.anchorY,
     ...ticker.serializeProjectileTimers(projectile),

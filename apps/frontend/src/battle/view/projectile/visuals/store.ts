@@ -89,15 +89,19 @@ export class ProjectileVisualStore {
     container.setVisible(true);
 
     const length = display.width;
-    const image = this.scene.add
-      .image(0, 0, spec.frame.texture, spec.frame.frame)
-      .setOrigin(0.5)
-      .setRotation(Math.PI / 2)
-      .setDisplaySize(
-        display.height * (spec.frame.width / spec.frame.hitWidth),
-        length,
-      );
-    container.add(image);
+    if (projectile.laserRenderMode === "tiled") {
+      addTiledLaserImages(this.scene, container, display, spec.frame);
+    } else {
+      const image = this.scene.add
+        .image(0, 0, spec.frame.texture, spec.frame.frame)
+        .setOrigin(0.5)
+        .setRotation(Math.PI / 2)
+        .setDisplaySize(
+          display.height * (spec.frame.width / spec.frame.hitWidth),
+          length,
+        );
+      container.add(image);
+    }
   }
 
   renderYoumuSlashArcs(
@@ -193,5 +197,34 @@ export class ProjectileVisualStore {
     const graphics = this.scene.add.graphics().setDepth(Depth.Projectile);
     this.youmuSlashArcs.set(key, graphics);
     return graphics;
+  }
+}
+
+function addTiledLaserImages(
+  scene: Phaser.Scene,
+  container: Phaser.GameObjects.Container,
+  display: ProjectileDisplay,
+  frame: Extract<ProjectileSpec, { readonly kind: "laser" }>["frame"],
+): void {
+  const visualThickness = display.height * (frame.width / frame.hitWidth);
+  const scale = visualThickness / frame.width;
+  const tileLength = Math.max(1, frame.height * scale);
+  const tileCount = Math.max(1, Math.ceil(display.width / tileLength));
+  const startX = -display.width / 2;
+
+  for (let index = 0; index < tileCount; index += 1) {
+    const remaining = display.width - index * tileLength;
+    const segmentLength = Math.min(tileLength, remaining);
+    const image = scene.add
+      .image(
+        startX + index * tileLength + segmentLength / 2,
+        0,
+        frame.texture,
+        frame.frame,
+      )
+      .setOrigin(0.5)
+      .setRotation(Math.PI / 2)
+      .setDisplaySize(visualThickness, segmentLength);
+    container.add(image);
   }
 }

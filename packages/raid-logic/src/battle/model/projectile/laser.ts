@@ -2,7 +2,11 @@ import { fp } from "@shaisrc/fixed-point";
 
 import { bulletSpeedRankToPixelsPerTick } from "@repo/types";
 
-import type { CharacterDefinition, FighterKey, ProjectileState } from "@repo/content";
+import type {
+  CharacterDefinition,
+  FighterKey,
+  ProjectileState,
+} from "@repo/content";
 import { fpMin } from "@repo/content";
 import { isProjectileOutOfWorld } from "./bullet";
 
@@ -19,6 +23,7 @@ export function createLaserProjectile(params: {
   readonly width?: number;
   readonly height?: number;
   readonly speedRank?: "low" | "medium" | "high";
+  readonly laserRenderMode?: ProjectileState["laserRenderMode"];
   readonly expireTicks?: number;
   readonly initialLength?: number;
   readonly maxLength?: number;
@@ -74,6 +79,7 @@ export function createLaserProjectile(params: {
     height: params.kind === "spark" ? (params.height ?? 9) : 0,
     renderWidth: undefined,
     renderHeight: params.renderHeight ?? params.height ?? 9,
+    laserRenderMode: params.laserRenderMode,
     anchorX: params.anchored ? params.x : undefined,
     anchorY: params.anchored ? params.y : undefined,
     visibleFrom: params.visibleFrom ?? params.frame,
