@@ -1,0 +1,48 @@
+import type { FighterKey, LaserRenderMode, ProjectileKind } from "./common";
+import type { CharacterDefinition } from "../characters/types";
+
+export interface ProjectileState {
+  readonly id: number;
+  readonly kind: ProjectileKind;
+  readonly owner: FighterKey;
+  readonly sourceCharacterId?: CharacterDefinition["id"];
+  readonly textureKey?: string;
+  x: number;
+  y: number;
+  previousX: number;
+  previousY: number;
+  vx: number;
+  vy: number;
+  width: number;
+  previousWidth: number;
+  readonly height: number;
+  readonly renderWidth?: number;
+  readonly renderHeight?: number;
+  readonly laserRenderMode?: LaserRenderMode;
+  readonly anchorX: number | undefined;
+  readonly anchorY: number | undefined;
+  visibleFrom: number;
+  expireAt: number | undefined;
+  homingStartAt: number;
+  homingUntil: number;
+  pausedUntil: number;
+  retargetAt: number | undefined;
+  retargetSpeed: number | undefined;
+  retargetX: number | undefined;
+  retargetY: number | undefined;
+  retargetAimOwner: FighterKey | undefined;
+  widthGrowthPerTick: number;
+  maxWidth: number | undefined;
+  readonly damage: number;
+  angle: number;
+  readonly couldClear: boolean;
+  readonly clearsProjectiles: boolean;
+  readonly piercesTargets: boolean;
+  polarOriginX: number | undefined;
+  polarOriginY: number | undefined;
+  polarRadius: number | undefined;
+  polarAngle: number | undefined;
+  polarRadialSpeed: number | undefined;
+  polarAngularSpeed: number | undefined;
+  polarFollowOwner: FighterKey | undefined;
+}
