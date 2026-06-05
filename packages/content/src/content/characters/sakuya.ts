@@ -19,7 +19,6 @@ const KNIFE_HIT_SIZE = 20;
 const NORMALSHOOT_DAMAGE = 20;
 const BOMBSHOT_DAMAGE = 150;
 
-@Vanilla.RegisterCharacter("sakuya")
 export class SakuyaBattleCharacter extends BattleCharacter {
   readonly id = "sakuya" as CharacterDefinition["id"];
   readonly name = "咲夜";
@@ -37,7 +36,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
   readonly description = "· 过劳996女仆\n· 擅长近中距离压迫的突击性机体\n· bomb可让时间停止";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/sakuya/portrait.png",
-    attackPreviewAsset: "assets/characters/sakuya/attack-preview.png",
+    attackPreviewAsset: "assets/characters/sakuya/attack-preview.webp",
     combatAsset: "assets/characters/sakuya/combat.png",
   };
   readonly normalAttackId = "sakuya_parallel_knives";
@@ -249,3 +248,5 @@ export class SakuyaBattleCharacter extends BattleCharacter {
     }
   }
 }
+
+Vanilla.registerCharacter("sakuya")(SakuyaBattleCharacter);

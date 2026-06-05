@@ -6,6 +6,7 @@ import { installMenuAudioUnlock, type SelectionData, type SceneKey } from "./sha
 import { showPublicServerConnectivityDialog } from "./public-server-connectivity-dialog";
 import { setSelfAuthed, uiSettings } from "../store/settings";
 import { showLanguageDialog } from "./language-dialog";
+import { installResourcePackFromCache, queueResourcePack } from "../utils/resource-pack";
 
 export class HomeScene extends Phaser.Scene {
   private publicServerConnectivityDialog: Phaser.GameObjects.Container | undefined;
@@ -14,7 +15,12 @@ export class HomeScene extends Phaser.Scene {
     super("home" satisfies SceneKey);
   }
 
+  preload(): void {
+    queueResourcePack(this);
+  }
+
   create(): void {
+    installResourcePackFromCache(this);
     installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "FXTZ ARENA", "LOCAL M5 BUILD");
     drawTitleBlock(this, "FXTZ ARENA", t("menu.subtitle"));

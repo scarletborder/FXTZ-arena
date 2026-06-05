@@ -1,10 +1,8 @@
 import type { AbilityCardDefinition } from "./types";
 
-import type { FighterState, ShieldState } from "../battle-types";
-import { BattleAbilityCard, type BattleCardContext, type BattleHitContext, type BattleInitializeContext } from "./base";
+import { BattleAbilityCard, type BattleInitializeContext } from "./base";
 import { Vanilla } from "../decorators";
 
-@Vanilla.RegisterCard("extra_life")
 export class ExtraLifeBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "extra_life";
   readonly name = "生命卡牌";
@@ -15,10 +13,12 @@ export class ExtraLifeBattleCard extends BattleAbilityCard {
   readonly description = "初始命数增加1";
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/extra-life/icon.png",
-    previewAsset: "assets/ability-cards/extra-life/preview.png",
+    previewAsset: "assets/ability-cards/extra-life/preview.webp",
   };
 
   onInitialize(ctx: BattleInitializeContext): void {
     ctx.self.lives += 1;
   }
 }
+
+Vanilla.registerCard("extra_life")(ExtraLifeBattleCard);

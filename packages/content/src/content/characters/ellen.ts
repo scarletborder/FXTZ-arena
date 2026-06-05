@@ -40,7 +40,6 @@ const BOMB_SHOT_SPACING = fp.div(FP_TWO_PI, fp.fromInt(BOMB_SHOT_COUNT));
 const BOMB_BULLET_EXPIRE_TICKS = secondsToTicks(4);
 const SIDE_RETARGET_SPEED = bulletSpeedRankToPixelsPerTick("high");
 
-@Vanilla.RegisterCharacter("ellen")
 export class EllenBattleCharacter extends BattleCharacter {
   readonly id = "ellen" as CharacterDefinition["id"];
   readonly name = "Ellen";
@@ -58,8 +57,8 @@ export class EllenBattleCharacter extends BattleCharacter {
   readonly description =
     "· 沉入久远之爱的魔女\n· 倾斜大量高速狙击弹的广义上狙击型机体\n· bomb展开高速旋转弹幕\n· 普通射击逐个装填";
   readonly gallery: CharacterGalleryAssets = {
-    portraitAsset: "assets/characters/ellen/combat.png",
-    attackPreviewAsset: "assets/characters/ellen/combat.png",
+    portraitAsset: "assets/characters/ellen/portrait.png",
+    attackPreviewAsset: "assets/characters/ellen/attack-preview.webp",
     combatAsset: "assets/characters/ellen/combat.png",
   };
   readonly normalAttackId = "ellen_delayed_snipe";
@@ -284,6 +283,8 @@ export class EllenBattleCharacter extends BattleCharacter {
     });
   }
 }
+
+Vanilla.registerCharacter("ellen")(EllenBattleCharacter);
 
 function degreesToRadians(degrees: number): number {
   return fp.toFloat(fp.mul(FP_DEGREES_TO_RADIANS, fp.fromInt(degrees)));

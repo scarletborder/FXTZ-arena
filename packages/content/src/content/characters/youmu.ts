@@ -39,7 +39,6 @@ const BOMB_DASH_DISTANCE = YOUMU_BOMB_DASH_DISTANCE;
 const BOMB_SHOT_COUNT = 6;
 const BOMB_SHOT_INTERVAL = 5;
 
-@Vanilla.RegisterCharacter("youmu")
 export class YoumuBattleCharacter extends BattleCharacter {
   readonly id = "youmu" as CharacterDefinition["id"];
   readonly name = "魂魄妖梦";
@@ -58,7 +57,7 @@ export class YoumuBattleCharacter extends BattleCharacter {
     "· 无敌的半灵剑客\n· 高速斩击具有高伤害和清除弹幕能力\n· bomb可进行高速冲刺";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/youmu/portrait.png",
-    attackPreviewAsset: "assets/characters/youmu/attack-preview.png",
+    attackPreviewAsset: "assets/characters/youmu/attack-preview.webp",
     combatAsset: "assets/characters/youmu/combat.png",
   };
   readonly normalAttackId = "youmu_slash";
@@ -275,6 +274,8 @@ export class YoumuBattleCharacter extends BattleCharacter {
     });
   }
 }
+
+Vanilla.registerCharacter("youmu")(YoumuBattleCharacter);
 
 function dashDestination(
   fighter: FighterState,

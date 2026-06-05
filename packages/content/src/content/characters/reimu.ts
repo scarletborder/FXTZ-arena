@@ -25,7 +25,6 @@ const NORMALSHOOT_TARGET_DAMAGE = 20;
 const NORMALSHOOT_HOMING_DAMAGE = 10;
 const BOMB_ORB_DAMAGE = 40;
 
-@Vanilla.RegisterCharacter("reimu")
 export class ReimuBattleCharacter extends BattleCharacter {
   readonly id = "reimu" as CharacterDefinition["id"];
   readonly name = "博丽灵梦";
@@ -35,7 +34,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
     "· 传统的乐园巫女\n· 重视防御的平衡型角色，追踪性弹幕\n· bomb释放大玉消除沿途弹幕\n· 普通射击逐个装填";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/reimu/portrait.png",
-    attackPreviewAsset: "assets/characters/reimu/attack-preview.png",
+    attackPreviewAsset: "assets/characters/reimu/attack-preview.webp",
     combatAsset: "assets/characters/reimu/combat.png",
   };
   readonly normalAttackId = "reimu_homing_shot";
@@ -218,3 +217,5 @@ export class ReimuBattleCharacter extends BattleCharacter {
     });
   }
 }
+
+Vanilla.registerCharacter("reimu")(ReimuBattleCharacter);

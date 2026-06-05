@@ -16,7 +16,6 @@ const REAR_BEAM_DAMAGE = 1; // 乘以31
 const NORMAL_SHOT_LENGTH = hitCircleUnits(16);
 const NORMAL_SHOT_THICKNESS = hitCircleUnits(3);
 
-@Vanilla.RegisterCharacter("marisa")
 export class MarisaBattleCharacter extends BattleCharacter {
   readonly id = "marisa" as CharacterDefinition["id"];
   readonly name = "魔理沙";
@@ -35,7 +34,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
     "· 路边的普通魔法使\n· 高速激光的狙击性机体，弹幕具有高额伤害\n· bomb可发射超大型魔炮";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/marisa/portrait.png",
-    attackPreviewAsset: "assets/characters/marisa/attack-preview.png",
+    attackPreviewAsset: "assets/characters/marisa/attack-preview.webp",
     combatAsset: "assets/characters/marisa/combat.png",
   };
   readonly normalAttackId = "marisa_laser";
@@ -266,3 +265,5 @@ export class MarisaBattleCharacter extends BattleCharacter {
     });
   }
 }
+
+Vanilla.registerCharacter("marisa")(MarisaBattleCharacter);

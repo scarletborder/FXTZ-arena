@@ -4,7 +4,6 @@ import type { FighterState } from "../battle-types";
 import { BattleAbilityCard } from "./base";
 import { Vanilla } from "../decorators";
 
-@Vanilla.RegisterCard("extension")
 export class ExtensionBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "extension";
   readonly name = "河城荷包";
@@ -15,10 +14,12 @@ export class ExtensionBattleCard extends BattleAbilityCard {
   readonly description = "道具吸收范围小范围增加";
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/extension/icon.png",
-    previewAsset: "assets/ability-cards/extension/preview.png",
+    previewAsset: "assets/ability-cards/extension/preview.webp",
   };
 
   getPointCollectRadiusBonus(_fighter: FighterState): number {
     return 32;
   }
 }
+
+Vanilla.registerCard("extension")(ExtensionBattleCard);

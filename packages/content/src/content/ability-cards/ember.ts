@@ -5,7 +5,6 @@ import type { FighterState } from "../battle-types";
 import { BattleAbilityCard, type BattleCardContext, type BattleHitContext, type BattleInitializeContext } from "./base";
 import { Vanilla } from "../decorators";
 
-@Vanilla.RegisterCard("ember")
 export class EmberBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "ember";
   readonly name = "符咒卡牌";
@@ -16,7 +15,7 @@ export class EmberBattleCard extends BattleAbilityCard {
   readonly description = "默认 bomb 变为 4，死亡复活也恢复到 4。";
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/ember/icon.png",
-    previewAsset: "assets/ability-cards/ember/preview.png",
+    previewAsset: "assets/ability-cards/ember/preview.webp",
   };
 
   onInitialize(ctx: BattleInitializeContext): void {
@@ -27,3 +26,5 @@ export class EmberBattleCard extends BattleAbilityCard {
     ctx.resolution.defaultBombs = DEFAULT_BOMBS + 1;
   }
 }
+
+Vanilla.registerCard("ember")(EmberBattleCard);

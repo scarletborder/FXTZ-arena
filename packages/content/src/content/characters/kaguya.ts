@@ -49,7 +49,6 @@ export const KAGUYA_BOMB_WARNING_HALF_WIDTH = 3;
 const FULL_CIRCLE = Math.PI * 2;
 const EQUILATERAL_CIRCUMRADIUS_DIVISOR = Math.sqrt(3);
 
-@Vanilla.RegisterCharacter("kaguya")
 export class KaguyaBattleCharacter extends BattleCharacter {
   readonly id = "kaguya" as CharacterDefinition["id"];
   readonly name = "kaguya";
@@ -67,8 +66,8 @@ export class KaguyaBattleCharacter extends BattleCharacter {
   readonly description =
     "· 永远与须臾的罪人\n此角色由“人鱼乳业”设计";
   readonly gallery: CharacterGalleryAssets = {
-    portraitAsset: "assets/characters/kaguya/combat.png",
-    attackPreviewAsset: "assets/characters/kaguya/combat.png",
+    portraitAsset: "assets/characters/kaguya/portrait.png",
+    attackPreviewAsset: "assets/characters/kaguya/attack-preview.webp",
     combatAsset: "assets/characters/kaguya/combat.png",
   };
   readonly normalAttackId = "kaguya_orbit_snipe";
@@ -206,6 +205,8 @@ export class KaguyaBattleCharacter extends BattleCharacter {
     }
   }
 }
+
+Vanilla.registerCharacter("kaguya")(KaguyaBattleCharacter);
 
 interface Point {
   readonly x: number;

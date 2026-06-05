@@ -46,7 +46,6 @@ export const REISEN_SHIELD_MOVE_SPEED = "low" as const;
 
 const FULL_CIRCLE_DEGREES = 360;
 
-@Vanilla.RegisterCharacter("reisen")
 export class ReisenBattleCharacter extends BattleCharacter {
   readonly id = "reisen" as CharacterDefinition["id"];
   readonly name = "铃仙";
@@ -64,8 +63,8 @@ export class ReisenBattleCharacter extends BattleCharacter {
   readonly description =
     "· 狂气之月兔\n· 擅长中距离压制的突击角色\n· bomb展开消弹圈并获得两层护盾";
   readonly gallery: CharacterGalleryAssets = {
-    portraitAsset: "assets/characters/reisen/combat.png",
-    attackPreviewAsset: "assets/characters/reisen/combat.png",
+    portraitAsset: "assets/characters/reisen/portrait.png",
+    attackPreviewAsset: "assets/characters/reisen/attack-preview.webp",
     combatAsset: "assets/characters/reisen/combat.png",
   };
   readonly normalAttackId = "reisen_parallel_lunatic_shot";
@@ -257,6 +256,8 @@ export class ReisenBattleCharacter extends BattleCharacter {
     });
   }
 }
+
+Vanilla.registerCharacter("reisen")(ReisenBattleCharacter);
 
 function degreesToRadians(degrees: number): number {
   return (degrees * Math.PI) / 180;

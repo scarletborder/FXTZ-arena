@@ -4,13 +4,13 @@ import type { BattleCharacter } from "./characters/base";
 import type { BattleAbilityCard } from "./ability-cards/base";
 
 export const Vanilla = {
-  RegisterCharacter(id: string) {
-    return (target: new () => BattleCharacter, _context: any): void => {
+  registerCharacter(id: string) {
+    return (target: new () => BattleCharacter): void => {
       characterLibrary.register(id, target);
     };
   },
-  RegisterCard(id: string) {
-    return (target: new () => BattleAbilityCard, _context: any): void => {
+  registerCard(id: string) {
+    return (target: new () => BattleAbilityCard): void => {
       cardLibrary.register(id, target);
     };
   },

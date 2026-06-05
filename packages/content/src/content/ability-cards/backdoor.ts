@@ -5,7 +5,6 @@ import type { FighterState, ShieldState } from "../battle-types";
 import { BattleAbilityCard, type BattleCardContext, type BattleHitContext, type BattleInitializeContext } from "./base";
 import { Vanilla } from "../decorators";
 
-@Vanilla.RegisterCard("backdoor")
 export class BackdoorBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "backdoor";
   readonly name = "backdoor";
@@ -16,7 +15,7 @@ export class BackdoorBattleCard extends BattleAbilityCard {
   readonly description = "角色后方追加后门，消去背后的敌弹";
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/backdoor/icon.png",
-    previewAsset: "assets/ability-cards/backdoor/preview.png",
+    previewAsset: "assets/ability-cards/backdoor/preview.webp",
   };
 
   collectShields(fighter: FighterState): ShieldState[] {
@@ -37,3 +36,5 @@ export class BackdoorBattleCard extends BattleAbilityCard {
     ];
   }
 }
+
+Vanilla.registerCard("backdoor")(BackdoorBattleCard);

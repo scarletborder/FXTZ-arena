@@ -18,7 +18,6 @@ export function findServerCertificateFingerprint(
 }
 
 export function certificateFingerprintToArrayBuffer(fingerprint: string): ArrayBuffer {
-  debugger;
   const hex = fingerprint.replace(/[\s:]/g, "").toLowerCase();
   if (!/^[0-9a-f]+$/.test(hex) || hex.length % 2 !== 0) {
     throw new Error("Certificate fingerprint must be an even-length hex string.");

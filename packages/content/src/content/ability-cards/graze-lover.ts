@@ -4,7 +4,6 @@ import type { FighterState } from "../battle-types";
 import { BattleAbilityCard } from "./base";
 import { Vanilla } from "../decorators";
 
-@Vanilla.RegisterCard("graze_lover")
 export class GrazeLoverBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "graze_lover";
   readonly name = "擦弹爱好者";
@@ -15,10 +14,12 @@ export class GrazeLoverBattleCard extends BattleAbilityCard {
   readonly description = "擦弹判定范围提升";
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/graze_lover/icon.png",
-    previewAsset: "assets/ability-cards/graze_lover/preview.png",
+    previewAsset: "assets/ability-cards/graze_lover/preview.webp",
   };
 
   getGrazeRadiusMultiplier(_fighter: FighterState): number {
     return 1.2;
   }
 }
+
+Vanilla.registerCard("graze_lover")(GrazeLoverBattleCard);

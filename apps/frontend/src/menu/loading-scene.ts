@@ -3,11 +3,12 @@ import { createRaidLogicRuntime } from "@repo/raid-logic";
 import { t } from "@repo/i18n";
 import type { AbilityCardId, CharacterId, ServerMessage } from "@repo/types";
 
-import { queueBattleAssets } from "../battle/assets";
+import { loadPortraitAssets, queueBattleAssets } from "../battle/assets";
 import type { FighterLoadout } from "../battle/loadout";
 import { P2pConnection, type PeerConnection, type P2pStatus } from "../network/p2p";
 import { connectionManager, getCardById, getCharacterById, type LoadingData, type SceneKey } from "./shared";
 import { uiSettings } from "../store/settings";
+import { createFittedImage } from "../utils/image-fit";
 import {
   bodyStyle,
   drawAngledPanel,
@@ -32,6 +33,7 @@ export class LoadingScene extends Phaser.Scene {
   private countdownUpdate: (() => void) | undefined;
   private connectionBadge: Phaser.GameObjects.Container | undefined;
   private connectionStatusText: Phaser.GameObjects.Text | undefined;
+  private loadoutShowcase: Phaser.GameObjects.GameObject[] | undefined;
   private onlineReady = false;
   private p2pReady = false;
   private peerLoadingReady = false;
@@ -56,11 +58,11 @@ export class LoadingScene extends Phaser.Scene {
     this.runtimeReady = false;
     this.countdownText = undefined;
     this.countdownUpdate = undefined;
+    this.loadoutShowcase = undefined;
   }
 
   preload(): void {
     drawFightingBackdrop(this, "LOADING", "READY");
-    this.createLoadoutShowcase();
     this.title = this.add.text(434, 278, t("loading.title"), headingStyle(34));
     this.label = this.add.text(
       444,
@@ -70,6 +72,9 @@ export class LoadingScene extends Phaser.Scene {
     );
     this.bar = this.add.graphics();
     this.renderProgress();
+    loadPortraitAssets(this, () => {
+      this.createLoadoutShowcase();
+    });
 
     this.load.on("progress", (value: number) => {
       this.progress = value;
@@ -77,7 +82,6 @@ export class LoadingScene extends Phaser.Scene {
     });
 
     this.load.once("complete", () => {
-      if (!this.scene.isActive()) return;
       this.progress = 1;
       this.renderProgress();
       this.label?.setText(
@@ -85,6 +89,7 @@ export class LoadingScene extends Phaser.Scene {
           ? t("loading.resources_ready_waiting")
           : t("loading.resources_ready"),
       );
+      this.tryGoToBattle();
     });
 
     const queued = queueBattleAssets(this);
@@ -96,6 +101,7 @@ export class LoadingScene extends Phaser.Scene {
           ? t("loading.resources_ready_waiting")
           : t("loading.resources_ready"),
       );
+      this.tryGoToBattle();
     }
   }
 
@@ -374,8 +380,12 @@ export class LoadingScene extends Phaser.Scene {
     const slots = this.resolveLoadoutSlots();
     if (!slots) return;
 
-    this.drawLoadoutPanel(24, 108, 192, 504, slots.left.loadout, slots.left.name, "#34d399", 0x34d399);
-    this.drawLoadoutPanel(1064, 108, 192, 504, slots.right.loadout, slots.right.name, "#ff5c66", 0xe33d44);
+    this.loadoutShowcase?.forEach((object) => object.destroy());
+    const objects: Phaser.GameObjects.GameObject[] = [];
+    this.loadoutShowcase = objects;
+
+    this.drawLoadoutPanel(objects, 24, 108, 192, 504, slots.left.loadout, slots.left.name, "#34d399", 0x34d399);
+    this.drawLoadoutPanel(objects, 1064, 108, 192, 504, slots.right.loadout, slots.right.name, "#ff5c66", 0xe33d44);
   }
 
   private resolveLoadoutSlots(): {
@@ -402,6 +412,7 @@ export class LoadingScene extends Phaser.Scene {
   }
 
   private drawLoadoutPanel(
+    objects: Phaser.GameObjects.GameObject[],
     x: number,
     y: number,
     width: number,
@@ -413,71 +424,66 @@ export class LoadingScene extends Phaser.Scene {
   ): void {
     const panel = this.add.graphics();
     drawAngledPanel(panel, x, y, width, height, 0x0b1118, accent, 0.88);
-    this.add.text(x + width / 2, y + 20, compactName(playerName, 12), {
+    panel.setDepth(12);
+    objects.push(panel);
+    const name = this.add.text(x + width / 2, y + 20, compactName(playerName, 12), {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: "16px",
       fontStyle: "900",
       color: "#f6f1e6",
       backgroundColor: "#101820cc",
       padding: { x: 8, y: 3 },
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(22);
+    objects.push(name);
 
-    this.drawCharacterPlaceholder(
+    this.drawCharacterPreview(
+      objects,
       x + 104,
       y + 90,
       72,
       126,
       loadout.alternateCharacterId as CharacterId,
-      0.62,
       false,
     );
-    this.drawCharacterPlaceholder(
+    this.drawCharacterPreview(
+      objects,
       x + 30,
       y + 124,
       132,
       230,
       loadout.primaryCharacterId as CharacterId,
-      1,
       true,
     );
-    this.drawAbilityCards(x + 22, y + height - 142, width - 44, loadout, accentColor);
+    this.drawAbilityCards(objects, x + 22, y + height - 142, width - 44, loadout, accentColor);
   }
 
-  private drawCharacterPlaceholder(
+  private drawCharacterPreview(
+    objects: Phaser.GameObjects.GameObject[],
     x: number,
     y: number,
     width: number,
     height: number,
     characterId: CharacterId,
-    alpha: number,
     primary: boolean,
   ): void {
     const character = getCharacterById(characterId);
-    const color = colorFromId(character.id);
     const graphics = this.add.graphics();
-    graphics
-      .fillStyle(color, alpha)
-      .fillRect(x, y, width, height)
-      .lineStyle(primary ? 4 : 2, 0xf6f1e6, primary ? 0.95 : 0.65)
-      .strokeRect(x, y, width, height);
-    graphics
-      .fillStyle(0x101820, 0.72)
-      .fillTriangle(x + width * 0.18, y + height * 0.78, x + width * 0.84, y + height * 0.22, x + width * 0.9, y + height * 0.86)
-      .fillStyle(0xf6f1e6, primary ? 0.92 : 0.58)
-      .fillCircle(x + width * 0.5, y + height * 0.34, primary ? 20 : 13);
 
-    const name = this.add.text(x + width / 2, y + height - (primary ? 28 : 18), compactName(character.name, primary ? 8 : 5), {
-      fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
-      fontSize: primary ? "18px" : "12px",
-      fontStyle: "900",
-      color: "#ffffff",
-      backgroundColor: "#101820bb",
-      padding: { x: primary ? 7 : 4, y: primary ? 3 : 2 },
-    }).setOrigin(0.5);
-    name.setFixedSize(Math.max(48, width - 14), primary ? 28 : 20).setAlign("center");
+    graphics.setDepth(primary ? 16 : 13);
+    objects.push(graphics);
+
+    const imageKey = `character-portrait-${character.id}`;
+    if (this.textures.exists(imageKey)) {
+      const image = this.add.image(x + width / 2, y + height / 2, imageKey).setOrigin(0.5);
+      fitTextureFrameToBounds(image, width, height);
+      image.setAlpha(primary ? 1 : 0.78);
+      image.setDepth(primary ? 17 : 14);
+      objects.push(image);
+    }
   }
 
   private drawAbilityCards(
+    objects: Phaser.GameObjects.GameObject[],
     x: number,
     y: number,
     width: number,
@@ -508,15 +514,25 @@ export class LoadingScene extends Phaser.Scene {
         .lineStyle(2, 0x101820, 0.72)
         .lineBetween(cx + 8, cy + 12, cx + cardWidth - 8, cy + cardHeight - 12)
         .lineBetween(cx + cardWidth - 10, cy + 14, cx + 10, cy + cardHeight - 10);
+      graphics.setDepth(19);
+      objects.push(graphics);
 
-      this.add.text(cx + cardWidth / 2, cy + cardHeight - 11, compactName(card.name, 4), {
+      const previewKey = `card-preview-${card.id}`;
+      if (this.textures.exists(previewKey)) {
+        const preview = createFittedImage(this, cx + cardWidth / 2, cy + 24, previewKey, cardWidth - 10, cardHeight - 28, "contain");
+        preview.setDepth(20);
+        objects.push(preview);
+      }
+
+      const label = this.add.text(cx + cardWidth / 2, cy + cardHeight - 11, compactName(card.name, 4), {
         fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
         fontSize: "10px",
         fontStyle: "700",
         color: accentColor,
         backgroundColor: "#101820cc",
         padding: { x: 3, y: 1 },
-      }).setOrigin(0.5);
+      }).setOrigin(0.5).setDepth(21);
+      objects.push(label);
     }
   }
 }
@@ -534,15 +550,19 @@ function loadoutCardIds(loadout: DisplayFighterLoadout): readonly AbilityCardId[
   return [...ids];
 }
 
-function colorFromId(id: string): number {
-  let hash = 0;
-  for (let i = 0; i < id.length; i += 1) {
-    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-  }
-  return Phaser.Display.Color.HSVColorWheel()[hash % 360]?.color ?? 0xe33d44;
-}
-
 function compactName(name: string, maxLength: number): string {
   const chars = Array.from(name);
   return chars.length <= maxLength ? name : `${chars.slice(0, Math.max(1, maxLength - 3)).join("")}...`;
+}
+
+function fitTextureFrameToBounds(
+  image: Phaser.GameObjects.Image,
+  width: number,
+  height: number,
+): void {
+  const frame = image.frame;
+  const sourceWidth = frame.realWidth || frame.width || image.width || 1;
+  const sourceHeight = frame.realHeight || frame.height || image.height || 1;
+  const scale = Math.min(width / sourceWidth, height / sourceHeight);
+  image.setScale(scale);
 }

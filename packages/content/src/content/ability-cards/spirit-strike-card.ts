@@ -5,7 +5,6 @@ import { BattleAbilityCard, type BattleCardContext, type BattleHitContext, type 
 import { Vanilla } from "../decorators";
 import { hitCircleUnits } from "../characters/base";
 
-@Vanilla.RegisterCard("spirit_strike_card")
 export class SpiritStrikeBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "spirit_strike_card";
   readonly name = "灵击符";
@@ -16,7 +15,7 @@ export class SpiritStrikeBattleCard extends BattleAbilityCard {
   readonly description = "清除周围小范围的弹幕";
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/spirit-strike-card/icon.png",
-    previewAsset: "assets/ability-cards/spirit-strike-card/preview.png",
+    previewAsset: "assets/ability-cards/spirit-strike-card/preview.webp",
   };
 
   onUse(ctx: BattleCardContext): void {
@@ -25,3 +24,5 @@ export class SpiritStrikeBattleCard extends BattleAbilityCard {
     ctx.spawnClearRing({ x: ctx.self.x, y: ctx.self.y, radius, tint: 0x7ee39d, duration: 28 });
   }
 }
+
+Vanilla.registerCard("spirit_strike_card")(SpiritStrikeBattleCard);

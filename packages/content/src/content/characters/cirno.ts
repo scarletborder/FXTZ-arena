@@ -24,7 +24,6 @@ const BOMB_BULLET_DAMAGE = 10;
 const NORMAL_BULLET_DAMAGE = 10;
 const NORMAL_BULLET_SIDE_DAMAGE = 20;
 
-@Vanilla.RegisterCharacter("cirno")
 export class CirnoBattleCharacter extends BattleCharacter {
   readonly id = "cirno" as CharacterDefinition["id"];
   readonly name = "Cirno";
@@ -46,7 +45,7 @@ export class CirnoBattleCharacter extends BattleCharacter {
     "· 骄阳下的冰块妖精\n· 可瞬间发射大量侵略性弹幕的压制性机体\n· Bomb可将敌弹冻结为己方弹幕\n· Point释放Bomb花费较低";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/cirno/portrait.png",
-    attackPreviewAsset: "assets/characters/cirno/attack-preview.png",
+    attackPreviewAsset: "assets/characters/cirno/attack-preview.webp",
     combatAsset: "assets/characters/cirno/combat.png",
   };
   readonly normalAttackId = "cirno_ice_crystals";
@@ -206,3 +205,5 @@ export class CirnoBattleCharacter extends BattleCharacter {
     });
   }
 }
+
+Vanilla.registerCharacter("cirno")(CirnoBattleCharacter);
