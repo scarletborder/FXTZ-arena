@@ -26,6 +26,7 @@ export class LoadingScene extends Phaser.Scene {
   private progress = 0;
   private loadingData!: LoadingData;
   private bar: Phaser.GameObjects.Graphics | undefined;
+  private title: Phaser.GameObjects.Text | undefined;
   private label: Phaser.GameObjects.Text | undefined;
   private countdownText: Phaser.GameObjects.Text | undefined;
   private countdownUpdate: (() => void) | undefined;
@@ -60,7 +61,7 @@ export class LoadingScene extends Phaser.Scene {
   preload(): void {
     drawFightingBackdrop(this, "LOADING", "READY");
     this.createLoadoutShowcase();
-    this.add.text(434, 278, t("loading.title"), headingStyle(34));
+    this.title = this.add.text(434, 278, t("loading.title"), headingStyle(34));
     this.label = this.add.text(
       444,
       342,
@@ -252,8 +253,10 @@ export class LoadingScene extends Phaser.Scene {
   private beginReadyCountdown(): void {
     this.bar?.clear();
     this.bar?.setVisible(false);
+    this.title?.destroy();
+    this.title = undefined;
     this.label?.setOrigin(0.5)
-      .setPosition(640, 360)
+      .setPosition(640, 342)
       ?.setText(t("loading.get_ready"))
       .setStyle({
         ...bodyStyle("#ffffff", 24),
