@@ -1,0 +1,8 @@
+{
+  "bgm_hakurei-shrine": {
+    "file": "bgm/th05_H_16.ogg",
+    "introStart": 0,
+    "loopStart": 32.868,
+    "loopEnd": 158.301
+  }
+}

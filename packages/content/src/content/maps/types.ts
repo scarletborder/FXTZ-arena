@@ -6,6 +6,7 @@ export interface MapDefinition {
   readonly width: number;
   readonly height: number;
   readonly background: MapBackgroundDefinition;
+  readonly bgmKey?: string;
   readonly spawnPoints: readonly SpawnPointDefinition[];
   readonly mobSpawnerId?: string;
 }

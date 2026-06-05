@@ -20,6 +20,7 @@ const HAKUREI_SHRINE: MapDefinition = {
     textureKey: "map-bg-hakurei-shrine",
     assetPath: "assets/bg/arena_standard.jpg",
   },
+  bgmKey: "bgm_hakurei-shrine",
   spawnPoints: STANDARD_SPAWN_POINTS,
   mobSpawnerId: "default-a",
 };

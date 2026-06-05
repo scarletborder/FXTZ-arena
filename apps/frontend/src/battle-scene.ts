@@ -31,8 +31,9 @@ import {
 import { BattleView } from "./battle/view";
 import { Depth } from "./utils/depth";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
+import BgmCmd from "./commands/BgmCmd";
 import { connectionManager } from "./menu/shared";
-import { installBattleAudioBridge, type BattleAudioBridge } from "./sound";
+import { installBattleAudioBridge, installBattleBgmBridge, type BattleAudioBridge, type BattleBgmBridge } from "./sound";
 import { CombatSyncManager } from "./network/combat";
 import { P2pConnection } from "./network/p2p";
 import { uiSettings } from "./store/settings";
@@ -93,6 +94,7 @@ export class BattleScene extends Phaser.Scene {
   private rollbackVisualFrames = 0;
   private readonly audioDirector = new BattleAudioDirector();
   private battleAudioBridge: BattleAudioBridge | undefined;
+  private battleBgmBridge: BattleBgmBridge | undefined;
 
   constructor() {
     super("battle");
@@ -115,6 +117,8 @@ export class BattleScene extends Phaser.Scene {
     }
     this.applyBattleLayout(createBattleLayout(), true);
     this.battleAudioBridge = installBattleAudioBridge(this);
+    this.battleBgmBridge = installBattleBgmBridge(this);
+    BgmCmd.PlayMap(data.mapId ?? data.battleConfig?.mapId);
     this.input.setDefaultCursor("none");
     this.input.mouse?.disableContextMenu();
     this.keybinds = createBattleKeybinds(this);
@@ -450,6 +454,8 @@ export class BattleScene extends Phaser.Scene {
     );
     this.battleAudioBridge?.dispose();
     this.battleAudioBridge = undefined;
+    this.battleBgmBridge?.dispose();
+    this.battleBgmBridge = undefined;
     this.pendingLayoutRefresh?.remove(false);
     this.pendingLayoutRefresh = undefined;
     if (this.previousScaleAutoCenter !== undefined) {

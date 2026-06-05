@@ -10,6 +10,7 @@ import { connectionManager, getCardById, getCharacterById, type LoadingData, typ
 import { uiSettings } from "../store/settings";
 import { createFittedImage } from "../utils/image-fit";
 import { abilityCardIconTextureKey } from "../ability-card-assets";
+import BgmCmd from "../commands/BgmCmd";
 import {
   bodyStyle,
   drawAngledPanel,
@@ -42,6 +43,7 @@ export class LoadingScene extends Phaser.Scene {
   private transitioning = false;
   private loadingDoneSent = false;
   private runtimeReady = false;
+  private assetsReady = false;
 
   constructor() {
     super("loading" satisfies SceneKey);
@@ -57,6 +59,7 @@ export class LoadingScene extends Phaser.Scene {
     this.transitioning = false;
     this.loadingDoneSent = false;
     this.runtimeReady = false;
+    this.assetsReady = false;
     this.countdownText = undefined;
     this.countdownUpdate = undefined;
     this.loadoutShowcase = undefined;
@@ -82,29 +85,13 @@ export class LoadingScene extends Phaser.Scene {
       this.renderProgress();
     });
 
-    this.load.once("complete", () => {
-      this.progress = 1;
-      this.renderProgress();
-      this.createLoadoutShowcase();
-      this.label?.setText(
-        this.loadingData.mode === "online"
-          ? t("loading.resources_ready_waiting")
-          : t("loading.resources_ready"),
-      );
-      this.tryGoToBattle();
-    });
+    const handleComplete = (): void => this.handleAssetLoadComplete();
+    this.load.once("complete", handleComplete);
 
     const queued = queueBattleAssets(this);
     if (queued === 0) {
-      this.progress = 1;
-      this.renderProgress();
-      this.createLoadoutShowcase();
-      this.label?.setText(
-        this.loadingData.mode === "online"
-          ? t("loading.resources_ready_waiting")
-          : t("loading.resources_ready"),
-      );
-      this.tryGoToBattle();
+      this.load.off("complete", handleComplete);
+      this.handleAssetLoadComplete();
     }
   }
 
@@ -235,6 +222,7 @@ export class LoadingScene extends Phaser.Scene {
   }
 
   private tryGoToBattle(): void {
+    if (!this.assetsReady) return;
     if (!this.runtimeReady) return;
     if (this.loadingData.mode === "local") {
       if (!this.onlineReady || !this.p2pReady || !this.loadingDoneSent || !this.peerLoadingReady) return;
@@ -242,6 +230,29 @@ export class LoadingScene extends Phaser.Scene {
       return;
     }
     this.goToBattle();
+  }
+
+  private handleAssetLoadComplete(): void {
+    const queuedBgm = BgmCmd.QueueLoad(
+      this,
+      this.loadingData.mapId ?? this.loadingData.battleConfig?.mapId,
+    );
+    if (queuedBgm > 0) {
+      this.load.once("complete", () => this.handleAssetLoadComplete());
+      this.time.delayedCall(0, () => this.load.start());
+      return;
+    }
+
+    this.assetsReady = true;
+    this.progress = 1;
+    this.renderProgress();
+    this.createLoadoutShowcase();
+    this.label?.setText(
+      this.loadingData.mode === "online"
+        ? t("loading.resources_ready_waiting")
+        : t("loading.resources_ready"),
+    );
+    this.tryGoToBattle();
   }
 
   private renderProgress(): void {
