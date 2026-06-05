@@ -24,6 +24,6 @@ export function createCharacterTile(
     badge: roleLabel(character.roleClass),
     selected,
     onClick,
-    drawIcon: (target) => drawCharacterPreviewIcon(scene, target, 56, 44, 82, 76, character),
+    drawIcon: (target) => drawCharacterPreviewIcon(scene, target, 56, 56, 82, 76, character),
   });
 }
