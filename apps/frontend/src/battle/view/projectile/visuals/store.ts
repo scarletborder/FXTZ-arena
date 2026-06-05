@@ -1,22 +1,29 @@
 import Phaser from "phaser";
 
-import { bulletRenderSizeForHitSize } from "@repo/content";
 import type { ProjectileState } from "@repo/raid-logic";
-import { Depth } from "../../../utils/depth";
+import { Depth } from "../../../../utils/depth";
 
-import { projectileAlpha } from "./display";
-import { smoothValue } from "../smooth";
+import { projectileAlpha } from "../display";
+import { smoothValue } from "../../smooth";
 import type {
   FighterKey,
   ProjectileDisplay,
   ProjectileSpec,
   ProjectileVisual,
-} from "./types";
+} from "../types";
+import { destroyVisual } from "./lifecycle";
+import { average } from "./math";
+import { projectileFrameRenderSize } from "./projectileFrameRenderSize";
+import { drawYoumuSlashArc, type YoumuSlashArcGroup } from "./youmuSlashArc";
 
 export class ProjectileVisualStore {
   private readonly visuals = new Map<number, ProjectileVisual>();
+  private readonly youmuSlashArcs = new Map<
+    string,
+    Phaser.GameObjects.Graphics
+  >();
 
-  constructor(private readonly scene: Phaser.Scene) { }
+  constructor(private readonly scene: Phaser.Scene) {}
 
   renderImage(
     projectile: ProjectileState,
@@ -38,13 +45,22 @@ export class ProjectileVisualStore {
       sprite.setTint(spec.tint);
       sprite.setDisplaySize(display.width, display.height);
     }
-    sprite.setPosition(smoothValue(sprite.x, display.x, rollbackBlend), smoothValue(sprite.y, display.y, rollbackBlend));
+    sprite.setPosition(
+      smoothValue(sprite.x, display.x, rollbackBlend),
+      smoothValue(sprite.y, display.y, rollbackBlend),
+    );
     sprite.setRotation(
       spec.kind === "fallback"
         ? projectile.angle
         : projectile.angle + Math.PI / 2,
     );
-    sprite.setAlpha(smoothValue(sprite.alpha, projectileAlpha(projectile, localFighterKey), rollbackBlend));
+    sprite.setAlpha(
+      smoothValue(
+        sprite.alpha,
+        projectileAlpha(projectile, localFighterKey),
+        rollbackBlend,
+      ),
+    );
     sprite.setVisible(true);
   }
 
@@ -58,9 +74,18 @@ export class ProjectileVisualStore {
     const visual = this.ensureLaserVisual(projectile.id, display.x, display.y);
     const container = visual.container;
     container.removeAll(true);
-    container.setPosition(smoothValue(container.x, display.x, rollbackBlend), smoothValue(container.y, display.y, rollbackBlend));
+    container.setPosition(
+      smoothValue(container.x, display.x, rollbackBlend),
+      smoothValue(container.y, display.y, rollbackBlend),
+    );
     container.setRotation(projectile.angle);
-    container.setAlpha(smoothValue(container.alpha, projectileAlpha(projectile, localFighterKey), rollbackBlend));
+    container.setAlpha(
+      smoothValue(
+        container.alpha,
+        projectileAlpha(projectile, localFighterKey),
+        rollbackBlend,
+      ),
+    );
     container.setVisible(true);
 
     const length = display.width;
@@ -75,6 +100,27 @@ export class ProjectileVisualStore {
     container.add(image);
   }
 
+  renderYoumuSlashArcs(
+    groups: readonly YoumuSlashArcGroup[],
+    rollbackBlend = 1,
+  ): void {
+    for (const group of groups) {
+      if (group.segments.length === 0) {
+        continue;
+      }
+      const graphics = this.ensureYoumuSlashArcVisual(group.key);
+      graphics.setAlpha(
+        smoothValue(
+          graphics.alpha,
+          average(group.segments.map((segment) => segment.alpha)),
+          rollbackBlend,
+        ),
+      );
+      graphics.setVisible(true);
+      drawYoumuSlashArc(graphics, group.segments);
+    }
+  }
+
   destroy(id: number): void {
     const visual = this.visuals.get(id);
     if (!visual) return;
@@ -87,6 +133,15 @@ export class ProjectileVisualStore {
       if (!active.has(id)) {
         destroyVisual(visual);
         this.visuals.delete(id);
+      }
+    }
+  }
+
+  pruneYoumuSlashArcs(active: ReadonlySet<string>): void {
+    for (const [key, graphics] of this.youmuSlashArcs) {
+      if (!active.has(key)) {
+        graphics.destroy();
+        this.youmuSlashArcs.delete(key);
       }
     }
   }
@@ -129,32 +184,14 @@ export class ProjectileVisualStore {
     this.visuals.set(id, visual);
     return visual;
   }
-}
 
-function projectileFrameRenderSize(
-  projectile: ProjectileState,
-  display: ProjectileDisplay,
-  frame: Extract<ProjectileSpec, { readonly kind: "image" }>["frame"],
-): [number, number] {
-  if (
-    projectile.renderWidth !== undefined &&
-    projectile.renderHeight !== undefined
-  ) {
-    return [display.width, display.height];
-  }
-  const size = bulletRenderSizeForHitSize(display, {
-    rectWidth: frame.width,
-    rectHeight: frame.height,
-    hitWidth: frame.hitWidth,
-    hitHeight: frame.hitHeight,
-  });
-  return [size.width, size.height];
-}
-
-function destroyVisual(visual: ProjectileVisual): void {
-  if (visual.kind === "image") {
-    visual.image.destroy();
-  } else {
-    visual.container.destroy(true);
+  private ensureYoumuSlashArcVisual(key: string): Phaser.GameObjects.Graphics {
+    const existing = this.youmuSlashArcs.get(key);
+    if (existing) {
+      return existing;
+    }
+    const graphics = this.scene.add.graphics().setDepth(Depth.Projectile);
+    this.youmuSlashArcs.set(key, graphics);
+    return graphics;
   }
 }

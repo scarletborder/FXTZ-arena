@@ -40,6 +40,12 @@ export type ProjectileSpec =
       readonly frame: BulletFrame;
     }
   | {
+      readonly kind: "youmuSlash";
+      readonly arcIndex: number;
+      readonly segmentIndex: number;
+      readonly segmentCount: number;
+    }
+  | {
       readonly kind: "fallback";
       readonly texture: string;
       readonly tint: number;
@@ -58,4 +64,11 @@ export type ProjectileVisual =
 export interface ProjectileFighters {
   readonly player: FighterState;
   readonly target: FighterState;
+}
+
+export interface YoumuSlashArcSegment {
+  readonly display: ProjectileDisplay;
+  readonly angle: number;
+  readonly alpha: number;
+  readonly segmentIndex: number;
 }

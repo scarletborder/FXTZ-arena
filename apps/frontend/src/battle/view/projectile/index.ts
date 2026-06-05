@@ -17,8 +17,18 @@ import {
   projectileSpec,
   projectileTint,
 } from "./spec";
-import type { BulletFrame, FighterKey, ProjectileFighters } from "./types";
+import type {
+  BulletFrame,
+  FighterKey,
+  ProjectileFighters,
+  YoumuSlashArcSegment,
+} from "./types";
 import { ProjectileVisualStore } from "./visuals";
+
+interface YoumuSlashArcGroup {
+  readonly key: string;
+  readonly segments: YoumuSlashArcSegment[];
+}
 
 export class ProjectileView {
   private readonly visuals: ProjectileVisualStore;
@@ -42,6 +52,7 @@ export class ProjectileView {
     rollbackBlend = 1,
   ): void {
     const active = new Set<number>();
+    const slashGroups = new Map<string, YoumuSlashArcGroup>();
     for (const projectile of projectiles) {
       if (frame < projectile.visibleFrom) {
         continue;
@@ -63,14 +74,39 @@ export class ProjectileView {
       );
       const display = projectileDisplay(projectile, alpha);
 
-      if (spec.kind === "laser") {
-        this.visuals.renderLaser(projectile, display, spec, localFighterKey, rollbackBlend);
+      if (spec.kind === "youmuSlash") {
+        this.visuals.destroy(projectile.id);
+        const key = `${projectile.owner}:${projectile.visibleFrom}:${spec.arcIndex}`;
+        const group = slashGroups.get(key) ?? { key, segments: [] };
+        group.segments.push({
+          display,
+          angle: projectile.angle,
+          alpha: projectileAlpha(projectile, localFighterKey),
+          segmentIndex: spec.segmentIndex,
+        });
+        slashGroups.set(key, group);
+      } else if (spec.kind === "laser") {
+        this.visuals.renderLaser(
+          projectile,
+          display,
+          spec,
+          localFighterKey,
+          rollbackBlend,
+        );
       } else {
-        this.visuals.renderImage(projectile, display, spec, localFighterKey, rollbackBlend);
+        this.visuals.renderImage(
+          projectile,
+          display,
+          spec,
+          localFighterKey,
+          rollbackBlend,
+        );
       }
     }
 
+    this.visuals.renderYoumuSlashArcs([...slashGroups.values()], rollbackBlend);
     this.visuals.prune(active);
+    this.visuals.pruneYoumuSlashArcs(new Set(slashGroups.keys()));
     this.prunePreviewLines(active);
   }
 

@@ -20,7 +20,9 @@ import { Vanilla } from "../decorators";
 
 const ARC_SEGMENTS = 8;
 const CLEAR_DAMAGE = 0;
-const SLASH_DAMAGE = 2; // 单次伤害需乘以62倍
+const SLASH_DAMAGE = 1; // 单次伤害需乘以62倍
+const SLASH_TEXTURE_KEY = "effect_youmu_slash";
+const SLASH_ARC_INTERVAL = 4;
 
 const NORMALSHOOT_DAMAGE = 20;
 const BOMBSHOT_DAMAGE = 8;
@@ -30,8 +32,9 @@ const SLASH_DISTANCE_TIER1 = hitCircleUnits(12);
 const SLASH_DISTANCE_TIER1_GAP = hitCircleUnits(8);
 const SLASH_DISTANCE_TIER3 = hitCircleUnits(32);
 const SLASH_DISTANCE_TIER4 = hitCircleUnits(14);
-const SLASH_MIN_RADIUS = hitCircleUnits(16);
-const SLASH_MAX_RADIUS = hitCircleUnits(18);
+
+const SLASH_MIN_RADIUS = hitCircleUnits(24);
+const SLASH_MAX_RADIUS = hitCircleUnits(28);
 const BOMB_DASH_DISTANCE = YOUMU_BOMB_DASH_DISTANCE;
 const BOMB_SHOT_COUNT = 6;
 const BOMB_SHOT_INTERVAL = 5;
@@ -71,45 +74,49 @@ export class YoumuBattleCharacter extends BattleCharacter {
     const angle = this.aimAngle(fighter, aimX, aimY);
     const tier = this.pointPowerTier(fighter);
 
-    this.spawnSlashArc(
-      ctx,
-      fighter,
-      angle,
-      SLASH_DISTANCE_TIER1,
-      "front",
-      Math.PI / 9,
-      Math.PI / 3,
-    );
-    this.spawnSlashArc(
-      ctx,
-      fighter,
-      angle,
-      SLASH_DISTANCE_TIER1 + SLASH_DISTANCE_TIER1_GAP,
-      "front",
-      -Math.PI / 9,
-      -Math.PI / 3,
-    );
+    let slashIndex = 0;
+    this.spawnSlashArc(ctx, fighter, {
+      slashIndex,
+      baseAngle: angle,
+      slashDistance: SLASH_DISTANCE_TIER1,
+      slashSide: "front",
+      startOffset: Math.PI / 9,
+      endOffset: Math.PI / 3,
+      frame: ctx.frame + slashIndex * SLASH_ARC_INTERVAL,
+    });
+    slashIndex += 1;
+    this.spawnSlashArc(ctx, fighter, {
+      slashIndex,
+      baseAngle: angle,
+      slashDistance: SLASH_DISTANCE_TIER1 + SLASH_DISTANCE_TIER1_GAP,
+      slashSide: "front",
+      startOffset: -Math.PI / 9,
+      endOffset: -Math.PI / 3,
+      frame: ctx.frame + slashIndex * SLASH_ARC_INTERVAL,
+    });
+    slashIndex += 1;
     if (tier >= 3) {
-      this.spawnSlashArc(
-        ctx,
-        fighter,
-        angle,
-        SLASH_DISTANCE_TIER3,
-        "front",
-        -Math.PI * 2 / 9,
-        Math.PI * 2 / 9,
-      );
+      this.spawnSlashArc(ctx, fighter, {
+        slashIndex,
+        baseAngle: angle,
+        slashDistance: SLASH_DISTANCE_TIER3,
+        slashSide: "front",
+        startOffset: (-Math.PI * 2) / 9,
+        endOffset: (Math.PI * 2) / 9,
+        frame: ctx.frame + slashIndex * SLASH_ARC_INTERVAL,
+      });
+      slashIndex += 1;
     }
     if (tier >= 4) {
-      this.spawnSlashArc(
-        ctx,
-        fighter,
-        angle,
-        SLASH_DISTANCE_TIER4,
-        "back",
-        -Math.PI / 9,
-        Math.PI / 9,
-      );
+      this.spawnSlashArc(ctx, fighter, {
+        slashIndex,
+        baseAngle: angle,
+        slashDistance: SLASH_DISTANCE_TIER4,
+        slashSide: "back",
+        startOffset: -Math.PI / 9,
+        endOffset: Math.PI / 9,
+        frame: ctx.frame + slashIndex * SLASH_ARC_INTERVAL,
+      });
     }
 
     const rearShots = tier >= 2 ? 3 : 1;
@@ -166,14 +173,21 @@ export class YoumuBattleCharacter extends BattleCharacter {
   private spawnSlashArc(
     ctx: CharacterActionContext,
     fighter: FighterState,
-    baseAngle: number,
-    slashDistance: number,
-    slashSide: "front" | "back",
-    startOffset: number,
-    endOffset: number,
+    params: {
+      readonly slashIndex: number;
+      readonly baseAngle: number;
+      readonly slashDistance: number;
+      readonly slashSide: "front" | "back";
+      readonly startOffset: number;
+      readonly endOffset: number;
+      readonly frame: number;
+    },
   ): void {
-    const ringCenterDistance = SLASH_MIN_RADIUS - slashDistance;
-    const slashAngle = slashSide === "front" ? baseAngle : baseAngle + Math.PI;
+    const ringCenterDistance = SLASH_MIN_RADIUS - params.slashDistance;
+    const slashAngle =
+      params.slashSide === "front"
+        ? params.baseAngle
+        : params.baseAngle + Math.PI;
     const ringCenterAngle = slashAngle + Math.PI;
     const ringCenterX =
       fighter.x + Math.cos(ringCenterAngle) * ringCenterDistance;
@@ -181,13 +195,13 @@ export class YoumuBattleCharacter extends BattleCharacter {
       fighter.y + Math.sin(ringCenterAngle) * ringCenterDistance;
     const centerlineRadius = (SLASH_MIN_RADIUS + SLASH_MAX_RADIUS) / 2;
     const ringWidth = SLASH_MAX_RADIUS - SLASH_MIN_RADIUS;
-    const step = (endOffset - startOffset) / ARC_SEGMENTS;
+    const step = (params.endOffset - params.startOffset) / ARC_SEGMENTS;
     for (let index = 0; index < ARC_SEGMENTS; index += 1) {
-      const offset = startOffset + step * (index + 0.5);
+      const offset = params.startOffset + step * (index + 0.5);
       const segmentAngle = slashAngle + offset;
       ctx.spawnLaser({
         owner: fighter.key,
-        textureKey: "laser_type_1_offset_9",
+        textureKey: `${SLASH_TEXTURE_KEY}:${params.slashIndex}:${index}:${ARC_SEGMENTS}`,
         x: ringCenterX + Math.cos(segmentAngle) * centerlineRadius,
         y: ringCenterY + Math.sin(segmentAngle) * centerlineRadius,
         angle: segmentAngle + Math.PI / 2,
@@ -200,6 +214,7 @@ export class YoumuBattleCharacter extends BattleCharacter {
         damage: SLASH_DAMAGE,
         spawnOffset: 0,
         pinned: true,
+        frame: params.frame,
         clearsProjectiles: true,
         couldClear: false,
       });

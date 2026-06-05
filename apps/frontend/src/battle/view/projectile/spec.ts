@@ -46,7 +46,14 @@ function textureKeyProjectileFrame(
       tint: projectileTint(projectile),
     };
   }
-  if (projectile.kind === "laser" || projectile.textureKey.startsWith("laser_type_")) {
+  const youmuSlash = youmuSlashSpec(projectile.textureKey);
+  if (youmuSlash) {
+    return youmuSlash;
+  }
+  if (
+    projectile.kind === "laser" ||
+    projectile.textureKey.startsWith("laser_type_")
+  ) {
     const frame = frames.get(`${projectile.textureKey}_middle`);
     return frame ? { kind: "laser", frame } : undefined;
   }
@@ -132,7 +139,10 @@ function marisaProjectileFrame(
   projectile: ProjectileState,
   frames: ReadonlyMap<string, BulletFrame>,
 ): ProjectileSpec | undefined {
-  if (projectile.kind === "spark" && (projectile.renderHeight ?? projectile.height) >= 100) {
+  if (
+    projectile.kind === "spark" &&
+    (projectile.renderHeight ?? projectile.height) >= 100
+  ) {
     return undefined;
   }
   if (projectile.kind !== "laser") return undefined;
@@ -170,6 +180,10 @@ function youmuProjectileFrame(
   projectile: ProjectileState,
   frames: ReadonlyMap<string, BulletFrame>,
 ): ProjectileSpec | undefined {
+  const youmuSlash = youmuSlashSpec(projectile.textureKey);
+  if (youmuSlash) {
+    return youmuSlash;
+  }
   if (projectile.kind === "laser") {
     return laserSpec(frames, "laser_type_1", 9);
   }
@@ -177,6 +191,21 @@ function youmuProjectileFrame(
     return imageSpec(frames, "bullet_type_4", 9);
   }
   return undefined;
+}
+
+function youmuSlashSpec(
+  textureKey: string | undefined,
+): ProjectileSpec | undefined {
+  if (!textureKey?.startsWith("effect_youmu_slash")) {
+    return undefined;
+  }
+  const [, arcIndex, segmentIndex, segmentCount] = textureKey.split(":");
+  return {
+    kind: "youmuSlash",
+    arcIndex: Number(arcIndex ?? 0),
+    segmentIndex: Number(segmentIndex ?? 0),
+    segmentCount: Number(segmentCount ?? 1),
+  };
 }
 
 function kaguyaProjectileFrame(
