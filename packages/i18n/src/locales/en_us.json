@@ -108,6 +108,7 @@
     "resources_ready": "Assets loaded", "init_local": "Initializing battle", "init_sync": "Initializing battle before sync", "p2p_init": "P2P initializing",
     "peer_left_end": "Opponent left, battle ended", "peer_disconnect_wait": "Opponent disconnected, waiting for reconnect", "peer_reconnected": "Opponent reconnected, waiting for player sync",
     "waiting_sync": "Waiting for player sync", "local_p2p_connected_wait": "LAN P2P connected, waiting for player sync", "p2p_trying": "P2P trying",
+    "get_ready": "Get Ready",
     "p2p_attempt": "Establishing LAN P2P connection…", "p2p_attempt_online": "Trying P2P connection…", "p2p_connected": "P2P connected",
     "p2p_connected_wait": "LAN P2P connected, waiting for player sync", "p2p_connected_wait_online": "P2P connected, waiting for player sync",
     "p2p_unavailable": "P2P unavailable", "p2p_fallback_local": "LAN P2P connection failed", "p2p_fallback_online": "P2P unavailable, fell back to dedicated server",

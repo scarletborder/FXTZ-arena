@@ -108,6 +108,7 @@
     "resources_ready": "资源加载完成", "init_local": "初始化战斗", "init_sync": "初始化战斗，同步前准备", "p2p_init": "p2p 初始化中",
     "peer_left_end": "对手已退出，战斗结束", "peer_disconnect_wait": "对手断线，等待重连", "peer_reconnected": "对手已重连，等待玩家同步",
     "waiting_sync": "等待玩家同步", "local_p2p_connected_wait": "局域网 P2P 已连接，等待玩家同步", "p2p_trying": "p2p 尝试中",
+    "get_ready": "做好准备",
     "p2p_attempt": "正在建立局域网 P2P 连接…", "p2p_attempt_online": "正在尝试 P2P 连接…", "p2p_connected": "p2p 已连接",
     "p2p_connected_wait": "局域网 P2P 已连接，等待玩家同步", "p2p_connected_wait_online": "P2P 已连接，等待玩家同步",
     "p2p_unavailable": "p2p 不可用", "p2p_fallback_local": "局域网 P2P 连接失败", "p2p_fallback_online": "P2P 不可用，已回落到专用服务器",

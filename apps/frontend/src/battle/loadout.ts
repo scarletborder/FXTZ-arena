@@ -16,4 +16,6 @@ export interface BattleSceneData {
   readonly localPlayerId?: PlayerId;
   readonly runtime?: RaidLogicRuntime;
   readonly p2p?: PeerConnection;
+  /** performance.now() timestamp used as battle frame 0 after the loading countdown. */
+  readonly battleZeroTimeMs?: number;
 }

@@ -151,6 +151,7 @@ export class BattleScene extends Phaser.Scene {
       this.setDebugPhysicsEnabled(true);
     }
     this.syncRollbackManagerState();
+    this.fastForwardFromBattleZero(data);
     this.scale.on(
       Phaser.Scale.Events.RESIZE,
       this.scheduleBattleLayoutRefresh,
@@ -317,6 +318,34 @@ export class BattleScene extends Phaser.Scene {
       player: input,
     });
     this.recordDebugFrame();
+  }
+
+  private fastForwardFromBattleZero(data: BattleSceneData): void {
+    if (!this.logicReady || data.battleZeroTimeMs === undefined) {
+      return;
+    }
+
+    const elapsedMs = performance.now() - data.battleZeroTimeMs;
+    if (elapsedMs <= 0) {
+      return;
+    }
+
+    const framesToCatchUp = Math.floor(elapsedMs / FIXED_STEP_MS);
+    if (framesToCatchUp <= 0) {
+      this.accumulator = elapsedMs;
+      return;
+    }
+
+    for (let frame = 0; frame < framesToCatchUp; frame += 1) {
+      if ((data.mode === "online" || data.mode === "local") && this.combatSync) {
+        this.combatSync.step(this.lastInput);
+      } else {
+        this.stepRuntimeWithDebugInput(this.lastInput);
+      }
+      this.updateAutoReloadObservation();
+    }
+
+    this.accumulator = elapsedMs - framesToCatchUp * FIXED_STEP_MS;
   }
 
   private localFighterState() {

@@ -1,11 +1,12 @@
 import Phaser from "phaser";
 import { createRaidLogicRuntime } from "@repo/raid-logic";
 import { t } from "@repo/i18n";
-import type { ServerMessage } from "@repo/types";
+import type { AbilityCardId, CharacterId, ServerMessage } from "@repo/types";
 
 import { queueBattleAssets } from "../battle/assets";
+import type { FighterLoadout } from "../battle/loadout";
 import { P2pConnection, type PeerConnection, type P2pStatus } from "../network/p2p";
-import { connectionManager, type LoadingData, type SceneKey } from "./shared";
+import { connectionManager, getCardById, getCharacterById, type LoadingData, type SceneKey } from "./shared";
 import { uiSettings } from "../store/settings";
 import {
   bodyStyle,
@@ -14,11 +15,20 @@ import {
   headingStyle,
 } from "./ui";
 
+const READY_COUNTDOWN_MS = 3_000;
+
+type DisplayFighterLoadout = FighterLoadout & {
+  readonly abilityCardIds?: readonly AbilityCardId[];
+  readonly activeAbilityCardId?: AbilityCardId;
+};
+
 export class LoadingScene extends Phaser.Scene {
   private progress = 0;
   private loadingData!: LoadingData;
   private bar: Phaser.GameObjects.Graphics | undefined;
   private label: Phaser.GameObjects.Text | undefined;
+  private countdownText: Phaser.GameObjects.Text | undefined;
+  private countdownUpdate: (() => void) | undefined;
   private connectionBadge: Phaser.GameObjects.Container | undefined;
   private connectionStatusText: Phaser.GameObjects.Text | undefined;
   private onlineReady = false;
@@ -43,10 +53,13 @@ export class LoadingScene extends Phaser.Scene {
     this.transitioning = false;
     this.loadingDoneSent = false;
     this.runtimeReady = false;
+    this.countdownText = undefined;
+    this.countdownUpdate = undefined;
   }
 
   preload(): void {
     drawFightingBackdrop(this, "LOADING", "READY");
+    this.createLoadoutShowcase();
     this.add.text(434, 278, t("loading.title"), headingStyle(34));
     this.label = this.add.text(
       444,
@@ -233,6 +246,46 @@ export class LoadingScene extends Phaser.Scene {
   private goToBattle(): void {
     if (this.transitioning) return;
     this.transitioning = true;
+    this.beginReadyCountdown();
+  }
+
+  private beginReadyCountdown(): void {
+    this.bar?.clear();
+    this.bar?.setVisible(false);
+    this.label?.setOrigin(0.5)
+      .setPosition(640, 360)
+      ?.setText(t("loading.get_ready"))
+      .setStyle({
+        ...bodyStyle("#ffffff", 24),
+        fontStyle: "900",
+        backgroundColor: "#e33d44",
+      })
+      .setPadding(18, 8, 18, 8);
+
+    const battleZeroTimeMs = performance.now() + READY_COUNTDOWN_MS;
+    this.countdownText = this.add.text(640, 412, "", {
+      fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+      fontSize: "34px",
+      fontStyle: "900",
+      color: "#ffffff",
+    }).setOrigin(0.5);
+
+    this.countdownUpdate = () => {
+      const remainingMs = Math.max(0, battleZeroTimeMs - performance.now());
+      this.countdownText?.setText(formatCountdownSeconds(remainingMs));
+    };
+    this.events.on(Phaser.Scenes.Events.UPDATE, this.countdownUpdate);
+    this.countdownUpdate();
+    this.time.delayedCall(READY_COUNTDOWN_MS, () => {
+      this.launchBattle(battleZeroTimeMs);
+    });
+  }
+
+  private launchBattle(battleZeroTimeMs: number): void {
+    if (this.countdownUpdate) {
+      this.events.off(Phaser.Scenes.Events.UPDATE, this.countdownUpdate);
+      this.countdownUpdate = undefined;
+    }
     const p2p = this.p2p;
     this.p2p = undefined;
     p2p?.setStatusHandler(undefined);
@@ -240,6 +293,7 @@ export class LoadingScene extends Phaser.Scene {
     this.scene.start("battle", {
       ...this.loadingData,
       p2p,
+      battleZeroTimeMs,
     });
   }
 
@@ -312,4 +366,180 @@ export class LoadingScene extends Phaser.Scene {
     this.connectionStatusText?.setColor(`#${color.toString(16).padStart(6, "0")}`);
     this.connectionBadge?.setVisible(true);
   }
+
+  private createLoadoutShowcase(): void {
+    const slots = this.resolveLoadoutSlots();
+    if (!slots) return;
+
+    this.drawLoadoutPanel(24, 108, 192, 504, slots.left.loadout, slots.left.name, "#34d399", 0x34d399);
+    this.drawLoadoutPanel(1064, 108, 192, 504, slots.right.loadout, slots.right.name, "#ff5c66", 0xe33d44);
+  }
+
+  private resolveLoadoutSlots(): {
+    readonly left: { readonly loadout: DisplayFighterLoadout; readonly name: string };
+    readonly right: { readonly loadout: DisplayFighterLoadout; readonly name: string };
+  } | null {
+    const loadouts = this.loadingData.loadouts;
+    if (!loadouts) return null;
+
+    const player = loadouts.player as DisplayFighterLoadout;
+    const target = loadouts.target as DisplayFighterLoadout;
+    const localName = this.loadingData.playerName ?? uiSettings.username;
+    const opponentName = this.loadingData.opponentName ?? t("select.opponent");
+    if (this.loadingData.localPlayerId === "Player2") {
+      return {
+        left: { loadout: target, name: localName },
+        right: { loadout: player, name: opponentName },
+      };
+    }
+    return {
+      left: { loadout: player, name: localName },
+      right: { loadout: target, name: opponentName },
+    };
+  }
+
+  private drawLoadoutPanel(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    loadout: DisplayFighterLoadout,
+    playerName: string,
+    accentColor: string,
+    accent: number,
+  ): void {
+    const panel = this.add.graphics();
+    drawAngledPanel(panel, x, y, width, height, 0x0b1118, accent, 0.88);
+    this.add.text(x + width / 2, y + 20, compactName(playerName, 12), {
+      fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+      fontSize: "16px",
+      fontStyle: "900",
+      color: "#f6f1e6",
+      backgroundColor: "#101820cc",
+      padding: { x: 8, y: 3 },
+    }).setOrigin(0.5);
+
+    this.drawCharacterPlaceholder(
+      x + 104,
+      y + 90,
+      72,
+      126,
+      loadout.alternateCharacterId as CharacterId,
+      0.62,
+      false,
+    );
+    this.drawCharacterPlaceholder(
+      x + 30,
+      y + 124,
+      132,
+      230,
+      loadout.primaryCharacterId as CharacterId,
+      1,
+      true,
+    );
+    this.drawAbilityCards(x + 22, y + height - 142, width - 44, loadout, accentColor);
+  }
+
+  private drawCharacterPlaceholder(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    characterId: CharacterId,
+    alpha: number,
+    primary: boolean,
+  ): void {
+    const character = getCharacterById(characterId);
+    const color = colorFromId(character.id);
+    const graphics = this.add.graphics();
+    graphics
+      .fillStyle(color, alpha)
+      .fillRect(x, y, width, height)
+      .lineStyle(primary ? 4 : 2, 0xf6f1e6, primary ? 0.95 : 0.65)
+      .strokeRect(x, y, width, height);
+    graphics
+      .fillStyle(0x101820, 0.72)
+      .fillTriangle(x + width * 0.18, y + height * 0.78, x + width * 0.84, y + height * 0.22, x + width * 0.9, y + height * 0.86)
+      .fillStyle(0xf6f1e6, primary ? 0.92 : 0.58)
+      .fillCircle(x + width * 0.5, y + height * 0.34, primary ? 20 : 13);
+
+    const name = this.add.text(x + width / 2, y + height - (primary ? 28 : 18), compactName(character.name, primary ? 8 : 5), {
+      fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+      fontSize: primary ? "18px" : "12px",
+      fontStyle: "900",
+      color: "#ffffff",
+      backgroundColor: "#101820bb",
+      padding: { x: primary ? 7 : 4, y: primary ? 3 : 2 },
+    }).setOrigin(0.5);
+    name.setFixedSize(Math.max(48, width - 14), primary ? 28 : 20).setAlign("center");
+  }
+
+  private drawAbilityCards(
+    x: number,
+    y: number,
+    width: number,
+    loadout: DisplayFighterLoadout,
+    accentColor: string,
+  ): void {
+    const cardIds = loadoutCardIds(loadout);
+    const activeCardId = loadout.activeCardId ?? loadout.activeAbilityCardId;
+    const cards = cardIds.slice(0, 6);
+    const cardWidth = 48;
+    const cardHeight = 58;
+    const gap = 8;
+    const columns = 3;
+    const startX = x + Math.max(0, (width - (columns * cardWidth + (columns - 1) * gap)) / 2);
+
+    for (const [index, cardId] of cards.entries()) {
+      const card = getCardById(cardId);
+      const col = index % columns;
+      const row = Math.floor(index / columns);
+      const cx = startX + col * (cardWidth + gap);
+      const cy = y + row * (cardHeight + gap);
+      const graphics = this.add.graphics();
+      graphics
+        .fillStyle(card.kind === "active" ? 0x26c6da : 0xf7b733, 0.94)
+        .fillRect(cx, cy, cardWidth, cardHeight)
+        .lineStyle(card.id === activeCardId ? 4 : 2, card.id === activeCardId ? 0xffffff : 0x101820, 0.92)
+        .strokeRect(cx, cy, cardWidth, cardHeight)
+        .lineStyle(2, 0x101820, 0.72)
+        .lineBetween(cx + 8, cy + 12, cx + cardWidth - 8, cy + cardHeight - 12)
+        .lineBetween(cx + cardWidth - 10, cy + 14, cx + 10, cy + cardHeight - 10);
+
+      this.add.text(cx + cardWidth / 2, cy + cardHeight - 11, compactName(card.name, 4), {
+        fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+        fontSize: "10px",
+        fontStyle: "700",
+        color: accentColor,
+        backgroundColor: "#101820cc",
+        padding: { x: 3, y: 1 },
+      }).setOrigin(0.5);
+    }
+  }
+}
+
+function formatCountdownSeconds(remainingMs: number): string {
+  return (remainingMs / 1_000).toFixed(3);
+}
+
+function loadoutCardIds(loadout: DisplayFighterLoadout): readonly AbilityCardId[] {
+  const ids = new Set<AbilityCardId>(loadout.cardIds ?? loadout.abilityCardIds ?? []);
+  const activeCardId = loadout.activeCardId ?? loadout.activeAbilityCardId;
+  if (activeCardId) {
+    ids.add(activeCardId);
+  }
+  return [...ids];
+}
+
+function colorFromId(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i += 1) {
+    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  }
+  return Phaser.Display.Color.HSVColorWheel()[hash % 360]?.color ?? 0xe33d44;
+}
+
+function compactName(name: string, maxLength: number): string {
+  const chars = Array.from(name);
+  return chars.length <= maxLength ? name : `${chars.slice(0, Math.max(1, maxLength - 3)).join("")}...`;
 }
