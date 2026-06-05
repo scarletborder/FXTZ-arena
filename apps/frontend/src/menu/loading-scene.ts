@@ -9,6 +9,7 @@ import { P2pConnection, type PeerConnection, type P2pStatus } from "../network/p
 import { connectionManager, getCardById, getCharacterById, type LoadingData, type SceneKey } from "./shared";
 import { uiSettings } from "../store/settings";
 import { createFittedImage } from "../utils/image-fit";
+import { abilityCardIconTextureKey } from "../ability-card-assets";
 import {
   bodyStyle,
   drawAngledPanel,
@@ -84,6 +85,7 @@ export class LoadingScene extends Phaser.Scene {
     this.load.once("complete", () => {
       this.progress = 1;
       this.renderProgress();
+      this.createLoadoutShowcase();
       this.label?.setText(
         this.loadingData.mode === "online"
           ? t("loading.resources_ready_waiting")
@@ -96,6 +98,7 @@ export class LoadingScene extends Phaser.Scene {
     if (queued === 0) {
       this.progress = 1;
       this.renderProgress();
+      this.createLoadoutShowcase();
       this.label?.setText(
         this.loadingData.mode === "online"
           ? t("loading.resources_ready_waiting")
@@ -491,7 +494,6 @@ export class LoadingScene extends Phaser.Scene {
     accentColor: string,
   ): void {
     const cardIds = loadoutCardIds(loadout);
-    const activeCardId = loadout.activeCardId ?? loadout.activeAbilityCardId;
     const cards = cardIds.slice(0, 6);
     const cardWidth = 48;
     const cardHeight = 58;
@@ -505,21 +507,10 @@ export class LoadingScene extends Phaser.Scene {
       const row = Math.floor(index / columns);
       const cx = startX + col * (cardWidth + gap);
       const cy = y + row * (cardHeight + gap);
-      const graphics = this.add.graphics();
-      graphics
-        .fillStyle(card.kind === "active" ? 0x26c6da : 0xf7b733, 0.94)
-        .fillRect(cx, cy, cardWidth, cardHeight)
-        .lineStyle(card.id === activeCardId ? 4 : 2, card.id === activeCardId ? 0xffffff : 0x101820, 0.92)
-        .strokeRect(cx, cy, cardWidth, cardHeight)
-        .lineStyle(2, 0x101820, 0.72)
-        .lineBetween(cx + 8, cy + 12, cx + cardWidth - 8, cy + cardHeight - 12)
-        .lineBetween(cx + cardWidth - 10, cy + 14, cx + 10, cy + cardHeight - 10);
-      graphics.setDepth(19);
-      objects.push(graphics);
 
-      const previewKey = `card-preview-${card.id}`;
-      if (this.textures.exists(previewKey)) {
-        const preview = createFittedImage(this, cx + cardWidth / 2, cy + 24, previewKey, cardWidth - 10, cardHeight - 28, "contain");
+      const iconKey = abilityCardIconTextureKey(card.id);
+      if (this.textures.exists(iconKey)) {
+        const preview = createFittedImage(this, cx + cardWidth / 2, cy + 24, iconKey, cardWidth - 10, cardHeight - 28, "contain");
         preview.setDepth(20);
         objects.push(preview);
       }

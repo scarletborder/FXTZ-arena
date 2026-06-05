@@ -13,7 +13,6 @@ export class ExtraLifeBattleCard extends BattleAbilityCard {
   readonly description = "初始命数增加1";
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/extra-life/icon.png",
-    previewAsset: "assets/ability-cards/extra-life/preview.webp",
   };
 
   onInitialize(ctx: BattleInitializeContext): void {

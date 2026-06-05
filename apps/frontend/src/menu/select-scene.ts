@@ -31,7 +31,7 @@ import {
 } from "./shared";
 import { uiSettings } from "../store/settings";
 import { Depth } from "../utils/depth";
-import { queueMenuCharacterPreviewAssets } from "./assets";
+import { queueMenuAssets } from "./assets";
 
 const COST_LIMIT = 10;
 
@@ -101,7 +101,7 @@ export class SelectScene extends Phaser.Scene {
   }
 
   preload(): void {
-    queueMenuCharacterPreviewAssets(this);
+    queueMenuAssets(this);
   }
 
   create(data: SelectionData): void {

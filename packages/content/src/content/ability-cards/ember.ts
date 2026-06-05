@@ -15,7 +15,6 @@ export class EmberBattleCard extends BattleAbilityCard {
   readonly description = "默认 bomb 变为 4，死亡复活也恢复到 4。";
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/ember/icon.png",
-    previewAsset: "assets/ability-cards/ember/preview.webp",
   };
 
   onInitialize(ctx: BattleInitializeContext): void {

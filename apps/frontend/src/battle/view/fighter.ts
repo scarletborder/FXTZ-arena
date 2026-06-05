@@ -2,12 +2,15 @@ import Phaser from "phaser";
 import { t } from "@repo/i18n";
 
 import {
+  ACTIVE_ABILITY_CARD_ICON_ALPHA,
   GRAZE_CIRCLE_ALPHA,
   GRAZE_CIRCLE_DIAMETER,
   PLAYER_CORE_RADIUS,
 } from "@repo/constants";
 import type { FighterKey, FighterState } from "@repo/raid-logic";
+import { abilityCardIconTextureKey } from "../../ability-card-assets";
 import { Depth } from "../../utils/depth";
+import { fitImageToBounds } from "../../utils/image-fit";
 import { smoothPointWithMaxStep, smoothValue } from "./smooth";
 
 interface FighterVisual {
@@ -16,6 +19,7 @@ interface FighterVisual {
   readonly shieldCore: Phaser.GameObjects.Graphics;
   readonly graze: Phaser.GameObjects.Graphics;
   readonly statusTag: Phaser.GameObjects.Text;
+  lastActiveCardUses: number | undefined;
 }
 
 const COMBAT_DISPLAY_SIZE = 104;
@@ -88,7 +92,7 @@ export class FighterView {
       })
       .setOrigin(0.5)
       .setDepth(Depth.StatusTag);
-    return { body, core, shieldCore, graze, statusTag };
+    return { body, core, shieldCore, graze, statusTag, lastActiveCardUses: undefined };
   }
 
   private updateFighter(
@@ -141,6 +145,7 @@ export class FighterView {
     visual.body.setAlpha(
       visible ? smoothValue(visual.body.alpha, blinkAlpha, rollbackBlend) : 0,
     );
+    this.maybeShowActiveCardIcon(visual, fighter, renderX, renderY, visible);
     visual.core.setPosition(renderX, renderY);
     visual.core.setAlpha(
       visible ? smoothValue(visual.core.alpha, 1, rollbackBlend) : 0,
@@ -184,6 +189,46 @@ export class FighterView {
       visual.statusTag.setColor("#f6f1e6");
     }
     visual.core.setFillStyle(0xff4242, fighter.flashUntil > frame ? 0.22 : 1);
+  }
+
+  private maybeShowActiveCardIcon(
+    visual: FighterVisual,
+    fighter: FighterState,
+    x: number,
+    y: number,
+    visible: boolean,
+  ): void {
+    const previousUses = visual.lastActiveCardUses;
+    visual.lastActiveCardUses = fighter.activeCardUses;
+    if (
+      previousUses === undefined ||
+      fighter.activeCardUses >= previousUses ||
+      !fighter.activeCard ||
+      !visible
+    ) {
+      return;
+    }
+
+    const textureKey = abilityCardIconTextureKey(fighter.activeCard.id);
+    if (!this.scene.textures.exists(textureKey)) {
+      return;
+    }
+
+    const icon = this.scene.add
+      .image(x, y - 18, textureKey)
+      .setOrigin(0.5)
+      .setAlpha(ACTIVE_ABILITY_CARD_ICON_ALPHA)
+      .setDepth(Depth.FloatingText);
+    fitImageToBounds(icon, 46, 46, "contain");
+
+    this.scene.tweens.add({
+      targets: icon,
+      y: y - 66,
+      alpha: 0,
+      duration: 620,
+      ease: "Sine.easeOut",
+      onComplete: () => icon.destroy(),
+    });
   }
 
   private updateCoreVisual(

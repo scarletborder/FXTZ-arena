@@ -15,7 +15,6 @@ export class SpiritStrikeBattleCard extends BattleAbilityCard {
   readonly description = "清除周围小范围的弹幕";
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/spirit-strike-card/icon.png",
-    previewAsset: "assets/ability-cards/spirit-strike-card/preview.webp",
   };
 
   onUse(ctx: BattleCardContext): void {

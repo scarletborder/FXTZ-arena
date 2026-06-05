@@ -1,0 +1,1 @@
+export const ACTIVE_ABILITY_CARD_ICON_ALPHA = 0.4;

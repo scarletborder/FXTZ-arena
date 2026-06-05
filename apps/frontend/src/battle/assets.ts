@@ -3,6 +3,7 @@ import { DEFAULT_MAPS, getAllAbilityCardDefinitions, getAllCharacterDefinitions 
 
 import { assetUrl } from "../utils/assets";
 import { hasResourceAsset } from "../utils/resource-pack";
+import { abilityCardIconTextureKey } from "../ability-card-assets";
 
 export function loadPortraitAssets(scene: Phaser.Scene, onComplete?: () => void): void {
   const pendingPortraitKeys = new Set<string>();
@@ -116,8 +117,8 @@ export function queueBattleAssets(scene: Phaser.Scene): number {
   }
 
   for (const card of getAllAbilityCardDefinitions()) {
-    if (hasResourceAsset(card.gallery.previewAsset)) {
-      image(`card-preview-${card.id}`, assetUrl(card.gallery.previewAsset));
+    if (hasResourceAsset(card.gallery.iconAsset)) {
+      image(abilityCardIconTextureKey(card.id), assetUrl(card.gallery.iconAsset));
     }
   }
 

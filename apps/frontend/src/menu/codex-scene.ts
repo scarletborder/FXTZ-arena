@@ -13,7 +13,7 @@ import {
   bodyStyle,
   headingStyle,
 } from "./ui";
-import { queueMenuCharacterPreviewAssets } from "./assets";
+import { queueMenuAssets } from "./assets";
 import { installMenuAudioUnlock, type CodexTab, type SceneKey } from "./shared";
 
 export class CodexScene extends Phaser.Scene {
@@ -73,7 +73,7 @@ export class CodexScene extends Phaser.Scene {
   }
 
   preload(): void {
-    queueMenuCharacterPreviewAssets(this);
+    queueMenuAssets(this);
   }
 
   create(): void {
@@ -238,7 +238,7 @@ export class CodexScene extends Phaser.Scene {
       const x = startX + col * (scaledWidth + gapX);
       const y = startY + row * (scaledHeight + gapY);
       const item = createCodexTile(this, x, y, card.name, card.cost, card.kind === "active" ? t("codex.active_use") : t("codex.passive"), card.id === this.selectedCard.id, (target) => {
-        drawCardIcon(this, target, 82, 48, card.kind, 1.0);
+        drawCardIcon(this, target, 82, 48, card, 1.0);
       }, () => {
         this.selectedCard = card;
         this.detailScrollOffset = 0;
@@ -393,10 +393,6 @@ export class CodexScene extends Phaser.Scene {
       t("codex.cooldown", { cooldown }),
       t("codex.description", { description: card.description }),
     ];
-    this.renderDetailText(lines);
-  }
-
-  private renderDetailText(lines: readonly string[]): void {
     const bounds = new Phaser.Geom.Rectangle(
       DETAIL_PANEL.x + 18,
       DETAIL_CONTENT_TOP,
@@ -404,10 +400,10 @@ export class CodexScene extends Phaser.Scene {
       DETAIL_PANEL.y + DETAIL_PANEL.height - DETAIL_CONTENT_TOP - 24,
     );
     const content = this.add.container(0, 0);
-    const text = this.add.text(bounds.x, bounds.y, lines.join("\n"), bodyStyle("#d7e3ef", 18))
+    drawCardIcon(this, content, bounds.x + 58, bounds.y + 48, card, 1.28);
+    const text = this.add.text(bounds.x, bounds.y + 104, lines.join("\n"), bodyStyle("#d7e3ef", 18))
       .setLineSpacing(10)
       .setWordWrapWidth(bounds.width);
-
     content.add(text);
 
     const mask = this.make.graphics({ x: 0, y: 0 });
@@ -417,7 +413,7 @@ export class CodexScene extends Phaser.Scene {
     content.filters?.internal.addMask(mask);
 
     this.detailLayer.add(content);
-    this.registerDetailScrollArea(bounds, content, text.height, bounds.height);
+    this.registerDetailScrollArea(bounds, content, text.y - bounds.y + text.height, bounds.height);
   }
 
   private registerDetailScrollArea(

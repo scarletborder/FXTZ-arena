@@ -34,7 +34,6 @@ export interface CharacterDefinition {
 
 export interface AbilityCardGalleryAssets {
   readonly iconAsset: string;
-  readonly previewAsset: string;
 }
 
 export interface AbilityCardDefinition {

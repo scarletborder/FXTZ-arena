@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { getAllCharacterDefinitions } from "@repo/content";
-
+import { queueAbilityCardIconAssets } from "../ability-card-assets";
 import { assetUrl } from "../utils/assets";
 import { hasResourceAsset } from "../utils/resource-pack";
 
@@ -23,3 +23,9 @@ export function queueMenuCharacterPreviewAssets(scene: Phaser.Scene): number {
 export function characterPreviewTextureKey(characterId: string): string {
   return `character-preview-${characterId}`;
 }
+
+export function queueMenuAssets(scene: Phaser.Scene): number {
+  return queueMenuCharacterPreviewAssets(scene) + queueAbilityCardIconAssets(scene);
+}
+
+export { abilityCardIconTextureKey } from "../ability-card-assets";

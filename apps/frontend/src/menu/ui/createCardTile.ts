@@ -24,6 +24,6 @@ export function createCardTile(
     badge: card.kind === "active" ? t("codex.active_use") : t("select.passive"),
     selected,
     onClick,
-    drawIcon: (target) => drawCardIcon(scene, target, 58, 34, card.kind, 0.76),
+    drawIcon: (target) => drawCardIcon(scene, target, 58, 34, card, 0.76),
   });
 }

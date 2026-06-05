@@ -15,7 +15,6 @@ export class BackdoorBattleCard extends BattleAbilityCard {
   readonly description = "角色后方追加后门，消去背后的敌弹";
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/backdoor/icon.png",
-    previewAsset: "assets/ability-cards/backdoor/preview.webp",
   };
 
   collectShields(fighter: FighterState): ShieldState[] {

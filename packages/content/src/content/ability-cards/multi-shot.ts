@@ -15,7 +15,6 @@ export class MultiShotBattleCard extends BattleAbilityCard {
   readonly description = "为普通攻击额外追加低速诱导弹。";
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/multi-shot/icon.png",
-    previewAsset: "assets/ability-cards/multi-shot/preview.webp",
   };
 
   onAfterFire(ctx: BattleCardContext): void {

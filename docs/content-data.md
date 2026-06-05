@@ -80,7 +80,6 @@ export interface AbilityCardDefinition {
   description: string;
   gallery: {
     iconAsset: string;
-    previewAsset: string;
   };
   effectIds: string[];
 }

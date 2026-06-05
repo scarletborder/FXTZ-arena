@@ -14,7 +14,6 @@ export class ExtensionBattleCard extends BattleAbilityCard {
   readonly description = "道具吸收范围小范围增加";
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/extension/icon.png",
-    previewAsset: "assets/ability-cards/extension/preview.webp",
   };
 
   getPointCollectRadiusBonus(_fighter: FighterState): number {
