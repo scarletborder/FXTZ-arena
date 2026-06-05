@@ -272,6 +272,11 @@ function writeFighter(
   hasher.writeNumber(fighter.movementLockedUntil);
   hasher.writeNumber(fighter.projectilePauseUntil);
   hasher.writeNumber(fighter.timeStopUntil);
+  hasher.writeNumber(fighter.youmuBombDashDelayRemaining);
+  writeFixed(hasher, fighter.youmuBombDashStartX ?? 0);
+  writeFixed(hasher, fighter.youmuBombDashStartY ?? 0);
+  writeFixed(hasher, fighter.youmuBombDashAimX ?? 0);
+  writeFixed(hasher, fighter.youmuBombDashAimY ?? 0);
   hasher.writeString(fighter.moveSpeedOverride ?? "");
   hasher.writeNumber(fighter.moveSpeedOverrideUntil);
   hasher.writeNumber(fighter.moveSpeedOverrideDelayRemaining);

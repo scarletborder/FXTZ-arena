@@ -63,7 +63,7 @@ export class BattleAudioDirector {
     if (currentFighter.bombUses > previousFighter.bombUses) {
       AudioCmd.Play("se_power00");
       if (currentFighter.activeCharacter.id === "youmu") {
-        AudioCmd.Play("se_slash");
+        AudioCmd.Play("se_ch02");
       }
       if (currentFighter.activeCharacter.id === "kaguya") {
         AudioCmd.Play("se_lazer00");

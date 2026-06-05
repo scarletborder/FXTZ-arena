@@ -45,6 +45,11 @@ export interface FighterState {
   movementLockedUntil: number;
   projectilePauseUntil: number;
   timeStopUntil: number;
+  youmuBombDashDelayRemaining: number;
+  youmuBombDashStartX: number | undefined;
+  youmuBombDashStartY: number | undefined;
+  youmuBombDashAimX: number | undefined;
+  youmuBombDashAimY: number | undefined;
   moveSpeedOverride: CharacterDefinition["moveSpeed"] | undefined;
   moveSpeedOverrideUntil: number;
   moveSpeedOverrideDelayRemaining: number;

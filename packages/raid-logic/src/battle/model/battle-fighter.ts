@@ -299,6 +299,7 @@ export class BattleFighter {
   }
 
   postUpdate(ctx: CharacterActionContext): void {
+    this.activeCharacter.onPostUpdate(ctx, this.state);
     for (const card of this.battleCards) {
       card.onPostUpdate(ctx);
     }

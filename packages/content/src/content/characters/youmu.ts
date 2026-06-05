@@ -38,6 +38,7 @@ const SLASH_MAX_RADIUS = hitCircleUnits(28);
 const BOMB_DASH_DISTANCE = YOUMU_BOMB_DASH_DISTANCE;
 const BOMB_SHOT_COUNT = 6;
 const BOMB_SHOT_INTERVAL = 5;
+const YOUMU_BOMB_STARTUP_TICKS = secondsToTicks(0.4);
 
 export class YoumuBattleCharacter extends BattleCharacter {
   readonly id = "youmu" as CharacterDefinition["id"];
@@ -131,9 +132,59 @@ export class YoumuBattleCharacter extends BattleCharacter {
     aimY: number,
   ): void {
     this.startBomb(ctx, fighter, secondsToTicks(0.5));
-    const startX = fighter.x;
-    const startY = fighter.y;
-    const destination = dashDestination(fighter, aimX, aimY);
+    fighter.youmuBombDashDelayRemaining = YOUMU_BOMB_STARTUP_TICKS;
+    fighter.youmuBombDashStartX = fighter.x;
+    fighter.youmuBombDashStartY = fighter.y;
+    fighter.youmuBombDashAimX = aimX;
+    fighter.youmuBombDashAimY = aimY;
+    const startupLockTicks = YOUMU_BOMB_STARTUP_TICKS + 1;
+    fighter.actionLockedUntil = Math.max(
+      fighter.actionLockedUntil,
+      startupLockTicks,
+    );
+    fighter.switchLockedUntil = Math.max(
+      fighter.switchLockedUntil,
+      startupLockTicks,
+    );
+    fighter.movementLockedUntil = Math.max(
+      fighter.movementLockedUntil,
+      startupLockTicks,
+    );
+  }
+
+  onPostUpdate(ctx: CharacterActionContext, fighter: FighterState): void {
+    if (fighter.youmuBombDashDelayRemaining !== 0) {
+      return;
+    }
+    if (
+      fighter.youmuBombDashStartX === undefined ||
+      fighter.youmuBombDashStartY === undefined ||
+      fighter.youmuBombDashAimX === undefined ||
+      fighter.youmuBombDashAimY === undefined
+    ) {
+      return;
+    }
+
+    const startX = fighter.youmuBombDashStartX;
+    const startY = fighter.youmuBombDashStartY;
+    const aimX = fighter.youmuBombDashAimX;
+    const aimY = fighter.youmuBombDashAimY;
+    fighter.youmuBombDashStartX = undefined;
+    fighter.youmuBombDashStartY = undefined;
+    fighter.youmuBombDashAimX = undefined;
+    fighter.youmuBombDashAimY = undefined;
+    this.executeDashBomb(ctx, fighter, startX, startY, aimX, aimY);
+  }
+
+  private executeDashBomb(
+    ctx: CharacterActionContext,
+    fighter: FighterState,
+    startX: number,
+    startY: number,
+    aimX: number,
+    aimY: number,
+  ): void {
+    const destination = dashDestination(startX, startY, aimX, aimY);
     const dashLength = Math.hypot(
       destination.x - startX,
       destination.y - startY,
@@ -278,26 +329,27 @@ export class YoumuBattleCharacter extends BattleCharacter {
 Vanilla.registerCharacter("youmu")(YoumuBattleCharacter);
 
 function dashDestination(
-  fighter: FighterState,
+  fighterX: number,
+  fighterY: number,
   aimX: number,
   aimY: number,
 ): { readonly x: number; readonly y: number } {
-  const dx = aimX - fighter.x;
-  const dy = aimY - fighter.y;
+  const dx = aimX - fighterX;
+  const dy = aimY - fighterY;
   const distance = Math.hypot(dx, dy);
   if (distance === 0) {
-    return { x: fighter.x, y: fighter.y };
+    return { x: fighterX, y: fighterY };
   }
   const dashDistance = Math.min(distance, BOMB_DASH_DISTANCE);
   const ratio = dashDistance / distance;
   return {
     x: clamp(
-      fighter.x + dx * ratio,
+      fighterX + dx * ratio,
       PLAYER_CORE_RADIUS,
       ARENA_WIDTH - PLAYER_CORE_RADIUS,
     ),
     y: clamp(
-      fighter.y + dy * ratio,
+      fighterY + dy * ratio,
       PLAYER_CORE_RADIUS,
       ARENA_HEIGHT - PLAYER_CORE_RADIUS,
     ),

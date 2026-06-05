@@ -181,6 +181,8 @@ export abstract class BattleCharacter extends PointCollectRadius {
   ): void;
   abstract onHit(ctx: BattleHitContext): void;
 
+  onPostUpdate(_ctx: CharacterActionContext, _fighter: FighterState): void {}
+
   canUseBomb(fighter: FighterState): boolean {
     return fighter.bombs > 0 || fighter.pointCount >= this.pointBombThreshold;
   }

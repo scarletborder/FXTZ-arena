@@ -42,6 +42,11 @@ export function createFighter(
     movementLockedUntil: 0,
     projectilePauseUntil: 0,
     timeStopUntil: 0,
+    youmuBombDashDelayRemaining: 0,
+    youmuBombDashStartX: undefined,
+    youmuBombDashStartY: undefined,
+    youmuBombDashAimX: undefined,
+    youmuBombDashAimY: undefined,
     moveSpeedOverride: undefined,
     moveSpeedOverrideUntil: 0,
     moveSpeedOverrideDelayRemaining: 0,
@@ -128,6 +133,9 @@ export function tickFighterTimers(fighter: FighterState): void {
   }
   if (fighter.timeStopUntil > 0) {
     fighter.timeStopUntil -= 1;
+  }
+  if (fighter.youmuBombDashDelayRemaining > 0) {
+    fighter.youmuBombDashDelayRemaining -= 1;
   }
   if (fighter.moveSpeedOverrideUntil > 0) {
     fighter.moveSpeedOverrideUntil -= 1;
