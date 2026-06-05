@@ -38,7 +38,7 @@ const SLASH_MAX_RADIUS = hitCircleUnits(28);
 const BOMB_DASH_DISTANCE = YOUMU_BOMB_DASH_DISTANCE;
 const BOMB_SHOT_COUNT = 6;
 const BOMB_SHOT_INTERVAL = 5;
-const YOUMU_BOMB_STARTUP_TICKS = secondsToTicks(0.4);
+const YOUMU_BOMB_STARTUP_TICKS = secondsToTicks(0.2);
 
 export class YoumuBattleCharacter extends BattleCharacter {
   readonly id = "youmu" as CharacterDefinition["id"];
