@@ -6,7 +6,7 @@ import type { CharacterTileControl } from "../shared";
 import { roleLabel } from "../shared";
 
 import { createEntryTile } from "./entryTile";
-import { drawCharacterIcon } from "./drawCharacterIcon";
+import { drawCharacterPreviewIcon } from "./drawCharacterIcon";
 
 export function createCharacterTile(
   scene: Phaser.Scene,
@@ -24,6 +24,6 @@ export function createCharacterTile(
     badge: roleLabel(character.roleClass),
     selected,
     onClick,
-    drawIcon: (target) => drawCharacterIcon(scene, target, 56, 38, 0.82),
+    drawIcon: (target) => drawCharacterPreviewIcon(scene, target, 56, 44, 82, 76, character),
   });
 }

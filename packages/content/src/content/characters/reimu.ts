@@ -34,7 +34,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
     "· 传统的乐园巫女\n· 重视防御的平衡型角色，追踪性弹幕\n· bomb释放大玉消除沿途弹幕\n· 普通射击逐个装填";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/reimu/portrait.png",
-    attackPreviewAsset: "assets/characters/reimu/attack-preview.webp",
+    attackPreviewAsset: "assets/characters/reimu/preview.png",
     combatAsset: "assets/characters/reimu/combat.png",
   };
   readonly normalAttackId = "reimu_homing_shot";

@@ -67,7 +67,7 @@ export class KaguyaBattleCharacter extends BattleCharacter {
     "· 永远与须臾的罪人\n此角色由“人鱼乳业”设计";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/kaguya/portrait.png",
-    attackPreviewAsset: "assets/characters/kaguya/attack-preview.webp",
+    attackPreviewAsset: "assets/characters/kaguya/preview.png",
     combatAsset: "assets/characters/kaguya/combat.png",
   };
   readonly normalAttackId = "kaguya_orbit_snipe";

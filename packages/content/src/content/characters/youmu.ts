@@ -58,7 +58,7 @@ export class YoumuBattleCharacter extends BattleCharacter {
     "· 无敌的半灵剑客\n· 高速斩击具有高伤害和清除弹幕能力\n· bomb可进行高速冲刺";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/youmu/portrait.png",
-    attackPreviewAsset: "assets/characters/youmu/attack-preview.webp",
+    attackPreviewAsset: "assets/characters/youmu/preview.png",
     combatAsset: "assets/characters/youmu/combat.png",
   };
   readonly normalAttackId = "youmu_slash";

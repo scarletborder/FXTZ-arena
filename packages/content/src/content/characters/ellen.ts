@@ -58,7 +58,7 @@ export class EllenBattleCharacter extends BattleCharacter {
     "· 沉入久远之爱的魔女\n· 倾斜大量高速狙击弹的广义上狙击型机体\n· bomb展开高速旋转弹幕\n· 普通射击逐个装填";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/ellen/portrait.png",
-    attackPreviewAsset: "assets/characters/ellen/attack-preview.webp",
+    attackPreviewAsset: "assets/characters/ellen/preview.png",
     combatAsset: "assets/characters/ellen/combat.png",
   };
   readonly normalAttackId = "ellen_delayed_snipe";

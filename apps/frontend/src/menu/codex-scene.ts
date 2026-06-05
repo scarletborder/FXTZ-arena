@@ -7,12 +7,13 @@ import {
   createCodexTile,
   createSmallTab,
   drawCardIcon,
-  drawCharacterIcon,
+  drawCharacterPreviewIcon,
   drawFightingBackdrop,
   drawPanel,
   bodyStyle,
   headingStyle,
 } from "./ui";
+import { queueMenuCharacterPreviewAssets } from "./assets";
 import { installMenuAudioUnlock, type CodexTab, type SceneKey } from "./shared";
 
 export class CodexScene extends Phaser.Scene {
@@ -69,6 +70,10 @@ export class CodexScene extends Phaser.Scene {
 
   constructor() {
     super("codex" satisfies SceneKey);
+  }
+
+  preload(): void {
+    queueMenuCharacterPreviewAssets(this);
   }
 
   create(): void {
@@ -182,7 +187,7 @@ export class CodexScene extends Phaser.Scene {
       const x = startX + col * (tileWidth + gapX);
       const y = startY + row * (tileHeight + gapY);
       const item = createCodexTile(this, x, y, character.name, character.cost, roleLabel(character.roleClass), character.id === this.selectedCharacter.id, (target) => {
-        drawCharacterIcon(this, target, 82, 48, 1.0);
+        drawCharacterPreviewIcon(this, target, 82, 54, 120, 78, character);
       }, () => {
         this.selectedCharacter = character;
         this.detailScrollOffset = 0;

@@ -34,7 +34,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
     "· 路边的普通魔法使\n· 高速激光的狙击性机体，弹幕具有高额伤害\n· bomb可发射超大型魔炮";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/marisa/portrait.png",
-    attackPreviewAsset: "assets/characters/marisa/attack-preview.webp",
+    attackPreviewAsset: "assets/characters/marisa/preview.png",
     combatAsset: "assets/characters/marisa/combat.png",
   };
   readonly normalAttackId = "marisa_laser";

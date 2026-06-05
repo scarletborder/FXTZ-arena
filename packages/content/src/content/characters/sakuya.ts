@@ -36,7 +36,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
   readonly description = "· 过劳996女仆\n· 擅长近中距离压迫的突击性机体\n· bomb可让时间停止";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/sakuya/portrait.png",
-    attackPreviewAsset: "assets/characters/sakuya/attack-preview.webp",
+    attackPreviewAsset: "assets/characters/sakuya/preview.png",
     combatAsset: "assets/characters/sakuya/combat.png",
   };
   readonly normalAttackId = "sakuya_parallel_knives";

@@ -64,7 +64,7 @@ export class ReisenBattleCharacter extends BattleCharacter {
     "· 狂气之月兔\n· 擅长中距离压制的突击角色\n· bomb展开消弹圈并获得两层护盾";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/reisen/portrait.png",
-    attackPreviewAsset: "assets/characters/reisen/attack-preview.webp",
+    attackPreviewAsset: "assets/characters/reisen/preview.png",
     combatAsset: "assets/characters/reisen/combat.png",
   };
   readonly normalAttackId = "reisen_parallel_lunatic_shot";
