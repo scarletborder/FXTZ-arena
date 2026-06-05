@@ -1,8 +1,10 @@
 import Phaser from "phaser";
 import { t } from "@repo/i18n";
+import { GAME_HEIGHT } from "@repo/constants";
 
 import { createFightButton, drawFightingBackdrop, drawPanel, bodyStyle, headingStyle } from "./ui";
 import { installMenuAudioUnlock, type ResultData, type ResultPlayerSummary, type SceneKey } from "./shared";
+import { Depth } from "../utils/depth";
 import { uiSettings } from "../store/settings";
 
 export class ResultScene extends Phaser.Scene {
@@ -23,6 +25,10 @@ export class ResultScene extends Phaser.Scene {
 
     createFightButton(this, 512, 588, 260, 58, t("result.back"), () => this.scene.start(data.returnScene ?? "battle-start"), { accent: 0xe33d44 });
     createFightButton(this, 810, 588, 220, 58, t("result.rematch"), undefined, { enabled: false, subLabel: t("result.rematch_disabled") });
+
+    if (uiSettings.debug && data.debugHashes) {
+      this.drawDebugHashPanel(data.debugHashes);
+    }
   }
 
   private drawPlayerColumn(centerX: number, topY: number, player: ResultPlayerSummary): void {
@@ -30,5 +36,32 @@ export class ResultScene extends Phaser.Scene {
     this.add.text(centerX - 110, topY + 42, t("result.shots", { count: player.shots }), bodyStyle("#d7e3ef", 18));
     this.add.text(centerX - 110, topY + 82, t("result.bomb_uses", { count: player.bombUses }), bodyStyle("#d7e3ef", 18));
     this.add.text(centerX - 110, topY + 122, t("result.hits_taken", { count: player.hitsTaken }), bodyStyle("#d7e3ef", 18));
+  }
+
+  private drawDebugHashPanel(debugHashes: NonNullable<ResultData["debugHashes"]>): void {
+    const panelX = 20;
+    const panelY = GAME_HEIGHT - 20;
+    const panelWidth = 430;
+    const panelHeight = 74;
+
+    this.add
+      .rectangle(panelX, panelY, panelWidth, panelHeight, 0x101820, 0.82)
+      .setOrigin(0, 1)
+      .setScrollFactor(0)
+      .setDepth(Depth.Debug);
+
+    this.add
+      .text(
+        panelX + 14,
+        panelY - 14,
+        [
+          `finalGlobalHash: ${debugHashes.finalGlobalHash ?? "<incomplete>"}`,
+          `finalGlobalInputHash: ${debugHashes.finalGlobalInputHash ?? "<incomplete>"}`,
+        ].join("\n"),
+        bodyStyle("#d7e3ef", 15),
+      )
+      .setOrigin(0, 1)
+      .setDepth(Depth.Debug)
+      .setScrollFactor(0);
   }
 }

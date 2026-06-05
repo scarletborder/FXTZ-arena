@@ -46,6 +46,7 @@ export interface ResultData {
   readonly durationSeconds?: number;
   readonly players: readonly [ResultPlayerSummary, ResultPlayerSummary];
   readonly returnScene?: string;
+  readonly debugHashes?: ResultDebugHashes;
 }
 
 export interface ResultPlayerSummary {
@@ -53,6 +54,11 @@ export interface ResultPlayerSummary {
   readonly shots: number;
   readonly bombUses: number;
   readonly hitsTaken: number;
+}
+
+export interface ResultDebugHashes {
+  readonly finalGlobalHash: string | null;
+  readonly finalGlobalInputHash: string | null;
 }
 
 export interface FightButton {

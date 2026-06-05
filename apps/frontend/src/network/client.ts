@@ -155,7 +155,7 @@ export class ConnectionManager {
       this.setStatus("error");
       if (!this.fingerprintRetryAttempted && useWebTransport && !fingerprint && !IS_DESKTOP_APP) {
         this.fingerprintRetryAttempted = true;
-        void this.retryWebTransportWithFingerprint(normalizedAddress, username, onOpen, onClose, onError, onMessage);
+        void this.retryWebTransportWithFingerprint(normalizedAddress, onOpen, onClose, onError, onMessage);
       }
     };
 
@@ -178,7 +178,6 @@ export class ConnectionManager {
 
   private async retryWebTransportWithFingerprint(
     normalizedAddress: string,
-    username: string,
     onOpen: () => void,
     onClose: () => void,
     onError: (error: Error) => void,
