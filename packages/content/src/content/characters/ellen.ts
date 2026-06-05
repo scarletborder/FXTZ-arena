@@ -49,7 +49,7 @@ export class EllenBattleCharacter extends BattleCharacter {
   readonly moveSpeed = "low" as CharacterDefinition["moveSpeed"];
   readonly fireRate = "low" as CharacterDefinition["fireRate"];
   readonly ammoCapacity = 3;
-  readonly reloadTicksPerAmmo = secondsToTicks(1.8);
+  readonly reloadTicksPerAmmo = secondsToTicks(1.5);
   readonly reloadStartPolicy =
     "keep_current" as CharacterDefinition["reloadStartPolicy"];
   readonly reloadCommitPolicy =

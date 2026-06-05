@@ -16,7 +16,7 @@ import { Vanilla } from "../decorators";
 
 export const REISEN_COST = 5;
 export const REISEN_AMMO_CAPACITY = 8;
-export const REISEN_RELOAD_TICKS_PER_AMMO = secondsToTicks(0.3);
+export const REISEN_RELOAD_TICKS_PER_AMMO = secondsToTicks(0.5);
 export const REISEN_NORMAL_BULLET_SIZE = 15;
 export const REISEN_NORMAL_PARALLEL_SIDE_OFFSET = hitCircleUnits(2);
 export const REISEN_NORMAL_DIAGONAL_DEGREES = 30;
@@ -27,8 +27,8 @@ export const REISEN_NORMAL_FORWARD_SPEED = "medium" as const;
 export const REISEN_SHIELD_FORWARD_SPEED = "high" as const;
 export const REISEN_NORMAL_DIAGONAL_SPEED = "medium" as const;
 export const REISEN_NORMAL_SPLIT_SPEED = "low" as const;
-export const REISEN_NORMAL_DAMAGE = 15;
-export const REISEN_NORMAL_SPLIT_DAMAGE = 10;
+export const REISEN_NORMAL_DAMAGE = 10;
+export const REISEN_NORMAL_SPLIT_DAMAGE = 20;
 export const REISEN_NORMAL_TIER_COUNTS: Record<PointPowerTier, number> = {
   1: 2,
   2: 8,

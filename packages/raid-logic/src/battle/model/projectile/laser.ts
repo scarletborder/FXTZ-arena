@@ -72,6 +72,7 @@ export function createLaserProjectile(params: {
     width,
     previousWidth: width,
     height: params.kind === "spark" ? (params.height ?? 9) : 0,
+    renderWidth: undefined,
     renderHeight: params.renderHeight ?? params.height ?? 9,
     anchorX: params.anchored ? params.x : undefined,
     anchorY: params.anchored ? params.y : undefined,

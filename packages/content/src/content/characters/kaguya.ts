@@ -17,7 +17,7 @@ import { Vanilla } from "../decorators";
 
 export const KAGUYA_COST = 4;
 export const KAGUYA_AMMO_CAPACITY = 1;
-export const KAGUYA_RELOAD_TICKS_PER_AMMO = secondsToTicks(2);
+export const KAGUYA_RELOAD_TICKS_PER_AMMO = secondsToTicks(2.2);
 export const KAGUYA_NORMAL_BULLET_SIZE = 42;
 export const KAGUYA_NORMAL_ORBIT_RADIUS = 64;
 export const KAGUYA_NORMAL_ORBIT_DELAY_TICKS = secondsToTicks(1.5);

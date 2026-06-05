@@ -331,6 +331,7 @@ function writeProjectiles(
     writeFixed(hasher, projectile.vy);
     writeFixed(hasher, projectile.width);
     writeFixed(hasher, projectile.height);
+    writeFixed(hasher, projectile.renderWidth ?? 0);
     writeFixed(hasher, projectile.renderHeight ?? 0);
     writeFixed(hasher, projectile.anchorX ?? 0);
     writeFixed(hasher, projectile.anchorY ?? 0);

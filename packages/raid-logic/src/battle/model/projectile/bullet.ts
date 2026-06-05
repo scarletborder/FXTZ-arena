@@ -14,7 +14,14 @@ import type {
   FighterState,
   ProjectileState,
 } from "@repo/content";
-import { fpAtan2, fpHypotFp, fpMax } from "@repo/content";
+import {
+  fpAtan2,
+  fpHypotFp,
+  fpMax,
+  bulletRenderSizeForHitSize,
+  getBulletAssetMetrics,
+  normalizeBulletHitSize,
+} from "@repo/content";
 
 const HOMING_START_DELAY_TICKS = secondsToTicks(0.2);
 const HOMING_MAX_TURN_RADIANS_PER_TICK = Math.PI / TICK_RATE;
@@ -56,6 +63,18 @@ export function createBulletProjectile(params: {
 }): ProjectileState {
   const speed = bulletSpeedRankToPixelsPerTick(params.speedRank);
   const spawnOffset = params.spawnOffset ?? 28;
+  const metrics = getBulletAssetMetrics(params.textureKey);
+  const hitSize = normalizeBulletHitSize(
+    { width: params.width, height: params.height },
+    metrics,
+  );
+  const renderSize = metrics
+    ? bulletRenderSizeForHitSize(hitSize, metrics)
+    : undefined;
+  const physicsSize = {
+    width: Math.round(hitSize.width),
+    height: Math.round(hitSize.height),
+  };
 
   const fpAngle = fp.fromFloat(params.angle);
   const fpCos = fp.cos(fpAngle);
@@ -82,10 +101,11 @@ export function createBulletProjectile(params: {
     previousY: fp.toFloat(fpy),
     vx: fp.toFloat(fpvx),
     vy: fp.toFloat(fpvy),
-    width: params.width,
-    previousWidth: params.width,
-    height: params.height,
-    renderHeight: undefined,
+    width: physicsSize.width,
+    previousWidth: physicsSize.width,
+    height: physicsSize.height,
+    renderWidth: renderSize?.width,
+    renderHeight: renderSize?.height,
     anchorX: undefined,
     anchorY: undefined,
     visibleFrom: params.frame,

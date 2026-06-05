@@ -49,7 +49,7 @@ export function projectileDisplay(
   return {
     x: lerp(projectile.previousX, projectile.x, alpha),
     y: lerp(projectile.previousY, projectile.y, alpha),
-    width,
+    width: projectile.renderWidth ?? width,
     height: projectile.renderHeight ?? projectile.height,
   };
 }

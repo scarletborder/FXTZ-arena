@@ -25,7 +25,7 @@ const SLASH_DAMAGE = 2; // 单次伤害需乘以62倍
 const NORMALSHOOT_DAMAGE = 20;
 const BOMBSHOT_DAMAGE = 8;
 
-const REAR_BULLET_SIZE = 6;
+const REAR_BULLET_SIZE = 12;
 const SLASH_DISTANCE_TIER1 = hitCircleUnits(12);
 const SLASH_DISTANCE_TIER1_GAP = hitCircleUnits(8);
 const SLASH_DISTANCE_TIER3 = hitCircleUnits(32);
@@ -222,7 +222,7 @@ export class YoumuBattleCharacter extends BattleCharacter {
     ctx.spawnBullet({
       owner: fighter.key,
       textureKey: "bullet_type_4_offset_9",
-      kind: "orb",
+      kind: "knife",
       x: position.x,
       y: position.y,
       angle: aimAngle,

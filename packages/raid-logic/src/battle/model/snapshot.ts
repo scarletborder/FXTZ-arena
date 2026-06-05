@@ -276,6 +276,7 @@ function serializeProjectile(
     width: projectile.width,
     previousWidth: projectile.previousWidth,
     height: projectile.height,
+    renderWidth: projectile.renderWidth,
     renderHeight: projectile.renderHeight,
     anchorX: projectile.anchorX,
     anchorY: projectile.anchorY,

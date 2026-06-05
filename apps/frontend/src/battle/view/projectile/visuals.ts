@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 
+import { bulletRenderSizeForHitSize } from "@repo/content";
 import type { ProjectileState } from "@repo/raid-logic";
 import { Depth } from "../../../utils/depth";
 
@@ -29,7 +30,9 @@ export class ProjectileVisualStore {
     if (spec.kind === "image") {
       sprite.setTexture(spec.frame.texture, spec.frame.frame);
       sprite.clearTint();
-      sprite.setDisplaySize(spec.frame.width, spec.frame.height);
+      sprite.setDisplaySize(
+        ...projectileFrameRenderSize(projectile, display, spec.frame),
+      );
     } else {
       sprite.setTexture(spec.texture);
       sprite.setTint(spec.tint);
@@ -126,6 +129,26 @@ export class ProjectileVisualStore {
     this.visuals.set(id, visual);
     return visual;
   }
+}
+
+function projectileFrameRenderSize(
+  projectile: ProjectileState,
+  display: ProjectileDisplay,
+  frame: Extract<ProjectileSpec, { readonly kind: "image" }>["frame"],
+): [number, number] {
+  if (
+    projectile.renderWidth !== undefined &&
+    projectile.renderHeight !== undefined
+  ) {
+    return [display.width, display.height];
+  }
+  const size = bulletRenderSizeForHitSize(display, {
+    rectWidth: frame.width,
+    rectHeight: frame.height,
+    hitWidth: frame.hitWidth,
+    hitHeight: frame.hitHeight,
+  });
+  return [size.width, size.height];
 }
 
 function destroyVisual(visual: ProjectileVisual): void {

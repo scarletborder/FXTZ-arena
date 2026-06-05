@@ -103,6 +103,7 @@ export interface ProjectileState {
   width: number;
   previousWidth: number;
   readonly height: number;
+  readonly renderWidth?: number;
   readonly renderHeight?: number;
   readonly anchorX: number | undefined;
   readonly anchorY: number | undefined;

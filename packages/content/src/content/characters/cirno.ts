@@ -33,7 +33,7 @@ export class CirnoBattleCharacter extends BattleCharacter {
   readonly moveSpeed = "medium" as CharacterDefinition["moveSpeed"];
   readonly fireRate = "medium" as CharacterDefinition["fireRate"];
   readonly ammoCapacity = 4;
-  readonly reloadTicksPerAmmo = secondsToTicks(0.8);
+  readonly reloadTicksPerAmmo = secondsToTicks(0.3);
   readonly reloadStartPolicy =
     "keep_current" as CharacterDefinition["reloadStartPolicy"];
   readonly reloadCommitPolicy =

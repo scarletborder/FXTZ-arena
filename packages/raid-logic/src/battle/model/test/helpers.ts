@@ -137,6 +137,7 @@ export function testProjectile(
     width: 12,
     previousWidth: 12,
     height: 12,
+    renderWidth: undefined,
     anchorX: undefined,
     anchorY: undefined,
     visibleFrom: 0,
