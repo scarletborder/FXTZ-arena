@@ -3,7 +3,7 @@ import { t } from "@repo/i18n";
 import { IS_DESKTOP_APP } from "@repo/constants";
 
 import { bodyStyle, createFightButton, createRectangleButton, drawBuildLabel, drawFightingBackdrop, drawTitleBlock } from "./ui";
-import { installMenuAudioUnlock, type SelectionData, type SceneKey } from "./shared";
+import { installMenuAudioUnlock, type SceneKey } from "./shared";
 import { showPublicServerConnectivityDialog } from "./public-server-connectivity-dialog";
 import { setSelfAuthed, uiSettings } from "../store/settings";
 import { showLanguageDialog } from "./language-dialog";
@@ -28,7 +28,6 @@ export class HomeScene extends Phaser.Scene {
 
     const buttons = [
       { label: t("menu.start_game"), onClick: () => this.scene.start("battle-start") },
-      { label: t("menu.practice_range"), onClick: () => this.scene.start("select", { mode: "training" } satisfies SelectionData) },
       { label: t("menu.codex"), onClick: () => this.scene.start("codex") },
       { label: t("menu.manual"), onClick: () => this.scene.start("manual") },
       { label: t("menu.settings"), onClick: () => this.scene.start("settings") },
