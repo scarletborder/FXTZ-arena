@@ -17,6 +17,8 @@ export type AbilityCardId =
   | "graze_lover";
 export type MapId =
   | "hakurei_shrine"
+  | "mist_lake"
+  | "bamboo_lost"
   | "mana_forest"
   | "x_shoot_range"
   | "shoot_range";

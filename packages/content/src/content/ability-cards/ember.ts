@@ -16,6 +16,13 @@ export class EmberBattleCard extends BattleAbilityCard {
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/ember/icon.png",
   };
+  override readonly storyModeOverride = {
+    onInitialize: (ctx: BattleInitializeContext): void => {
+      ctx.self.bombs += 1;
+      ctx.resolution.defaultBombs = ctx.self.bombs;
+    },
+    onHit: (): void => undefined,
+  };
 
   onInitialize(ctx: BattleInitializeContext): void {
     ctx.resolution.defaultBombs = DEFAULT_BOMBS + 1;

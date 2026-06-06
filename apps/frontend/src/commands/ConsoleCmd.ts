@@ -11,6 +11,7 @@ export interface DebugConsoleCommands {
   physics: (enabled?: boolean) => boolean | null;
   spawnPoint: (point: "small" | "medium" | "large") => boolean | null;
   setPoint: (point: number) => boolean | null;
+  pass: () => boolean | null;
   help: () => void;
 }
 
@@ -56,6 +57,7 @@ function createCommands(): DebugConsoleCommands {
     physics,
     spawnPoint,
     setPoint,
+    pass,
     help,
   };
 }
@@ -206,6 +208,18 @@ function setPoint(point: number): boolean | null {
   return true;
 }
 
+function pass(): boolean | null {
+  const scene = getScene();
+  if (!scene) {
+    return null;
+  }
+  if (!scene.passStoryStage()) {
+    return printBlocked("FXTZ.pass is only available during story-mode battles.");
+  }
+  printOk("Passed the current story stage.");
+  return true;
+}
+
 function help(): void {
   console.log(`[${BADGE}] Commands`);
   console.log("FXTZ.frame()              当前帧号");
@@ -220,6 +234,7 @@ function help(): void {
   console.log("FXTZ.physics(enabled?)    切换碰撞体可视化");
   console.log('FXTZ.spawnPoint("small"|"medium"|"large") Spawn a P point at the cursor');
   console.log("FXTZ.setPoint(0..300)     Set current player point directly");
+  console.log("FXTZ.pass()               Pass the current story-mode stage");
 }
 
 function getScene(): BattleScene | null {

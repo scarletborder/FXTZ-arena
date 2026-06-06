@@ -1,0 +1,105 @@
+{
+  "id": "reimu",
+  "title": "博丽灵梦的故事",
+  "playableCharacterId": "reimu",
+  "initialLives": 2,
+  "initialBombs": 3,
+  "stages": [
+    {
+      "id": "hakurei-shrine-1",
+      "title": "神社前的热身",
+      "mapId": "hakurei_shrine",
+      "icon": "hakurei_shrine",
+      "costLimit": 14,
+      "reward": { "bombs": 1 },
+      "opponent": {
+        "primaryCharacterId": "marisa",
+        "alternateCharacterId": "ellen",
+        "cardIds": [ "spirit_strike_card" ],
+        "activeCardId": "spirit_strike_card"
+      },
+      "ai": { "smartDurationSeconds": 35, "dumbRampSeconds": 25 },
+      "script": [
+        { "speaker": "  ", "content": "博丽神社前，灵梦看着眼前的友人", "color": "#ffffff", "background": "black" },
+        { "speaker": "魔理沙", "content": "等一下啦。最近大家变懒了，根本没人陪我玩弹幕游戏。既然要出发，不如先在这里活动下身体（减肥）吧？", "color": "#ffd700", "background": "story/shrine_marisa" },
+        { "speaker": "灵梦", "content": "没办法呢。那就稍微陪你热个身吧", "color": "#f25e5e", "background": "story/shrine_reimu" },
+        { "speaker": "魔理沙", "content": "身体动起来，线索也许就自己飞出来了。", "color": "#ffd700", "background": "story/shrine_marisa" }
+      ]
+    },
+    {
+      "id": "mana-forest-2",
+      "title": "迷雾之湖",
+      "mapId": "mist_lake",
+      "icon": "mist_lake",
+      "costLimit": 15,
+      "reward": { "lives": 1 },
+      "opponent": {
+        "primaryCharacterId": "sakuya",
+        "alternateCharacterId": "cirno",
+        "cardIds": [ "ember" ]
+      },
+      "ai": { "smartDurationSeconds": 45, "dumbRampSeconds": 35 },
+      "script": [
+        { "speaker": "灵梦", "content": "服气了吗，我现在要去找紫那家伙问清楚情况了。", "color": "#f25e5e", "background": "story/shrine_reimu" },
+        { "speaker": "  ", "content": "灵梦启程向幻想乡的界线，也就是紫居住的地方飞去，途径雾之湖", "color": "#ffffff", "background": "black" },
+        { "speaker": "咲夜", "content": "这小家伙根本问不出什么话么...", "color": "#ffffff", "background": "story/mistlake_sakuya_cirno" },
+        { "speaker": "Cirno", "content": "喂！把本大人放下来啦", "color": "#81b0fc", "background": "story/mistlake_sakuya_cirno" },
+        { "speaker": "  ", "content": "一阵吵闹声吸引了灵梦的注意，她看到红魔馆的女仆在质询冰之妖精什么问题，意外的是，二人也都没有被此次异变影响", "color": "#ffffff", "background": "story/mistlake_sakuya_cirno" },
+        { "speaker": "灵梦", "content": "看起来你们也没怎么受到异变的影响呢", "color": "#f25e5e", "background": "black" },
+        { "speaker": "sakuya", "content": "原来是灵梦小姐，不瞒您说，大小姐正被身材的问题而着急，我为分担她的烦恼而出来寻找解决方案，您看，这只冰精也是格外的健康呢", "color": "#ffffff", "background": "story/mistlake_sakuya_cirno_2" },
+        { "speaker": "Cirno", "content": "饿啊，明明是夏天太热都快把本大爷晒化了，你是不是在讽刺我", "color": "#81b0fc", "background": "story/mistlake_sakuya_cirno_2" },
+        { "speaker": "sakuya", "content": "绝对没有啦，Cirno小朋友。不过话说回来，看来灵梦您也没有受到波及，恳请您指点一下破局之道", "color": "#ffffff", "background": "story/mistlake_sakuya_cirno_2" },
+        { "speaker": "灵梦", "content": "实际上，嗯，神社一直很拮据", "color": "#f25e5e", "background": "black" },
+        { "speaker": "sakuya", "content": "所以您将仅剩的财产去购买了何种药物吗，您能推广一下您现在使用的产品吗", "color": "#ffffff", "background": "story/mistlake_sakuya_cirno_2" },
+        { "speaker": "灵梦", "content": "我的意思是我快吃不起饭了", "color": "#f25e5e", "background": "black" },
+        { "speaker": "sakuya", "content": "看来灵梦小姐为了吃饭要保守什么商业机密，在异变下大赚特赚吗，请饶恕我打破您的幻想了", "color": "#ffffff", "background": "story/mistlake_sakuya_cirno_2" },
+        { "speaker": "灵梦", "content": "你这家伙能不能先冷静一下", "color": "#f25e5e", "background": "black" },
+        { "speaker": "Cirno", "content": "我也要参与战斗，灵梦快看看本大爷的厉害", "color": "#81b0fc", "background": "story/mistlake_sakuya_cirno_2" },
+        { "speaker": "灵梦", "content": "汗|||看来还是要战斗吗", "color": "#f25e5e", "background": "black" }
+      ]
+    },
+    {
+      "id": "bamboo-lost-3",
+      "title": "迷途竹林的终点",
+      "mapId": "bamboo_lost",
+      "icon": "bamboo_lost",
+      "costLimit": 16,
+      "reward": { },
+      "opponent": {
+        "primaryCharacterId": "kaguya",
+        "alternateCharacterId": "reisen",
+        "cardIds": [ "spirit_strike_card" ],
+        "activeCardId": "spirit_strike_card"
+      },
+      "ai": { "smartDurationSeconds": 60, "dumbRampSeconds": 50 },
+      "script": [
+        { "speaker": "灵梦", "content": "满意了吗，如果你们没有这次异变的线索，我就走了", "color": "#f25e5e", "background": "black" },
+        { "speaker": "sakuya", "content": "稍等，其实稍早之前我有前往永远亭拜访，试图寻求瘦身良药，但是那里像死一样寂静，或许你该先去那里调查一番", "color": "#ffffff", "background": "story/mistlake_sakuya_cirno_2" },
+        { "speaker": " ", "content": "因为迷途竹林顺路前往幻想乡的界限，灵梦选择了首先绕路永远亭", "color": "#ffffff", "background": "black" },
+        { "speaker": " ", "content": "和咲夜的描述有所出入，灵梦看到了永远亭的公主正在喂养兔子，一旁她的宠物铃仙正在警戒", "color": "#ffffff", "background": "black" },
+        { "speaker": "Reisen", "content": "请留步，博丽的巫女", "color": "#9b59b6", "background": "story/lostbamboo_kaguya_reisen" },
+        { "speaker": "灵梦", "content": "好久未见，我听红魔馆的女仆说竹林里有异样，因此前来调查", "color": "#f25e5e", "background": "black" },
+        { "speaker": "Reisen", "content": "异样，呵呵，灵梦，你是不是受到那个人的赏金蛊惑，对我家公主有所企图", "color": "#9b59b6", "background": "story/lostbamboo_kaguya_reisen" },
+        { "speaker": "kaguya", "content": "铃仙，又是那个人的手下吗，打晕扔出去就行了", "color": "#9b59b6", "background": "story/lostbamboo_kaguya_reisen" },
+        { "speaker": "灵梦", "content": "喂喂，月球人能不能冷静一下", "color": "#f25e5e", "background": "black" }
+      ]
+    }
+  ],
+  "endingScript": [
+    { "speaker": "灵梦", "content": "我没有任何企图啦，听你们说是有人想要绑架你们的公主吗", "color": "#f25e5e", "background": "black" },
+    { "speaker": "kaguya", "content": "是的，我的蓬莱人体质最近被某些人盯上了。话说人里最近不是肥胖异变闹得沸沸扬扬吗，师匠认为这和那个人有关。", "color": "#9b59b6", "background": "black" },
+    { "speaker": "灵梦", "content": "能否展开说说吗", "color": "#f25e5e", "background": "black" },
+    { "speaker": "kaguya", "content": "当然可以，但是得先让我梳理一下，正式版上线后就行啦", "color": "#9b59b6", "background": "black", "game_end": true }
+  ],
+  "staff": [
+    "肥乡天则 ~ FXTZ Arena 体验版",
+    "UX Design / Code: scarletborder, gpt5.5, Deepseek V4",
+    "Story Design: scarletborder",
+    "Test: scarletborder",
+    "UI Scene: Phaser 4",
+    "Physics: Rapier2d",
+    "Art: Newbie_Image_v0.1, gpt_image_2",
+    "sound/bgm: 借物Team Shanghai Alice",
+    "Thanks for playing"
+  ]
+}

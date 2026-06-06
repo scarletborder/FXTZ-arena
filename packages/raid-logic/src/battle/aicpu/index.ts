@@ -20,9 +20,16 @@ export interface CpuActionContext {
  * 每帧调用 getAction() 获取 BattleInputState 输入。
  */
 export class CpuPlayer {
-  private readonly intelligence = new IntelligenceManager();
+  private readonly intelligence: IntelligenceManager;
   private readonly dodger = new Dodger();
   private readonly strategy = new StrategyManager();
+
+  constructor(options: {
+    readonly smartDurationSeconds?: number;
+    readonly dumbRampSeconds?: number;
+  } = {}) {
+    this.intelligence = new IntelligenceManager(options);
+  }
 
   /**
    * 根据当前战局状态生成 CPU 的输入。

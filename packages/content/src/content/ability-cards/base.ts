@@ -37,6 +37,11 @@ export interface BattleInitializeContext {
   readonly resolution: HitResolution;
 }
 
+export interface StoryModeCardOverride {
+  onInitialize?(ctx: BattleInitializeContext): void;
+  onHit?(ctx: BattleHitContext): void;
+}
+
 export abstract class BattleAbilityCard {
   abstract readonly id: AbilityCardDefinition["id"];
   abstract readonly name: AbilityCardDefinition["name"];
@@ -46,6 +51,7 @@ export abstract class BattleAbilityCard {
   abstract readonly cooldownTicks: AbilityCardDefinition["cooldownTicks"];
   abstract readonly description: AbilityCardDefinition["description"];
   abstract readonly gallery: AbilityCardDefinition["gallery"];
+  readonly storyModeOverride?: StoryModeCardOverride;
 
   get definition(): AbilityCardDefinition {
     return {

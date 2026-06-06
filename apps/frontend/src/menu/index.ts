@@ -10,6 +10,6 @@ export * from "./udp-connect-scene";
 export * from "./setting-scene";
 export * from "./codex-scene";
 export * from "./select-scene";
+export * from "./story-scene";
 export * from "./loading-scene";
 export * from "./result-scene";
-

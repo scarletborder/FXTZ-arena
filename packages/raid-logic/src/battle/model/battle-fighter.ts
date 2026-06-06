@@ -10,6 +10,7 @@ import {
 } from "@repo/types";
 
 import type { BattleInputState } from "@repo/types";
+import type { StoryModeOverride } from "../loadout";
 import type {
   FighterKey,
   FighterState,
@@ -46,6 +47,8 @@ export class BattleFighter {
   >();
   private activeBattleCard: BattleAbilityCard | undefined;
   private battleCards: BattleAbilityCard[] = [];
+  private storyModeOverride: StoryModeOverride | undefined;
+  private reviveBombs = DEFAULT_BOMBS;
 
   constructor(
     key: FighterKey,
@@ -55,7 +58,9 @@ export class BattleFighter {
     y: number,
     activeCard: AbilityCardDefinition | undefined,
     cards: readonly AbilityCardDefinition[] = activeCard ? [activeCard] : [],
+    storyModeOverride?: StoryModeOverride,
   ) {
+    this.storyModeOverride = storyModeOverride;
     this.state = createFighter(
       key,
       primaryCharacter,
@@ -71,7 +76,12 @@ export class BattleFighter {
     this.battleCards = cards.map((card) => createBattleAbilityCard(card));
     this.registerCharacter(primaryCharacter);
     this.registerCharacter(alternateCharacter);
-    applyInitialCardState(this.state, this.battleCards);
+    applyInitialCardState(this.state, this.battleCards, {
+      storyMode: storyModeOverride?.enabled === true,
+      lives: storyModeOverride?.lives,
+      bombs: storyModeOverride?.bombs,
+    });
+    this.reviveBombs = this.state.bombs;
     this.applyActiveCharacter(primaryCharacter);
   }
 
@@ -82,7 +92,9 @@ export class BattleFighter {
     y: number,
     activeCard: AbilityCardDefinition | undefined,
     cards: readonly AbilityCardDefinition[] = activeCard ? [activeCard] : [],
+    storyModeOverride?: StoryModeOverride,
   ): void {
+    this.storyModeOverride = storyModeOverride;
     resetFighter(
       this.state,
       primaryCharacter,
@@ -98,7 +110,12 @@ export class BattleFighter {
     this.battleCards = cards.map((card) => createBattleAbilityCard(card));
     this.registerCharacter(primaryCharacter);
     this.registerCharacter(alternateCharacter);
-    applyInitialCardState(this.state, this.battleCards);
+    applyInitialCardState(this.state, this.battleCards, {
+      storyMode: storyModeOverride?.enabled === true,
+      lives: storyModeOverride?.lives,
+      bombs: storyModeOverride?.bombs,
+    });
+    this.reviveBombs = this.state.bombs;
     this.applyActiveCharacter(primaryCharacter);
   }
 
@@ -320,7 +337,11 @@ export class BattleFighter {
     this.characterFor(params.victim.primaryCharacter).onHit(hitContext);
     this.characterFor(params.victim.alternateCharacter).onHit(hitContext);
     for (const card of this.battleCards) {
-      card.onHit(hitContext);
+      if (this.storyModeOverride?.enabled === true && card.storyModeOverride?.onHit) {
+        card.storyModeOverride.onHit(hitContext);
+      } else {
+        card.onHit(hitContext);
+      }
     }
     if (hitContext.resolution.ignored) {
       return "accepted";
@@ -391,7 +412,7 @@ export class BattleFighter {
         attacker: params.attackerCards,
       },
       resolution: {
-        defaultBombs: DEFAULT_BOMBS,
+        defaultBombs: this.storyModeOverride?.enabled === true ? this.reviveBombs : DEFAULT_BOMBS,
         ignored: false,
       },
     };

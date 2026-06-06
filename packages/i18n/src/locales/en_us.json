@@ -103,6 +103,17 @@
     "category": "Category: {{kind}}", "use_limit": "Use limit: {{limit}}", "infinite": "Infinite", "cooldown": "Cooldown: {{cooldown}}",
     "description": "Description: {{description}}", "name_label": "Name", "role_label": "Role"
   },
+  "story": {
+    "start_title": "Story Mode", "choose_primary": "Choose Primary Character", "back": "Back", "next": "Next",
+    "stage_label": "Stage {{index}}: {{title}}", "ending_label": "Finale", "reward_title": "Clear Reward", "reward_lives": "Life +{{count}}", "reward_bombs": "Bomb +{{count}}", "primary": "Primary", "alternate": "Alternate", "cards": "Ability Cards",
+    "start_battle": "Start Battle", "cost_limit": "Cost limit {{count}}", "cost_value": "Current Cost: {{total}} / {{limit}}", "primary_resources": "Lives {{lives}} / Bombs {{bombs}}",
+    "skip": "Hold to Skip", "staff_default_1": "FXTZ ARENA Story Mode", "staff_default_2": "Thanks for playing",
+    "result_success": "Story Cleared", "result_failed": "Challenge Failed", "result_stats": "Story Stats",
+    "result_battles": "Battles: {{count}}", "result_wins": "Wins: {{count}}",
+    "result_resources": "Remaining: Lives {{lives}} / bomb {{bombs}}",
+    "result_actions": "Shots {{shots}} / bomb uses {{bombs}}", "result_hits": "Hits taken: {{count}}",
+    "back_to_menu": "Back to Start"
+  },
   "role": { "assault": "Assault", "suppress": "Suppress", "scout": "Scout", "sniper": "Sniper" },
   "speed": { "low": "Low", "medium": "Medium", "high": "High" },
   "loading": {

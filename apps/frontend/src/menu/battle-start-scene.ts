@@ -41,7 +41,7 @@ export class BattleStartScene extends Phaser.Scene {
       accent: 0x26c6da,
     });
 
-    createFightButton(this, 946, 298, 360, 86, t("battle_start.story_mode"), undefined, { accent: 0x5c7185 });
+    createFightButton(this, 946, 298, 360, 86, t("battle_start.story_mode"), () => this.scene.start("story-start-loadout"), { accent: 0x5c7185 });
     createFightButton(this, 946, 416, 360, 86, t("battle_start.ai_battle"), () => showMapDialog(this, this.mapDialogContainer, (container) => {
       this.mapDialogContainer = container;
     }, (mapId, cpuLoadoutPresetId) => {

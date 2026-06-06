@@ -29,6 +29,24 @@ export const DEFAULT_MAPS: readonly MapDefinition[] = [
   HAKUREI_SHRINE,
   {
     ...HAKUREI_SHRINE,
+    id: "mist_lake",
+    name: "雾之湖",
+    background: {
+      textureKey: "map-bg-mist-lake",
+      assetPath: "assets/bg/mist_lake.png",
+    },
+  },
+  {
+    ...HAKUREI_SHRINE,
+    id: "bamboo_lost",
+    name: "迷途竹林",
+    background: {
+      textureKey: "map-bg-bamboo-lost",
+      assetPath: "assets/bg/lostbamboo.png",
+    },
+  },
+  {
+    ...HAKUREI_SHRINE,
     id: "mana_forest",
     name: "魔力森林",
     background: {

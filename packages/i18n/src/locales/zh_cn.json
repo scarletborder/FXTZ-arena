@@ -65,7 +65,7 @@
   },
   "result": {
     "title": "结算", "stats": "战斗统计", "winner": "胜利方：{{name}}", "duration": "对战时间：{{seconds}} 秒",
-    "back": "返回开始战斗", "rematch": "再战", "rematch_disabled": "暂不可用", "shots": "射击：{{count}}",
+    "back": "退出", "rematch": "再战", "rematch_disabled": "暂不可用", "shots": "射击：{{count}}",
     "bomb_uses": "bomb 使用：{{count}}", "hits_taken": "中弹次数：{{count}}"
   },
   "local_lan": {
@@ -102,6 +102,17 @@
     "active_use": "主动使用", "none": "无", "seconds": "{{seconds}} 秒", "name": "名字：{{name}}",
     "category": "分类：{{kind}}", "use_limit": "使用次数限制：{{limit}}", "infinite": "无限", "cooldown": "冷却时间：{{cooldown}}",
     "description": "描述：{{description}}", "name_label": "名字", "role_label": "职业"
+  },
+  "story": {
+    "start_title": "故事模式", "choose_primary": "选择首选角色", "back": "返回", "next": "下一步",
+    "stage_label": "第{{index}}关: {{title}}", "ending_label": "终幕", "reward_title": "通关奖励", "reward_lives": "生命 +{{count}}", "reward_bombs": "Bomb +{{count}}", "primary": "首选角色", "alternate": "备选角色", "cards": "能力卡",
+    "start_battle": "开始对战", "cost_limit": "Cost 上限 {{count}}", "cost_value": "当前 Cost: {{total}} / {{limit}}", "primary_resources": "命 {{lives}} / Bomb {{bombs}}",
+    "skip": "长按跳过", "staff_default_1": "FXTZ ARENA Story Mode", "staff_default_2": "Thanks for playing",
+    "result_success": "故事通关", "result_failed": "挑战失败", "result_stats": "故事统计",
+    "result_battles": "战斗次数：{{count}}", "result_wins": "胜利次数：{{count}}",
+    "result_resources": "剩余资源：命 {{lives}} / bomb {{bombs}}",
+    "result_actions": "射击 {{shots}} / bomb 使用 {{bombs}}", "result_hits": "中弹次数：{{count}}",
+    "back_to_menu": "返回开始战斗"
   },
   "role": { "assault": "突击", "suppress": "压制", "scout": "侦察", "sniper": "狙击" },
   "speed": { "low": "低", "medium": "中", "high": "高" },

@@ -33,10 +33,23 @@ export function createBattleAbilityCard(definition: AbilityCardDefinition): Batt
 export function applyInitialCardState(
   fighter: FighterState,
   cards: readonly BattleAbilityCard[],
+  options: {
+    readonly storyMode?: boolean;
+    readonly lives?: number;
+    readonly bombs?: number;
+  } = {},
 ): void {
-  const resolution: HitResolution = { defaultBombs: DEFAULT_BOMBS };
+  if (options.storyMode) {
+    fighter.lives = Math.max(0, Math.trunc(options.lives ?? fighter.lives));
+    fighter.bombs = Math.max(0, Math.trunc(options.bombs ?? fighter.bombs));
+  }
+  const resolution: HitResolution = { defaultBombs: options.storyMode ? fighter.bombs : DEFAULT_BOMBS };
   for (const card of cards) {
-    card.onInitialize({ self: fighter, resolution });
+    if (options.storyMode && card.storyModeOverride?.onInitialize) {
+      card.storyModeOverride.onInitialize({ self: fighter, resolution });
+    } else {
+      card.onInitialize({ self: fighter, resolution });
+    }
   }
   fighter.bombs = resolution.defaultBombs;
 }

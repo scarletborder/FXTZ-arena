@@ -38,6 +38,10 @@ export interface RaidLogicRuntimeOptions {
   readonly mode: RaidLogicMode;
   readonly loadouts?: BattleLoadouts;
   readonly mapId?: string;
+  readonly ai?: {
+    readonly smartDurationSeconds?: number;
+    readonly dumbRampSeconds?: number;
+  };
 }
 
 export interface RaidLogicRuntime {
@@ -82,11 +86,13 @@ class BattleRuntime implements RaidLogicRuntime {
     readonly mode: RaidLogicMode,
     loadouts: BattleLoadouts | undefined,
     mapId: string | undefined,
+    ai: RaidLogicRuntimeOptions["ai"] | undefined,
   ) {
     const spawner = resolveSpawner(mode, mapId);
     this.model = new BattleModel(loadouts, {
       enableCpuTarget: mode === "ai",
       neutralMobSpawner: spawner,
+      ai,
     });
     this.enqueueOutput([
       { type: "snapshot_restored", frame: this.model.frame },
@@ -242,5 +248,5 @@ function resolveSpawner(
 export function createRaidLogicRuntime(
   options: RaidLogicRuntimeOptions,
 ): RaidLogicRuntime {
-  return new BattleRuntime(options.mode, options.loadouts, options.mapId);
+  return new BattleRuntime(options.mode, options.loadouts, options.mapId, options.ai);
 }

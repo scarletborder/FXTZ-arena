@@ -128,6 +128,10 @@ export class BattleModel {
     params: {
       readonly enableCpuTarget?: boolean;
       readonly neutralMobSpawner?: NeutralMobSpawner | null;
+      readonly ai?: {
+        readonly smartDurationSeconds?: number;
+        readonly dumbRampSeconds?: number;
+      };
     } = {},
   ) {
     this.loadouts = loadouts;
@@ -141,6 +145,7 @@ export class BattleModel {
         ? getAbilityCard(loadouts.player.activeCardId)
         : undefined,
       loadoutCards(loadouts.player),
+      loadouts.player.storyModeOverride,
     );
     this.targetFighter = new BattleFighter(
       "Player2",
@@ -152,8 +157,9 @@ export class BattleModel {
         ? getAbilityCard(loadouts.target.activeCardId)
         : undefined,
       loadoutCards(loadouts.target),
+      loadouts.target.storyModeOverride,
     );
-    this.cpuPlayer = params.enableCpuTarget ? new CpuPlayer() : undefined;
+    this.cpuPlayer = params.enableCpuTarget ? new CpuPlayer(params.ai) : undefined;
     this.mobSpawner =
       params.neutralMobSpawner === undefined
         ? (resolveMobSpawner("default-a") ?? undefined)
@@ -199,6 +205,7 @@ export class BattleModel {
         ? getAbilityCard(this.loadouts.player.activeCardId)
         : undefined,
       loadoutCards(this.loadouts.player),
+      this.loadouts.player.storyModeOverride,
     );
     this.targetFighter.reset(
       getCharacter(this.loadouts.target.primaryCharacterId),
@@ -209,6 +216,7 @@ export class BattleModel {
         ? getAbilityCard(this.loadouts.target.activeCardId)
         : undefined,
       loadoutCards(this.loadouts.target),
+      this.loadouts.target.storyModeOverride,
     );
   }
 

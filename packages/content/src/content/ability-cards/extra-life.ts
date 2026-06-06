@@ -14,6 +14,11 @@ export class ExtraLifeBattleCard extends BattleAbilityCard {
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/extra-life/icon.png",
   };
+  override readonly storyModeOverride = {
+    onInitialize: (ctx: BattleInitializeContext): void => {
+      ctx.self.lives += 1;
+    },
+  };
 
   onInitialize(ctx: BattleInitializeContext): void {
     ctx.self.lives += 1;

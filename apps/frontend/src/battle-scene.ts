@@ -39,6 +39,8 @@ import { P2pConnection } from "./network/p2p";
 import { uiSettings } from "./store/settings";
 import { BattleAudioDirector } from "./battle/audio";
 import { resolveResultWinnerName } from "./battle/result";
+import { advanceStoryAfterBattle } from "./story/state";
+import type { StoryProgressData, StoryResultData } from "./story/types";
 
 type DebugPointSize = "small" | "medium" | "large";
 
@@ -133,6 +135,7 @@ export class BattleScene extends Phaser.Scene {
             : "training",
         loadouts: data.loadouts,
         mapId: data.mapId ?? data.battleConfig?.mapId,
+        ai: data.ai,
       });
     this.logicReady = data.runtime?.physicsReady === true;
     if (!this.logicReady) {
@@ -313,6 +316,18 @@ export class BattleScene extends Phaser.Scene {
     }
     this.runtime.debugSetPoint(pointCount);
     this.recordDebugFrame();
+    return true;
+  }
+
+  passStoryStage(): boolean {
+    if (!this.sceneData.story || this.resultScheduled) {
+      return false;
+    }
+    if (this.shouldRecordDebugLog()) {
+      this.printDebugHashBundle(null);
+    }
+    this.resultScheduled = true;
+    this.goToStoryResult(true);
     return true;
   }
 
@@ -563,7 +578,42 @@ export class BattleScene extends Phaser.Scene {
     if (this.shouldRecordDebugLog()) {
       this.printDebugHashBundle(null);
     }
+    if (this.sceneData.story) {
+      this.goToStoryResult();
+      return;
+    }
     this.scene.start("result", this.createResultData(null));
+  }
+
+  private goToStoryResult(forceWon?: boolean): void {
+    const story = this.sceneData.story;
+    if (!story) {
+      return;
+    }
+    const player = this.currentOutput.state.player;
+    const target = this.currentOutput.state.target;
+    const won = forceWon ?? target.deaths > player.deaths;
+    const nextState = advanceStoryAfterBattle(story.state, {
+      lives: player.lives,
+      bombs: player.bombs,
+      shots: player.shotsFired,
+      bombUses: player.bombUses,
+      hitsTaken: player.hitsTaken,
+      won,
+    });
+    if (won) {
+      this.scene.start("story-progress", {
+        state: nextState,
+        fromBattle: true,
+        clearedStageIndex: story.stageIndex,
+      } satisfies StoryProgressData);
+      return;
+    }
+    this.scene.start("story-result", {
+      story: story.story,
+      state: nextState,
+      success: false,
+    } satisfies StoryResultData);
   }
 
   private createResultData(winnerPlayerId: PlayerId | null) {

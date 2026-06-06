@@ -3,9 +3,9 @@ import { fp } from "@shaisrc/fixed-point";
 import { secondsToTicks } from "@repo/types";
 
 /** 聪明阶段持续 tick 数: 35 秒 */
-const SMART_DURATION_TICKS = secondsToTicks(35);
+const DEFAULT_SMART_DURATION_TICKS = secondsToTicks(35);
 /** 愚钝阶段达到最大失误率所需 tick 数: 30 秒 */
-const DUMB_RAMP_TICKS = secondsToTicks(30);
+const DEFAULT_DUMB_RAMP_TICKS = secondsToTicks(30);
 /** 愚钝阶段最大不躲避概率 */
 const MAX_IGNORE_DODGE_CHANCE = 0.9;
 
@@ -27,10 +27,20 @@ export interface IntelligenceResult {
 }
 
 export class IntelligenceManager {
+  private readonly smartDurationTicks: number;
+  private readonly dumbRampTicks: number;
   private phaseTicks = 0;
   private dumbTicks = 0;
   private prevSelfLives = 2;
   private prevOpponentLives = 2;
+
+  constructor(options: {
+    readonly smartDurationSeconds?: number;
+    readonly dumbRampSeconds?: number;
+  } = {}) {
+    this.smartDurationTicks = secondsToTicks(options.smartDurationSeconds ?? 35) || DEFAULT_SMART_DURATION_TICKS;
+    this.dumbRampTicks = secondsToTicks(options.dumbRampSeconds ?? 30) || DEFAULT_DUMB_RAMP_TICKS;
+  }
 
   /**
    * 每一帧调用，检测命中并推进阶段。
@@ -65,7 +75,7 @@ export class IntelligenceManager {
 
   /** 返回当前帧的智能状态参数 */
   evaluate(): IntelligenceResult {
-    if (this.phaseTicks < SMART_DURATION_TICKS) {
+    if (this.phaseTicks < this.smartDurationTicks) {
       return {
         dodgeAccuracy: 1,
         reactionDelay: 0,
@@ -78,8 +88,8 @@ export class IntelligenceManager {
     }
 
     const fpProgress = fp.div(
-      fp.fromInt(Math.min(this.dumbTicks, DUMB_RAMP_TICKS)),
-      fp.fromInt(DUMB_RAMP_TICKS),
+      fp.fromInt(Math.min(this.dumbTicks, this.dumbRampTicks)),
+      fp.fromInt(this.dumbRampTicks),
     );
     const progress = fp.toFloat(fpProgress);
     const ignoreChance = fp.toFloat(
@@ -103,7 +113,7 @@ export class IntelligenceManager {
   }
 
   isDumb(): boolean {
-    return this.phaseTicks >= SMART_DURATION_TICKS;
+    return this.phaseTicks >= this.smartDurationTicks;
   }
 
   reset(): void {
