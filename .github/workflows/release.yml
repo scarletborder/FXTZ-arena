@@ -167,13 +167,28 @@ jobs:
           BUILD_LABEL: ${{ steps.meta.outputs.build_label }}
         run: |
           mkdir -p release
-          # Rename the zip file to include build label
-          if [ -f "dist-desktop/fxtz-arena-desktop.zip" ]; then
+
+          # 1. 优先检查是否已存在带版本号的文件
+          if [ -f "dist-desktop/fxtz-arena-desktop-${BUILD_LABEL}.zip" ]; then
+            cp "dist-desktop/fxtz-arena-desktop-${BUILD_LABEL}.zip" "release/fxtz-arena-desktop-${BUILD_LABEL}.zip"
+            echo "Desktop artifact prepared (already versioned): fxtz-arena-desktop-${BUILD_LABEL}.zip"
+            
+          # 2. 其次检查是否存在未带版本号的文件并进行更名复制
+          elif [ -f "dist-desktop/fxtz-arena-desktop.zip" ]; then
             cp "dist-desktop/fxtz-arena-desktop.zip" "release/fxtz-arena-desktop-${BUILD_LABEL}.zip"
-            echo "Desktop artifact prepared: fxtz-arena-desktop-${BUILD_LABEL}.zip"
+            echo "Desktop artifact prepared (renamed): fxtz-arena-desktop-${BUILD_LABEL}.zip"
+            
+          # 3. 备用兜底：若有其他命名的 zip 文件，直接将其复制并重命名
           else
-            echo "Warning: fxtz-arena-desktop.zip not found"
-            ls -la dist-desktop/ || echo "dist-desktop directory not found"
+            ZIP_FILE=$(find dist-desktop -maxdepth 1 -name "*.zip" | head -n 1)
+            if [ -n "$ZIP_FILE" ]; then
+              cp "$ZIP_FILE" "release/fxtz-arena-desktop-${BUILD_LABEL}.zip"
+              echo "Desktop artifact prepared (fallback zip found: $ZIP_FILE): fxtz-arena-desktop-${BUILD_LABEL}.zip"
+            else
+              echo "Error: No desktop zip artifact found in dist-desktop/"
+              ls -la dist-desktop/ || echo "dist-desktop directory not found"
+              exit 1 # 主动报错，终止后续无意义的发布步骤
+            fi
           fi
 
       - name: Upload desktop artifact to release
