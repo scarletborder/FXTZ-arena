@@ -120,7 +120,11 @@ export class UdpConnectScene extends Phaser.Scene {
     }, (mapId) => {
       this.selectedMapId = mapId;
       void this.startListening();
-    }, { confirmLabel: t("udp_connect.start_listen"), accent: 0x34d399 });
+    }, {
+      confirmLabel: t("udp_connect.start_listen"),
+      accent: 0x34d399,
+      showCpuLoadout: false,
+    });
   }
 
   private async startListening(): Promise<void> {

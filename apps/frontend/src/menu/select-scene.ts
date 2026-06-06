@@ -26,6 +26,7 @@ import {
   installMenuAudioUnlock,
   getCardById,
   getCharacterById,
+  type CpuLoadoutPresetId,
   type SceneKey,
   type SelectionData,
 } from "./shared";
@@ -38,6 +39,7 @@ const COST_LIMIT = 10;
 export class SelectScene extends Phaser.Scene {
   private mode: SelectionData["mode"] = "ai";
   private selectedMapId: SelectionData["mapId"];
+  private cpuLoadoutPresetId: CpuLoadoutPresetId = "marisa_solo";
   private playerId: string | undefined;
   private localConfirmHandler: SelectionData["onLocalConfirm"] | undefined;
   private primaryId: CharacterId | undefined;
@@ -108,6 +110,7 @@ export class SelectScene extends Phaser.Scene {
     installMenuAudioUnlock(this);
     this.mode = data.mode;
     this.selectedMapId = data.mapId;
+    this.cpuLoadoutPresetId = data.cpuLoadoutPresetId ?? "marisa_solo";
     this.playerId = data.playerId;
     this.localConfirmHandler = data.onLocalConfirm;
     this.primaryId = undefined;
@@ -825,7 +828,7 @@ export class SelectScene extends Phaser.Scene {
       player,
       target: this.mode === "training"
         ? { primaryCharacterId: "sakuya", alternateCharacterId: "reimu" }
-        : cpuLoadout(),
+        : cpuLoadout(this.cpuLoadoutPresetId),
     };
     this.scene.start("loading", {
       mode: this.mode,
@@ -886,11 +889,29 @@ function statColor(speed: CharacterDefinition["moveSpeed"]): number {
   }[speed];
 }
 
-function cpuLoadout(): FighterLoadout {
-  return {
-    primaryCharacterId: "marisa",
-    alternateCharacterId: "ellen",
-    cardIds: ["spirit_strike_card"],
-    activeCardId: "spirit_strike_card",
-  };
+function cpuLoadout(presetId: CpuLoadoutPresetId): FighterLoadout {
+  switch (presetId) {
+    case "sakuya_cirno":
+      return {
+        primaryCharacterId: "sakuya",
+        alternateCharacterId: "cirno",
+        cardIds: ["spirit_strike_card"],
+        activeCardId: "spirit_strike_card",
+      };
+    case "kaguya_reisen":
+      return {
+        primaryCharacterId: "kaguya",
+        alternateCharacterId: "reisen",
+        cardIds: ["spirit_strike_card"],
+        activeCardId: "spirit_strike_card",
+      };
+    case "marisa_solo":
+    default:
+      return {
+        primaryCharacterId: "marisa",
+        alternateCharacterId: "ellen",
+        cardIds: ["spirit_strike_card"],
+        activeCardId: "spirit_strike_card",
+      };
+  }
 }

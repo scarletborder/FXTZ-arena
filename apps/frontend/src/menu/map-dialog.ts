@@ -1,51 +1,81 @@
 import Phaser from "phaser";
-import { getAvailableCombatMaps, type MapDefinition } from "@repo/content";
+import { getAvailableCombatMaps } from "@repo/content";
 import { t } from "@repo/i18n";
 import type { MapId } from "@repo/types";
 
 import { createFightButton, drawAngledPanel } from "./ui";
+import type { CpuLoadoutPresetId } from "./shared";
+
+interface CpuLoadoutOption {
+  readonly id: CpuLoadoutPresetId;
+  readonly label: string;
+}
+
+interface DropdownOption<TId extends string> {
+  readonly id: TId;
+  readonly name: string;
+}
 
 export function showMapDialog(
   scene: Phaser.Scene,
   currentContainer: Phaser.GameObjects.Container | null,
   onContainerChange: (container: Phaser.GameObjects.Container | null) => void,
-  onSelect: (mapId: MapId) => void,
-  options: { readonly confirmLabel?: string; readonly accent?: number } = {},
+  onSelect: (mapId: MapId, cpuLoadoutPresetId?: CpuLoadoutPresetId) => void,
+  options: {
+    readonly confirmLabel?: string;
+    readonly accent?: number;
+    readonly showCpuLoadout?: boolean;
+  } = {},
 ): void {
   currentContainer?.destroy();
   const maps = getAvailableCombatMaps();
   let selectedMapId: MapId = maps[0]?.id ?? "hakurei_shrine";
+  const cpuLoadouts = cpuLoadoutOptions();
+  let selectedCpuLoadoutId: CpuLoadoutPresetId = cpuLoadouts[0]!.id;
   const c = scene.add.container(0, 0);
   onContainerChange(c);
   c.add(scene.add.rectangle(640, 360, 1280, 720, 0x000000, 0.6).setInteractive());
   const bg = scene.add.graphics();
   const accent = options.accent ?? 0xe33d44;
-  drawAngledPanel(bg, 430, 238, 420, 264, 0x111821, accent, 0.98);
+  const panelHeight = options.showCpuLoadout ? 330 : 264;
+  drawAngledPanel(bg, 430, 238, 420, panelHeight, 0x111821, accent, 0.98);
   c.add(bg);
   c.add(scene.add.text(640, 282, t("battle_start.select_map"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "24px", fontStyle: "700", color: "#ffcf6e" }).setOrigin(0.5));
   const dropdown = createMapDropdown(scene, 510, 330, 260, maps, selectedMapId, (mapId) => {
     selectedMapId = mapId;
   });
   c.add(dropdown.container);
-  c.add(createFightButton(scene, 560, 452, 140, 42, t("battle_start.cancel"), () => {
+  if (options.showCpuLoadout) {
+    c.add(scene.add.text(510, 398, t("battle_start.ai_loadout"), {
+      fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+      fontSize: "16px",
+      color: "#f6f1e6",
+    }));
+    const cpuDropdown = createCpuLoadoutDropdown(scene, 510, 426, 260, cpuLoadouts, selectedCpuLoadoutId, (presetId) => {
+      selectedCpuLoadoutId = presetId;
+    });
+    c.add(cpuDropdown.container);
+  }
+  const buttonY = options.showCpuLoadout ? 510 : 452;
+  c.add(createFightButton(scene, 560, buttonY, 140, 42, t("battle_start.cancel"), () => {
     c.destroy();
     onContainerChange(null);
   }, { accent: 0x5c7185 }).container);
-  c.add(createFightButton(scene, 720, 452, 140, 42, options.confirmLabel ?? t("select.confirm_battle"), () => {
+  c.add(createFightButton(scene, 720, buttonY, 140, 42, options.confirmLabel ?? t("select.confirm_battle"), () => {
     c.destroy();
     onContainerChange(null);
-    onSelect(selectedMapId);
+    onSelect(selectedMapId, options.showCpuLoadout ? selectedCpuLoadoutId : undefined);
   }, { accent }).container);
 }
 
-export function createMapDropdown(
+export function createMapDropdown<TId extends string = MapId>(
   scene: Phaser.Scene,
   x: number,
   y: number,
   width: number,
-  maps: readonly MapDefinition[],
-  initialMapId: MapId,
-  onChange: (mapId: MapId) => void,
+  maps: readonly DropdownOption<TId>[],
+  initialMapId: TId,
+  onChange: (mapId: TId) => void,
 ): { readonly container: Phaser.GameObjects.Container } {
   const height = 42;
   const optionHeight = 38;
@@ -200,6 +230,41 @@ export function createMapDropdown(
   return { container };
 }
 
-function mapName(maps: readonly MapDefinition[], mapId: MapId): string {
+function mapName<TId extends string>(
+  maps: readonly DropdownOption<TId>[],
+  mapId: TId,
+): string {
   return maps.find((map) => map.id === mapId)?.name ?? mapId;
+}
+
+function cpuLoadoutOptions(): readonly CpuLoadoutOption[] {
+  return [
+    { id: "marisa_solo", label: t("battle_start.cpu_loadout.marisa_solo") },
+    { id: "sakuya_cirno", label: t("battle_start.cpu_loadout.sakuya_cirno") },
+    { id: "kaguya_reisen", label: t("battle_start.cpu_loadout.kaguya_reisen") },
+  ];
+}
+
+function createCpuLoadoutDropdown(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  width: number,
+  loadouts: readonly CpuLoadoutOption[],
+  initialLoadoutId: CpuLoadoutPresetId,
+  onChange: (presetId: CpuLoadoutPresetId) => void,
+): { readonly container: Phaser.GameObjects.Container } {
+  const dropdownOptions = loadouts.map((loadout) => ({
+    id: loadout.id,
+    name: loadout.label,
+  }));
+  return createMapDropdown(
+    scene,
+    x,
+    y,
+    width,
+    dropdownOptions,
+    initialLoadoutId,
+    onChange,
+  );
 }

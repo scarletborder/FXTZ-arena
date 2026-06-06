@@ -14,6 +14,7 @@ import type {
   CpuPresetDecision,
   CpuPresetMovementContext,
 } from "./types";
+import { deterministicUnit } from "./common";
 
 const POWER_SPIKE_POINT = 100;
 const PLAYER_DANGER_RADIUS = 190;
@@ -41,6 +42,7 @@ export class MarisaNullPreset implements CpuPreset {
   getDecision(ctx: CpuPresetContext): CpuPresetDecision {
     const { self, opponent, frame, dodgeResult } = ctx;
     const powered = self.pointCount >= POWER_SPIKE_POINT;
+    const shootPressed = shouldShoot(self, ctx.intel);
     const playerProjectilePressure = countThreatsNearFighter(
       opponent,
       ctx.projectiles,
@@ -50,12 +52,12 @@ export class MarisaNullPreset implements CpuPreset {
     const playerPinned =
       playerProjectilePressure >= DENSE_PLAYER_PROJECTILE_COUNT;
     const aimTarget = powered
-      ? predictSealAim(ctx, playerPinned)
+      ? selectPoweredAim(ctx, playerPinned, shootPressed)
       : (selectFarmAim(ctx) ?? predictHarassAim(ctx));
     const strategicMove = buildStrategicMove(ctx);
 
     return {
-      shootPressed: shouldShoot(self, ctx.intel),
+      shootPressed,
       bombPressed: shouldBomb(self, dodgeResult.emergencyBomb),
       reloadPressed: shouldReload(self, dodgeResult.threatCount),
       alternateHeld: false,
@@ -133,6 +135,18 @@ function predictSealAim(
     x: base.x + sideX * sideSign * sealWeight + escape.x * 24,
     y: base.y + sideY * sideSign * sealWeight + escape.y * 24,
   });
+}
+
+function selectPoweredAim(
+  ctx: CpuPresetContext,
+  playerPinned: boolean,
+  shootPressed: boolean,
+): { readonly x: number; readonly y: number } {
+  if (shootPressed && deterministicUnit(ctx.frame, ctx.self.shotsFired) < 0.4) {
+    return { x: ctx.opponent.x, y: ctx.opponent.y };
+  }
+
+  return predictSealAim(ctx, playerPinned);
 }
 
 function likelyPlayerEscapeVector(ctx: CpuPresetContext): {

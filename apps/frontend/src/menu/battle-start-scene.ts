@@ -44,9 +44,9 @@ export class BattleStartScene extends Phaser.Scene {
     createFightButton(this, 946, 298, 360, 86, t("battle_start.story_mode"), undefined, { accent: 0x5c7185 });
     createFightButton(this, 946, 416, 360, 86, t("battle_start.ai_battle"), () => showMapDialog(this, this.mapDialogContainer, (container) => {
       this.mapDialogContainer = container;
-    }, (mapId) => {
-      this.scene.start("select", { mode: "ai", mapId } satisfies SelectionData);
-    }), { subLabel: t("battle_start.choose_loadout"), accent: 0xe33d44 });
+    }, (mapId, cpuLoadoutPresetId) => {
+      this.scene.start("select", { mode: "ai", mapId, cpuLoadoutPresetId } satisfies SelectionData);
+    }, { showCpuLoadout: true }), { subLabel: t("battle_start.choose_loadout"), accent: 0xe33d44 });
     createFightButton(this, 946, 534, 360, 86, t("battle_start.training"), () => this.scene.start("select", { mode: "training" } satisfies SelectionData), { subLabel: t("battle_start.no_cost_limit"), accent: 0x26c6da });
 
     const updateConnectionState = (s: ConnectionStatus) => {

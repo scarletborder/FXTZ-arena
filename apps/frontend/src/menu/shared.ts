@@ -9,10 +9,12 @@ import { ConnectionManager } from "../network";
 export type SceneKey = "home" | "battle-start" | "room-list" | "lobby" | "settings" | "codex" | "manual" | "select" | "loading" | "result" | "local-lan" | "udp-connect";
 export type SelectionMode = "ai" | "training" | "online" | "local";
 export type CodexTab = "characters" | "cards";
+export type CpuLoadoutPresetId = "marisa_solo" | "sakuya_cirno" | "kaguya_reisen";
 
 export interface SelectionData {
   readonly mode: SelectionMode;
   readonly mapId?: import("@repo/types").MapId;
+  readonly cpuLoadoutPresetId?: CpuLoadoutPresetId;
   /** Set when mode === "online" — the room this client is in. */
   readonly roomId?: string;
   /** Set when mode === "online" — this client's player slot. */

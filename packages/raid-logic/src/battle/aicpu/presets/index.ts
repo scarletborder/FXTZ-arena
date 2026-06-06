@@ -1,9 +1,15 @@
 import type { FighterState } from "@repo/content";
 
+import { kaguyaReisenPreset } from "./preset_kaguya_reisen";
 import { marisaNullPreset } from "./preset_marisa_null";
+import { sakuyaCirnoPreset } from "./preset_sakuya_cirno";
 import type { CpuPreset } from "./types";
 
-const PRESETS: readonly CpuPreset[] = [marisaNullPreset];
+const PRESETS: readonly CpuPreset[] = [
+  sakuyaCirnoPreset,
+  kaguyaReisenPreset,
+  marisaNullPreset,
+];
 
 export function resolveCpuPreset(self: FighterState): CpuPreset | undefined {
   return PRESETS.find((preset) => preset.matches(self));

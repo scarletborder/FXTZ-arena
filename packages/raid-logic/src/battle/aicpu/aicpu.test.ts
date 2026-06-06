@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { BattleModel } from "../model";
 import { initializeBattleModel, testProjectile } from "../model/test/helpers";
 import { CpuPlayer } from ".";
+import { marisaNullPreset } from "./presets/preset_marisa_null";
 
 describe("CpuPlayer Marisa null preset", () => {
   it("keeps Marisa active in the Marisa + Ellen CPU loadout", async () => {
@@ -19,6 +20,81 @@ describe("CpuPlayer Marisa null preset", () => {
     });
 
     expect(action.alternateHeld).toBe(false);
+  });
+
+  it("sometimes aims directly at the player after point 100", async () => {
+    const model = await createCpuModel();
+    model.target.pointCount = 120;
+    model.player.x = model.target.x + 180;
+    model.player.y = model.target.y - 60;
+    model.player.previousX = model.player.x - 24;
+    model.player.previousY = model.player.y + 12;
+
+    const action = marisaNullPreset.getDecision({
+      frame: 4,
+      self: model.target,
+      opponent: model.player,
+      projectiles: [],
+      neutralMobs: [],
+      points: [],
+      dodgeResult: {
+        moveX: 0,
+        moveY: 0,
+        threatCount: 0,
+        emergencyBomb: false,
+      },
+      intel: {
+        canAct: true,
+        dodgeAccuracy: 1,
+        reactionDelay: 0,
+        aimNoise: 0,
+        isDumb: false,
+        dullingProgress: 0,
+        ignoreDodge: false,
+      },
+    });
+
+    expect(action.shootPressed).toBe(true);
+    expect(action.aimX).toBe(model.player.x);
+    expect(action.aimY).toBe(model.player.y);
+  });
+
+  it("mostly keeps predictive aim after point 100", async () => {
+    const model = await createCpuModel();
+    model.target.pointCount = 120;
+    model.player.x = model.target.x + 180;
+    model.player.y = model.target.y - 60;
+    model.player.previousX = model.player.x - 24;
+    model.player.previousY = model.player.y + 12;
+
+    const action = marisaNullPreset.getDecision({
+      frame: 3,
+      self: model.target,
+      opponent: model.player,
+      projectiles: [],
+      neutralMobs: [],
+      points: [],
+      dodgeResult: {
+        moveX: 0,
+        moveY: 0,
+        threatCount: 0,
+        emergencyBomb: false,
+      },
+      intel: {
+        canAct: true,
+        dodgeAccuracy: 1,
+        reactionDelay: 0,
+        aimNoise: 0,
+        isDumb: false,
+        dullingProgress: 0,
+        ignoreDodge: false,
+      },
+    });
+
+    expect(action.shootPressed).toBe(true);
+    expect(action.aimX === model.player.x && action.aimY === model.player.y).toBe(
+      false,
+    );
   });
 
   it("farms neutral mobs before point 100", async () => {
@@ -292,7 +368,246 @@ describe("CpuPlayer Marisa null preset", () => {
   });
 });
 
-async function createCpuModel(): Promise<BattleModel> {
+describe("CpuPlayer duo presets", () => {
+  it("switches from Sakuya to Cirno and bombs under immediate bullet pressure", async () => {
+    const model = await createCpuModel("sakuya", "cirno");
+    const cpu = new CpuPlayer();
+    const self = model.target;
+
+    const action = cpu.getAction({
+      frame: 1,
+      self,
+      opponent: model.player,
+      projectiles: [
+        testProjectile({
+          id: 1,
+          kind: "laser",
+          owner: "Player1",
+          x: self.x,
+          y: self.y,
+          vx: 0,
+          vy: 0,
+          width: 2000,
+          height: 2000,
+        }),
+      ],
+      neutralMobs: [],
+      points: [],
+    });
+
+    expect(action.alternateHeld).toBe(true);
+    expect(action.bombPressed).toBe(true);
+  });
+
+  it("keeps Sakuya active at mid range and does not use Sakuya bomb", async () => {
+    const model = await createCpuModel("sakuya", "cirno");
+    const cpu = new CpuPlayer();
+    model.player.x = model.target.x - 330;
+    model.player.y = model.target.y;
+    model.player.previousX = model.player.x;
+    model.player.previousY = model.player.y;
+
+    const action = cpu.getAction({
+      frame: 1,
+      self: model.target,
+      opponent: model.player,
+      projectiles: [],
+      neutralMobs: [],
+      points: [],
+    });
+
+    expect(action.alternateHeld).toBe(false);
+    expect(action.bombPressed).toBe(false);
+  });
+
+  it("switches to Cirno under dense nearby pressure but saves bomb if it can dodge", async () => {
+    const model = await createCpuModel("sakuya", "cirno");
+    const cpu = new CpuPlayer();
+    const self = model.target;
+
+    const projectiles = Array.from({ length: 5 }, (_, index) =>
+      testProjectile({
+        id: index + 1,
+        owner: "Player1",
+        x: self.x + 96 + index * 8,
+        y: self.y + 112,
+        vx: 0,
+        vy: 0,
+        width: 4,
+        height: 4,
+      }),
+    );
+
+    const action = cpu.getAction({
+      frame: 1,
+      self,
+      opponent: model.player,
+      projectiles,
+      neutralMobs: [],
+      points: [],
+    });
+
+    expect(action.alternateHeld).toBe(true);
+    expect(action.bombPressed).toBe(false);
+  });
+
+  it("centers Kaguya bomb on the player at the ten-second check when pressure is severe", async () => {
+    const model = await createCpuModel("kaguya", "reisen");
+    const cpu = new CpuPlayer();
+    const player = model.player;
+
+    const projectiles = Array.from({ length: 16 }, (_, index) =>
+      testProjectile({
+        id: index + 1,
+        owner: "Player2",
+        x: player.x + ((index % 4) - 1.5) * 18,
+        y: player.y + (Math.floor(index / 4) - 1.5) * 18,
+        vx: 0,
+        vy: 0,
+        width: 8,
+        height: 8,
+      }),
+    );
+
+    const action = cpu.getAction({
+      frame: 600,
+      self: model.target,
+      opponent: player,
+      projectiles,
+      neutralMobs: [],
+      points: [],
+    });
+
+    expect(action.alternateHeld).toBe(false);
+    expect(action.bombPressed).toBe(true);
+    expect(action.aimX).toBe(player.x);
+    expect(action.aimY).toBe(player.y);
+  });
+
+  it("does not use Kaguya bomb outside the ten-second check even when pressure is severe", async () => {
+    const model = await createCpuModel("kaguya", "reisen");
+    const cpu = new CpuPlayer();
+    const player = model.player;
+    const projectiles = Array.from({ length: 16 }, (_, index) =>
+      testProjectile({
+        id: index + 1,
+        owner: "Player2",
+        x: player.x + ((index % 4) - 1.5) * 18,
+        y: player.y + (Math.floor(index / 4) - 1.5) * 18,
+        vx: 0,
+        vy: 0,
+        width: 8,
+        height: 8,
+      }),
+    );
+
+    const action = cpu.getAction({
+      frame: 599,
+      self: model.target,
+      opponent: player,
+      projectiles,
+      neutralMobs: [],
+      points: [],
+    });
+
+    expect(action.bombPressed).toBe(false);
+  });
+
+  it("does not use Kaguya bomb at the ten-second check with only fifteen nearby bullets", async () => {
+    const model = await createCpuModel("kaguya", "reisen");
+    const cpu = new CpuPlayer();
+    const player = model.player;
+    const projectiles = Array.from({ length: 15 }, (_, index) =>
+      testProjectile({
+        id: index + 1,
+        owner: "Player2",
+        x: player.x + ((index % 5) - 2) * 14,
+        y: player.y + (Math.floor(index / 5) - 1) * 18,
+        vx: 0,
+        vy: 0,
+        width: 8,
+        height: 8,
+      }),
+    );
+
+    const action = cpu.getAction({
+      frame: 600,
+      self: model.target,
+      opponent: player,
+      projectiles,
+      neutralMobs: [],
+      points: [],
+    });
+
+    expect(action.bombPressed).toBe(false);
+  });
+
+  it("switches to Reisen bomb for an unavoidable incoming hit", async () => {
+    const model = await createCpuModel("kaguya", "reisen");
+    const cpu = new CpuPlayer();
+    const self = model.target;
+
+    const action = cpu.getAction({
+      frame: 1,
+      self,
+      opponent: model.player,
+      projectiles: [
+        testProjectile({
+          id: 1,
+          kind: "laser",
+          owner: "Player1",
+          x: self.x,
+          y: self.y,
+          vx: 0,
+          vy: 0,
+          width: 2000,
+          height: 2000,
+        }),
+      ],
+      neutralMobs: [],
+      points: [],
+    });
+
+    expect(action.alternateHeld).toBe(true);
+    expect(action.bombPressed).toBe(true);
+  });
+
+  it("does not try to switch into Reisen while Kaguya bomb locks switching", async () => {
+    const model = await createCpuModel("kaguya", "reisen");
+    const cpu = new CpuPlayer();
+    const self = model.target;
+    self.switchLockedUntil = 20;
+
+    const action = cpu.getAction({
+      frame: 1,
+      self,
+      opponent: model.player,
+      projectiles: [
+        testProjectile({
+          id: 1,
+          kind: "laser",
+          owner: "Player1",
+          x: self.x,
+          y: self.y,
+          vx: 0,
+          vy: 0,
+          width: 2000,
+          height: 2000,
+        }),
+      ],
+      neutralMobs: [],
+      points: [],
+    });
+
+    expect(action.alternateHeld).toBe(false);
+    expect(action.bombPressed).toBe(false);
+  });
+});
+
+async function createCpuModel(
+  primaryCharacterId: BattleModel["target"]["primaryCharacter"]["id"] = "marisa",
+  alternateCharacterId: BattleModel["target"]["alternateCharacter"]["id"] = "ellen",
+): Promise<BattleModel> {
   return initializeBattleModel(
     new BattleModel(
       {
@@ -301,8 +616,8 @@ async function createCpuModel(): Promise<BattleModel> {
           alternateCharacterId: "marisa",
         },
         target: {
-          primaryCharacterId: "marisa",
-          alternateCharacterId: "ellen",
+          primaryCharacterId,
+          alternateCharacterId,
         },
       },
       {
