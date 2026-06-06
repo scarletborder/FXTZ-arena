@@ -142,8 +142,13 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
+      # ================== 替换的部分开始 ==================
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
+
       - name: Setup Tauri CLI
-        run: cargo install tauri-cli --version "^2.0.0"
+        run: cargo binstall tauri-cli --version "^2.0.0" -y
+      # ================== 替换的部分结束 ==================
 
       - name: Build desktop app
         env:
