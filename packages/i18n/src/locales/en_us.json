@@ -2,7 +2,7 @@
   "language": { "display": "English" },
   "menu": {
     "start_game": "Start Game", "practice_range": "Practice Range", "codex": "Codex", "manual": "manual", "settings": "Settings",
-    "subtitle": "FXTZ Arena ~ Vanity of the Arena Girls", "ai_declaration": "This game uses AI for art and coding", "language": "Language", "back": "Back"
+    "subtitle": "FXTZ Arena ~ Vanity of the Arena Girls", "ai_declaration": "This game uses AI for art and coding", "browser_notice": "You are playing in a browser, so some online features may be limited", "download_desktop": "Download desktop client", "language": "Language", "back": "Back"
   },
   "manual": {
     "title": "manual",

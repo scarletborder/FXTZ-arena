@@ -1,7 +1,8 @@
 import Phaser from "phaser";
 import { t } from "@repo/i18n";
+import { IS_DESKTOP_APP } from "@repo/constants";
 
-import { bodyStyle, createFightButton, drawBuildLabel, drawFightingBackdrop, drawTitleBlock } from "./ui";
+import { bodyStyle, createFightButton, createRectangleButton, drawBuildLabel, drawFightingBackdrop, drawTitleBlock } from "./ui";
 import { installMenuAudioUnlock, type SelectionData, type SceneKey } from "./shared";
 import { showPublicServerConnectivityDialog } from "./public-server-connectivity-dialog";
 import { setSelfAuthed, uiSettings } from "../store/settings";
@@ -37,6 +38,10 @@ export class HomeScene extends Phaser.Scene {
       createFightButton(this, 642, 286 + index * 78, 310, 58, button.label, button.onClick);
     });
 
+    if (!IS_DESKTOP_APP) {
+      this.createBrowserNotice();
+    }
+
     this.add.text(1254, 674, t("menu.ai_declaration"), {
       ...bodyStyle("#9fb4c8", 14),
       align: "right",
@@ -44,6 +49,20 @@ export class HomeScene extends Phaser.Scene {
     this.createLanguageIcon();
     drawBuildLabel(this);
     this.showPublicServerConnectivityDialog();
+  }
+
+  private createBrowserNotice(): void {
+    this.add.text(32, 624, t("menu.browser_notice"), bodyStyle("#b7c7d8", 15));
+    createRectangleButton(
+      this,
+      160,
+      682,
+      242,
+      44,
+      t("menu.download_desktop"),
+      () => window.open("https://github.com/scarletborder/FXTZ-arena/releases", "_blank", "noopener,noreferrer"),
+      { accent: 0x5c7185 },
+    );
   }
 
   private showPublicServerConnectivityDialog(): void {
