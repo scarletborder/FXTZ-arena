@@ -8,6 +8,36 @@ interface EnemyConfigJson {
   readonly enemy_config: readonly EnemyConfigEntry[];
 }
 
+interface BulletConfigJson {
+  readonly bullet_break_anim?: BulletBreakAnimConfig;
+}
+
+interface BulletBreakAnimConfig {
+  readonly source: string;
+  readonly scale: readonly number[];
+  readonly anim: readonly BulletBreakAnimFrameConfig[];
+}
+
+interface BulletBreakAnimFrameConfig {
+  readonly frame: readonly number[];
+  readonly duration: number;
+}
+
+interface BulletBreakVisualConfig {
+  readonly source: string;
+  readonly scaleX: number;
+  readonly scaleY: number;
+  readonly frames: readonly BulletBreakVisualFrame[];
+  readonly totalDurationMs: number;
+}
+
+interface BulletBreakVisualFrame {
+  readonly frame: string;
+  readonly width: number;
+  readonly height: number;
+  readonly endTimeMs: number;
+}
+
 interface EnemyConfigEntry {
   readonly id: string;
   readonly source: string;
@@ -45,6 +75,13 @@ interface MobAnimationState {
   readonly direction: -1 | 1;
 }
 
+interface MobBreakEffect {
+  readonly image: Phaser.GameObjects.Image;
+  readonly startedAtMs: number;
+  readonly displayWidth: number;
+  readonly displayHeight: number;
+}
+
 function mobMotionConfig(mob: NeutralMobState): {
   readonly animation: EnemyAnimationName;
   readonly direction: -1 | 1;
@@ -63,9 +100,13 @@ export class MobView {
   private readonly damageTags = new Map<number, Phaser.GameObjects.Text>();
   private readonly animationStates = new Map<number, MobAnimationState>();
   private readonly enemyConfigs: ReadonlyMap<string, EnemyVisualConfig>;
+  private readonly breakAnimConfig?: BulletBreakVisualConfig;
+  private readonly breakEffects = new Map<number, MobBreakEffect>();
+  private nextBreakEffectId = 1;
 
   constructor(private readonly scene: Phaser.Scene) {
     this.enemyConfigs = createEnemyAnimations(scene);
+    this.breakAnimConfig = createBulletBreakAnimation(scene);
   }
 
   render(neutralMobs: readonly NeutralMobState[], alpha = 1, rollbackBlend = 1): void {
@@ -128,6 +169,7 @@ export class MobView {
     // Cleanup destroyed mobs
     for (const [id, sprite] of this.sprites) {
       if (!active.has(id)) {
+        this.spawnBreakEffect(sprite.x, sprite.y, sprite.displayWidth, sprite.displayHeight);
         sprite.destroy();
         this.sprites.delete(id);
         this.animationStates.delete(id);
@@ -138,6 +180,52 @@ export class MobView {
         damageTag.destroy();
         this.damageTags.delete(id);
       }
+    }
+    this.renderBreakEffects();
+  }
+
+  private spawnBreakEffect(x: number, y: number, mobWidth: number, mobHeight: number): void {
+    const config = this.breakAnimConfig;
+    const firstFrame = config?.frames[0];
+    if (!config || !firstFrame) {
+      return;
+    }
+
+    const id = this.nextBreakEffectId;
+    this.nextBreakEffectId += 1;
+    const displaySize = breakEffectDisplaySize(config, firstFrame, mobWidth, mobHeight);
+    const image = this.scene.add.image(x, y, config.source, firstFrame.frame)
+      .setOrigin(0.5)
+      .setDepth(Depth.Effect)
+      .setDisplaySize(displaySize.width, displaySize.height);
+    this.breakEffects.set(id, {
+      image,
+      startedAtMs: this.scene.time.now,
+      displayWidth: displaySize.width,
+      displayHeight: displaySize.height,
+    });
+  }
+
+  private renderBreakEffects(): void {
+    const config = this.breakAnimConfig;
+    if (!config) {
+      return;
+    }
+
+    const now = this.scene.time.now;
+    for (const [id, effect] of this.breakEffects) {
+      const elapsedMs = now - effect.startedAtMs;
+      if (elapsedMs >= config.totalDurationMs) {
+        effect.image.destroy();
+        this.breakEffects.delete(id);
+        continue;
+      }
+
+      const frame = config.frames.find((candidate) => elapsedMs < candidate.endTimeMs)
+        ?? config.frames[config.frames.length - 1];
+      effect.image.setFrame(frame.frame);
+      effect.image.setDisplaySize(effect.displayWidth, effect.displayHeight);
+      effect.image.setVisible(true);
     }
   }
 
@@ -262,4 +350,54 @@ function createEnemyAnimations(
 
 function isEnemyAnimationName(name: string): name is EnemyAnimationName {
   return name === "default" || name === "turn" || name === "move";
+}
+
+function breakEffectDisplaySize(
+  config: BulletBreakVisualConfig,
+  frame: BulletBreakVisualFrame,
+  mobWidth: number,
+  mobHeight: number,
+): { readonly width: number; readonly height: number } {
+  const mobPadding = 1.18;
+  return {
+    width: Math.max(frame.width * config.scaleX, mobWidth * mobPadding),
+    height: Math.max(frame.height * config.scaleY, mobHeight * mobPadding),
+  };
+}
+
+function createBulletBreakAnimation(
+  scene: Phaser.Scene,
+): BulletBreakVisualConfig | undefined {
+  const config = scene.cache.json.get("bullet-config") as
+    | BulletConfigJson
+    | undefined;
+  const breakAnim = config?.bullet_break_anim;
+  if (!breakAnim || !scene.textures.exists(breakAnim.source)) {
+    return undefined;
+  }
+
+  const texture = scene.textures.get(breakAnim.source);
+  let elapsedMs = 0;
+  const frames = breakAnim.anim.map((animFrame, index) => {
+    const frameName = `bullet_break_anim_${index}`;
+    const [x, y, width, height] = animFrame.frame;
+    if (!texture.has(frameName)) {
+      texture.add(frameName, 0, x, y, width, height);
+    }
+    elapsedMs += animFrame.duration * 1000;
+    return {
+      frame: frameName,
+      width,
+      height,
+      endTimeMs: elapsedMs,
+    };
+  });
+
+  return {
+    source: breakAnim.source,
+    scaleX: breakAnim.scale[0] ?? 1,
+    scaleY: breakAnim.scale[1] ?? 1,
+    frames,
+    totalDurationMs: elapsedMs,
+  };
 }
