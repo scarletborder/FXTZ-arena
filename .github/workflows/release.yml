@@ -70,6 +70,16 @@ jobs:
           VITE_DOCS_URL: "https://mvz443-team.github.io/docs/"
         run: pnpm turbo run build --filter=frontend... --filter=dedicated-server...
 
+      - name: Prepare dedicated server release artifact
+        env:
+          BUILD_LABEL: ${{ steps.meta.outputs.build_label }}
+        run: |
+          mkdir -p release/dedicated-server-package
+          cp -R apps/dedicated-server/dist release/dedicated-server-package/dist
+          cp apps/dedicated-server/scripts/ecosystem.config.cjs release/dedicated-server-package/ecosystem.config.cjs
+          cp apps/dedicated-server/README.md release/dedicated-server-package/README.md
+          tar -czf "release/fxtz-arena-dedicated-server-${BUILD_LABEL}.tar.gz" -C release/dedicated-server-package .
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

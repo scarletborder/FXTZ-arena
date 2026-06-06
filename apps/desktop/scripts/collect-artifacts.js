@@ -5,6 +5,8 @@ import { execSync } from "node:child_process";
 const bundleDir = resolve("src-tauri/target/release/bundle");
 const releaseDir = resolve("src-tauri/target/release");
 const outputDir = resolve("../../dist-desktop");
+const supplementalReadmeSource = resolve("docs/README.txt");
+const supplementalReadmeTarget = join(outputDir, "README.txt");
 const artifactPattern = /\.(msi|exe|dmg|deb|rpm|AppImage)$/;
 const portableBinaryName = "fxtz-arena-desktop";
 const collectedArtifacts = [];
@@ -90,6 +92,14 @@ function sleep(ms) {
 
 collect(releaseDir, { recursive: false });
 collect(bundleDir, { recursive: true });
+
+if (existsSync(supplementalReadmeSource)) {
+  const destination = copyArtifact(supplementalReadmeSource, supplementalReadmeTarget);
+  collectedArtifacts.push(destination);
+  console.log(`[desktop] collected supplemental README ${destination}`);
+} else {
+  console.warn(`[desktop] Supplemental README not found: ${supplementalReadmeSource}`);
+}
 
 const buildLabel = getBuildLabel();
 const zipPath = join(outputDir, `fxtz-arena-desktop-${buildLabel}.zip`);
