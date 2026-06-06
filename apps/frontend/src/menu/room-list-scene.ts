@@ -1,8 +1,11 @@
 import Phaser from "phaser";
+import { MAX_ROOM_NAME_LENGTH } from "@repo/constants";
+import { getAvailableCombatMaps } from "@repo/content";
 import { t } from "@repo/i18n";
-import type { PlayerId, RoomSummary, ServerMessage } from "@repo/types";
+import type { MapId, PlayerId, RoomSummary, ServerMessage } from "@repo/types";
 
 import { createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop } from "./ui";
+import { createMapDropdown } from "./map-dialog";
 import { connectionManager, installMenuAudioUnlock, type SceneKey, type SelectionData, type TextFieldControl } from "./shared";
 import { uiSettings } from "../store/settings";
 
@@ -18,6 +21,7 @@ export class RoomListScene extends Phaser.Scene {
   private activeField: TextFieldControl | null = null;
   private pendingJoinRoomId: string | null = null;
   private passwordDialog: Phaser.GameObjects.Container | null = null;
+  private createRoomDialog: Phaser.GameObjects.Container | null = null;
 
   private readonly onKeyDown = (event: KeyboardEvent) => this.activeField?.handleKey(event);
   private readonly onPaste = (event: ClipboardEvent) => this.activeField?.handlePaste(event.clipboardData?.getData("text") ?? "");
@@ -44,6 +48,9 @@ export class RoomListScene extends Phaser.Scene {
       color: "#b7c7d8",
     }).setOrigin(0.5);
 
+    createFightButton(this, 178, 681, 150, 46, t("room_list.quick_match"), () => this.tryQuickMatch(), { accent: 0x34d399 });
+    createFightButton(this, 344, 681, 150, 46, t("room_list.create_room"), () => this.showCreateRoom(), { accent: 0xe33d44 });
+
     this.add.text(800, 634, t("room_list.room_id"), {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: "14px",
@@ -68,6 +75,8 @@ export class RoomListScene extends Phaser.Scene {
       connectionManager.setMessageHandler(null);
       window.removeEventListener("keydown", this.onKeyDown);
       window.removeEventListener("paste", this.onPaste);
+      this.createRoomDialog?.destroy();
+      this.createRoomDialog = null;
     });
     this.requestRooms();
   }
@@ -79,6 +88,75 @@ export class RoomListScene extends Phaser.Scene {
   private gotoPage(nextPage: number): void {
     this.page = Phaser.Math.Clamp(nextPage, 1, this.totalPages);
     this.requestRooms();
+  }
+
+  private tryQuickMatch(): void {
+    connectionManager.send({ type: "quick_match", username: uiSettings.username, p2pEnabled: uiSettings.p2pEnabled });
+  }
+
+  private showCreateRoom(): void {
+    if (this.createRoomDialog) {
+      this.createRoomDialog.destroy();
+      this.createRoomDialog = null;
+      this.activeField = null;
+      return;
+    }
+
+    const cx = 640;
+    const cy = 420;
+    const c = this.add.container(0, 0);
+    this.createRoomDialog = c;
+    c.add(this.add.rectangle(cx, cy, 1280, 720, 0x000000, 0.6).setInteractive());
+    const pw = 420;
+    const ph = 420;
+    const px = cx - pw / 2;
+    const py = cy - ph / 2;
+    const bg = this.add.graphics();
+    drawAngledPanel(bg, px, py, pw, ph, 0x111821, 0x5c7185, 0.98);
+    c.add(bg);
+    c.add(this.add.text(cx, py + 28, t("battle_start.create_room"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "22px", fontStyle: "700", color: "#ffcf6e" }).setOrigin(0.5));
+    let roomName = Array.from(t("battle_start.default_room_name", { name: uiSettings.username })).slice(0, MAX_ROOM_NAME_LENGTH).join("");
+    let roomPassword = "";
+    let selectedMapId: MapId = "hakurei_shrine";
+    c.add(this.add.text(cx - 140, py + 78, t("battle_start.room_name"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
+    const nameField = createTextField(this, cx - 140, py + 108, 280, {
+      value: roomName,
+      maxLength: MAX_ROOM_NAME_LENGTH,
+      onFocus: (field) => { this.activeField = field; },
+      onChange: (v) => { roomName = v; },
+    });
+    c.add(nameField.container);
+    this.activeField = nameField;
+    c.add(this.add.text(cx - 140, py + 158, t("battle_start.room_password"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
+    const passwordField = createTextField(this, cx - 140, py + 188, 280, {
+      value: roomPassword,
+      onFocus: (field) => { this.activeField = field; },
+      onChange: (v) => { roomPassword = v; },
+    });
+    c.add(passwordField.container);
+    const maps = getAvailableCombatMaps();
+    c.add(this.add.text(cx - 140, py + 238, t("battle_start.map"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
+    const mapDropdown = createMapDropdown(this, cx - 140, py + 266, 280, maps, selectedMapId, (mapId) => {
+      selectedMapId = mapId;
+    });
+    c.add(mapDropdown.container);
+    c.add(this.add.text(cx + 20, py + 238, t("battle_start.lives"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
+    const lifeLabel = this.add.text(cx + 140, py + 238, "2", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#34d399" });
+    c.add(lifeLabel);
+    c.add(this.add.text(cx + 100, py + 238, "<", { fontFamily: "Arial", fontSize: "16px", color: "#b7c7d8" }).setInteractive({ useHandCursor: true }).on("pointerdown", () => lifeLabel.setText(String(Math.max(1, parseInt(lifeLabel.text, 10) - 1)))));
+    c.add(this.add.text(cx + 164, py + 238, ">", { fontFamily: "Arial", fontSize: "16px", color: "#b7c7d8" }).setInteractive({ useHandCursor: true }).on("pointerdown", () => lifeLabel.setText(String(Math.min(9, parseInt(lifeLabel.text, 10) + 1)))));
+    c.add(createFightButton(this, cx - 80, py + ph - 60, 140, 44, t("battle_start.create"), () => {
+      connectionManager.send({ type: "create_room", name: roomName, username: uiSettings.username, password: roomPassword || undefined, mapId: selectedMapId, lifeCount: parseInt(lifeLabel.text, 10), costLimit: 10, p2pEnabled: uiSettings.p2pEnabled });
+      c.destroy();
+      this.createRoomDialog = null;
+      this.activeField = null;
+      this.showToast(t("battle_start.creating_room"));
+    }, { accent: 0x34d399 }).container);
+    c.add(createFightButton(this, cx + 80, py + ph - 60, 140, 44, t("battle_start.cancel"), () => {
+      c.destroy();
+      this.createRoomDialog = null;
+      this.activeField = null;
+    }, { accent: 0x5c7185 }).container);
   }
 
   private renderList(): void {

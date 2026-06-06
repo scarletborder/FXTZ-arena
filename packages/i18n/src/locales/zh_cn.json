@@ -19,7 +19,7 @@
     "items_content": "中立怪物被击败后会掉落道具，游戏目前有以下道具\n\n- P：Point 点道具，蓝色 P 点。拾取后可提升火力。根据大小不同，拾取后提升的火力也不同\n\n游戏中还可通过擦弹提升火力。\n\n火力数额可以提高射击能力，如弹幕数量和弹幕种类。初始 1.00，最高 4.00，每 1.00 都会提升火力。"
   },
   "battle_start": {
-    "title": "开始战斗", "online": "ONLINE", "local": "LOCAL", "quick_match": "快速匹配", "create_room": "创建房间", "room_list": "房间列表",
+    "title": "开始战斗", "online": "ONLINE", "local": "LOCAL", "story_mode": "故事模式", "quick_match": "快速匹配", "create_room": "创建房间", "room_list": "房间列表",
     "ai_battle": "人机对战", "training": "靶场", "local_lan": "本地局域网游玩", "match_public_room": "匹配一个公开房间",
     "wait_opponent_after_create": "设置后等待对手加入", "browse_rooms": "浏览公开和加密房间", "choose_loadout": "选择配装后开战",
     "no_cost_limit": "无 cost 上限", "discover_lan_players": "发现局域网玩家", "connected": "已连接", "connecting": "正在连接...",
@@ -76,6 +76,7 @@
   },
   "room_list": {
     "title": "房间列表", "back": "返回", "room_id": "房间号", "join": "加入", "password": "输入密码",
+    "quick_match": "快速匹配", "create_room": "创建房间",
     "password_cancel": "取消", "password_confirm": "确认", "enter_room_id": "请输入房间号",
     "host": "房主: {{name}}  {{count}}/{{max}}  #{{id}}", "lock": "LOCK"
   },

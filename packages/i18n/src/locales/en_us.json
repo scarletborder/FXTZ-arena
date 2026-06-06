@@ -19,7 +19,7 @@
     "items_content": "Neutral enemies drop items when defeated. The game currently has the following item:\n\n- P: Point item, the blue P orb. Picking it up increases power. The amount gained depends on its size.\n\nYou can also increase power by grazing bullets.\n\nPower improves your shooting capabilities, such as bullet count and bullet patterns. It starts at 1.00 and caps at 4.00, with each 1.00 threshold increasing firepower."
   },
   "battle_start": {
-    "title": "Start Game", "online": "ONLINE", "local": "LOCAL", "quick_match": "Quick Match", "create_room": "Create Room", "room_list": "Room List",
+    "title": "Start Game", "online": "ONLINE", "local": "LOCAL", "story_mode": "Story Mode", "quick_match": "Quick Match", "create_room": "Create Room", "room_list": "Room List",
     "ai_battle": "Vs CPU", "training": "Practice Range", "local_lan": "Local LAN Play", "match_public_room": "Match a public room",
     "wait_opponent_after_create": "Wait for an opponent after setup", "browse_rooms": "Browse public and private rooms", "choose_loadout": "Choose loadout before battle",
     "no_cost_limit": "No cost limit", "discover_lan_players": "Discover LAN players", "connected": "Connected", "connecting": "Connecting...",
@@ -76,6 +76,7 @@
   },
   "room_list": {
     "title": "Room List", "back": "Back", "room_id": "Room ID", "join": "Join", "password": "Enter Password",
+    "quick_match": "Quick Match", "create_room": "Create Room",
     "password_cancel": "Cancel", "password_confirm": "Confirm", "enter_room_id": "Enter a room ID",
     "host": "Host: {{name}}  {{count}}/{{max}}  #{{id}}", "lock": "LOCK"
   },
