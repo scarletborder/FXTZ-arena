@@ -116,7 +116,7 @@ export const uiSettings: UiSettings = {
   debug: readBoolean(STORAGE_KEYS.debug, false),
   logPath: readString(STORAGE_KEYS.logPath, "D:/"),
   serverAddress: readString(STORAGE_KEYS.serverAddress, DEFAULT_SERVER_ADDRESS),
-  p2pEnabled: readBoolean(STORAGE_KEYS.p2pEnabled, true),
+  p2pEnabled: readBoolean(STORAGE_KEYS.p2pEnabled, false),
   stunServer: "",
   stunServers: [],
   music: readVolume(STORAGE_KEYS.music, 60),
