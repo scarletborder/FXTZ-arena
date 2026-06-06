@@ -11,7 +11,7 @@ import {
 import { Vanilla } from "../decorators";
 
 const REAR_BEAM_DIAGONAL_ANGLE = Math.PI / 18;
-const NORMAL_SHOOT_DAMAGE = 6; // 乘以9
+const NORMAL_SHOOT_DAMAGE = 54;
 const REAR_BEAM_DAMAGE = 1; // 乘以31
 const NORMAL_SHOT_LENGTH = hitCircleUnits(16);
 const NORMAL_SHOT_THICKNESS = hitCircleUnits(3);

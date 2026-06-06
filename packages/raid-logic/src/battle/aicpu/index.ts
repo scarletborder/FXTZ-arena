@@ -1,14 +1,18 @@
 import type { BattleInputState } from "@repo/types";
-import type { FighterState, ProjectileState } from "@repo/content";
+import type { FighterState, PointState, ProjectileState } from "@repo/content";
+import type { NeutralMobState } from "@repo/types";
 import { IntelligenceManager } from "./intelligence";
 import { Dodger } from "./dodger";
 import { StrategyManager } from "./strategy";
+import { resetCpuPresets, resolveCpuPreset } from "./presets";
 
 export interface CpuActionContext {
   readonly frame: number;
   readonly self: FighterState;
   readonly opponent: FighterState;
   readonly projectiles: readonly ProjectileState[];
+  readonly neutralMobs: readonly NeutralMobState[];
+  readonly points: readonly PointState[];
 }
 
 /**
@@ -25,7 +29,7 @@ export class CpuPlayer {
    * 返回 BattleInputState，可直接用于 BattleFighter 的控制方法。
    */
   getAction(ctx: CpuActionContext): BattleInputState {
-    const { frame, self, opponent, projectiles } = ctx;
+    const { frame, self, opponent, projectiles, neutralMobs, points } = ctx;
 
     // 1. 更新智能状态（检测命中、推进阶段）
     this.intelligence.update(self.lives, opponent.lives, self.deadUntil);
@@ -36,25 +40,56 @@ export class CpuPlayer {
     }
 
     const intel = this.intelligence.evaluate();
-
-    // 2. 弹幕躲避
-    const dodgeResult = this.dodger.getDodgeMovement(self, opponent, projectiles, frame, intel);
-
-    // 3. 进攻策略
-    const strategy = this.strategy.getActions(
+    const preset = resolveCpuPreset(self);
+    const desiredMove = preset?.getDesiredMove?.({
       frame,
       self,
       opponent,
-      dodgeResult.threatCount,
-      dodgeResult.emergencyBomb,
+      projectiles,
+      neutralMobs,
+      points,
       intel,
+    });
+
+    // 2. 弹幕躲避
+    const dodgeResult = this.dodger.getDodgeMovement(
+      self,
+      opponent,
+      projectiles,
+      frame,
+      intel,
+      desiredMove,
     );
+
+    // 3. 进攻策略。角色 preset 只覆盖特殊玩法；没有 preset 时使用通用策略。
+    const presetDecision = preset?.getDecision({
+      frame,
+      self,
+      opponent,
+      projectiles,
+      neutralMobs,
+      points,
+      dodgeResult,
+      intel,
+    });
+    const strategy =
+      presetDecision ??
+      this.strategy.getActions(
+        frame,
+        self,
+        opponent,
+        dodgeResult.threatCount,
+        dodgeResult.emergencyBomb,
+        intel,
+      );
 
     // 4. 如果没有威胁，使用战略性走位
     let moveX = dodgeResult.moveX;
     let moveY = dodgeResult.moveY;
     if (moveX === 0 && moveY === 0 && dodgeResult.threatCount === 0) {
-      const strategic = this.dodger.getStrategicMovement(self, opponent);
+      const strategic =
+        presetDecision?.strategicMove ??
+        this.dodger.getStrategicMovement(self, opponent);
       moveX = strategic.moveX;
       moveY = strategic.moveY;
     }
@@ -78,6 +113,7 @@ export class CpuPlayer {
     this.intelligence.reset();
     this.dodger.reset();
     this.strategy.reset();
+    resetCpuPresets();
   }
 
   /** 获取当前智能状态（用于 debug） */
@@ -89,7 +125,10 @@ export class CpuPlayer {
   }
 }
 
-function createIdleInput(self: FighterState, opponent: FighterState): BattleInputState {
+function createIdleInput(
+  self: FighterState,
+  opponent: FighterState,
+): BattleInputState {
   return {
     moveX: 0,
     moveY: 0,

@@ -563,6 +563,8 @@ export class BattleModel {
       self: fighter,
       opponent: this.player,
       projectiles: this.projectiles,
+      neutralMobs: this.neutralMobStates(),
+      points: this.points,
     });
 
     this.targetFighter.selectActiveCharacter(aiInput.alternateHeld);

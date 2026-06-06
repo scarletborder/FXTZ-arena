@@ -888,8 +888,8 @@ function statColor(speed: CharacterDefinition["moveSpeed"]): number {
 
 function cpuLoadout(): FighterLoadout {
   return {
-    primaryCharacterId: "reimu",
-    alternateCharacterId: "marisa",
+    primaryCharacterId: "marisa",
+    alternateCharacterId: "ellen",
     cardIds: ["spirit_strike_card"],
     activeCardId: "spirit_strike_card",
   };
