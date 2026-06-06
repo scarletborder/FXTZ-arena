@@ -32,6 +32,10 @@
 2. 选择 **Prebuilt Installer**（预构建安装包）下载适合您系统的版本（建议下载推荐的 **LTS** 版本，版本需在 **20.x 或以上**）。
 3. 双击下载好的安装包，一路点击“下一步”（Next）完成安装即可。
 
+另外如果下文在开设专用服务器时使用`--wt`参数开启 webtransport 协议，Linux系统上确保你的GLIBC版本为2.38及以上。例如Ubuntu24.04。
+
+这是因为 `@fails-components/webtransport-transport-http3-quiche` 这个原生模块编译时需要 GLIBC_2.38 或更高版本
+
 ---
 
 ## 第三步：启动服务器（基础方法）
