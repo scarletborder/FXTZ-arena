@@ -14,9 +14,9 @@ import {
 export class StoryResultScene extends Phaser.Scene {
   private resultData: StoryResultData = {};
   private finished = false;
-  private scrollLayer!: Phaser.GameObjects.Container;
+  private scrollLayer: Phaser.GameObjects.Container | undefined;
   private holdTimer: Phaser.Time.TimerEvent | undefined;
-  private holdBar!: Phaser.GameObjects.Rectangle;
+  private holdBar: Phaser.GameObjects.Rectangle | undefined;
 
   constructor() {
     super("story-result" satisfies SceneKey);
@@ -30,6 +30,10 @@ export class StoryResultScene extends Phaser.Scene {
   create(): void {
     installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "STORY", "RESULT");
+    if (this.resultData.success === false) {
+      this.showStats();
+      return;
+    }
     this.createStaffRoll();
     this.createSkipHold();
   }
@@ -39,7 +43,8 @@ export class StoryResultScene extends Phaser.Scene {
       t("story.staff_default_1"),
       t("story.staff_default_2"),
     ];
-    this.scrollLayer = this.add.container(0, 760);
+    const scrollLayer = this.add.container(0, 760);
+    this.scrollLayer = scrollLayer;
     lines.forEach((line, index) => {
       const text = this.add
         .text(
@@ -49,11 +54,11 @@ export class StoryResultScene extends Phaser.Scene {
           bodyStyle(index === 0 ? "#ffcf6e" : "#f6f1e6", index === 0 ? 28 : 20),
         )
         .setOrigin(0.5);
-      this.scrollLayer.add(text);
+      scrollLayer.add(text);
     });
     const distance = 820 + lines.length * 54;
     this.tweens.add({
-      targets: this.scrollLayer,
+      targets: scrollLayer,
       y: 720 - distance,
       duration: Math.max(9000, lines.length * 1300),
       ease: "Linear",
@@ -88,6 +93,9 @@ export class StoryResultScene extends Phaser.Scene {
 
   private beginSkipHold(): void {
     this.cancelSkipHold();
+    if (!this.holdBar) {
+      return;
+    }
     this.holdBar.width = 0;
     this.tweens.add({
       targets: this.holdBar,
@@ -101,8 +109,10 @@ export class StoryResultScene extends Phaser.Scene {
   private cancelSkipHold(): void {
     this.holdTimer?.remove(false);
     this.holdTimer = undefined;
-    this.tweens.killTweensOf(this.holdBar);
-    this.holdBar.width = 0;
+    if (this.holdBar) {
+      this.tweens.killTweensOf(this.holdBar);
+      this.holdBar.width = 0;
+    }
   }
 
   private showStats(): void {
@@ -110,7 +120,10 @@ export class StoryResultScene extends Phaser.Scene {
       return;
     }
     this.finished = true;
-    this.tweens.killTweensOf(this.scrollLayer);
+    if (this.scrollLayer) {
+      this.tweens.killTweensOf(this.scrollLayer);
+    }
+    this.cancelSkipHold();
     this.children.removeAll(true);
     drawFightingBackdrop(this, "STORY", "COMPLETE");
     const state = this.resultData.state;
