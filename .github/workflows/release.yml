@@ -91,9 +91,18 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: FXTZ Arena ${{ steps.meta.outputs.build_label }}
           body: |
-            Release usage: [Release.md](${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/Release.md)
+            ## 制品说明 Artifact：
 
-            GitHub Pages will be deployed by this workflow after the release artifacts are built.
+            - fxtz-arena-desktop-vx.x.x+xxx.zip : 桌面端应用，一般用户下载此文件即可游玩，Desktop client for Windows, which can be directly run after extraction.
+            - fxtz-arena-dedicated-server-image-vx.x.x+xxx.tar.gz : Docker image of the dedicated server, which can be loaded using "docker load" command.
+            - fxtz-arena-dedicated-server-vx.x.x+xxx.tar.gz : 独立服务器文件，包含运行独立服务器所需的所有文件和说明文档，适用于需要在本地或云服务器上部署独立服务器的用户。
+
+            ## What's New 新内容: 
+            ...
+
+            ## Fix and Modification 修复和调整:
+            ...
+
           files: |
             Release.md
             release/fxtz-arena-frontend-${{ steps.meta.outputs.build_label }}.zip
