@@ -15,6 +15,10 @@ import { fpAtan2 } from "../fp";
 import { Vanilla } from "../decorators";
 
 const KNIFE_HIT_SIZE = 20;
+const SAKUYA_KNIFE_TEXTURE = "bullet_type_20_offset_0";
+const SAKUYA_BOMB_KNIFE_TEXTURE = "bullet_type_20_offset_1";
+const SAKUYA_SNIPE_KNIFE_TEXTURE = "bullet_type_20_offset_2";
+const SAKUYA_SIDE_KNIFE_TEXTURE = "bullet_type_20_offset_3";
 
 const NORMALSHOOT_DAMAGE = 20;
 const BOMBSHOT_DAMAGE = 150;
@@ -84,34 +88,19 @@ export class SakuyaBattleCharacter extends BattleCharacter {
     }
 
     const tier = this.pointPowerTier(fighter);
+    if (tier >= 1) {
+      this.spawnSnipeKnife(ctx, fighter, 0);
+    }
     if (tier >= 2) {
-      const sideRepeats = tier >= 3 ? 4 : 2;
-      for (let repeat = 0; repeat < sideRepeats; repeat += 1) {
-        this.spawnSideKnives(ctx, fighter, repeat * 6, NORMALSHOOT_DAMAGE);
-      }
+      this.spawnSnipeKnife(ctx, fighter, 8);
+      this.spawnSideKnives(ctx, fighter, 0, 2, NORMALSHOOT_DAMAGE, "high");
+    }
+    if (tier >= 3) {
+      this.spawnSnipeKnife(ctx, fighter, 16);
     }
     if (tier >= 4) {
-      for (const side of [-1, 1]) {
-        this.spawnKnife(
-          ctx,
-          fighter,
-          fp.toFloat(
-            fp.add(fp.fromFloat(fighter.x), fp.mul(fpSideX, fp.fromInt(side))),
-          ),
-          fp.toFloat(
-            fp.add(fp.fromFloat(fighter.y), fp.mul(fpSideY, fp.fromInt(side))),
-          ),
-          fp.toFloat(fpAngle),
-          "medium",
-          undefined,
-          {
-            width: KNIFE_HIT_SIZE,
-            height: KNIFE_HIT_SIZE,
-          },
-          ctx.frame + 6,
-          NORMALSHOOT_DAMAGE,
-        );
-      }
+      this.spawnSnipeKnife(ctx, fighter, 24);
+      this.spawnSideKnives(ctx, fighter, 8, 2, NORMALSHOOT_DAMAGE, "high");
     }
   }
 
@@ -192,13 +181,14 @@ export class SakuyaBattleCharacter extends BattleCharacter {
     },
     frame = ctx.frame,
     damage = 15,
+    textureKey =
+      pausedUntil === undefined
+        ? SAKUYA_KNIFE_TEXTURE
+        : SAKUYA_BOMB_KNIFE_TEXTURE,
   ): void {
     ctx.spawnBullet({
       owner: fighter.key,
-      textureKey:
-        pausedUntil === undefined
-          ? "bullet_type_20_offset_0"
-          : "bullet_type_20_offset_1",
+      textureKey,
       kind: "knife",
       x,
       y,
@@ -218,25 +208,77 @@ export class SakuyaBattleCharacter extends BattleCharacter {
     ctx: CharacterActionContext,
     fighter: FighterState,
     frameDelay: number,
+    countPerSide = 1,
     damage = 10,
+    speedRank: "medium" | "high" = "medium",
   ): void {
-    const angle = this.angleToOpponent(ctx, fighter);
     const sideOffset = hitCircleUnits(3);
+    const halfGap = (8 + hitCircleUnits(1)) / 2;
     for (const side of [-1, 1]) {
-      const position = this.offsetPosition(
+      const basePosition = this.offsetPosition(
         fighter.x,
         fighter.y,
         fighter.facing,
         0,
         side * sideOffset,
       );
+      const knifeAngle = fighter.facing + side * (Math.PI / 6);
+      const perpAngle = knifeAngle + Math.PI / 2;
+      const perpCos = Math.cos(perpAngle);
+      const perpSin = Math.sin(perpAngle);
+      for (let i = 0; i < countPerSide; i++) {
+        const offset = (i - (countPerSide - 1) / 2) * halfGap;
+        this.spawnKnife(
+          ctx,
+          fighter,
+          basePosition.x + perpCos * offset,
+          basePosition.y + perpSin * offset,
+          knifeAngle,
+          speedRank,
+          undefined,
+          {
+            width: KNIFE_HIT_SIZE,
+            height: KNIFE_HIT_SIZE,
+          },
+          ctx.frame + frameDelay,
+          damage,
+          SAKUYA_SIDE_KNIFE_TEXTURE,
+        );
+      }
+    }
+  }
+
+  private spawnCenterKnives(
+    ctx: CharacterActionContext,
+    fighter: FighterState,
+    frameDelay: number,
+    damage = 10,
+    speedRank: "medium" | "high" = "medium",
+  ): void {
+    const angle = this.angleToOpponent(ctx, fighter);
+    const halfBulletGap = (8 + hitCircleUnits(1)) / 2;
+    const fpAngle = fp.fromFloat(angle);
+    const fpPI2 = fp.fromFloat(Math.PI / 2);
+    const fpSideX = fp.mul(
+      fp.cos(fp.add(fpAngle, fpPI2)),
+      fp.fromFloat(halfBulletGap),
+    );
+    const fpSideY = fp.mul(
+      fp.sin(fp.add(fpAngle, fpPI2)),
+      fp.fromFloat(halfBulletGap),
+    );
+    for (const side of [-1, 1]) {
       this.spawnKnife(
         ctx,
         fighter,
-        position.x,
-        position.y,
+        fp.toFloat(
+          fp.add(fp.fromFloat(fighter.x), fp.mul(fpSideX, fp.fromInt(side))),
+        ),
+        fp.toFloat(
+          fp.add(fp.fromFloat(fighter.y), fp.mul(fpSideY, fp.fromInt(side))),
+        ),
         angle,
-        "high",
+        speedRank,
         undefined,
         {
           width: KNIFE_HIT_SIZE,
@@ -246,6 +288,29 @@ export class SakuyaBattleCharacter extends BattleCharacter {
         damage,
       );
     }
+  }
+
+  private spawnSnipeKnife(
+    ctx: CharacterActionContext,
+    fighter: FighterState,
+    frameDelay: number,
+  ): void {
+    this.spawnKnife(
+      ctx,
+      fighter,
+      fighter.x,
+      fighter.y,
+      this.angleToOpponent(ctx, fighter),
+      "high",
+      undefined,
+      {
+        width: KNIFE_HIT_SIZE,
+        height: KNIFE_HIT_SIZE,
+      },
+      ctx.frame + frameDelay,
+      NORMALSHOOT_DAMAGE,
+      SAKUYA_SNIPE_KNIFE_TEXTURE,
+    );
   }
 }
 

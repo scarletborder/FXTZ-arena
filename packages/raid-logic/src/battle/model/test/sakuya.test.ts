@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HIT_CIRCLE_DIAMETER } from "@repo/constants";
+import { bulletSpeedRankToPixelsPerTick } from "@repo/types";
 import {
   createBattleModel,
   input,
@@ -44,8 +45,8 @@ describe("BattleModel Sakuya", () => {
     model.step(input({ reloadPressed: true }));
 
     expect(model.player.reloadStartedAmmo).toBe(1);
-    expect(model.player.reloadTotal).toBe(108);
-    expect(model.player.reloadRemaining).toBe(108);
+    expect(model.player.reloadTotal).toBe(60);
+    expect(model.player.reloadRemaining).toBe(60);
     expect(model.player.ammo).toBe(1);
   });
 
@@ -66,8 +67,8 @@ describe("BattleModel Sakuya", () => {
     model.step(input({ reloadPressed: true }));
 
     expect(model.player.reloadStartedAmmo).toBe(0);
-    expect(model.player.reloadTotal).toBe(162);
-    expect(model.player.reloadRemaining).toBe(162);
+    expect(model.player.reloadTotal).toBe(90);
+    expect(model.player.reloadRemaining).toBe(90);
     expect(model.player.ammo).toBe(0);
   });
 
@@ -116,7 +117,7 @@ describe("BattleModel Sakuya", () => {
     expect(extraShot?.pausedUntil).toBe(model.frame + 60);
     expect(
       model.projectiles.filter((projectile) => projectile.owner === "Player1"),
-    ).toHaveLength(7);
+    ).toHaveLength(8);
 
     const snapshot = model.serialize();
     const originalHash = model.hashHex();
@@ -131,7 +132,7 @@ describe("BattleModel Sakuya", () => {
     model.step(input({ shootPressed: true }));
     model.step(input({ reloadPressed: true }));
 
-    expect(model.player.reloadRemaining).toBe(54);
+    expect(model.player.reloadRemaining).toBe(30);
 
     model.step(input({ bombPressed: true }));
     const frozenReloadRemaining = model.player.reloadRemaining;
@@ -177,37 +178,36 @@ describe("BattleModel Sakuya", () => {
     expect(model.player.activeCardCooldownUntil).toBe(initialCooldown - 2);
   });
 
-  it("sakuya time stop preserves delayed volley intervals until time resumes", async () => {
+  it("sakuya time stop pauses same-frame snipe knife until time resumes", async () => {
     const model = await createBattleModel("sakuya", "reimu");
     model.setPlayerPointCount(300);
 
     model.step(input({ bombPressed: true, shootPressed: true }));
 
-    const delayedVolley = model.projectiles.find(
+    const snipeKnife = model.projectiles.find(
       (projectile) =>
         projectile.owner === "Player1" &&
         projectile.kind === "knife" &&
-        projectile.visibleFrom === model.frame + 66,
+        projectile.textureKey === "bullet_type_20_offset_2",
     );
-    expect(delayedVolley).toBeDefined();
-    expect(delayedVolley?.pausedUntil).toBe(model.frame + 66);
+    expect(snipeKnife).toBeDefined();
+    expect(snipeKnife?.pausedUntil).toBeGreaterThan(model.frame);
 
-    const startX = delayedVolley!.x;
-    const startY = delayedVolley!.y;
+    const startX = snipeKnife!.x;
+    const startY = snipeKnife!.y;
+
+    model.step(input());
+
+    expect(snipeKnife!.x).toBeCloseTo(startX);
+    expect(snipeKnife!.y).toBeCloseTo(startY);
 
     while (model.player.timeStopUntil > 0) {
       model.step(input());
     }
 
-    expect(delayedVolley!.visibleFrom - model.frame).toBe(6);
-    expect(delayedVolley!.x).toBeCloseTo(startX);
-    expect(delayedVolley!.y).toBeCloseTo(startY);
+    model.step(input());
 
-    while (model.frame < delayedVolley!.visibleFrom) {
-      model.step(input());
-    }
-
-    expect(delayedVolley!.x).not.toBeCloseTo(startX);
+    expect(snipeKnife!.x).not.toBeCloseTo(startX);
   });
 
   it("sakuya time stop restores projectile timelines when cancelled by a hit", async () => {
@@ -269,32 +269,78 @@ describe("BattleModel Sakuya", () => {
     expect(projectile.polarRadius).toBe(HIT_CIRCLE_DIAMETER * 80);
   });
 
-  it("adds Sakuya side volleys and delayed center volley by point tier", async () => {
+  it("adds Sakuya snipe and side volleys by point tier", async () => {
     const tier1 = await shootOnceAtPoint("sakuya", 0);
-    expect(tier1.projectiles).toHaveLength(2);
+    expect(tier1.projectiles).toHaveLength(3);
+    expect(
+      tier1.projectiles.filter(
+        (projectile) => projectile.textureKey === "bullet_type_20_offset_2",
+      ),
+    ).toHaveLength(1);
 
     const tier2 = await shootOnceAtPoint("sakuya", 100);
-    expect(tier2.projectiles).toHaveLength(6);
+    // 2 base + 2 snipes (frame 0, frame 8) + 4 side (2 per side)
+    expect(tier2.projectiles).toHaveLength(8);
+    const tier2SideKnives = tier2.projectiles.filter(
+      (projectile) => projectile.textureKey === "bullet_type_20_offset_3",
+    );
+    expect(tier2SideKnives).toHaveLength(4);
+    for (const projectile of tier2SideKnives) {
+      expect(Math.hypot(projectile.vx, projectile.vy)).toBeCloseTo(
+        bulletSpeedRankToPixelsPerTick("high"),
+      );
+    }
+    // 2 knives per side → 2 at facing - PI/6, 2 at facing + PI/6
+    expect(tier2SideKnives.map((projectile) => projectile.angle).sort()).toEqual(
+      [
+        tier2.player.facing - Math.PI / 6,
+        tier2.player.facing - Math.PI / 6,
+        tier2.player.facing + Math.PI / 6,
+        tier2.player.facing + Math.PI / 6,
+      ].sort(),
+    );
     expect(
       tier2.projectiles.filter(
-        (projectile) => projectile.visibleFrom === tier2.frame + 6,
+        (projectile) =>
+          projectile.textureKey === "bullet_type_20_offset_2" &&
+          projectile.visibleFrom === tier2.frame + 8,
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
 
     const tier3 = await shootOnceAtPoint("sakuya", 200);
-    expect(tier3.projectiles).toHaveLength(10);
+    // 2 base + 3 snipes (frame 0, 8, 16) + 4 side
+    expect(tier3.projectiles).toHaveLength(9);
     expect(
       tier3.projectiles.filter(
-        (projectile) => projectile.visibleFrom === tier3.frame + 18,
+        (projectile) =>
+          projectile.textureKey === "bullet_type_20_offset_2" &&
+          projectile.visibleFrom === tier3.frame + 16,
+      ),
+    ).toHaveLength(1);
+    expect(
+      tier3.projectiles.filter(
+        (projectile) =>
+          projectile.textureKey === "bullet_type_20_offset_0" &&
+          projectile.visibleFrom === tier3.frame,
       ),
     ).toHaveLength(2);
 
     const tier4 = await shootOnceAtPoint("sakuya", 300);
-    expect(tier4.projectiles).toHaveLength(12);
+    // 2 base + 4 snipes (frame 0, 8, 16, 24) + 8 side (2 rounds × 2 per side)
+    expect(tier4.projectiles).toHaveLength(14);
     expect(
       tier4.projectiles.filter(
-        (projectile) => projectile.visibleFrom === tier4.frame + 6,
+        (projectile) =>
+          projectile.textureKey === "bullet_type_20_offset_3" &&
+          projectile.visibleFrom === tier4.frame + 8,
       ),
     ).toHaveLength(4);
+    expect(
+      tier4.projectiles.filter(
+        (projectile) =>
+          projectile.textureKey === "bullet_type_20_offset_2" &&
+          projectile.visibleFrom === tier4.frame + 24,
+      ),
+    ).toHaveLength(1);
   });
 });

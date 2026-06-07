@@ -158,6 +158,18 @@ function sakuyaProjectileFrame(
   frames: ReadonlyMap<string, BulletFrame>,
 ): ProjectileSpec | undefined {
   if (projectile.kind !== "knife") return undefined;
+
+  // Use textureKey for visual distinction:
+  //   bullet_type_20_offset_0 = normal / center knife
+  //   bullet_type_20_offset_1 = bomb (time-stop) knife
+  //   bullet_type_20_offset_2 = snipe knife
+  //   bullet_type_20_offset_3 = side knife
+  if (projectile.textureKey) {
+    const frame = frames.get(projectile.textureKey);
+    if (frame) return { kind: "image", frame };
+  }
+
+  // Fallback: paused (bomb) vs normal
   const offset = projectile.pausedUntil > projectile.visibleFrom ? 1 : 0;
   return imageSpec(frames, "bullet_type_20", offset);
 }
