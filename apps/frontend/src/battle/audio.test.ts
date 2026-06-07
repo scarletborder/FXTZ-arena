@@ -1,0 +1,205 @@
+import { describe, expect, it } from "vitest";
+
+import type { BattleOutputState } from "@repo/raid-logic";
+import type { CharacterDefinition, FighterKey, FighterState, ProjectileState } from "@repo/content";
+
+import AudioCmd, { type AudioCommand } from "../commands/AudioCmd";
+import { BattleAudioDirector } from "./audio";
+
+describe("BattleAudioDirector", () => {
+  it("does not classify Neutral projectiles as Player2 character shots", () => {
+    const commands: AudioCommand[] = [];
+    const unsubscribe = AudioCmd.subscribe((command) => {
+      commands.push(command);
+    });
+
+    try {
+      const director = new BattleAudioDirector();
+      const previous = battleState({ frame: 10, projectiles: [] });
+      const current = battleState({
+        frame: 11,
+        projectiles: [
+          projectile({
+            id: 101,
+            owner: "Neutral",
+            kind: "orb",
+            width: 10,
+            height: 10,
+          }),
+        ],
+      });
+
+      director.sync(previous, { eventTypes: [] });
+      director.sync(current, { eventTypes: [] });
+
+      const playedKeys = commands
+        .filter((command) => command.type === "play")
+        .map((command) => command.key);
+
+      expect(playedKeys).toContain("se_tan00");
+      expect(playedKeys).not.toContain("se_lazer00");
+    } finally {
+      unsubscribe();
+    }
+  });
+});
+
+function battleState(params: {
+  readonly frame: number;
+  readonly projectiles: readonly ProjectileState[];
+}): BattleOutputState {
+  return {
+    frame: params.frame,
+    gameOver: false,
+    player: fighter("Player1", character("reimu")),
+    target: fighter("Player2", character("marisa")),
+    points: [],
+    neutralMobs: [],
+    projectiles: params.projectiles,
+    effects: [],
+    shields: [],
+    stats: {
+      shots: 0,
+      hits: 0,
+      bombUses: 0,
+      damage: 0,
+      elapsedTicks: params.frame,
+    },
+  };
+}
+
+function fighter(key: FighterKey, activeCharacter: CharacterDefinition): FighterState {
+  return {
+    key,
+    x: 0,
+    y: 0,
+    facing: 0,
+    previousX: 0,
+    previousY: 0,
+    previousFacing: 0,
+    lives: 3,
+    bombs: 3,
+    pointCount: 0,
+    ammo: 0,
+    ammoDisplay: 0,
+    ammoCapacity: 0,
+    reloadRemaining: 0,
+    reloadTotal: 0,
+    reloadStartedAmmo: 0,
+    reloadCharacterId: undefined,
+    ammoByCharacterId: {},
+    primaryCharacter: activeCharacter,
+    activeCharacter,
+    alternateCharacter: activeCharacter,
+    activeCard: undefined,
+    abilityCards: [],
+    activeCardUses: 0,
+    activeCardCooldownUntil: 0,
+    shotsFired: 0,
+    hits: 0,
+    hitsTaken: 0,
+    damageTaken: 0,
+    deaths: 0,
+    bombUses: 0,
+    moveSpeedOverride: undefined,
+    moveSpeedOverrideUntil: 0,
+    moveSpeedOverrideDelayRemaining: 0,
+    pendingMoveSpeedOverride: undefined,
+    pendingMoveSpeedOverrideDuration: 0,
+    reisenShieldLayers: 0,
+    hitCircleRadiusMultiplier: 1,
+    youmuBombDashDelayRemaining: 0,
+    youmuBombDashStartX: undefined,
+    youmuBombDashStartY: undefined,
+    youmuBombDashAimX: undefined,
+    youmuBombDashAimY: undefined,
+    invulnerableUntil: 0,
+    invulnerableDelayRemaining: 0,
+    invulnerableDelayDuration: 0,
+    deadUntil: 0,
+    actionLockedUntil: 0,
+    nonFireActionLockedUntil: 0,
+    switchLockedUntil: 0,
+    movementLockedUntil: 0,
+    projectilePauseUntil: 0,
+    timeStopUntil: 0,
+    fireCooldownUntil: 0,
+    bombCooldownUntil: 0,
+    flashUntil: 0,
+    statusVisibleUntil: 0,
+    grazedProjectileIds: [],
+  };
+}
+
+function character(id: CharacterDefinition["id"]): CharacterDefinition {
+  return {
+    id,
+    name: id,
+    cost: 0,
+    roleClass: "assault",
+    moveSpeed: "medium",
+    ammoCapacity: 0,
+    reloadTicksPerAmmo: 0,
+    reloadStartPolicy: "reset_to_zero",
+    reloadCommitPolicy: "commit_on_finish",
+    fireRate: "medium",
+    bulletSpeed: "medium",
+    description: "",
+    normalAttackId: "",
+    bombId: "",
+    gallery: {
+      portraitAsset: "",
+      attackPreviewAsset: "",
+      combatAsset: "",
+    },
+  };
+}
+
+function projectile(params: {
+  readonly id: number;
+  readonly owner: FighterKey;
+  readonly kind: ProjectileState["kind"];
+  readonly width: number;
+  readonly height: number;
+}): ProjectileState {
+  return {
+    id: params.id,
+    kind: params.kind,
+    owner: params.owner,
+    x: 0,
+    y: 0,
+    previousX: 0,
+    previousY: 0,
+    vx: 0,
+    vy: 0,
+    width: params.width,
+    previousWidth: params.width,
+    height: params.height,
+    anchorX: undefined,
+    anchorY: undefined,
+    visibleFrom: 0,
+    expireAt: undefined,
+    homingStartAt: 0,
+    homingUntil: 0,
+    pausedUntil: 0,
+    retargetAt: undefined,
+    retargetSpeed: undefined,
+    retargetX: undefined,
+    retargetY: undefined,
+    retargetAimOwner: undefined,
+    widthGrowthPerTick: 0,
+    maxWidth: undefined,
+    damage: 1,
+    angle: 0,
+    couldClear: true,
+    clearsProjectiles: false,
+    piercesTargets: false,
+    polarOriginX: undefined,
+    polarOriginY: undefined,
+    polarRadius: undefined,
+    polarAngle: undefined,
+    polarRadialSpeed: undefined,
+    polarAngularSpeed: undefined,
+    polarFollowOwner: undefined,
+  };
+}

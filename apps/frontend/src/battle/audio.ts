@@ -98,7 +98,7 @@ export class BattleAudioDirector {
       currentFighter.activeCharacter.id === "marisa" &&
       currentFighter.shotsFired > previousFighter.shotsFired
     ) {
-      AudioCmd.Play("se_lazer00", {
+      AudioCmd.Play("se_lazer01", {
         groupKey: `fire:${fighterKey}:marisa`,
         holdMs: 1000,
       });
@@ -188,7 +188,7 @@ function projectileCue(
 
   if (characterId === "marisa") {
     return {
-      key: "se_lazer00",
+      key: "se_lazer01",
       groupKey: `fire:${projectile.owner}:marisa`,
       holdMs: 200,
     };
@@ -232,8 +232,13 @@ function sourceCharacterFor(
   if (projectile.sourceCharacterId) {
     return projectile.sourceCharacterId;
   }
-  const owner = projectile.owner === "Player1" ? current.player : current.target;
-  return owner.activeCharacter.id;
+  if (projectile.owner === "Player1") {
+    return current.player.activeCharacter.id;
+  }
+  if (projectile.owner === "Player2") {
+    return current.target.activeCharacter.id;
+  }
+  return undefined;
 }
 
 function classifyProjectileSound(projectile: ProjectileState): string {
