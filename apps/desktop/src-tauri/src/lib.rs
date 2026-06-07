@@ -143,23 +143,21 @@ fn replay_data_filename(slot_index: u32) -> String {
     format!("fxtz_replay_{:02}", slot_index)
 }
 
-fn replay_meta_filename(slot_index: u32) -> String {
+fn legacy_replay_meta_filename(slot_index: u32) -> String {
     format!("fxtz_replay_{:02}.json", slot_index)
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct ReplaySlotData {
-    data: Option<String>,
-    meta: Option<String>,
+    data: Option<Vec<u8>>,
 }
 
 #[tauri::command]
-fn replay_save_slot(slot_index: u32, data: String, meta: String) -> Result<(), String> {
+fn replay_save_slot(slot_index: u32, data: Vec<u8>) -> Result<(), String> {
     let dir = replay_dir()?;
     let data_path = dir.join(replay_data_filename(slot_index));
-    let meta_path = dir.join(replay_meta_filename(slot_index));
-    std::fs::write(&data_path, &data).map_err(|e| e.to_string())?;
-    std::fs::write(&meta_path, &meta).map_err(|e| e.to_string())?;
+    std::fs::write(&data_path, data).map_err(|e| e.to_string())?;
+    let _ = std::fs::remove_file(dir.join(legacy_replay_meta_filename(slot_index)));
     Ok(())
 }
 
@@ -167,15 +165,9 @@ fn replay_save_slot(slot_index: u32, data: String, meta: String) -> Result<(), S
 fn replay_load_slot(slot_index: u32) -> Result<ReplaySlotData, String> {
     let dir = replay_dir()?;
     let data_path = dir.join(replay_data_filename(slot_index));
-    let meta_path = dir.join(replay_meta_filename(slot_index));
     Ok(ReplaySlotData {
         data: if data_path.exists() {
-            Some(std::fs::read_to_string(&data_path).map_err(|e| e.to_string())?)
-        } else {
-            None
-        },
-        meta: if meta_path.exists() {
-            Some(std::fs::read_to_string(&meta_path).map_err(|e| e.to_string())?)
+            Some(std::fs::read(&data_path).map_err(|e| e.to_string())?)
         } else {
             None
         },
@@ -186,59 +178,20 @@ fn replay_load_slot(slot_index: u32) -> Result<ReplaySlotData, String> {
 fn replay_delete_slot(slot_index: u32) -> Result<(), String> {
     let dir = replay_dir()?;
     let _ = std::fs::remove_file(dir.join(replay_data_filename(slot_index)));
-    let _ = std::fs::remove_file(dir.join(replay_meta_filename(slot_index)));
+    let _ = std::fs::remove_file(dir.join(legacy_replay_meta_filename(slot_index)));
     Ok(())
 }
 
-#[derive(serde::Serialize)]
-struct ReplaySlotEntry {
-    slot_index: u32,
-    meta: String,
-}
-
 #[tauri::command]
-fn replay_list_slots() -> Result<Vec<ReplaySlotEntry>, String> {
-    let dir = replay_dir()?;
-    let mut entries: Vec<ReplaySlotEntry> = Vec::new();
-    if let Ok(read_dir) = std::fs::read_dir(&dir) {
-        for entry in read_dir.flatten() {
-            let name = entry.file_name().to_string_lossy().to_string();
-            if let Some(stripped) = name.strip_prefix("fxtz_replay_") {
-                if stripped.ends_with(".json") && stripped.len() > 5 {
-                    let num_part = &stripped[..stripped.len() - 5]; // strip ".json"
-                    if let Ok(slot) = num_part.parse::<u32>() {
-                        if let Ok(content) = std::fs::read_to_string(entry.path()) {
-                            entries.push(ReplaySlotEntry {
-                                slot_index: slot,
-                                meta: content,
-                            });
-                        }
-                    }
-                }
-            }
-        }
-    }
-    entries.sort_by_key(|e| e.slot_index);
-    Ok(entries)
-}
-
-#[tauri::command]
-fn replay_export_slot(slot_index: u32) -> Result<Option<String>, String> {
-    let dir = replay_dir()?;
-    let data_path = dir.join(replay_data_filename(slot_index));
-    if !data_path.exists() {
-        return Ok(None);
-    }
-    let content = std::fs::read_to_string(&data_path).map_err(|e| e.to_string())?;
-    let default_name = format!("replay_{:02}.json", slot_index);
+fn replay_export_slot(slot_index: u32, data: Vec<u8>) -> Result<Option<String>, String> {
+    let default_name = format!("fxtz_replay_{:02}", slot_index);
     let path = rfd::FileDialog::new()
         .set_file_name(&default_name)
-        .add_filter("JSON", &["json"])
         .save_file();
     let Some(path) = path else {
         return Ok(None);
     };
-    std::fs::write(&path, &content).map_err(|e| e.to_string())?;
+    std::fs::write(&path, data).map_err(|e| e.to_string())?;
     Ok(Some(path.to_string_lossy().to_string()))
 }
 
@@ -292,7 +245,6 @@ pub fn run() {
             replay_save_slot,
             replay_load_slot,
             replay_delete_slot,
-            replay_list_slots,
             replay_export_slot,
             replay_open_folder,
             link::wt::wt_connect,

@@ -45,10 +45,6 @@ export interface ReplaySlotInfo {
 }
 
 export const SLOTS_PER_PAGE = 16;
-export const TOTAL_SLOTS = 64; // 16 * 4 pages
-
-export const STORAGE_DATA_PREFIX = "fxtz_replay_data_";
-export const STORAGE_META_PREFIX = "fxtz_replay_meta_";
 
 export interface ReplayRecordData {
   readonly replay: ReplayFile;

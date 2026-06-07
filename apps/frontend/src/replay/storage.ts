@@ -1,20 +1,23 @@
-import { IS_DESKTOP_APP } from "@repo/constants";
+import { IS_DESKTOP_APP, REPLAY_FILE_PREFIX, REPLAY_TOTAL_SLOTS } from "@repo/constants";
 import type { ReplayFile, ReplaySlotInfo } from "./types";
-import { SLOTS_PER_PAGE, TOTAL_SLOTS } from "./types";
+import { SLOTS_PER_PAGE } from "./types";
 
 // ── Platform detection ──────────────────────────────────────────────────
 
 const isDesktop = IS_DESKTOP_APP;
+const GZIP_MIME_TYPE = "application/gzip";
+const BIN_TYPE = "application/octet-stream";
+const JSON_MIME_TYPE = "application/json";
 
 // ── Key formatting ──────────────────────────────────────────────────────
-// Slot index 0 → "fxtz_replay_01" (data) / "fxtz_replay_01.json" (meta)
-// Slot index 63 → "fxtz_replay_64" (data) / "fxtz_replay_64.json" (meta)
+// Slot index 0 → "fxtz_replay_01"
+// Slot index 63 → "fxtz_replay_64"
 
 function dataKey(slotIndex: number): string {
-  return `fxtz_replay_${String(slotIndex + 1).padStart(2, "0")}`;
+  return `${REPLAY_FILE_PREFIX}${String(slotIndex + 1).padStart(2, "0")}`;
 }
 
-function metaKey(slotIndex: number): string {
+function legacyMetaKey(slotIndex: number): string {
   return `${dataKey(slotIndex)}.json`;
 }
 
@@ -23,7 +26,7 @@ function metaKey(slotIndex: number): string {
 const DB_NAME = "fxtz_arena_replays";
 const DB_VERSION = 1;
 const DATA_STORE = "data";
-const META_STORE = "meta";
+const LEGACY_META_STORE = "meta";
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -33,16 +36,15 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(DATA_STORE)) {
         db.createObjectStore(DATA_STORE);
       }
-      if (!db.objectStoreNames.contains(META_STORE)) {
-        db.createObjectStore(META_STORE);
-      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
 }
 
-async function idbSet(storeName: string, key: string, value: string): Promise<void> {
+type StoredReplayData = string | ArrayBuffer | Uint8Array | number[];
+
+async function idbSet(storeName: string, key: string, value: StoredReplayData): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, "readwrite");
@@ -52,7 +54,7 @@ async function idbSet(storeName: string, key: string, value: string): Promise<vo
   });
 }
 
-async function idbGet(storeName: string, key: string): Promise<string | null> {
+async function idbGet(storeName: string, key: string): Promise<StoredReplayData | null> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, "readonly");
@@ -72,33 +74,27 @@ async function idbDelete(storeName: string, key: string): Promise<void> {
   });
 }
 
-async function idbGetAll(storeName: string): Promise<Map<string, string>> {
+async function idbDeleteIfStoreExists(storeName: string, key: string): Promise<void> {
   const db = await openDB();
+  if (!db.objectStoreNames.contains(storeName)) {
+    db.close();
+    return;
+  }
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, "readonly");
-    const req = tx.objectStore(storeName).openCursor();
-    const map = new Map<string, string>();
-    req.onsuccess = () => {
-      const cursor = req.result;
-      if (cursor) {
-        map.set(cursor.key as string, cursor.value as string);
-        cursor.continue();
-      } else {
-        db.close();
-        resolve(map);
-      }
-    };
-    req.onerror = () => { db.close(); reject(req.error); };
+    const tx = db.transaction(storeName, "readwrite");
+    tx.objectStore(storeName).delete(key);
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
   });
 }
 
 /** Batch-get multiple keys in a single transaction. */
-async function idbGetBatch(storeName: string, keys: string[]): Promise<(string | null)[]> {
+async function idbGetBatch(storeName: string, keys: string[]): Promise<(StoredReplayData | null)[]> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, "readonly");
     const store = tx.objectStore(storeName);
-    const results: (string | null)[] = new Array(keys.length).fill(null);
+    const results: (StoredReplayData | null)[] = new Array(keys.length).fill(null);
     let completed = 0;
     let hasError = false;
     for (let i = 0; i < keys.length; i += 1) {
@@ -130,13 +126,7 @@ interface TauriCoreApi {
 }
 
 interface ReplaySlotData {
-  data: string | null;
-  meta: string | null;
-}
-
-interface ReplaySlotEntry {
-  slot_index: number;
-  meta: string;
+  data: StoredReplayData | null;
 }
 
 let tauriCore: TauriCoreApi | null = null;
@@ -153,12 +143,11 @@ function toRustSlot(slotIndex: number): number {
   return slotIndex + 1;
 }
 
-async function desktopSave(slotIndex: number, data: string, meta: string): Promise<void> {
+async function desktopSave(slotIndex: number, data: Uint8Array): Promise<void> {
   const core = await ensureTauriCore();
   await core.invoke("replay_save_slot", {
     slotIndex: toRustSlot(slotIndex),
-    data,
-    meta,
+    data: Array.from(data),
   });
 }
 
@@ -172,19 +161,12 @@ async function desktopDelete(slotIndex: number): Promise<void> {
   await core.invoke("replay_delete_slot", { slotIndex: toRustSlot(slotIndex) });
 }
 
-async function desktopList(): Promise<Map<number, string>> {
+async function desktopExport(slotIndex: number, data: Uint8Array): Promise<string | null> {
   const core = await ensureTauriCore();
-  const entries = await core.invoke<ReplaySlotEntry[]>("replay_list_slots");
-  const map = new Map<number, string>();
-  for (const e of entries) {
-    map.set(e.slot_index, e.meta);
-  }
-  return map;
-}
-
-async function desktopExport(slotIndex: number): Promise<string | null> {
-  const core = await ensureTauriCore();
-  return core.invoke<string | null>("replay_export_slot", { slotIndex: toRustSlot(slotIndex) });
+  return core.invoke<string | null>("replay_export_slot", {
+    slotIndex: toRustSlot(slotIndex),
+    data: Array.from(data),
+  });
 }
 
 // ── Internal helpers shared by both backends ────────────────────────────
@@ -201,30 +183,75 @@ function replayToMeta(slotIndex: number, replay: ReplayFile): ReplaySlotInfo {
   };
 }
 
-function parseMeta(raw: string): ReplaySlotInfo | null {
+function parseReplayJson(raw: string): ReplayFile | null {
   try {
-    return JSON.parse(raw) as ReplaySlotInfo;
+    return JSON.parse(raw) as ReplayFile;
   } catch {
     return null;
   }
 }
 
+async function gzipText(text: string): Promise<Uint8Array> {
+  const stream = new Blob([text], { type: JSON_MIME_TYPE }).stream().pipeThrough(new CompressionStream("gzip"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+function bytesToArrayBuffer(data: Uint8Array): ArrayBuffer {
+  return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
+}
+
+async function gunzipText(data: Uint8Array): Promise<string> {
+  const stream = new Blob([bytesToArrayBuffer(data)], { type: GZIP_MIME_TYPE }).stream().pipeThrough(new DecompressionStream("gzip"));
+  return new Response(stream).text();
+}
+
+function storedDataToBytes(raw: StoredReplayData): Uint8Array | null {
+  if (raw instanceof Uint8Array) return raw;
+  if (raw instanceof ArrayBuffer) return new Uint8Array(raw);
+  if (Array.isArray(raw)) return new Uint8Array(raw);
+  return null;
+}
+
+function isGzipBytes(data: Uint8Array): boolean {
+  return data.length >= 2 && data[0] === 0x1f && data[1] === 0x8b;
+}
+
+async function storedDataToJson(raw: StoredReplayData): Promise<string | null> {
+  if (typeof raw === "string") return raw;
+  const bytes = storedDataToBytes(raw);
+  if (!bytes) return null;
+  if (isGzipBytes(bytes)) {
+    return gunzipText(bytes);
+  }
+  return new TextDecoder().decode(bytes);
+}
+
+async function parseReplayData(raw: StoredReplayData | null): Promise<ReplayFile | null> {
+  if (!raw) return null;
+  const json = await storedDataToJson(raw);
+  return json ? parseReplayJson(json) : null;
+}
+
+async function rawReplayToSlotInfo(slotIndex: number, raw: StoredReplayData | null): Promise<ReplaySlotInfo | null> {
+  const replay = await parseReplayData(raw);
+  return replay ? replayToMeta(slotIndex, replay) : null;
+}
+
 // ── Public API ───────────────────────────────────────────────────────────
 
 export async function saveReplay(slotIndex: number, replay: ReplayFile): Promise<void> {
-  const data = JSON.stringify(replay);
-  const meta = JSON.stringify(replayToMeta(slotIndex, replay));
+  const data = await gzipText(JSON.stringify(replay));
 
   if (isDesktop) {
-    await desktopSave(slotIndex, data, meta);
+    await desktopSave(slotIndex, data);
   } else {
     await idbSet(DATA_STORE, dataKey(slotIndex), data);
-    await idbSet(META_STORE, metaKey(slotIndex), meta);
+    await idbDeleteIfStoreExists(LEGACY_META_STORE, legacyMetaKey(slotIndex));
   }
 }
 
 export async function loadReplay(slotIndex: number): Promise<ReplayFile | null> {
-  let raw: string | null;
+  let raw: StoredReplayData | null;
 
   if (isDesktop) {
     const result = await desktopLoad(slotIndex);
@@ -233,12 +260,7 @@ export async function loadReplay(slotIndex: number): Promise<ReplayFile | null> 
     raw = await idbGet(DATA_STORE, dataKey(slotIndex));
   }
 
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as ReplayFile;
-  } catch {
-    return null;
-  }
+  return parseReplayData(raw);
 }
 
 export async function deleteReplay(slotIndex: number): Promise<void> {
@@ -246,40 +268,19 @@ export async function deleteReplay(slotIndex: number): Promise<void> {
     await desktopDelete(slotIndex);
   } else {
     await idbDelete(DATA_STORE, dataKey(slotIndex));
-    await idbDelete(META_STORE, metaKey(slotIndex));
+    await idbDeleteIfStoreExists(LEGACY_META_STORE, legacyMetaKey(slotIndex));
   }
 }
 
 export async function getSlotInfo(slotIndex: number): Promise<ReplaySlotInfo | null> {
-  let raw: string | null;
-
-  if (isDesktop) {
-    const result = await desktopLoad(slotIndex);
-    raw = result?.meta ?? null;
-  } else {
-    raw = await idbGet(META_STORE, metaKey(slotIndex));
-  }
-
-  if (!raw) return null;
-  return parseMeta(raw);
+  const replay = await loadReplay(slotIndex);
+  return replay ? replayToMeta(slotIndex, replay) : null;
 }
 
 export async function listSlots(): Promise<ReplaySlotInfo[]> {
-  if (isDesktop) {
-    const map = await desktopList();
-    const slots: ReplaySlotInfo[] = [];
-    for (const [, metaRaw] of map) {
-      const info = parseMeta(metaRaw);
-      if (info) slots.push(info);
-    }
-    return slots;
-  }
-
-  // Browser: iterate all meta store entries
-  const map = await idbGetAll(META_STORE);
   const slots: ReplaySlotInfo[] = [];
-  for (const [, raw] of map) {
-    const info = parseMeta(raw);
+  for (let i = 0; i < REPLAY_TOTAL_SLOTS; i += 1) {
+    const info = await getSlotInfo(i);
     if (info) slots.push(info);
   }
   return slots;
@@ -287,29 +288,28 @@ export async function listSlots(): Promise<ReplaySlotInfo[]> {
 
 export async function listSlotsForPage(page: number): Promise<(ReplaySlotInfo | null)[]> {
   const start = page * SLOTS_PER_PAGE;
-  const end = Math.min(start + SLOTS_PER_PAGE, TOTAL_SLOTS);
+  const end = Math.min(start + SLOTS_PER_PAGE, REPLAY_TOTAL_SLOTS);
 
   if (isDesktop) {
-    const map = await desktopList();
     const result: (ReplaySlotInfo | null)[] = [];
     for (let i = start; i < end; i += 1) {
-      const metaRaw = map.get(i + 1); // slot_index is 1-based in the file system
-      result.push(metaRaw ? parseMeta(metaRaw) : null);
+      const slot = await desktopLoad(i);
+      result.push(await rawReplayToSlotInfo(i, slot?.data ?? null));
     }
     return result;
   }
 
-  // Batch read all meta keys for this page in one transaction
+  // Batch read all data keys for this page in one transaction.
   const keys: string[] = [];
   for (let i = start; i < end; i += 1) {
-    keys.push(metaKey(i));
+    keys.push(dataKey(i));
   }
-  const raws = await idbGetBatch(META_STORE, keys);
-  return raws.map((raw) => (raw ? parseMeta(raw) : null));
+  const raws = await idbGetBatch(DATA_STORE, keys);
+  return Promise.all(raws.map((raw, offset) => rawReplayToSlotInfo(start + offset, raw)));
 }
 
 export function getPageCount(): number {
-  return Math.ceil(TOTAL_SLOTS / SLOTS_PER_PAGE);
+  return Math.ceil(REPLAY_TOTAL_SLOTS / SLOTS_PER_PAGE);
 }
 
 export async function exportReplayAsJson(slotIndex: number): Promise<string | null> {
@@ -318,24 +318,38 @@ export async function exportReplayAsJson(slotIndex: number): Promise<string | nu
   return JSON.stringify(replay, null, 2);
 }
 
+export async function exportReplayAsGzip(slotIndex: number): Promise<Uint8Array | null> {
+  const replay = await loadReplay(slotIndex);
+  if (!replay) return null;
+  return gzipText(JSON.stringify(replay));
+}
+
 export async function downloadReplay(slotIndex: number): Promise<void> {
-  const json = await exportReplayAsJson(slotIndex);
-  if (!json) return;
-  const blob = new Blob([json], { type: "application/json" });
+  const gzip = await exportReplayAsGzip(slotIndex);
+  if (!gzip) return;
+  const blob = new Blob([bytesToArrayBuffer(gzip)], { type: BIN_TYPE });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  const replay = await loadReplay(slotIndex);
-  a.download = `replay_${replay?.title ?? slotIndex}_${slotIndex}.json`;
+  a.download = `${dataKey(slotIndex)}`;
   document.body.appendChild(a);
+  debugger;
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
+export async function replayFileToJson(file: File): Promise<unknown> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const text = isGzipBytes(bytes) ? await gunzipText(bytes) : new TextDecoder().decode(bytes);
+  return JSON.parse(text);
+}
+
 export async function desktopSaveAs(slotIndex: number): Promise<string | null> {
   if (!isDesktop) return null;
-  return desktopExport(slotIndex);
+  const gzip = await exportReplayAsGzip(slotIndex);
+  if (!gzip) return null;
+  return desktopExport(slotIndex, gzip);
 }
 
 /** Open the replay storage folder in the system file explorer (desktop only). */

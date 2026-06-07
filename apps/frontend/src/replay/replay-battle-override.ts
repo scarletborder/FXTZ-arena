@@ -352,9 +352,10 @@ export class ReplayBattleOverride {
         "depth" in child &&
         (child.depth === Depth.Crosshair ||
           child.depth === Depth.CrosshairFill ||
-          child.depth === Depth.CrosshairText)
+          child.depth === Depth.CrosshairText) &&
+        "setVisible" in child
       ) {
-        (child as Phaser.GameObjects.GameObject).setVisible(false);
+        (child as { setVisible(visible: boolean): unknown }).setVisible(false);
       }
     });
   }

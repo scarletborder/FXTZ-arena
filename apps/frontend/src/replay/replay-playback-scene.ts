@@ -23,6 +23,7 @@ import {
   getPageCount,
   listSlotsForPage,
   loadReplay,
+  replayFileToJson,
 } from "./storage";
 import { validateReplayJson } from "./validation";
 
@@ -664,7 +665,7 @@ export class ReplayPlaybackScene extends Phaser.Scene {
   private handleImportLocalReplay(): void {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".json";
+    input.accept = ".json,.gz,.json.gz";
     input.style.display = "none";
     document.body.appendChild(input);
 
@@ -674,8 +675,7 @@ export class ReplayPlaybackScene extends Phaser.Scene {
       if (!file) return;
 
       try {
-        const text = await file.text();
-        const data = JSON.parse(text);
+        const data = await replayFileToJson(file);
         const replay = validateReplayJson(data);
         if (!replay) {
           this.showMessageDialog(t("replay.import_invalid") || "无效的回放文件");
