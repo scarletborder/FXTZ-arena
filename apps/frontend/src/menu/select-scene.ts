@@ -16,6 +16,7 @@ import {
   createCharacterTile,
   createFightButton,
   createSmallTab,
+  drawCharacterPreviewIcon,
   drawFightingBackdrop,
   drawAngledPanel,
   drawPanelToLayer,
@@ -298,7 +299,7 @@ export class SelectScene extends Phaser.Scene {
     box.add(this.add.text(width / 2, 22, label, bodyStyle("#ffcf6e", 16)).setOrigin(0.5));
     if (characterId) {
       const character = getCharacterById(characterId);
-      box.add(this.add.text(width / 2, 84, character.name, bodyStyle("#f6f1e6", 19)).setOrigin(0.5));
+      drawCharacterPreviewIcon(this, box, width / 2, 94, 164, 80, character);
     } else {
       box.add(this.add.text(width / 2, 84, t("select.unselected"), bodyStyle("#6e8496", 18)).setOrigin(0.5));
     }

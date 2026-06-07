@@ -102,7 +102,7 @@
   },
   "select": {
     "confirmed": "Opponent confirmed", "opponent": "Opponent", "error": "Error: {{message}}", "peer_left": "Opponent left the room",
-    "primary_mode": "Primary Mode", "alternate_mode": "Special Mode", "confirm_battle": "Confirm Battle", "confirm_loadout": "Confirm Loadout",
+    "primary_mode": "Primary Character", "alternate_mode": "Backup Character", "confirm_battle": "Confirm Battle", "confirm_loadout": "Confirm Loadout",
     "unselected": "Unselected", "characters": "Characters", "cards": "Ability Cards", "all": "All", "active": "Active", "passive": "Passive",
     "wait_opponent": "Waiting…", "confirmed_waiting": "Confirmed, waiting…", "dummy": "Target", "cpu": "CPU",
     "ammo": "Ammo", "move": "Move", "move_speed": "Move", "fire_rate": "Fire rate", "bullet_speed": "Bullet speed",
