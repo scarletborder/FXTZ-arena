@@ -1,4 +1,5 @@
 import type { AbilityCardId, CharacterId, MapId } from "@repo/types";
+import type { ReplayFile } from "../replay/types";
 
 export type StoryId = "reimu" | "marisa";
 export type StoryRewardKind = "life" | "bomb";
@@ -93,4 +94,5 @@ export interface StoryResultData {
   readonly story?: StoryDefinition;
   readonly state?: StoryRuntimeState;
   readonly success?: boolean;
+  readonly replay?: ReplayFile;
 }

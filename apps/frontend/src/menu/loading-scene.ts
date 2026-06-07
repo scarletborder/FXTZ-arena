@@ -268,7 +268,12 @@ export class LoadingScene extends Phaser.Scene {
   private goToBattle(): void {
     if (this.transitioning) return;
     this.transitioning = true;
-    this.beginReadyCountdown();
+    if (this.loadingData.replayData) {
+      // Replay mode: skip countdown, go directly to battle
+      this.launchBattle(performance.now());
+    } else {
+      this.beginReadyCountdown();
+    }
   }
 
   private beginReadyCountdown(): void {

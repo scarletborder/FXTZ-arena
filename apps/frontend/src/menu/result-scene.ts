@@ -23,7 +23,15 @@ export class ResultScene extends Phaser.Scene {
     this.drawPlayerColumn(490, 352, data.players[0]);
     this.drawPlayerColumn(790, 352, data.players[1]);
 
-    createFightButton(this, 512, 588, 260, 58, t("result.back"), () => this.scene.start(data.returnScene ?? "battle-start"), { accent: 0xe33d44 });
+    const hasReplay = data.replay !== undefined;
+
+    createFightButton(this, 512, 588, 260, 58, t("result.back"), () => {
+      if (hasReplay && data.replay) {
+        this.scene.start("replay-record", { replay: data.replay });
+      } else {
+        this.scene.start(data.returnScene ?? "battle-start");
+      }
+    }, { accent: 0xe33d44 });
     createFightButton(this, 810, 588, 220, 58, t("result.rematch"), undefined, { enabled: false, subLabel: t("result.rematch_disabled") });
 
     if (uiSettings.debug && data.debugHashes) {

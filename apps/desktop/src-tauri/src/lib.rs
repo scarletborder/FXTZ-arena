@@ -125,6 +125,151 @@ fn append_client_log(line: String, path: String) -> Result<(), String> {
     Ok(())
 }
 
+// ---------------------------------------------------------------------------
+// Replay file storage  —  read/write/delete in a "replay/" dir next to the exe
+// ---------------------------------------------------------------------------
+
+fn replay_dir() -> Result<std::path::PathBuf, String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let dir = exe
+        .parent()
+        .ok_or_else(|| "Cannot determine executable directory".to_string())?
+        .join("replay");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
+}
+
+fn replay_data_filename(slot_index: u32) -> String {
+    format!("fxtz_replay_{:02}", slot_index)
+}
+
+fn replay_meta_filename(slot_index: u32) -> String {
+    format!("fxtz_replay_{:02}.json", slot_index)
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct ReplaySlotData {
+    data: Option<String>,
+    meta: Option<String>,
+}
+
+#[tauri::command]
+fn replay_save_slot(slot_index: u32, data: String, meta: String) -> Result<(), String> {
+    let dir = replay_dir()?;
+    let data_path = dir.join(replay_data_filename(slot_index));
+    let meta_path = dir.join(replay_meta_filename(slot_index));
+    std::fs::write(&data_path, &data).map_err(|e| e.to_string())?;
+    std::fs::write(&meta_path, &meta).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn replay_load_slot(slot_index: u32) -> Result<ReplaySlotData, String> {
+    let dir = replay_dir()?;
+    let data_path = dir.join(replay_data_filename(slot_index));
+    let meta_path = dir.join(replay_meta_filename(slot_index));
+    Ok(ReplaySlotData {
+        data: if data_path.exists() {
+            Some(std::fs::read_to_string(&data_path).map_err(|e| e.to_string())?)
+        } else {
+            None
+        },
+        meta: if meta_path.exists() {
+            Some(std::fs::read_to_string(&meta_path).map_err(|e| e.to_string())?)
+        } else {
+            None
+        },
+    })
+}
+
+#[tauri::command]
+fn replay_delete_slot(slot_index: u32) -> Result<(), String> {
+    let dir = replay_dir()?;
+    let _ = std::fs::remove_file(dir.join(replay_data_filename(slot_index)));
+    let _ = std::fs::remove_file(dir.join(replay_meta_filename(slot_index)));
+    Ok(())
+}
+
+#[derive(serde::Serialize)]
+struct ReplaySlotEntry {
+    slot_index: u32,
+    meta: String,
+}
+
+#[tauri::command]
+fn replay_list_slots() -> Result<Vec<ReplaySlotEntry>, String> {
+    let dir = replay_dir()?;
+    let mut entries: Vec<ReplaySlotEntry> = Vec::new();
+    if let Ok(read_dir) = std::fs::read_dir(&dir) {
+        for entry in read_dir.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if let Some(stripped) = name.strip_prefix("fxtz_replay_") {
+                if stripped.ends_with(".json") && stripped.len() > 5 {
+                    let num_part = &stripped[..stripped.len() - 5]; // strip ".json"
+                    if let Ok(slot) = num_part.parse::<u32>() {
+                        if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                            entries.push(ReplaySlotEntry {
+                                slot_index: slot,
+                                meta: content,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    entries.sort_by_key(|e| e.slot_index);
+    Ok(entries)
+}
+
+#[tauri::command]
+fn replay_export_slot(slot_index: u32) -> Result<Option<String>, String> {
+    let dir = replay_dir()?;
+    let data_path = dir.join(replay_data_filename(slot_index));
+    if !data_path.exists() {
+        return Ok(None);
+    }
+    let content = std::fs::read_to_string(&data_path).map_err(|e| e.to_string())?;
+    let default_name = format!("replay_{:02}.json", slot_index);
+    let path = rfd::FileDialog::new()
+        .set_file_name(&default_name)
+        .add_filter("JSON", &["json"])
+        .save_file();
+    let Some(path) = path else {
+        return Ok(None);
+    };
+    std::fs::write(&path, &content).map_err(|e| e.to_string())?;
+    Ok(Some(path.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
+fn replay_open_folder() -> Result<(), String> {
+    let dir = replay_dir()?; // creates dir if not exists
+    let path_str = dir.to_string_lossy().to_string();
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&path_str)
+            .spawn()
+            .map_err(|e| format!("Failed to open explorer: {}", e))?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&path_str)
+            .spawn()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&path_str)
+            .spawn()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+    }
+    Ok(())
+}
+
 fn stop_udp_socket(state: &UdpState) -> Result<(), String> {
     state.running.store(false, Ordering::SeqCst);
     state.session.fetch_add(1, Ordering::SeqCst);
@@ -144,6 +289,12 @@ pub fn run() {
             save_debug_log,
             append_client_log,
             select_log_directory,
+            replay_save_slot,
+            replay_load_slot,
+            replay_delete_slot,
+            replay_list_slots,
+            replay_export_slot,
+            replay_open_folder,
             link::wt::wt_connect,
             link::wt::wt_send,
             link::wt::wt_close,

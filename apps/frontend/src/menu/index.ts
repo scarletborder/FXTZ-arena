@@ -13,3 +13,5 @@ export * from "./select-scene";
 export * from "./story-scene";
 export * from "./loading-scene";
 export * from "./result-scene";
+export * from "../replay/replay-record-scene";
+export * from "../replay/replay-playback-scene";

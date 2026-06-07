@@ -30,6 +30,7 @@ export class HomeScene extends Phaser.Scene {
       { label: t("menu.start_game"), onClick: () => this.scene.start("battle-start") },
       { label: t("menu.codex"), onClick: () => this.scene.start("codex") },
       { label: t("menu.manual"), onClick: () => this.scene.start("manual") },
+      { label: t("menu.replay"), onClick: () => this.scene.start("replay-playback") },
       { label: t("menu.settings"), onClick: () => this.scene.start("settings") },
     ];
 

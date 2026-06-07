@@ -18,7 +18,7 @@
         "cardIds": [ "spirit_strike_card" ],
         "activeCardId": "spirit_strike_card"
       },
-      "ai": { "smartDurationSeconds": 35, "dumbRampSeconds": 25 },
+      "ai": { "smartDurationSeconds": 1, "dumbRampSeconds": 5 },
       "script": [
         { "speaker": "  ", "content": "博丽神社前，灵梦看着眼前的友人", "color": "#ffffff", "background": "black" },
         { "speaker": "魔理沙", "content": "等一下啦。最近大家变懒了，根本没人陪我玩弹幕游戏。既然要出发，不如先在这里活动下身体（减肥）吧？", "color": "#ffd700", "background": "story/shrine_marisa" },

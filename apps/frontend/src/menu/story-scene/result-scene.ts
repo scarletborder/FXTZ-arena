@@ -180,7 +180,13 @@ export class StoryResultScene extends Phaser.Scene {
       260,
       58,
       t("story.back_to_menu"),
-      () => this.scene.start("battle-start"),
+      () => {
+        if (this.resultData.replay) {
+          this.scene.start("replay-record", { replay: this.resultData.replay });
+        } else {
+          this.scene.start("battle-start");
+        }
+      },
       { accent: 0xe33d44 },
     );
   }

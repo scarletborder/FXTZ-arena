@@ -20,6 +20,7 @@ import type {
 } from "../../story/types";
 import { installMenuAudioUnlock, type SceneKey } from "../shared";
 import { bodyStyle, createFightButton, drawFightingBackdrop } from "../ui";
+import { globalReplayRecorder } from "../../replay/recorder";
 import {
   DIALOGUE_HEIGHT,
   DIALOGUE_TEXT_WIDTH,
@@ -357,10 +358,32 @@ export class StoryProgressScene extends Phaser.Scene {
           gameEnd ||
           this.state.currentStageIndex >= this.story.stages.length
         ) {
+          const replay = globalReplayRecorder.hasData()
+            ? globalReplayRecorder.finalize({
+                title: this.story.title,
+                mode: "story",
+                player1Id: this.story.playableCharacterId,
+                player2Id: t("select.cpu"),
+                finalGlobalInputHash: null,
+                loadouts: {
+                  player: {
+                    primaryCharacterId: this.state.primaryCharacterId,
+                    alternateCharacterId: this.state.alternateCharacterId ?? this.state.primaryCharacterId,
+                    cardIds: [...this.state.cardIds],
+                    activeCardId: this.state.activeCardId,
+                  },
+                  target: {
+                    primaryCharacterId: this.story.stages[this.story.stages.length - 1]?.opponent.primaryCharacterId ?? "sakuya",
+                    alternateCharacterId: this.story.stages[this.story.stages.length - 1]?.opponent.alternateCharacterId ?? "cirno",
+                  },
+                },
+              })
+            : undefined;
           this.scene.start("story-result", {
             story: this.story,
             state: this.state,
             success: true,
+            replay,
           } satisfies StoryResultData);
           return;
         }

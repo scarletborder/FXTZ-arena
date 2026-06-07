@@ -1,7 +1,7 @@
 {
   "language": { "display": "简体中文" },
   "menu": {
-    "start_game": "开始战斗", "practice_range": "靶场", "codex": "图鉴", "manual": "Manual", "settings": "设置",
+    "start_game": "开始战斗", "practice_range": "靶场", "codex": "图鉴", "manual": "Manual", "settings": "设置", "replay": "回放",
     "subtitle": "肥乡天则 ~ 角斗少女的虚荣", "ai_declaration": "本游戏使用AI绘图，AI编码", "browser_notice": "你正在使用浏览器进行游戏，部分联机功能可能受限", "download_desktop": "下载桌面端", "language": "语言", "back": "返回"
   },
   "manual": {
@@ -67,7 +67,10 @@
     "confirm_main_menu": "确定要回到主菜单吗？",
     "confirm_restart": "确定要重新开始本局游戏吗？",
     "cancel": "取消",
-    "confirm": "确定"
+    "confirm": "确定",
+    "replay_title": "回放",
+    "exit_replay": "退出回放",
+    "speed": "速度"
   },
   "public_server": {
     "connectivity": "公共服务器连通性", "hint": "正在测试所有公共服务器，你可以在[设置]页面重新测试\n部分公开服务器需手动信任证书，[去信任]->[高级]->[继续访问]",
@@ -145,5 +148,36 @@
     "peer_left": "对手已退出，战斗结束", "reconnect_timeout": "对手重连超时，战斗结束", "peer_adjudicated": "对手已提交终局裁决，发送本地确认…",
     "local_adjudicated": "已提交终局裁决，等待对手确认…", "recovering": "重整中", "fighter_status": "命数 {{lives}}  bomb {{bombs}}",
     "mobile_aim": "瞄准", "mobile_switch": "切换", "mobile_reload": "装填", "mobile_shoot": "射击", "mobile_bomb": "Bomb", "mobile_card": "卡"
+  },
+  "replay": {
+    "save_title": "保存回放", "save_hint": "选择空槽位保存回放，或点击已有回放覆盖",
+    "play_title": "回放列表", "select_stage": "选择关卡",
+    "col_title": "标题", "col_time": "时间", "col_action": "操作", "col_mode": "模式",
+    "download": "下载", "skip": "跳过保存", "back": "返回",
+    "cancel": "取消", "confirm": "确认",
+    "overwrite_confirm": "确定要覆盖此回放吗？",
+    "title_input": "请输入回放标题", "title_placeholder": "输入标题...", "default_title": "未命名回放",
+    "prev_page": "上一页", "next_page": "下一页",
+    "page": "第{{page}}页/共{{total}}页",
+    "mode_ai": "人机对战", "mode_online": "玩家对战", "mode_local": "局域网", "mode_story": "故事模式",
+    "stage": "关卡",
+    "save_as": "另存为",
+    "info": "信息",
+    "info_title": "回放信息",
+    "close": "关闭",
+    "duration": "时长：{{seconds}}秒",
+    "battles": "战斗场次：{{count}}",
+    "player_loadout": "玩家配装",
+    "opponent_loadout": "对手配装",
+    "character": "角色：{{name}}",
+    "card": "卡片：{{name}}",
+    "battle": "战斗{{n}}",
+    "map": "地图：{{id}}",
+    "import_local_replay": "导入本地回放",
+    "open_replay_folder": "打开回放文件夹",
+    "import_select_slot": "选择保存槽位",
+    "import_invalid": "无效的回放文件",
+    "import_no_slot": "没有可用的空槽位",
+    "import_success": "导入成功"
   }
 }

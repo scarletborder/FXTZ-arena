@@ -38,6 +38,10 @@ export interface BattlePauseMenuOptions {
   readonly onRestart: () => void;
   readonly onMainMenu: () => void;
   readonly canOpen?: () => boolean;
+  /** Replay playback speed (0.5, 1, 2, 4, 8). When set, show replay-specific menu. */
+  readonly replaySpeed?: number;
+  /** Called when user toggles playback speed. */
+  readonly onSpeedChange?: (speed: number) => void;
 }
 
 export class BattlePauseMenuController {
@@ -147,8 +151,9 @@ export class BattlePauseMenuController {
     const menuCenterX = MENU_LEFT_MARGIN + MENU_WIDTH / 2;
     const menuCenterY = Math.max(220, height - MENU_BOTTOM_MARGIN - MENU_BUTTON_HEIGHT / 2 - 64);
 
+    const isReplay = this.options.replaySpeed !== undefined;
     const title = this.scene.add
-      .text(menuCenterX, menuCenterY - 138, t("pause.title"), {
+      .text(menuCenterX, menuCenterY - 138, isReplay ? t("pause.replay_title") : t("pause.title"), {
         fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
         fontSize: "30px",
         fontStyle: "900",
@@ -164,19 +169,33 @@ export class BattlePauseMenuController {
       .setScrollFactor(0);
     layer.add(titleLine);
 
-    const buttons: PauseMenuButton[] = [
-      this.createMenuButton(layer, menuCenterX, menuCenterY - 64, t("pause.resume"), true, () => this.resume(), "resume"),
-      this.createMenuButton(layer, menuCenterX, menuCenterY, t("pause.main_menu"), true, () => this.openConfirm("mainMenu"), "mainMenu"),
-      this.createMenuButton(
-        layer,
-        menuCenterX,
-        menuCenterY + 64,
-        t("pause.restart"),
-        this.options.restartEnabled,
-        () => this.openConfirm("restart"),
-        "restart",
-      ),
-    ];
+    const buttons: PauseMenuButton[] = [];
+
+    if (isReplay) {
+      buttons.push(
+        this.createMenuButton(layer, menuCenterX, menuCenterY - 64, t("pause.resume"), true, () => this.resume(), "resume"),
+        this.createMenuButton(layer, menuCenterX, menuCenterY, t("pause.exit_replay"), true, () => this.options.onMainMenu(), "mainMenu"),
+        this.createMenuButton(layer, menuCenterX, menuCenterY + 64, t("pause.restart"), true, () => this.openConfirm("restart"), "restart"),
+      );
+      const speedLabel = `${t("pause.speed")} ${this.options.replaySpeed}x`;
+      buttons.push(
+        this.createMenuButton(layer, menuCenterX, menuCenterY + 128, speedLabel, true, () => this.cycleSpeed(), "restart"),
+      );
+    } else {
+      buttons.push(
+        this.createMenuButton(layer, menuCenterX, menuCenterY - 64, t("pause.resume"), true, () => this.resume(), "resume"),
+        this.createMenuButton(layer, menuCenterX, menuCenterY, t("pause.main_menu"), true, () => this.openConfirm("mainMenu"), "mainMenu"),
+        this.createMenuButton(
+          layer,
+          menuCenterX,
+          menuCenterY + 64,
+          t("pause.restart"),
+          this.options.restartEnabled,
+          () => this.openConfirm("restart"),
+          "restart",
+        ),
+      );
+    }
 
     this.setRestartHoldProgress({ buttons }, 0);
 
@@ -187,6 +206,21 @@ export class BattlePauseMenuController {
       restartHoldMs: 0,
       restartTriggered: false,
     };
+  }
+
+  private cycleSpeed(): void {
+    const current = this.options.replaySpeed ?? 1;
+    const speeds = [0.5, 1, 2, 4, 8];
+    const idx = speeds.indexOf(current);
+    const next = speeds[(idx + 1) % speeds.length];
+    this.options.onSpeedChange?.(next);
+    // Rebuild menu to show updated speed label
+    const oldState = this.menu;
+    if (oldState) {
+      oldState.layer.destroy(true);
+      oldState.confirmLayer?.destroy(true);
+    }
+    this.menu = this.createMenu();
   }
 
   private createMenuButton(

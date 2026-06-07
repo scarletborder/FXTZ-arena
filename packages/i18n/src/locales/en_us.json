@@ -1,7 +1,7 @@
 {
   "language": { "display": "English" },
   "menu": {
-    "start_game": "Start Game", "practice_range": "Practice Range", "codex": "Codex", "manual": "manual", "settings": "Settings",
+    "start_game": "Start Game", "practice_range": "Practice Range", "codex": "Codex", "manual": "manual", "settings": "Settings", "replay": "Replay",
     "subtitle": "FXTZ Arena ~ Vanity of the Arena Girls", "ai_declaration": "This game uses AI for art and coding", "browser_notice": "You are playing in a browser, so some online features may be limited", "download_desktop": "Download desktop client", "language": "Language", "back": "Back"
   },
   "manual": {
@@ -67,7 +67,10 @@
     "confirm_main_menu": "Return to the main menu?",
     "confirm_restart": "Restart this run?",
     "cancel": "Cancel",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "replay_title": "Replay",
+    "exit_replay": "Exit Replay",
+    "speed": "Speed"
   },
   "public_server": {
     "connectivity": "Public server connectivity", "hint": "Testing all public servers. You can retest from Settings.\nSome public servers require manual certificate trust: Trust -> Advanced -> Continue.",
@@ -145,5 +148,36 @@
     "peer_left": "Opponent left, battle ended", "reconnect_timeout": "Opponent reconnect timed out, battle ended", "peer_adjudicated": "Opponent submitted final adjudication, sending local confirmation…",
     "local_adjudicated": "Submitted final adjudication, waiting for opponent…", "recovering": "Recovering", "fighter_status": "Lives {{lives}}  bomb {{bombs}}",
     "mobile_aim": "Aim", "mobile_switch": "Switch", "mobile_reload": "Reload", "mobile_shoot": "Shoot", "mobile_bomb": "Bomb", "mobile_card": "Card"
+  },
+  "replay": {
+    "save_title": "Save Replay", "save_hint": "Click an empty slot to save, or click an existing replay to overwrite",
+    "play_title": "Replay List", "select_stage": "Select Stage",
+    "col_title": "Title", "col_time": "Time", "col_action": "Action", "col_mode": "Mode",
+    "download": "Download", "skip": "Skip Save", "back": "Back",
+    "cancel": "Cancel", "confirm": "Confirm",
+    "overwrite_confirm": "Overwrite this replay?",
+    "title_input": "Enter replay title", "title_placeholder": "Enter title...", "default_title": "Unnamed Replay",
+    "prev_page": "Previous", "next_page": "Next",
+    "page": "Page {{page}} / {{total}}",
+    "mode_ai": "Vs CPU", "mode_online": "Online Battle", "mode_local": "LAN Battle", "mode_story": "Story Mode",
+    "stage": "Stage",
+    "save_as": "Save As",
+    "info": "Info",
+    "info_title": "Replay Info",
+    "close": "Close",
+    "duration": "Duration: {{seconds}}s",
+    "battles": "Battles: {{count}}",
+    "player_loadout": "Player Loadout",
+    "opponent_loadout": "Opponent Loadout",
+    "character": "Character: {{name}}",
+    "card": "Card: {{name}}",
+    "battle": "Battle {{n}}",
+    "map": "Map: {{id}}",
+    "import_local_replay": "Import Local Replay",
+    "open_replay_folder": "Open Replay Folder",
+    "import_select_slot": "Select Save Slot",
+    "import_invalid": "Invalid replay file",
+    "import_no_slot": "No empty slot available",
+    "import_success": "Imported"
   }
 }

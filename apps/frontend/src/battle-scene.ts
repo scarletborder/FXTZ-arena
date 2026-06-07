@@ -23,7 +23,7 @@ import {
   type BattleKeyMap,
 } from "./battle/keybind";
 import { BattleRollbackManager, type BattleHashBundle } from "./battle/rollback-manager";
-import type { BattleSceneData } from "./battle/loadout";
+import type { BattleSceneData, BattleLoadouts } from "./battle/loadout";
 import {
   BattleMobileControls,
   shouldEnableMobileBattleControls,
@@ -42,6 +42,9 @@ import { BattleAudioDirector } from "./battle/audio";
 import { resolveResultWinnerName } from "./battle/result";
 import { advanceStoryAfterBattle } from "./story/state";
 import type { StoryProgressData, StoryResultData } from "./story/types";
+import type { ReplayFile } from "./replay/types";
+import { ReplayBattleOverride } from "./replay/replay-battle-override";
+import { ReplayRecorder, globalReplayRecorder } from "./replay/recorder";
 
 type DebugPointSize = "small" | "medium" | "large";
 
@@ -99,6 +102,8 @@ export class BattleScene extends Phaser.Scene {
   private battleAudioBridge: BattleAudioBridge | undefined;
   private battleBgmBridge: BattleBgmBridge | undefined;
   private pauseMenu: BattlePauseMenuController | undefined;
+  private replayRecorder: ReplayRecorder | undefined;
+  private replayOverride: ReplayBattleOverride | null = null;
 
   constructor() {
     super("battle");
@@ -110,9 +115,11 @@ export class BattleScene extends Phaser.Scene {
   create(data: BattleSceneData = {}): void {
     this.sceneData = data;
     this.resultScheduled = false;
+    this.replayRecorder = undefined;
+    this.replayOverride = null;
     this.rollbackManager.reset({ sceneData: data, debug: this.shouldRecordDebugLog() });
     this.accumulator = 0;
-    this.mobileControlsEnabled = shouldEnableMobileBattleControls(this);
+    this.mobileControlsEnabled = shouldEnableMobileBattleControls(this) && !data.replayData;
     if (this.mobileControlsEnabled) {
       this.previousScaleAutoCenter = this.scale.autoCenter;
       this.scale.autoCenter = Phaser.Scale.CENTER_HORIZONTALLY;
@@ -123,10 +130,22 @@ export class BattleScene extends Phaser.Scene {
     this.battleAudioBridge = installBattleAudioBridge(this);
     this.battleBgmBridge = installBattleBgmBridge(this);
     BgmCmd.PlayMap(data.mapId ?? data.battleConfig?.mapId);
-    this.input.setDefaultCursor("none");
+    this.input.setDefaultCursor(data.replayData ? "auto" : "none");
     this.input.mouse?.disableContextMenu();
     this.keybinds = createBattleKeybinds(this);
     this.keys = this.keybinds.keys;
+
+    // --- Replay playback mode ---
+    if (data.replayData) {
+      this.replayOverride = new ReplayBattleOverride(this, data, {
+        keys: this.keys,
+      });
+      ConsoleCmd.uninstall(this);
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdownBattleScene());
+      return;
+    }
+
+    // --- Normal battle mode ---
     this.pauseMenu = this.isPausableLocalMode()
       ? new BattlePauseMenuController(this, {
         restartEnabled: data.mode !== "training",
@@ -174,6 +193,28 @@ export class BattleScene extends Phaser.Scene {
     }
     this.syncRollbackManagerState();
     this.fastForwardFromBattleZero(data);
+
+    // --- Replay recording setup (not in training mode) ---
+    if (data.mode !== "training" && !this.sceneData.story) {
+      this.replayRecorder = new ReplayRecorder();
+      this.replayRecorder.startBattle({
+        playerName: data.playerName ?? "Player",
+        opponentName: data.opponentName ?? "Opponent",
+        mapId: data.mapId ?? data.battleConfig?.mapId ?? "hakurei_shrine",
+      });
+    } else if (data.mode !== "training" && this.sceneData.story) {
+      // Story mode: use the global singleton to accumulate across battles
+      this.replayRecorder = globalReplayRecorder;
+      this.replayRecorder.startBattle({
+        playerName: data.playerName ?? "Player",
+        opponentName: data.opponentName ?? "Opponent",
+        mapId: data.mapId ?? data.battleConfig?.mapId ?? "hakurei_shrine",
+        stageIndex: this.sceneData.story.stageIndex,
+        stageTitle: this.sceneData.story.story.stages[this.sceneData.story.stageIndex]?.title,
+        loadouts: data.loadouts,
+      });
+    }
+
     this.scale.on(
       Phaser.Scale.Events.RESIZE,
       this.scheduleBattleLayoutRefresh,
@@ -195,6 +236,13 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    // --- Replay playback mode ---
+    if (this.replayOverride) {
+      this.replayOverride.update(delta);
+      return;
+    }
+
+    // --- Normal battle mode ---
     this.accumulator += delta;
     while (this.accumulator >= FIXED_STEP_MS) {
       if (!this.debugInputLocked) {
@@ -221,6 +269,13 @@ export class BattleScene extends Phaser.Scene {
           this.stepRuntimeWithDebugInput(this.lastInput);
         }
         this.updateAutoReloadObservation();
+
+        // Record frame for replay (not in training mode)
+        if (this.replayRecorder && this.logicReady && !this.debugInputLocked) {
+          const p1Input = this.runtime.lastPlayerInput ?? this.lastInput;
+          const p2Input = this.runtime.lastTargetInput ?? this.lastInput;
+          this.replayRecorder.recordFrame(this.runtime.frame, p1Input, p2Input);
+        }
       }
       this.accumulator -= FIXED_STEP_MS;
     }
@@ -549,6 +604,7 @@ export class BattleScene extends Phaser.Scene {
   ): void {
     if (this.resultScheduled) return;
     this.resultScheduled = true;
+    this.replayRecorder?.endBattle();
     if (this.shouldRecordDebugLog()) {
       this.printDebugHashBundle(winnerPlayerId, serverConfirmedFrame);
     }
@@ -628,6 +684,7 @@ export class BattleScene extends Phaser.Scene {
     if (!this.runtime.gameOver) {
       return;
     }
+    this.replayRecorder?.endBattle();
     if (this.shouldRecordDebugLog()) {
       this.printDebugHashBundle(null);
     }
@@ -662,10 +719,13 @@ export class BattleScene extends Phaser.Scene {
       } satisfies StoryProgressData);
       return;
     }
+    // Story failed: finalize replay and pass to result scene
+    const replay = this.buildStoryReplayFile();
     this.scene.start("story-result", {
       story: story.story,
       state: nextState,
       success: false,
+      replay,
     } satisfies StoryResultData);
   }
 
@@ -676,6 +736,7 @@ export class BattleScene extends Phaser.Scene {
     const localFighterState = localFighterKey === "Player1" ? this.currentOutput.state.player : this.currentOutput.state.target;
     const opponentFighterState = localFighterKey === "Player1" ? this.currentOutput.state.target : this.currentOutput.state.player;
     const debugHashes = this.getFinalDebugHashes();
+    const replay = this.buildNormalReplayFile();
 
     return {
       winnerName: resolveResultWinnerName({
@@ -693,7 +754,35 @@ export class BattleScene extends Phaser.Scene {
       ] as const,
       returnScene: this.sceneData.returnScene ?? "battle-start",
       debugHashes,
+      replay,
     };
+  }
+
+  private buildNormalReplayFile(): ReplayFile | undefined {
+    if (!this.replayRecorder || !this.sceneData.loadouts) return undefined;
+    return this.replayRecorder.finalize({
+      title: `${this.sceneData.playerName ?? "Player"} vs ${this.sceneData.opponentName ?? "Opponent"}`,
+      mode: (this.sceneData.mode === "ai" || this.sceneData.mode === "training") ? "ai" : (this.sceneData.mode === "online" || this.sceneData.mode === "local" ? "online" : "ai"),
+      player1Id: this.sceneData.playerName ?? "Player",
+      player2Id: this.sceneData.opponentName ?? "Opponent",
+      finalGlobalInputHash: this.getFinalDebugHashes()?.finalGlobalInputHash ?? null,
+      loadouts: this.sceneData.loadouts,
+    });
+  }
+
+  private buildStoryReplayFile(): ReplayFile | undefined {
+    if (!this.replayRecorder || !this.sceneData.story) return undefined;
+    const storyCtx = this.sceneData.story;
+    const stage = storyCtx.story.stages[storyCtx.stageIndex];
+    const fallback: BattleLoadouts = { player: { primaryCharacterId: "reimu", alternateCharacterId: "marisa" }, target: { primaryCharacterId: "sakuya", alternateCharacterId: "cirno" } };
+    return this.replayRecorder.finalize({
+      title: `${storyCtx.story.title} - ${stage?.title ?? "Stage"}`,
+      mode: "story",
+      player1Id: this.sceneData.playerName ?? uiSettings.username ?? "Player",
+      player2Id: this.sceneData.opponentName ?? "CPU",
+      finalGlobalInputHash: this.getFinalDebugHashes()?.finalGlobalInputHash ?? null,
+      loadouts: this.sceneData.loadouts ?? fallback,
+    });
   }
 
   /** Toggle debug overlay that visualises Rapier collision bodies. */

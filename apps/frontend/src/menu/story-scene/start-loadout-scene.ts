@@ -19,6 +19,7 @@ import {
 } from "../ui";
 import { STORY_CHARACTERS } from "./constants";
 import { fitImageToBounds, getStoryFromCache, wrapIndex } from "./helpers";
+import { globalReplayRecorder } from "../../replay/recorder";
 
 export class StoryStartLoadoutScene extends Phaser.Scene {
   private selectedIndex = 0;
@@ -165,6 +166,7 @@ export class StoryStartLoadoutScene extends Phaser.Scene {
   private startStory(characterId: CharacterId): void {
     const storyId = characterId as StoryId;
     const story = getStoryFromCache(this, storyId);
+    globalReplayRecorder.reset();
     this.scene.start("story-progress", {
       state: createInitialStoryState(story, characterId),
     } satisfies StoryProgressData);

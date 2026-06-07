@@ -4,6 +4,7 @@ import { t } from "@repo/i18n";
 import type { PlayerId, PlayerLoadout } from "@repo/types";
 
 import type { BattleSceneData } from "../battle/loadout";
+import type { ReplayFile } from "../replay/types";
 import { ConnectionManager } from "../network";
 
 export type SceneKey =
@@ -22,7 +23,9 @@ export type SceneKey =
   | "story-start-loadout"
   | "story-progress"
   | "story-loadout"
-  | "story-result";
+  | "story-result"
+  | "replay-record"
+  | "replay-playback";
 export type SelectionMode = "ai" | "training" | "online" | "local";
 export type CodexTab = "characters" | "cards";
 export type CpuLoadoutPresetId = "marisa_solo" | "sakuya_cirno" | "kaguya_reisen";
@@ -65,6 +68,7 @@ export interface ResultData {
   readonly players: readonly [ResultPlayerSummary, ResultPlayerSummary];
   readonly returnScene?: string;
   readonly debugHashes?: ResultDebugHashes;
+  readonly replay?: ReplayFile;
 }
 
 export interface ResultPlayerSummary {

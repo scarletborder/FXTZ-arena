@@ -123,6 +123,11 @@ export class BattleModel {
   private physics: BattlePhysics | undefined;
   private pendingSpawns: Array<() => void> = [];
 
+  /** After each step, stores the input used for the target fighter (AI or manually provided). */
+  lastTargetInput: BattleInputState | null = null;
+  /** After each step, stores the input used for the player fighter. */
+  lastPlayerInput: BattleInputState | null = null;
+
   constructor(
     loadouts: BattleLoadouts = DEFAULT_BATTLE_LOADOUTS,
     params: {
@@ -312,6 +317,8 @@ export class BattleModel {
     this.capturePreviousFighterState();
     this.frame += 1;
     this.aimConsumedThisFrame = false;
+    this.lastTargetInput = null;
+    this.lastPlayerInput = null;
     this.ticker.setCurrentFrame(this.frame);
     this.stats.elapsedTicks += 1;
 
@@ -327,9 +334,13 @@ export class BattleModel {
     if (firstIsPlayer) {
       this.processFighterActions(this.playerFighter, firstInput);
       this.processFighterActions(this.targetFighter, secondInput);
+      if (firstInput !== undefined) this.lastPlayerInput = firstInput;
+      if (secondInput !== undefined) this.lastTargetInput = secondInput;
     } else {
       this.processFighterActions(this.targetFighter, firstInput);
       this.processFighterActions(this.playerFighter, secondInput);
+      if (firstInput !== undefined) this.lastTargetInput = firstInput;
+      if (secondInput !== undefined) this.lastPlayerInput = secondInput;
     }
     this.stepMobSpawner();
     this.stepNeutralMobs();
@@ -575,6 +586,7 @@ export class BattleModel {
       points: this.points,
     });
 
+    this.lastTargetInput = aiInput;
     this.targetFighter.selectActiveCharacter(aiInput.alternateHeld);
     this.currentAimByFighter[fighter.key] = {
       x: aiInput.aimX,
@@ -643,13 +655,26 @@ export class BattleModel {
       y: this.player.y,
     };
     this.targetFighter.postUpdate(this.fighterActionContext(fighter));
-    if (this.frame % 72 === 0) {
+    const shootPressed = this.frame % 72 === 0;
+    if (shootPressed) {
       this.targetFighter.fire(
         this.fighterActionContext(fighter),
         this.player.x,
         this.player.y,
       );
     }
+    this.lastTargetInput = {
+      moveX: Math.sin(this.frame / 36) > 0.01 ? 1 : Math.sin(this.frame / 36) < -0.01 ? -1 : 0,
+      moveY: Math.cos(this.frame / 50) > 0.01 ? 1 : Math.cos(this.frame / 50) < -0.01 ? -1 : 0,
+      aimX: Math.trunc(this.player.x),
+      aimY: Math.trunc(this.player.y),
+      shootPressed,
+      bombPressed: false,
+      activeCardPressed: false,
+      reloadPressed: false,
+      alternateHeld: false,
+      infoHeld: false,
+    };
   }
 
   private onProjectileHit(

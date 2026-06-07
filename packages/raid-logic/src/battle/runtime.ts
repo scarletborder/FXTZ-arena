@@ -58,6 +58,10 @@ export interface RaidLogicRuntime {
    * Read by CombatSyncManager to drive the aim-consuming-frames set.
    */
   readonly aimConsumedThisFrame: boolean;
+  /** After each step(), the input that was used for the target/opponent fighter. */
+  readonly lastTargetInput: BattleInputState | null;
+  /** After each step(), the input that was used for the local/player fighter. */
+  readonly lastPlayerInput: BattleInputState | null;
   initialize(): Promise<void>;
   readDebugBodies(): ReturnType<BattlePhysics["readAllBodies"]>;
   debugSpawnPoint(params: {
@@ -117,6 +121,14 @@ class BattleRuntime implements RaidLogicRuntime {
 
   get aimConsumedThisFrame(): boolean {
     return this.model.aimConsumedThisFrame;
+  }
+
+  get lastTargetInput(): BattleInputState | null {
+    return this.model.lastTargetInput;
+  }
+
+  get lastPlayerInput(): BattleInputState | null {
+    return this.model.lastPlayerInput;
   }
 
   initialize(): Promise<void> {
