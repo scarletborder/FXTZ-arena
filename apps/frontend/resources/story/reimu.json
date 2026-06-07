@@ -10,7 +10,7 @@
       "title": "神社前的热身",
       "mapId": "hakurei_shrine",
       "icon": "hakurei_shrine",
-      "costLimit": 14,
+      "costLimit": 10,
       "reward": { "bombs": 1 },
       "opponent": {
         "primaryCharacterId": "marisa",
@@ -31,7 +31,7 @@
       "title": "迷雾之湖",
       "mapId": "mist_lake",
       "icon": "mist_lake",
-      "costLimit": 15,
+      "costLimit": 10,
       "reward": { "lives": 1 },
       "opponent": {
         "primaryCharacterId": "sakuya",
@@ -63,7 +63,7 @@
       "title": "迷途竹林的终点",
       "mapId": "bamboo_lost",
       "icon": "bamboo_lost",
-      "costLimit": 16,
+      "costLimit": 11,
       "reward": { },
       "opponent": {
         "primaryCharacterId": "kaguya",
