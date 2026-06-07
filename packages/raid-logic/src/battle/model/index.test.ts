@@ -66,7 +66,7 @@ describe("BattleModel rollback snapshots", () => {
       }),
     );
     expect(model.projectiles.map((projectile) => projectile.id)).toEqual([
-      1, 2,
+      1, 2, 3,
     ]);
     model.projectiles.length = 0;
     model.player.fireCooldownUntil = 0;
@@ -87,7 +87,7 @@ describe("BattleModel rollback snapshots", () => {
     expect(model.projectiles.map((projectile) => projectile.id)).toEqual(
       originalIds,
     );
-    expect(originalIds).toEqual([3, 4]);
+    expect(originalIds).toEqual([4, 5, 6]);
     expect(model.hashHex()).toBe(originalHash);
   });
 

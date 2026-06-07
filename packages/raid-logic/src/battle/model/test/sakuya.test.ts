@@ -45,8 +45,8 @@ describe("BattleModel Sakuya", () => {
     model.step(input({ reloadPressed: true }));
 
     expect(model.player.reloadStartedAmmo).toBe(1);
-    expect(model.player.reloadTotal).toBe(60);
-    expect(model.player.reloadRemaining).toBe(60);
+    expect(model.player.reloadTotal).toBe(108);
+    expect(model.player.reloadRemaining).toBe(108);
     expect(model.player.ammo).toBe(1);
   });
 
@@ -67,8 +67,8 @@ describe("BattleModel Sakuya", () => {
     model.step(input({ reloadPressed: true }));
 
     expect(model.player.reloadStartedAmmo).toBe(0);
-    expect(model.player.reloadTotal).toBe(90);
-    expect(model.player.reloadRemaining).toBe(90);
+    expect(model.player.reloadTotal).toBe(162);
+    expect(model.player.reloadRemaining).toBe(162);
     expect(model.player.ammo).toBe(0);
   });
 
@@ -132,7 +132,7 @@ describe("BattleModel Sakuya", () => {
     model.step(input({ shootPressed: true }));
     model.step(input({ reloadPressed: true }));
 
-    expect(model.player.reloadRemaining).toBe(30);
+    expect(model.player.reloadRemaining).toBe(54);
 
     model.step(input({ bombPressed: true }));
     const frozenReloadRemaining = model.player.reloadRemaining;

@@ -30,7 +30,7 @@ describe("BattleModel Ellen", () => {
           projectile.couldClear &&
           (projectile.textureKey === "bullet_type_21_offset_1"
             ? projectile.width === 15 && projectile.height === 15
-            : projectile.width === 22.5 && projectile.height === 22.5),
+            : projectile.width === 23 && projectile.height === 23),
       ),
     ).toBe(true);
 

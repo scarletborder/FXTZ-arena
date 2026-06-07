@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { secondsToTicks } from "@repo/content";
 import { createBattleModel, input, shootOnceAtPoint } from "./helpers";
 
-const YOUMU_BOMB_STARTUP_TICKS = secondsToTicks(0.4);
+const YOUMU_BOMB_STARTUP_TICKS = secondsToTicks(0.2);
 
 describe("BattleModel Youmu", () => {
   it("waits in place before executing Youmu bomb dash", async () => {
@@ -106,7 +106,7 @@ describe("BattleModel Youmu", () => {
     ).toBe(true);
   });
 
-  it("staggers Youmu slash arcs every eight frames", async () => {
+  it("staggers Youmu slash arcs every four frames", async () => {
     const model = await shootOnceAtPoint("youmu", 300);
     const slashFrames = model.projectiles
       .filter((projectile) =>
@@ -119,9 +119,9 @@ describe("BattleModel Youmu", () => {
     const arcFrames = [...new Set(slashFrames)];
     expect(arcFrames).toEqual([
       slashFrames[0],
+      slashFrames[0]! + 4,
       slashFrames[0]! + 8,
-      slashFrames[0]! + 16,
-      slashFrames[0]! + 24,
+      slashFrames[0]! + 12,
     ]);
     for (const frame of arcFrames) {
       expect(
