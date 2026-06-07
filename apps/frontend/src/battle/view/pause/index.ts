@@ -177,10 +177,11 @@ export class BattlePauseMenuController {
         this.createMenuButton(layer, menuCenterX, menuCenterY, t("pause.exit_replay"), true, () => this.options.onMainMenu(), "mainMenu"),
         this.createMenuButton(layer, menuCenterX, menuCenterY + 64, t("pause.restart"), true, () => this.openConfirm("restart"), "restart"),
       );
-      const speedLabel = `${t("pause.speed")} ${this.options.replaySpeed}x`;
-      buttons.push(
-        this.createMenuButton(layer, menuCenterX, menuCenterY + 128, speedLabel, true, () => this.cycleSpeed(), "restart"),
-      );
+      // TODO: 加速功能有bug
+      // const speedLabel = `${t("pause.speed")} ${this.options.replaySpeed}x`;
+      // buttons.push(
+      //   this.createMenuButton(layer, menuCenterX, menuCenterY + 128, speedLabel, true, () => this.cycleSpeed(), "restart"),
+      // );
     } else {
       buttons.push(
         this.createMenuButton(layer, menuCenterX, menuCenterY - 64, t("pause.resume"), true, () => this.resume(), "resume"),
