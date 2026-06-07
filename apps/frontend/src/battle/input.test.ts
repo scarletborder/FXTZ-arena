@@ -19,7 +19,7 @@ vi.mock("phaser", () => ({
 }));
 
 import { createBattleInput, type BattleKeyMap } from "./input";
-import type { BattleMobileControls } from "./mobile-controls";
+import type { BattleMobileControls } from "./keybind";
 
 describe("createBattleInput", () => {
   it("truncates mobile aim coordinates before building logic input", () => {

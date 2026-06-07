@@ -58,6 +58,17 @@
     "about.project_url": "项目网址", "about.version": "版本"
   },
   "dialog": { "close": "关闭", "public_server": "选择公共服务器", "public_server_index": "公共服务器 {{index}}" },
+  "pause": {
+    "title": "暂停",
+    "resume": "继续游戏",
+    "main_menu": "回到主菜单",
+    "restart": "重新开始本局游戏",
+    "restart_hold_hint": "长按 R 直接重新开始",
+    "confirm_main_menu": "确定要回到主菜单吗？",
+    "confirm_restart": "确定要重新开始本局游戏吗？",
+    "cancel": "取消",
+    "confirm": "确定"
+  },
   "public_server": {
     "connectivity": "公共服务器连通性", "hint": "正在测试所有公共服务器，你可以在[设置]页面重新测试\n部分公开服务器需手动信任证书，[去信任]->[高级]->[继续访问]",
     "retest": "重新测试", "none": "暂无公共服务器配置", "trust": "去信任", "testing": "测试中...", "trusted": "已信任",
@@ -132,6 +143,7 @@
     "p2p_connected_online": "P2P 已连接", "p2p_failed_local": "局域网 P2P 连接失败", "p2p_failed_online": "P2P 不可用，已回落到专用服务器",
     "adjudication_done": "双方裁决完成，进入结算…", "peer_disconnected": "对手断线，等待重连…", "peer_reconnected": "对手已重连",
     "peer_left": "对手已退出，战斗结束", "reconnect_timeout": "对手重连超时，战斗结束", "peer_adjudicated": "对手已提交终局裁决，发送本地确认…",
-    "local_adjudicated": "已提交终局裁决，等待对手确认…", "recovering": "重整中", "fighter_status": "命数 {{lives}}  bomb {{bombs}}"
+    "local_adjudicated": "已提交终局裁决，等待对手确认…", "recovering": "重整中", "fighter_status": "命数 {{lives}}  bomb {{bombs}}",
+    "mobile_aim": "瞄准", "mobile_switch": "切换", "mobile_reload": "装填", "mobile_shoot": "射击", "mobile_bomb": "Bomb", "mobile_card": "卡"
   }
 }

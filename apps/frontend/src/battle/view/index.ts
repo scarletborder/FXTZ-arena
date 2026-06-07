@@ -14,6 +14,7 @@ import type {
 } from "@repo/raid-logic";
 import type { MapId } from "@repo/types";
 import { CrosshairView } from "./crosshair";
+import { BattleDebugView } from "./debug";
 import { EffectsView } from "./effects";
 import { FighterView } from "./fighter";
 import { MobView } from "./mobs";
@@ -25,7 +26,6 @@ import {
   type BattleViewMode,
 } from "./stage";
 import { createBattleTextures } from "./textures";
-import { Depth } from "../../utils/depth";
 
 export class BattleView {
   private readonly fighters: FighterView;
@@ -35,8 +35,7 @@ export class BattleView {
   private readonly mobs: MobView;
   private readonly points: PointView;
   private readonly stage: BattleStage;
-  private readonly debugGraphics: Phaser.GameObjects.Graphics;
-  private debugPhysicsEnabled = false;
+  private readonly debug: BattleDebugView;
 
   constructor(scene: Phaser.Scene, mode: BattleViewMode = "training", mapId?: MapId) {
     createBattleTextures(scene);
@@ -47,10 +46,7 @@ export class BattleView {
     this.crosshair = new CrosshairView(scene);
     this.projectiles = new ProjectileView(scene);
     this.effects = new EffectsView(scene);
-    this.debugGraphics = scene.add.graphics();
-    // Use max depth so debug always renders on top of game objects.
-    // Other view components use depths in range 2–20, 999 is safely above.
-    this.debugGraphics.setDepth(Depth.Debug);
+    this.debug = new BattleDebugView(scene);
   }
 
   render(
@@ -110,47 +106,15 @@ export class BattleView {
 
   /** Toggle debug rendering of collision bodies. */
   setDebugPhysics(enabled: boolean): void {
-    this.debugPhysicsEnabled = enabled;
-    this.debugGraphics.setVisible(enabled);
+    this.debug.setEnabled(enabled);
   }
 
   isDebugPhysics(): boolean {
-    return this.debugPhysicsEnabled;
+    return this.debug.isEnabled();
   }
 
-  /**
-   * Draw filled collision bodies in bright red.
-   */
-  renderDebug(data: readonly BodyDebugData[]): void {
-    if (!this.debugPhysicsEnabled) return;
-    this.debugGraphics.clear();
-
-    for (const body of data) {
-      this.debugGraphics.fillStyle(0xff0000, 0.35);
-      this.debugGraphics.lineStyle(2, 0xff0000, 1);
-
-      if (body.shape === "ball") {
-        this.debugGraphics.fillCircle(body.x, body.y, body.halfWidth);
-        this.debugGraphics.strokeCircle(body.x, body.y, body.halfWidth);
-      } else {
-        this.debugGraphics.save();
-        this.debugGraphics.translateCanvas(body.x, body.y);
-        this.debugGraphics.rotateCanvas(body.angleRad);
-        this.debugGraphics.fillRect(
-          -body.halfWidth,
-          -body.halfHeight,
-          body.halfWidth * 2,
-          body.halfHeight * 2,
-        );
-        this.debugGraphics.strokeRect(
-          -body.halfWidth,
-          -body.halfHeight,
-          body.halfWidth * 2,
-          body.halfHeight * 2,
-        );
-        this.debugGraphics.restore();
-      }
-    }
+  renderDebugBodies(data: readonly BodyDebugData[]): void {
+    this.debug.renderBodies(data);
   }
 }
 

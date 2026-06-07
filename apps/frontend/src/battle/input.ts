@@ -4,7 +4,7 @@ import type { BattleInputState } from "@repo/raid-logic";
 import { ARENA_HEIGHT_PX, ARENA_WIDTH_PX } from "@repo/constants";
 import type { FighterState } from "./types";
 import type { BattleKeyMap } from "./keybind";
-import type { BattleMobileControls } from "./mobile-controls";
+import type { BattleMobileControls } from "./keybind";
 
 export type { BattleKeyMap } from "./keybind";
 

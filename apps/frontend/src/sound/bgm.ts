@@ -6,6 +6,8 @@ import BgmCmd, {
 } from "../commands/BgmCmd";
 
 export interface BattleBgmBridge {
+  pause(): void;
+  resume(): void;
   dispose(): void;
 }
 
@@ -26,6 +28,18 @@ class BattleBgmBridgeImpl implements BattleBgmBridge {
   dispose(): void {
     this.unsubscribe();
     this.stop();
+  }
+
+  pause(): void {
+    if (this.bgm?.isPlaying) {
+      this.bgm.pause();
+    }
+  }
+
+  resume(): void {
+    if (this.bgm?.isPaused) {
+      this.bgm.resume();
+    }
   }
 
   private handleCommand(command: BgmCommand): void {

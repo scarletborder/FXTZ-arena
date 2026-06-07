@@ -58,6 +58,17 @@
     "about.project_url": "Project URL", "about.version": "Version"
   },
   "dialog": { "close": "Close", "public_server": "Select public server", "public_server_index": "Public server {{index}}" },
+  "pause": {
+    "title": "Paused",
+    "resume": "Resume",
+    "main_menu": "Back to Main Menu",
+    "restart": "Restart This Run",
+    "restart_hold_hint": "Hold R to restart directly",
+    "confirm_main_menu": "Return to the main menu?",
+    "confirm_restart": "Restart this run?",
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  },
   "public_server": {
     "connectivity": "Public server connectivity", "hint": "Testing all public servers. You can retest from Settings.\nSome public servers require manual certificate trust: Trust -> Advanced -> Continue.",
     "retest": "Retest", "none": "No public servers configured", "trust": "Trust", "testing": "Testing...", "trusted": "Trusted",
@@ -132,6 +143,7 @@
     "p2p_connected_online": "P2P connected", "p2p_failed_local": "LAN P2P connection failed", "p2p_failed_online": "P2P unavailable, fell back to dedicated server",
     "adjudication_done": "Both adjudications complete, entering results…", "peer_disconnected": "Opponent disconnected, waiting for reconnect…", "peer_reconnected": "Opponent reconnected",
     "peer_left": "Opponent left, battle ended", "reconnect_timeout": "Opponent reconnect timed out, battle ended", "peer_adjudicated": "Opponent submitted final adjudication, sending local confirmation…",
-    "local_adjudicated": "Submitted final adjudication, waiting for opponent…", "recovering": "Recovering", "fighter_status": "Lives {{lives}}  bomb {{bombs}}"
+    "local_adjudicated": "Submitted final adjudication, waiting for opponent…", "recovering": "Recovering", "fighter_status": "Lives {{lives}}  bomb {{bombs}}",
+    "mobile_aim": "Aim", "mobile_switch": "Switch", "mobile_reload": "Reload", "mobile_shoot": "Shoot", "mobile_bomb": "Bomb", "mobile_card": "Card"
   }
 }

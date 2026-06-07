@@ -27,8 +27,9 @@ import type { BattleSceneData } from "./battle/loadout";
 import {
   BattleMobileControls,
   shouldEnableMobileBattleControls,
-} from "./battle/mobile-controls";
+} from "./battle/keybind";
 import { BattleView } from "./battle/view";
+import { BattlePauseMenuController } from "./battle/view/pause";
 import { Depth } from "./utils/depth";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
 import BgmCmd from "./commands/BgmCmd";
@@ -97,6 +98,7 @@ export class BattleScene extends Phaser.Scene {
   private readonly audioDirector = new BattleAudioDirector();
   private battleAudioBridge: BattleAudioBridge | undefined;
   private battleBgmBridge: BattleBgmBridge | undefined;
+  private pauseMenu: BattlePauseMenuController | undefined;
 
   constructor() {
     super("battle");
@@ -125,6 +127,19 @@ export class BattleScene extends Phaser.Scene {
     this.input.mouse?.disableContextMenu();
     this.keybinds = createBattleKeybinds(this);
     this.keys = this.keybinds.keys;
+    this.pauseMenu = this.isPausableLocalMode()
+      ? new BattlePauseMenuController(this, {
+        restartEnabled: data.mode !== "training",
+        canOpen: () => !this.resultScheduled,
+        onPauseOpened: () => {
+          this.accumulator = 0;
+          this.battleBgmBridge?.pause();
+        },
+        onResumed: () => this.battleBgmBridge?.resume(),
+        onRestart: () => this.restartLocalBattle(),
+        onMainMenu: () => this.returnToMainMenu(),
+      })
+      : undefined;
     this.runtime =
       data.runtime ??
       createRaidLogicRuntime({
@@ -175,6 +190,11 @@ export class BattleScene extends Phaser.Scene {
   }
 
   update(_: number, delta: number): void {
+    if (this.pauseMenu?.isPaused()) {
+      this.pauseMenu.update(delta);
+      return;
+    }
+
     this.accumulator += delta;
     while (this.accumulator >= FIXED_STEP_MS) {
       if (!this.debugInputLocked) {
@@ -471,6 +491,8 @@ export class BattleScene extends Phaser.Scene {
     this.battleAudioBridge = undefined;
     this.battleBgmBridge?.dispose();
     this.battleBgmBridge = undefined;
+    this.pauseMenu?.destroy();
+    this.pauseMenu = undefined;
     this.pendingLayoutRefresh?.remove(false);
     this.pendingLayoutRefresh = undefined;
     if (this.previousScaleAutoCenter !== undefined) {
@@ -531,6 +553,37 @@ export class BattleScene extends Phaser.Scene {
       this.printDebugHashBundle(winnerPlayerId, serverConfirmedFrame);
     }
     this.scene.start("result", this.createResultData(winnerPlayerId));
+  }
+
+  private isPausableLocalMode(): boolean {
+    return (
+      this.sceneData.story !== undefined ||
+      this.sceneData.mode === "ai" ||
+      this.sceneData.mode === "training"
+    );
+  }
+
+  private returnToMainMenu(): void {
+    this.scene.start("home");
+  }
+
+  private restartLocalBattle(): void {
+    if (this.sceneData.story) {
+      this.scene.start("story-progress", {
+        state: this.sceneData.story.state,
+      } satisfies StoryProgressData);
+      return;
+    }
+    if (this.sceneData.mode === "training") {
+      return;
+    }
+    this.scene.start("loading", {
+      ...this.sceneData,
+      mode: this.sceneData.mode ?? "ai",
+      runtime: undefined,
+      p2p: undefined,
+      battleZeroTimeMs: undefined,
+    } satisfies BattleSceneData);
   }
 
   private recordDebugFrame(aimConsumed = false): void {
@@ -658,7 +711,7 @@ export class BattleScene extends Phaser.Scene {
 
   private renderDebugPhysics(): void {
     if (!this.runtime.physicsReady) return;
-    this.view.renderDebug(this.runtime.readDebugBodies());
+    this.view.renderDebugBodies(this.runtime.readDebugBodies());
   }
 
   private printDebugHashBundle(
