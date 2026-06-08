@@ -116,7 +116,7 @@ describe("BattleModel Youmu", () => {
       .sort((left, right) => left - right);
 
     expect(slashFrames).toHaveLength(32);
-    const arcFrames = [...new Set(slashFrames)];
+    const arcFrames = Array.from(new Set(slashFrames));
     expect(arcFrames).toEqual([
       slashFrames[0],
       slashFrames[0]! + 4,

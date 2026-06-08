@@ -1,4 +1,5 @@
 import { IS_DESKTOP_APP, REPLAY_FILE_PREFIX, REPLAY_TOTAL_SLOTS } from "@repo/constants";
+import { t } from "@repo/i18n";
 import type { ReplayFile, ReplaySlotInfo } from "./types";
 import { SLOTS_PER_PAGE } from "./types";
 
@@ -333,7 +334,6 @@ export async function downloadReplay(slotIndex: number): Promise<void> {
   a.href = url;
   a.download = `${dataKey(slotIndex)}`;
   document.body.appendChild(a);
-  debugger;
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
@@ -366,7 +366,13 @@ export function formatSlotTime(timestamp: number): string {
   const day = d.getDate();
   const h = d.getHours();
   const min = d.getMinutes();
-  return `${y}年${mo}月${day}日${h}时${min}分`;
+  return t("replay.slot_time", {
+    year: String(y),
+    month: pad2(mo),
+    day: pad2(day),
+    hour: pad2(h),
+    minute: pad2(min),
+  });
 }
 
 export async function hasSlot(slotIndex: number): Promise<boolean> {
@@ -379,4 +385,8 @@ export function formatBattleDuration(frameCount: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return m > 0 ? `${m}m${s}s` : `${s}s`;
+}
+
+function pad2(value: number): string {
+  return String(value).padStart(2, "0");
 }

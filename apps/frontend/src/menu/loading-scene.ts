@@ -166,6 +166,8 @@ export class LoadingScene extends Phaser.Scene {
       mode: runtimeMode,
       loadouts: this.loadingData.loadouts,
       mapId: this.loadingData.mapId ?? this.loadingData.battleConfig?.mapId,
+      playerInitPoint: this.loadingData.playerInitPoint,
+      opponentInitPoint: this.loadingData.opponentInitPoint,
       ai: this.loadingData.ai,
     });
 

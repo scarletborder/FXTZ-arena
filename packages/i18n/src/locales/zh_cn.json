@@ -133,9 +133,9 @@
         "title": "困难",
         "description": "敌人攻势更猛烈，考验操作技巧"
       },
-      "expert": {
-        "title": "专家",
-        "description": "对手更加聪明"
+      "lunatic": {
+        "title": "Lunatic",
+        "description": "最高难度的极限挑战"
       }
     },
     "stage_label": "第{{index}}关: {{title}}", "ending_label": "终幕", "reward_title": "通关奖励", "reward_lives": "生命 +{{count}}", "reward_bombs": "Bomb +{{count}}", "primary": "首选角色", "alternate": "备选角色", "cards": "能力卡",
@@ -184,6 +184,14 @@
     "info": "信息",
     "info_title": "回放信息",
     "close": "关闭",
+    "version": "version:{{version}}",
+    "difficulty": "难度:{{difficulty}}",
+    "difficulty_easy": "Easy",
+    "difficulty_normal": "Normal",
+    "difficulty_hard": "Hard",
+    "difficulty_lunatic": "Lunatic",
+    "difficulty_unknown": "Unknown",
+    "init_points": "初始Point：玩家 {{player}} / 对手 {{opponent}}",
     "duration": "时长：{{seconds}}秒",
     "battles": "战斗场次：{{count}}",
     "player_loadout": "玩家配装",
@@ -194,6 +202,8 @@
     "map": "地图：{{id}}",
     "import_local_replay": "导入本地回放",
     "open_replay_folder": "打开回放文件夹",
+    "open_replay_folder_failed": "无法打开回放文件夹：{{error}}",
+    "slot_time": "{{year}}年{{month}}月{{day}}日{{hour}}时{{minute}}分",
     "import_select_slot": "选择保存槽位",
     "import_invalid": "无效的回放文件",
     "import_no_slot": "没有可用的空槽位",

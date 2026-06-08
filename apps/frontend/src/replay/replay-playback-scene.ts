@@ -3,6 +3,7 @@ import { IS_DESKTOP_APP } from "@repo/constants";
 import { t } from "@repo/i18n";
 import { getCharacterDefinition, getAbilityCardDefinition } from "@repo/content";
 import type { BattleLoadouts, FighterLoadout } from "@repo/raid-logic";
+import { EnumDifficulty } from "@repo/types";
 
 import { installMenuAudioUnlock } from "../menu/shared";
 import {
@@ -269,6 +270,17 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     this.addDialogText(layer, contentX, ly, `${t("replay.col_mode")}: ${modeLabel}    ${t("replay.col_time")}: ${formatSlotTime(replay.timestamp)}`, "#b7c7d8", 14);
     ly += lineH + 4;
 
+    this.addDialogText(layer, contentX, ly, t("replay.version", { version: replay.appVersion?.trim() || "unkwon" }), "#9fb4c8", 14);
+    ly += lineH + 2;
+
+    if (replay.mode === "story") {
+      this.addDialogText(layer, contentX, ly, t("replay.difficulty", { difficulty: replayDifficultyLabel(replay.difficulty) }), "#9fb4c8", 14);
+      ly += lineH + 2;
+    } else if (replay.battles[0]) {
+      this.addDialogText(layer, contentX, ly, replayInitPointLine(replay.battles[0]), "#9fb4c8", 14);
+      ly += lineH + 2;
+    }
+
     // ── Stage selector (story mode) ──────────────────────────────────────
     if (showStageTabs) {
       ly += 4;
@@ -466,9 +478,9 @@ export class ReplayPlaybackScene extends Phaser.Scene {
       // Info panel background
       const bg = this.add.graphics();
       bg.fillStyle(0x0b1118, 0.75);
-      bg.fillRoundedRect(x, y, panelW, 66, 6);
+      bg.fillRoundedRect(x, y, panelW, 86, 6);
       bg.lineStyle(1, 0xffcf6e, 0.3);
-      bg.strokeRoundedRect(x, y, panelW, 66, 6);
+      bg.strokeRoundedRect(x, y, panelW, 86, 6);
       infoContainer.add(bg);
 
       // Stage title
@@ -482,15 +494,20 @@ export class ReplayPlaybackScene extends Phaser.Scene {
         bodyStyle("#b7c7d8", 13));
       infoContainer.add(infoLine);
 
+      const initPointText = this.add.text(x + 12, y + 48,
+        replayInitPointLine(battle),
+        bodyStyle("#9fb4c8", 13));
+      infoContainer.add(initPointText);
+
       // Player names
-      const playerText = this.add.text(x + 12, y + 48,
+      const playerText = this.add.text(x + 12, y + 66,
         `${battle.playerName} vs ${battle.opponentName}`,
         bodyStyle("#d7e3ef", 13));
       infoContainer.add(playerText);
 
       // ── Loadout per stage ────────────────────────────────────────
       const lo = battle.loadouts ?? replay.loadouts;
-      const ly = y + 74;
+      const ly = y + 96;
 
       const priCharDef = getCharacterDefinition(lo.player.primaryCharacterId);
       const altCharDef = getCharacterDefinition(lo.player.alternateCharacterId);
@@ -539,7 +556,7 @@ export class ReplayPlaybackScene extends Phaser.Scene {
 
     renderInfo(0);
 
-    return y + 164; // panel 66 + gap 8 + loadout section 82 + gap 8
+    return y + 186; // panel 86 + gap 10 + loadout section 82 + gap 8
   }
 
   private addDialogText(
@@ -638,6 +655,8 @@ export class ReplayPlaybackScene extends Phaser.Scene {
 
     // Use per-battle loadouts (story mode) or fall back to the replay-level ones
     const loadouts = battle.loadouts ?? replay.loadouts;
+    const playerInitPoint = battle.playerInitPoint ?? 0;
+    const opponentInitPoint = battle.opponentInitPoint ?? 0;
 
     this.scene.start("loading", {
       mode: "ai",
@@ -645,11 +664,15 @@ export class ReplayPlaybackScene extends Phaser.Scene {
       mapId: battle.mapId as import("@repo/types").MapId | undefined,
       playerName: battle.playerName,
       opponentName: battle.opponentName,
+      playerInitPoint,
+      opponentInitPoint,
       replayData: {
         inputs: battle.inputs,
         speed: 1,
         loadouts,
         mapId: battle.mapId,
+        playerInitPoint,
+        opponentInitPoint,
         exitScene: "replay-playback",
       },
     } as import("../menu/shared").LoadingData);
@@ -678,7 +701,7 @@ export class ReplayPlaybackScene extends Phaser.Scene {
         const data = await replayFileToJson(file);
         const replay = validateReplayJson(data);
         if (!replay) {
-          this.showMessageDialog(t("replay.import_invalid") || "无效的回放文件");
+          this.showMessageDialog(t("replay.import_invalid"));
           return;
         }
 
@@ -688,7 +711,7 @@ export class ReplayPlaybackScene extends Phaser.Scene {
           returnScene: "replay-playback",
         });
       } catch {
-        this.showMessageDialog(t("replay.import_invalid") || "无效的回放文件");
+        this.showMessageDialog(t("replay.import_invalid"));
       }
     });
 
@@ -739,7 +762,29 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     try {
       await desktopOpenReplayFolder();
     } catch (e) {
-      this.showMessageDialog(`无法打开回放文件夹: ${e}`);
+      this.showMessageDialog(t("replay.open_replay_folder_failed", { error: String(e) }));
     }
   }
+}
+
+function replayDifficultyLabel(difficulty: ReplayFile["difficulty"]): string {
+  switch (difficulty) {
+    case EnumDifficulty.Easy:
+      return t("replay.difficulty_easy");
+    case EnumDifficulty.Normal:
+      return t("replay.difficulty_normal");
+    case EnumDifficulty.Hard:
+      return t("replay.difficulty_hard");
+    case EnumDifficulty.Lunatic:
+      return t("replay.difficulty_lunatic");
+    default:
+      return t("replay.difficulty_unknown");
+  }
+}
+
+function replayInitPointLine(battle: ReplayFile["battles"][number]): string {
+  return t("replay.init_points", {
+    player: battle.playerInitPoint ?? 0,
+    opponent: battle.opponentInitPoint ?? 0,
+  });
 }

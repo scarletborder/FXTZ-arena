@@ -9,6 +9,7 @@ import {
   POINT_REWARD_VALUES,
 } from "@repo/constants";
 import { POINT_COUNT_MAX } from "../constants";
+import { BattleModel } from ".";
 import { BattlePhysics } from "./physics-adapter";
 import { createPointState } from "./points";
 import { stepBulletProjectile } from "./projectile/bullet";
@@ -20,6 +21,7 @@ import {
   HiddenCounterSpawner,
   hitPlayer,
   hitTarget,
+  initializeBattleModel,
   input,
   StaticRectNeutralMob,
   testProjectile,
@@ -961,6 +963,25 @@ describe("BattleModel point pickups", () => {
 });
 
 describe("BattleModel point power shooting tiers", () => {
+  it("applies configured initial points to both fighters and restores them on reset", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, {
+        playerInitPoint: 35,
+        opponentInitPoint: 75,
+      }),
+    );
+
+    expect(model.player.pointCount).toBe(35);
+    expect(model.target.pointCount).toBe(75);
+
+    model.setPlayerPointCount(120);
+    model.target.pointCount = 10;
+    model.reset();
+
+    expect(model.player.pointCount).toBe(35);
+    expect(model.target.pointCount).toBe(75);
+  });
+
   it("sets Player1 point directly for debug testing and clamps to the battle limit", async () => {
     const model = await createBattleModel();
 

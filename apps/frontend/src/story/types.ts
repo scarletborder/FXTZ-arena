@@ -1,4 +1,4 @@
-import type { AbilityCardId, CharacterId, MapId } from "@repo/types";
+import type { AbilityCardId, CharacterId, EnumDifficulty, MapId } from "@repo/types";
 import type { ReplayFile } from "../replay/types";
 
 export type StoryId = "reimu" | "marisa";
@@ -63,6 +63,7 @@ export interface StoryStats {
 
 export interface StoryRuntimeState {
   readonly storyId: StoryId;
+  readonly difficulty: EnumDifficulty;
   readonly primaryCharacterId: CharacterId;
   readonly alternateCharacterId?: CharacterId;
   readonly cardIds: readonly AbilityCardId[];

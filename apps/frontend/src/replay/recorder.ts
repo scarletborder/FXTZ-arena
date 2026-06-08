@@ -1,4 +1,5 @@
 import type { BattleInputState } from "@repo/types";
+import { APP_BUILD_LABEL } from "@repo/constants";
 import type { BattleLoadouts } from "../battle/loadout";
 import type { ReplayBattleRecord, ReplayFile, ReplayFrame } from "./types";
 
@@ -9,6 +10,8 @@ export class ReplayRecorder {
     playerName: string;
     opponentName: string;
     mapId: string;
+    playerInitPoint: number;
+    opponentInitPoint: number;
     stageIndex?: number;
     stageTitle?: string;
     loadouts?: BattleLoadouts;
@@ -20,12 +23,18 @@ export class ReplayRecorder {
     playerName: string;
     opponentName: string;
     mapId: string;
+    playerInitPoint?: number;
+    opponentInitPoint?: number;
     stageIndex?: number;
     stageTitle?: string;
     /** Per-battle loadouts (used in story mode where loadouts differ per stage). */
     loadouts?: BattleLoadouts;
   }): void {
-    this.battleParams = params;
+    this.battleParams = {
+      ...params,
+      playerInitPoint: normalizeInitPoint(params.playerInitPoint),
+      opponentInitPoint: normalizeInitPoint(params.opponentInitPoint),
+    };
     this.frames = [];
     this.recording = true;
   }
@@ -54,6 +63,8 @@ export class ReplayRecorder {
       playerName: this.battleParams.playerName,
       opponentName: this.battleParams.opponentName,
       mapId: this.battleParams.mapId,
+      playerInitPoint: this.battleParams.playerInitPoint,
+      opponentInitPoint: this.battleParams.opponentInitPoint,
       loadouts: this.battleParams.loadouts,
     });
     this.recording = false;
@@ -65,6 +76,7 @@ export class ReplayRecorder {
   finalize(metadata: {
     title: string;
     mode: ReplayFile["mode"];
+    difficulty?: ReplayFile["difficulty"];
     player1Id: string;
     player2Id: string;
     finalGlobalInputHash: string | null;
@@ -72,9 +84,11 @@ export class ReplayRecorder {
   }): ReplayFile {
     return {
       version: 1,
+      appVersion: APP_BUILD_LABEL,
       title: metadata.title,
       timestamp: Date.now(),
       mode: metadata.mode,
+      difficulty: metadata.difficulty,
       player1Id: metadata.player1Id,
       player2Id: metadata.player2Id,
       finalGlobalInputHash: metadata.finalGlobalInputHash,
@@ -104,3 +118,10 @@ export class ReplayRecorder {
 
 /** Global singleton that persists across scenes (especially for story mode campaigns). */
 export const globalReplayRecorder = new ReplayRecorder();
+
+function normalizeInitPoint(value: number | undefined): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.max(0, Math.floor(value));
+}

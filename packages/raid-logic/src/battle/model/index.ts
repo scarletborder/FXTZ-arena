@@ -116,6 +116,8 @@ export class BattleModel {
   private readonly projectileSystem = new ProjectileSystem();
   private readonly effectSystem = new EffectSystem();
   private readonly ticker = new TickerManager();
+  private readonly playerInitPoint: number;
+  private readonly opponentInitPoint: number;
   private readonly playerFighter: BattleFighter;
   private readonly targetFighter: BattleFighter;
   private readonly cpuPlayer: CpuPlayer | undefined;
@@ -133,6 +135,8 @@ export class BattleModel {
     params: {
       readonly enableCpuTarget?: boolean;
       readonly neutralMobSpawner?: NeutralMobSpawner | null;
+      readonly playerInitPoint?: number;
+      readonly opponentInitPoint?: number;
       readonly ai?: {
         readonly smartDurationSeconds?: number;
         readonly dumbRampSeconds?: number;
@@ -140,6 +144,8 @@ export class BattleModel {
     } = {},
   ) {
     this.loadouts = loadouts;
+    this.playerInitPoint = clampPointCount(params.playerInitPoint ?? 0);
+    this.opponentInitPoint = clampPointCount(params.opponentInitPoint ?? 0);
     this.playerFighter = new BattleFighter(
       "Player1",
       getCharacter(loadouts.player.primaryCharacterId),
@@ -164,6 +170,7 @@ export class BattleModel {
       loadoutCards(loadouts.target),
       loadouts.target.storyModeOverride,
     );
+    this.applyInitialPoints();
     this.cpuPlayer = params.enableCpuTarget ? new CpuPlayer(params.ai) : undefined;
     this.mobSpawner =
       params.neutralMobSpawner === undefined
@@ -223,6 +230,7 @@ export class BattleModel {
       loadoutCards(this.loadouts.target),
       this.loadouts.target.storyModeOverride,
     );
+    this.applyInitialPoints();
   }
 
   allocateNeutralMobId(params?: {
@@ -279,6 +287,11 @@ export class BattleModel {
 
   setPlayerPointCount(pointCount: number): void {
     this.player.pointCount = clampPointCount(pointCount);
+  }
+
+  private applyInitialPoints(): void {
+    this.player.pointCount = this.playerInitPoint;
+    this.target.pointCount = this.opponentInitPoint;
   }
 
   getNextPointId(): number {

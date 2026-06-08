@@ -13,6 +13,8 @@ export interface BattleSceneData {
   readonly returnScene?: string;
   readonly loadouts?: BattleLoadouts;
   readonly mapId?: MapId;
+  readonly playerInitPoint?: number;
+  readonly opponentInitPoint?: number;
   readonly debug?: boolean;
   readonly battleConfig?: BattleConfig;
   readonly localPlayerId?: PlayerId;
@@ -28,6 +30,8 @@ export interface BattleSceneData {
     readonly speed: number;
     readonly loadouts: BattleLoadouts;
     readonly mapId?: string;
+    readonly playerInitPoint?: number;
+    readonly opponentInitPoint?: number;
     readonly exitScene?: string;
   };
 }

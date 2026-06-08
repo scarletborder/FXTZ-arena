@@ -580,6 +580,8 @@ export class StoryLoadoutScene extends Phaser.Scene {
       returnScene: "story-loadout",
       loadouts,
       mapId: stage.mapId,
+      playerInitPoint: 0,
+      opponentInitPoint: stage.initEnemyPoint ?? 0,
       debug: uiSettings.debug,
       ai: stage.ai,
       story: {

@@ -38,7 +38,6 @@ function isValidBattleInputState(state: unknown): boolean {
 }
 
 function isValidReplayFrame(frame: unknown): frame is ReplayFrame {
-  debugger
   if (!isObject(frame)) return false;
   if (typeof frame.frame !== "number" || frame.frame < 0) return false;
 
@@ -67,6 +66,10 @@ function isValidReplayBattleRecord(battle: unknown): battle is ReplayBattleRecor
   // mapId must be a string
   if (typeof b.mapId !== "string") return false;
 
+  // initial point fields are optional for legacy replays, but must be numbers when present
+  if (b.playerInitPoint !== undefined && typeof b.playerInitPoint !== "number") return false;
+  if (b.opponentInitPoint !== undefined && typeof b.opponentInitPoint !== "number") return false;
+
   // stageIndex (optional)
   if (b.stageIndex !== undefined && typeof b.stageIndex !== "number") return false;
 
@@ -81,7 +84,6 @@ function isValidReplayBattleRecord(battle: unknown): battle is ReplayBattleRecor
  * Returns the validated ReplayFile, or null if validation fails.
  */
 export function validateReplayJson(data: unknown): ReplayFile | null {
-  debugger;
   if (!isObject(data)) return null;
 
   const obj = data as Record<string, unknown>;
@@ -98,6 +100,13 @@ export function validateReplayJson(data: unknown): ReplayFile | null {
   // mode must be one of the known values
   const validModes = ["ai", "online", "local", "story"] as const;
   if (!validModes.includes(obj.mode as any)) return null;
+
+  // appVersion is optional for legacy replays
+  if (obj.appVersion !== undefined && typeof obj.appVersion !== "string") return null;
+
+  // difficulty is only used by story replays, but stays optional for legacy files
+  const validDifficulties = ["easy", "normal", "hard", "lunatic"] as const;
+  if (obj.difficulty !== undefined && !validDifficulties.includes(obj.difficulty as any)) return null;
 
   // player IDs
   if (!isNonEmptyString(obj.player1Id) || !isNonEmptyString(obj.player2Id)) return null;

@@ -133,8 +133,8 @@
         "title": "Hard",
         "description": "Aggressive enemy patterns to test your skills."
       },
-      "expert": {
-        "title": "Expert",
+      "lunatic": {
+        "title": "Lunatic",
         "description": "An extreme survival challenge for battle-hardened masters."
       }
     },
@@ -184,6 +184,14 @@
     "info": "Info",
     "info_title": "Replay Info",
     "close": "Close",
+    "version": "version:{{version}}",
+    "difficulty": "Difficulty:{{difficulty}}",
+    "difficulty_easy": "Easy",
+    "difficulty_normal": "Normal",
+    "difficulty_hard": "Hard",
+    "difficulty_lunatic": "Lunatic",
+    "difficulty_unknown": "Unknown",
+    "init_points": "Initial Point: Player {{player}} / Opponent {{opponent}}",
     "duration": "Duration: {{seconds}}s",
     "battles": "Battles: {{count}}",
     "player_loadout": "Player Loadout",
@@ -194,6 +202,8 @@
     "map": "Map: {{id}}",
     "import_local_replay": "Import Local Replay",
     "open_replay_folder": "Open Replay Folder",
+    "open_replay_folder_failed": "Could not open replay folder: {{error}}",
+    "slot_time": "{{year}}-{{month}}-{{day}} {{hour}}:{{minute}}",
     "import_select_slot": "Select Save Slot",
     "import_invalid": "Invalid replay file",
     "import_no_slot": "No empty slot available",

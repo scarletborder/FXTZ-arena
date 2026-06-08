@@ -196,6 +196,8 @@ export class ReplayBattleOverride {
       mode: "online",
       loadouts: replayData.loadouts,
       mapId: replayData.mapId,
+      playerInitPoint: replayData.playerInitPoint,
+      opponentInitPoint: replayData.opponentInitPoint,
     });
     this.logicReady = false;
     this.runtime.initialize().then(() => {
@@ -308,6 +310,8 @@ export class ReplayBattleOverride {
         speed: this.replaySpeed,
         loadouts: this.initialData.replayData?.loadouts ?? { player: { primaryCharacterId: "reimu", alternateCharacterId: "marisa" }, target: { primaryCharacterId: "sakuya", alternateCharacterId: "cirno" } },
         mapId: this.initialData.replayData?.mapId,
+        playerInitPoint: this.initialData.replayData?.playerInitPoint,
+        opponentInitPoint: this.initialData.replayData?.opponentInitPoint,
         exitScene: this.exitScene,
       },
     } satisfies BattleSceneData);

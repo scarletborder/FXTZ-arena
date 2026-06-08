@@ -169,6 +169,8 @@ export class BattleScene extends Phaser.Scene {
             : "training",
         loadouts: data.loadouts,
         mapId: data.mapId ?? data.battleConfig?.mapId,
+        playerInitPoint: data.playerInitPoint,
+        opponentInitPoint: data.opponentInitPoint,
         ai: data.ai,
       });
     this.logicReady = data.runtime?.physicsReady === true;
@@ -201,6 +203,8 @@ export class BattleScene extends Phaser.Scene {
         playerName: data.playerName ?? "Player",
         opponentName: data.opponentName ?? "Opponent",
         mapId: data.mapId ?? data.battleConfig?.mapId ?? "hakurei_shrine",
+        playerInitPoint: data.playerInitPoint,
+        opponentInitPoint: data.opponentInitPoint,
       });
     } else if (data.mode !== "training" && this.sceneData.story) {
       // Story mode: use the global singleton to accumulate across battles
@@ -209,6 +213,8 @@ export class BattleScene extends Phaser.Scene {
         playerName: data.playerName ?? "Player",
         opponentName: data.opponentName ?? "Opponent",
         mapId: data.mapId ?? data.battleConfig?.mapId ?? "hakurei_shrine",
+        playerInitPoint: data.playerInitPoint,
+        opponentInitPoint: data.opponentInitPoint,
         stageIndex: this.sceneData.story.stageIndex,
         stageTitle: this.sceneData.story.story.stages[this.sceneData.story.stageIndex]?.title,
         loadouts: data.loadouts,
@@ -778,6 +784,7 @@ export class BattleScene extends Phaser.Scene {
     return this.replayRecorder.finalize({
       title: `${storyCtx.story.title} - ${stage?.title ?? "Stage"}`,
       mode: "story",
+      difficulty: storyCtx.state.difficulty,
       player1Id: this.sceneData.playerName ?? uiSettings.username ?? "Player",
       player2Id: this.sceneData.opponentName ?? "CPU",
       finalGlobalInputHash: this.getFinalDebugHashes()?.finalGlobalInputHash ?? null,

@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { t } from "@repo/i18n";
-import { DIFFICULTY_CONFIGS, EnumDifficulty, type CharacterId } from "@repo/types";
+import { EnumDifficulty, type CharacterId } from "@repo/types";
 
 import { loadPortraitAssets } from "../../battle/assets";
 import { queueAllStoryJson } from "../../story/assets";
@@ -18,7 +18,7 @@ import {
   headingStyle,
 } from "../ui";
 import { STORY_CHARACTERS } from "./constants";
-import { applyDifficultyToStory, fitImageToBounds, getStoryFromCache, wrapIndex } from "./helpers";
+import { fitImageToBounds, getStoryFromCache, wrapIndex } from "./helpers";
 import { globalReplayRecorder } from "../../replay/recorder";
 import { StoryStartConfig } from "./types";
 
@@ -28,8 +28,6 @@ interface DifficultyOption {
   descKey: string;
 }
 
-// 定义 4 个难度配置及对应的 i18n key
-// 注：若您的 EnumDifficulty 中第四个难度定义非 Expert（例如 Lunatic 或 VeryHard），请对应修改 key 的指向
 const DIFFICULTY_OPTIONS: DifficultyOption[] = [
   {
     key: EnumDifficulty.Easy,
@@ -47,9 +45,9 @@ const DIFFICULTY_OPTIONS: DifficultyOption[] = [
     descKey: "story.difficulties.hard.description",
   },
   {
-    key: EnumDifficulty.Expert,
-    titleKey: "story.difficulties.expert.title",
-    descKey: "story.difficulties.expert.description",
+    key: EnumDifficulty.Lunatic,
+    titleKey: "story.difficulties.lunatic.title",
+    descKey: "story.difficulties.lunatic.description",
   },
 ];
 
@@ -275,17 +273,13 @@ export class StoryStartLoadoutScene extends Phaser.Scene {
 
   private startStory(cfg: StoryStartConfig): void {
     const characterId: CharacterId = cfg.characterId;
-    const difficultyConfig = DIFFICULTY_CONFIGS[cfg.difficulty];
 
     const storyId = characterId as StoryId;
-    let story = getStoryFromCache(this, storyId);
-
-    // 根据difficulty调整初始状态story state
-    story = applyDifficultyToStory(story, difficultyConfig);
+    const story = getStoryFromCache(this, storyId);
 
     globalReplayRecorder.reset();
     this.scene.start("story-progress", {
-      state: createInitialStoryState(story, characterId),
+      state: createInitialStoryState(story, characterId, cfg.difficulty),
     } satisfies StoryProgressData);
   }
 }

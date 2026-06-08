@@ -1,4 +1,4 @@
-import type { AbilityCardId, CharacterId } from "@repo/types";
+import { EnumDifficulty, type AbilityCardId, type CharacterId } from "@repo/types";
 
 import type { StoryDefinition, StoryRuntimeState, StoryStageReward, StoryStats } from "./types";
 
@@ -13,9 +13,11 @@ const EMPTY_STATS: StoryStats = {
 export function createInitialStoryState(
   story: StoryDefinition,
   primaryCharacterId: CharacterId,
+  difficulty: EnumDifficulty = EnumDifficulty.Normal,
 ): StoryRuntimeState {
   return {
     storyId: story.id,
+    difficulty,
     primaryCharacterId,
     cardIds: [],
     currentStageIndex: 0,

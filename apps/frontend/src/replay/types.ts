@@ -1,4 +1,4 @@
-import type { BattleInputState } from "@repo/types";
+import type { BattleInputState, EnumDifficulty } from "@repo/types";
 import type { BattleLoadouts } from "../battle/loadout";
 
 export interface ReplayFrame {
@@ -14,6 +14,8 @@ export interface ReplayBattleRecord {
   readonly playerName: string;
   readonly opponentName: string;
   readonly mapId: string;
+  readonly playerInitPoint: number;
+  readonly opponentInitPoint: number;
   /**
    * Per-battle loadouts. For story mode replays, each stage may have a
    * different player loadout (rewards gained between battles) and opponent.
@@ -24,9 +26,11 @@ export interface ReplayBattleRecord {
 
 export interface ReplayFile {
   readonly version: 1;
+  readonly appVersion?: string;
   readonly title: string;
   readonly timestamp: number;
   readonly mode: "ai" | "online" | "local" | "story";
+  readonly difficulty?: EnumDifficulty;
   readonly player1Id: string;
   readonly player2Id: string;
   readonly finalGlobalInputHash: string | null;

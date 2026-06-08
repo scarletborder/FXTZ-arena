@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { t } from "@repo/i18n";
+import { DIFFICULTY_CONFIGS, EnumDifficulty } from "@repo/types";
 
 import {
   queueStoryBackgroundAssets,
@@ -28,6 +29,7 @@ import {
   TYPEWRITER_MS,
 } from "./constants";
 import {
+  applyDifficultyToStory,
   fitImageToBounds,
   fitImageToCover,
   getStoryFromCache,
@@ -73,6 +75,10 @@ export class StoryProgressScene extends Phaser.Scene {
   create(): void {
     installMenuAudioUnlock(this);
     this.story = getStoryFromCache(this, this.progressData.state.storyId);
+    this.story = applyDifficultyToStory(
+      this.story,
+      DIFFICULTY_CONFIGS[this.state.difficulty ?? EnumDifficulty.Normal],
+    );
     const reward =
       this.progressData.clearedStageIndex === undefined
         ? undefined
@@ -362,6 +368,7 @@ export class StoryProgressScene extends Phaser.Scene {
             ? globalReplayRecorder.finalize({
                 title: this.story.title,
                 mode: "story",
+                difficulty: this.state.difficulty,
                 player1Id: this.story.playableCharacterId,
                 player2Id: t("select.cpu"),
                 finalGlobalInputHash: null,
