@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { t } from "@repo/i18n";
-import type { CharacterId } from "@repo/types";
+import { DIFFICULTY_CONFIGS, EnumDifficulty, type CharacterId } from "@repo/types";
 
 import { loadPortraitAssets } from "../../battle/assets";
 import { queueAllStoryJson } from "../../story/assets";
@@ -18,11 +18,44 @@ import {
   headingStyle,
 } from "../ui";
 import { STORY_CHARACTERS } from "./constants";
-import { fitImageToBounds, getStoryFromCache, wrapIndex } from "./helpers";
+import { applyDifficultyToStory, fitImageToBounds, getStoryFromCache, wrapIndex } from "./helpers";
 import { globalReplayRecorder } from "../../replay/recorder";
+import { StoryStartConfig } from "./types";
+
+interface DifficultyOption {
+  key: EnumDifficulty;
+  titleKey: string;
+  descKey: string;
+}
+
+// 定义 4 个难度配置及对应的 i18n key
+// 注：若您的 EnumDifficulty 中第四个难度定义非 Expert（例如 Lunatic 或 VeryHard），请对应修改 key 的指向
+const DIFFICULTY_OPTIONS: DifficultyOption[] = [
+  {
+    key: EnumDifficulty.Easy,
+    titleKey: "story.difficulties.easy.title",
+    descKey: "story.difficulties.easy.description",
+  },
+  {
+    key: EnumDifficulty.Normal,
+    titleKey: "story.difficulties.normal.title",
+    descKey: "story.difficulties.normal.description",
+  },
+  {
+    key: EnumDifficulty.Hard,
+    titleKey: "story.difficulties.hard.title",
+    descKey: "story.difficulties.hard.description",
+  },
+  {
+    key: EnumDifficulty.Expert,
+    titleKey: "story.difficulties.expert.title",
+    descKey: "story.difficulties.expert.description",
+  },
+];
 
 export class StoryStartLoadoutScene extends Phaser.Scene {
   private selectedIndex = 0;
+  private selectedDifficulty = EnumDifficulty.Normal; // 追踪当前选中的难度，默认 Normal
   private layer!: Phaser.GameObjects.Container;
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (event.key === "ArrowUp" || event.key.toLowerCase() === "w") {
@@ -75,11 +108,14 @@ export class StoryStartLoadoutScene extends Phaser.Scene {
     }
     this.layer.add(this.add.rectangle(640, 360, 2, 560, 0x34475c, 0.72));
 
+    // 角色选择标题
     this.layer.add(
       this.add
         .text(160, 142, t("story.choose_primary"), bodyStyle("#ffcf6e", 20))
         .setOrigin(0.5),
     );
+
+    // 1. 渲染角色选择轮盘
     for (let offset = -1; offset <= 1; offset += 1) {
       const index = wrapIndex(
         this.selectedIndex + offset,
@@ -129,6 +165,77 @@ export class StoryStartLoadoutScene extends Phaser.Scene {
       this.layer.add(tile);
     }
 
+    // 2. 渲染难度选择标题与 4 个难度选项
+    const difficultyTitleX = 1020;
+    const difficultyTitleY = 160;
+    this.layer.add(
+      this.add
+        .text(difficultyTitleX, difficultyTitleY, t("story.choose_difficulty"), bodyStyle("#ffcf6e", 20))
+        .setOrigin(0.5),
+    );
+
+    const startY = difficultyTitleY + 18;       // 对齐角色轮盘的最上方起点
+    const boxWidth = 220;     // 与角色选择框保持同宽
+    const boxHeight = 76;     // 适配 4 个框的垂直空间
+    const boxGap = 12;
+
+    DIFFICULTY_OPTIONS.forEach((opt, idx) => {
+      const y = startY + idx * (boxHeight + boxGap);
+      const isSelected = this.selectedDifficulty === opt.key;
+      const tile = this.add.container(difficultyTitleX - 110, y);
+
+      const background = this.add.graphics();
+      background.fillStyle(
+        isSelected ? 0x253042 : 0x101820,
+        isSelected ? 0.96 : 0.72,
+      );
+      background.fillRect(0, 0, boxWidth, boxHeight);
+      background.lineStyle(
+        2,
+        isSelected ? 0xffcf6e : 0x34475c,
+        isSelected ? 1 : 0.68,
+      );
+      background.strokeRect(0, 0, boxWidth, boxHeight);
+      tile.add(background);
+
+      // 难度标题
+      tile.add(
+        this.add
+          .text(
+            boxWidth / 2,
+            22,
+            t(opt.titleKey),
+            bodyStyle(isSelected ? "#ffffff" : "#b7c7d8", isSelected ? 18 : 16),
+          )
+          .setOrigin(0.5),
+      );
+
+      // 难度小字描述
+      tile.add(
+        this.add
+          .text(
+            boxWidth / 2,
+            50,
+            t(opt.descKey),
+            bodyStyle(isSelected ? "#ffcf6e" : "#6e8496", 11),
+          )
+          .setOrigin(0.5),
+      );
+
+      // 交互区域
+      const hit = this.add
+        .rectangle(0, 0, boxWidth, boxHeight, 0xffffff, 0.001)
+        .setOrigin(0, 0)
+        .setInteractive({ useHandCursor: true });
+      hit.on("pointerup", () => {
+        this.selectedDifficulty = opt.key;
+        this.render();
+      });
+      tile.add(hit);
+      this.layer.add(tile);
+    });
+
+    // 3. 底部与返回按钮
     this.layer.add(
       createFightButton(
         this,
@@ -149,7 +256,10 @@ export class StoryStartLoadoutScene extends Phaser.Scene {
         178,
         56,
         t("story.next"),
-        () => this.startStory(character.id),
+        () => this.startStory({
+          characterId: character.id,
+          difficulty: this.selectedDifficulty, // 传入当前选中的难度
+        }),
         { accent: 0xe33d44 },
       ).container,
     );
@@ -163,9 +273,16 @@ export class StoryStartLoadoutScene extends Phaser.Scene {
     this.render();
   }
 
-  private startStory(characterId: CharacterId): void {
+  private startStory(cfg: StoryStartConfig): void {
+    const characterId: CharacterId = cfg.characterId;
+    const difficultyConfig = DIFFICULTY_CONFIGS[cfg.difficulty];
+
     const storyId = characterId as StoryId;
-    const story = getStoryFromCache(this, storyId);
+    let story = getStoryFromCache(this, storyId);
+
+    // 根据difficulty调整初始状态story state
+    story = applyDifficultyToStory(story, difficultyConfig);
+
     globalReplayRecorder.reset();
     this.scene.start("story-progress", {
       state: createInitialStoryState(story, characterId),

@@ -119,6 +119,25 @@
   },
   "story": {
     "start_title": "故事模式", "choose_primary": "选择首选角色", "back": "返回", "next": "下一步",
+    "choose_difficulty": "选择游戏难度",
+    "difficulties": {
+      "easy": {
+        "title": "简单",
+        "description": "适合新手玩家，轻松体验剧情"
+      },
+      "normal": {
+        "title": "普通",
+        "description": "标准的游戏难度"
+      },
+      "hard": {
+        "title": "困难",
+        "description": "敌人攻势更猛烈，考验操作技巧"
+      },
+      "expert": {
+        "title": "专家",
+        "description": "对手更加聪明"
+      }
+    },
     "stage_label": "第{{index}}关: {{title}}", "ending_label": "终幕", "reward_title": "通关奖励", "reward_lives": "生命 +{{count}}", "reward_bombs": "Bomb +{{count}}", "primary": "首选角色", "alternate": "备选角色", "cards": "能力卡",
     "start_battle": "开始对战", "cost_limit": "Cost 上限 {{count}}", "cost_value": "当前 Cost: {{total}} / {{limit}}", "primary_resources": "命 {{lives}} / Bomb {{bombs}}",
     "skip": "长按跳过", "staff_default_1": "FXTZ ARENA Story Mode", "staff_default_2": "Thanks for playing",

@@ -38,6 +38,7 @@ export interface StoryStage {
   readonly reward?: StoryStageReward;
   readonly opponent: StoryOpponentLoadout;
   readonly ai: StoryAiOverride;
+  readonly initEnemyPoint: number | undefined;
   readonly script: readonly StoryDialogueLine[];
 }
 

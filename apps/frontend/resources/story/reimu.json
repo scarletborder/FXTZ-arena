@@ -18,7 +18,7 @@
         "cardIds": [ "spirit_strike_card" ],
         "activeCardId": "spirit_strike_card"
       },
-      "ai": { "smartDurationSeconds": 1, "dumbRampSeconds": 5 },
+      "ai": { "smartDurationSeconds": 15, "dumbRampSeconds": 15 },
       "script": [
         { "speaker": "  ", "content": "博丽神社前，灵梦看着眼前的友人", "color": "#ffffff", "background": "black" },
         { "speaker": "魔理沙", "content": "等一下啦。最近大家变懒了，根本没人陪我玩弹幕游戏。既然要出发，不如先在这里活动下身体（减肥）吧？", "color": "#ffd700", "background": "story/shrine_marisa" },
@@ -38,7 +38,7 @@
         "alternateCharacterId": "cirno",
         "cardIds": [ "ember" ]
       },
-      "ai": { "smartDurationSeconds": 45, "dumbRampSeconds": 35 },
+      "ai": { "smartDurationSeconds": 25, "dumbRampSeconds": 20 },
       "script": [
         { "speaker": "灵梦", "content": "服气了吗，我现在要去找紫那家伙问清楚情况了。", "color": "#f25e5e", "background": "story/shrine_reimu" },
         { "speaker": "  ", "content": "灵梦启程向幻想乡的界线，也就是紫居住的地方飞去，途径雾之湖", "color": "#ffffff", "background": "black" },
@@ -71,7 +71,7 @@
         "cardIds": [ "spirit_strike_card" ],
         "activeCardId": "spirit_strike_card"
       },
-      "ai": { "smartDurationSeconds": 60, "dumbRampSeconds": 50 },
+      "ai": { "smartDurationSeconds": 30, "dumbRampSeconds": 25 },
       "script": [
         { "speaker": "灵梦", "content": "满意了吗，如果你们没有这次异变的线索，我就走了", "color": "#f25e5e", "background": "black" },
         { "speaker": "sakuya", "content": "稍等，其实稍早之前我有前往永远亭拜访，试图寻求瘦身良药，但是那里像死一样寂静，或许你该先去那里调查一番", "color": "#ffffff", "background": "story/mistlake_sakuya_cirno_2" },

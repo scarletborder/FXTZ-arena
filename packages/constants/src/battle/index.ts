@@ -4,6 +4,7 @@ export * from "./character";
 export * from "./graze";
 export * from "./point";
 export * from "./ability-card";
+export * from "./difficulties";
 
 export const DEFAULT_LIVES = 2;
 export const DEFAULT_BOMBS = 3;

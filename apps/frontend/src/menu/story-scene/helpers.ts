@@ -8,6 +8,7 @@ import type {
   StoryId,
   StoryStageReward,
 } from "../../story/types";
+import { DIFFICULTY_CONFIGS, EnumDifficulty } from "@repo/constants";
 
 export function getStoryFromCache(
   scene: Phaser.Scene,
@@ -20,6 +21,26 @@ export function getStoryFromCache(
     throw new Error(`Missing story json: ${storyId}`);
   }
   return data;
+}
+
+export function applyDifficultyToStory(
+  story: StoryDefinition,
+  cfg: typeof DIFFICULTY_CONFIGS[EnumDifficulty],
+): StoryDefinition {
+  const adjustedStages: StoryDefinition["stages"] = story.stages.map((stage) => {
+    return {
+      ...stage,
+      ai: {
+        smartDurationSeconds: stage.ai.smartDurationSeconds * cfg.smartDurationRatio,
+        dumbRampSeconds: stage.ai.dumbRampSeconds * cfg.dumbRampRatio,
+      },
+      initEnemyPoint: cfg.initialAIPoint,
+    }
+  });
+  return {
+    ...story,
+    stages: adjustedStages,
+  };
 }
 
 export function fitImageToBounds(

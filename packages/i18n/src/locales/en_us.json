@@ -119,6 +119,25 @@
   },
   "story": {
     "start_title": "Story Mode", "choose_primary": "Choose Primary Character", "back": "Back", "next": "Next",
+    "choose_difficulty": "Choose Difficulty",
+    "difficulties": {
+      "easy": {
+        "title": "Easy",
+        "description": "Perfect for beginners to enjoy the story effortlessly."
+      },
+      "normal": {
+        "title": "Normal",
+        "description": "Standard game difficulty with balanced challenges."
+      },
+      "hard": {
+        "title": "Hard",
+        "description": "Aggressive enemy patterns to test your skills."
+      },
+      "expert": {
+        "title": "Expert",
+        "description": "An extreme survival challenge for battle-hardened masters."
+      }
+    },
     "stage_label": "Stage {{index}}: {{title}}", "ending_label": "Finale", "reward_title": "Clear Reward", "reward_lives": "Life +{{count}}", "reward_bombs": "Bomb +{{count}}", "primary": "Primary", "alternate": "Alternate", "cards": "Ability Cards",
     "start_battle": "Start Battle", "cost_limit": "Cost limit {{count}}", "cost_value": "Current Cost: {{total}} / {{limit}}", "primary_resources": "Lives {{lives}} / Bombs {{bombs}}",
     "skip": "Hold to Skip", "staff_default_1": "FXTZ ARENA Story Mode", "staff_default_2": "Thanks for playing",
