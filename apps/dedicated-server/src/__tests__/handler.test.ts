@@ -507,6 +507,13 @@ describe("MessageHandler", () => {
       });
 
       viewer.clearMessages();
+      handler.handle(viewer, { type: "list_rooms", page: 1, pageSize: 12, battleMode: "versus" });
+      const versusList = viewer.findSentMessage("room_list");
+
+      expect(versusList?.rooms).toHaveLength(1);
+      expect(versusList?.rooms[0].battleMode).toBe("versus");
+
+      viewer.clearMessages();
       handler.handle(viewer, { type: "list_rooms", page: 1, pageSize: 12, battleMode: "collaborate" });
       const list = viewer.findSentMessage("room_list");
 
@@ -619,8 +626,10 @@ describe("MessageHandler", () => {
         costLimit: 10,
       });
       const roomId = host.findSentMessage("room_created")!.roomId;
+      expect(host.findSentMessage("room_joined")?.battleMode).toBe("collaborate");
 
       handler.handle(guest, { type: "join_room", roomId });
+      expect(guest.findSentMessage("room_joined")?.battleMode).toBe("collaborate");
       handler.handle(guest, { type: "lobby_ready", ready: true });
       handler.handle(host, { type: "start_game" });
       host.clearMessages();

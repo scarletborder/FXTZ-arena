@@ -362,7 +362,9 @@ export class RoomListScene extends Phaser.Scene {
         if (msg.spectator) {
           this.scene.start("spectator-loading", { source: "online", roomId: msg.roomId });
         } else {
-          this.scene.start("lobby", { mode: "online", roomId: msg.roomId, playerId: msg.playerId as PlayerId } satisfies SelectionData);
+          const battleMode = msg.battleMode ?? this.battleMode;
+          connectionManager.battleMode = battleMode;
+          this.scene.start("lobby", { mode: "online", roomId: msg.roomId, playerId: msg.playerId as PlayerId, battleMode } satisfies SelectionData);
         }
         break;
       case "error":

@@ -1,9 +1,9 @@
 import { fp } from "@shaisrc/fixed-point";
 
 import {
-  ARENA_HEIGHT,
-  ARENA_WIDTH,
+  DEFAULT_ARENA_BOUNDS,
   TICK_RATE,
+  type ArenaBounds,
   bulletSpeedRankToPixelsPerTick,
   secondsToTicks,
 } from "@repo/types";
@@ -25,7 +25,6 @@ import {
 
 const HOMING_START_DELAY_TICKS = secondsToTicks(0.2);
 const HOMING_MAX_TURN_RADIANS_PER_TICK = Math.PI / TICK_RATE;
-const PROJECTILE_WORLD_PADDING = ARENA_WIDTH * 0.2;
 
 export function createBulletProjectile(params: {
   readonly id: number;
@@ -291,14 +290,18 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-export function isProjectileOutOfWorld(projectile: ProjectileState): boolean {
+export function isProjectileOutOfWorld(
+  projectile: ProjectileState,
+  arenaBounds: ArenaBounds = DEFAULT_ARENA_BOUNDS,
+  padding = arenaBounds.width * 0.2,
+): boolean {
   if (!Number.isFinite(projectile.width)) {
     return false;
   }
   return (
-    projectile.x < -PROJECTILE_WORLD_PADDING ||
-    projectile.x > ARENA_WIDTH + PROJECTILE_WORLD_PADDING ||
-    projectile.y < -PROJECTILE_WORLD_PADDING ||
-    projectile.y > ARENA_HEIGHT + PROJECTILE_WORLD_PADDING
+    projectile.x < -padding ||
+    projectile.x > arenaBounds.width + padding ||
+    projectile.y < -padding ||
+    projectile.y > arenaBounds.height + padding
   );
 }

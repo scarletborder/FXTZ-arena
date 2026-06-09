@@ -2,11 +2,11 @@ import { fp } from "@shaisrc/fixed-point";
 
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
 import {
-  ARENA_HEIGHT,
-  ARENA_WIDTH,
+  DEFAULT_ARENA_BOUNDS,
   DEFAULT_BOMBS,
   PLAYER_CORE_RADIUS,
   speedRankToPixelsPerTick,
+  type ArenaBounds,
 } from "@repo/types";
 
 import type { BattleInputState } from "@repo/types";
@@ -59,6 +59,7 @@ export class BattleFighter {
     activeCard: AbilityCardDefinition | undefined,
     cards: readonly AbilityCardDefinition[] = activeCard ? [activeCard] : [],
     storyModeOverride?: StoryModeOverride,
+    private readonly arenaBounds: ArenaBounds = DEFAULT_ARENA_BOUNDS,
   ) {
     this.storyModeOverride = storyModeOverride;
     this.state = createFighter(
@@ -192,7 +193,7 @@ export class BattleFighter {
           fp.mul(fp.fromFloat(input.moveX), fp.fromFloat(speed)),
         ),
         fp.fromFloat(PLAYER_CORE_RADIUS),
-        fp.fromFloat(ARENA_WIDTH - PLAYER_CORE_RADIUS),
+        fp.fromFloat(this.arenaBounds.width - PLAYER_CORE_RADIUS),
       ),
     );
     this.state.y = fp.toFloat(
@@ -202,7 +203,7 @@ export class BattleFighter {
           fp.mul(fp.fromFloat(input.moveY), fp.fromFloat(speed)),
         ),
         fp.fromFloat(PLAYER_CORE_RADIUS),
-        fp.fromFloat(ARENA_HEIGHT - PLAYER_CORE_RADIUS),
+        fp.fromFloat(this.arenaBounds.height - PLAYER_CORE_RADIUS),
       ),
     );
   }
@@ -337,7 +338,10 @@ export class BattleFighter {
     this.characterFor(params.victim.primaryCharacter).onHit(hitContext);
     this.characterFor(params.victim.alternateCharacter).onHit(hitContext);
     for (const card of this.battleCards) {
-      if (this.storyModeOverride?.enabled === true && card.storyModeOverride?.onHit) {
+      if (
+        this.storyModeOverride?.enabled === true &&
+        card.storyModeOverride?.onHit
+      ) {
         card.storyModeOverride.onHit(hitContext);
       } else {
         card.onHit(hitContext);
@@ -412,7 +416,10 @@ export class BattleFighter {
         attacker: params.attackerCards,
       },
       resolution: {
-        defaultBombs: this.storyModeOverride?.enabled === true ? this.reviveBombs : DEFAULT_BOMBS,
+        defaultBombs:
+          this.storyModeOverride?.enabled === true
+            ? this.reviveBombs
+            : DEFAULT_BOMBS,
         ignored: false,
       },
     };

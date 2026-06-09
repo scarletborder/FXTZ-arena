@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { IS_DESKTOP_APP } from "@repo/constants";
 import { t } from "@repo/i18n";
-import type { PlayerId } from "@repo/types";
+import type { BattleRoomMode, PlayerId } from "@repo/types";
 
 import type { ConnectionStatus } from "../network";
 import { uiSettings } from "../store/settings";
@@ -86,7 +86,11 @@ export class BattleStartScene extends Phaser.Scene {
     if (m.type === "room_joined") {
       const playerId = m.playerId as PlayerId;
       const roomId = m.roomId as string;
-      if (playerId && roomId) this.scene.start("lobby", { mode: "online", roomId, playerId } satisfies SelectionData);
+      const battleMode = m.battleMode as BattleRoomMode | undefined;
+      if (battleMode) {
+        connectionManager.battleMode = battleMode;
+      }
+      if (playerId && roomId) this.scene.start("lobby", { mode: "online", roomId, playerId, battleMode } satisfies SelectionData);
     } else if (m.type === "error") {
       this.showToast(`${String(m.code)}: ${String(m.message)}`);
     }

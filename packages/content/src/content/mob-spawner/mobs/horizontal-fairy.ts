@@ -1,10 +1,20 @@
 import { fp } from "@shaisrc/fixed-point";
-import { ARENA_HEIGHT, ARENA_WIDTH } from "@repo/constants";
+import { DEFAULT_ARENA_BOUNDS, type ArenaBounds } from "@repo/constants";
 import type { PointRewardSize } from "@repo/constants";
-import { NeutralMob, type NeutralMobActionContext, type NeutralMobDeathSource, type NeutralMobState } from "@repo/types";
+import {
+  NeutralMob,
+  type NeutralMobActionContext,
+  type NeutralMobDeathSource,
+  type NeutralMobState,
+} from "@repo/types";
 
 import { FP_0, FP_PI, FP_PI_2 } from "../../fp";
-import { hitCircleUnits, secondsToTicks, type BattleBulletSpawnParams, type BattleLaserSpawnParams } from "../../characters/base";
+import {
+  hitCircleUnits,
+  secondsToTicks,
+  type BattleBulletSpawnParams,
+  type BattleLaserSpawnParams,
+} from "../../characters/base";
 
 export type HorizontalFairyMovementVariant = "left_to_right" | "right_to_left";
 
@@ -17,6 +27,13 @@ export interface HorizontalFairyState extends NeutralMobState {
   fireSubphase: number;
 }
 
+type BoundedMobActionContext = NeutralMobActionContext<
+  BattleBulletSpawnParams,
+  BattleLaserSpawnParams
+> & {
+  readonly arenaBounds: ArenaBounds;
+};
+
 const MAX_HEALTH = 50;
 const HIT_RADIUS = 36;
 const START_FIRE_TICKS = secondsToTicks(1.2);
@@ -27,23 +44,33 @@ const TOTAL_TICKS = secondsToTicks(12);
 
 /** Precomputed diagonal angles in fixed-point. */
 const ANGLE_DOWN_RIGHT = fp.fromFloat(Math.PI / 4);
-const ANGLE_DOWN_LEFT = fp.fromFloat(3 * Math.PI / 4);
-const ANGLE_UP_LEFT = fp.fromFloat(-3 * Math.PI / 4);
+const ANGLE_DOWN_LEFT = fp.fromFloat((3 * Math.PI) / 4);
+const ANGLE_UP_LEFT = fp.fromFloat((-3 * Math.PI) / 4);
 const ANGLE_UP_RIGHT = fp.fromFloat(-Math.PI / 4);
 
-function startPos(variant: HorizontalFairyMovementVariant): { readonly x: number; readonly y: number } {
+function startPos(
+  variant: HorizontalFairyMovementVariant,
+  bounds: ArenaBounds,
+): { readonly x: number; readonly y: number } {
   return variant === "left_to_right"
-    ? { x: -hitCircleUnits(12), y: ARENA_HEIGHT - 60 }
-    : { x: ARENA_WIDTH + hitCircleUnits(12), y: ARENA_HEIGHT - 60 };
+    ? { x: -hitCircleUnits(12), y: bounds.height - 60 }
+    : { x: bounds.width + hitCircleUnits(12), y: bounds.height - 60 };
 }
 
-function endPos(variant: HorizontalFairyMovementVariant): { readonly x: number; readonly y: number } {
+function endPos(
+  variant: HorizontalFairyMovementVariant,
+  bounds: ArenaBounds,
+): { readonly x: number; readonly y: number } {
   return variant === "left_to_right"
-    ? { x: ARENA_WIDTH + hitCircleUnits(12), y: 60 }
+    ? { x: bounds.width + hitCircleUnits(12), y: 60 }
     : { x: -hitCircleUnits(12), y: 60 };
 }
 
-export class HorizontalFairy extends NeutralMob<HorizontalFairyState, BattleBulletSpawnParams, BattleLaserSpawnParams> {
+export class HorizontalFairy extends NeutralMob<
+  HorizontalFairyState,
+  BattleBulletSpawnParams,
+  BattleLaserSpawnParams
+> {
   readonly state: HorizontalFairyState;
 
   constructor(params: {
@@ -51,9 +78,13 @@ export class HorizontalFairy extends NeutralMob<HorizontalFairyState, BattleBull
     readonly waveId: number;
     readonly movementVariant: HorizontalFairyMovementVariant;
     readonly pointRewardSize?: PointRewardSize;
+    readonly arenaBounds?: ArenaBounds;
   }) {
     super();
-    const start = startPos(params.movementVariant);
+    const start = startPos(
+      params.movementVariant,
+      params.arenaBounds ?? DEFAULT_ARENA_BOUNDS,
+    );
     this.state = {
       id: params.id,
       key: "Neutral",
@@ -83,7 +114,10 @@ export class HorizontalFairy extends NeutralMob<HorizontalFairyState, BattleBull
     const mob = new HorizontalFairy({
       id: s.id,
       waveId: s.waveId,
-      movementVariant: s.movementVariant === "right_to_left" ? "right_to_left" : "left_to_right",
+      movementVariant:
+        s.movementVariant === "right_to_left"
+          ? "right_to_left"
+          : "left_to_right",
     });
     mob.restore(s);
     return mob;
@@ -97,25 +131,31 @@ export class HorizontalFairy extends NeutralMob<HorizontalFairyState, BattleBull
     // Rewards are handled via pointRewardSize.
   }
 
-  move(): void {
-    const start = startPos(this.state.movementVariant);
-    const end = endPos(this.state.movementVariant);
+  move(ctx: BoundedMobActionContext): void {
+    const start = startPos(this.state.movementVariant, ctx.arenaBounds);
+    const end = endPos(this.state.movementVariant, ctx.arenaBounds);
     const t = ratio(this.state.ageTicks, TOTAL_TICKS);
     this.state.x = lerp(start.x, end.x, t);
     this.state.y = lerp(start.y, end.y, t);
     this.state.form = "move";
   }
 
-  fire(ctx: NeutralMobActionContext<BattleBulletSpawnParams, BattleLaserSpawnParams>): void {
+  fire(
+    ctx: NeutralMobActionContext<
+      BattleBulletSpawnParams,
+      BattleLaserSpawnParams
+    >,
+  ): void {
     if (this.state.ageTicks < this.state.nextFireAge) {
       return;
     }
 
     // Subphase 0: cardinal directions (up, down, left, right)
     // Subphase 1: diagonal directions
-    const angles: readonly number[] = this.state.fireSubphase === 0
-      ? [FP_0, FP_PI_2, FP_PI, fp.negate(FP_PI_2)]
-      : [ANGLE_DOWN_RIGHT, ANGLE_DOWN_LEFT, ANGLE_UP_LEFT, ANGLE_UP_RIGHT];
+    const angles: readonly number[] =
+      this.state.fireSubphase === 0
+        ? [FP_0, FP_PI_2, FP_PI, fp.negate(FP_PI_2)]
+        : [ANGLE_DOWN_RIGHT, ANGLE_DOWN_LEFT, ANGLE_UP_LEFT, ANGLE_UP_RIGHT];
 
     for (const angle of angles) {
       ctx.spawnBullet({
@@ -168,8 +208,7 @@ function ratio(ticks: number, duration: number): number {
 }
 
 function lerp(start: number, end: number, t: number): number {
-  return fp.toFloat(fp.add(
-    fp.fromFloat(start),
-    fp.mul(fp.fromFloat(end - start), t),
-  ));
+  return fp.toFloat(
+    fp.add(fp.fromFloat(start), fp.mul(fp.fromFloat(end - start), t)),
+  );
 }

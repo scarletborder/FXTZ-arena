@@ -23,10 +23,13 @@ export class RoomLobbyScene extends Phaser.Scene {
     super("lobby" satisfies SceneKey);
   }
 
-  create(): void {
+  create(data?: SelectionData): void {
     installMenuAudioUnlock(this);
     this.selfReady = false;
     this.leavingOnlineRoom = false;
+    if (data?.battleMode) {
+      connectionManager.battleMode = data.battleMode;
+    }
 
     drawFightingBackdrop(this, "LOBBY", "WAITING ROOM");
 

@@ -10,10 +10,17 @@ import {
 } from "./output";
 import type { BattleInputState } from "@repo/types";
 import type { BattleRoomMode } from "@repo/types";
-import type { PointRewardSize } from "@repo/constants";
+import {
+  DEFAULT_ARENA_BOUNDS,
+  PLAYER_SPAWN,
+  TARGET_SPAWN,
+  normalizeArenaBounds,
+  type ArenaBounds,
+  type PointRewardSize,
+} from "@repo/constants";
 import type { BattleOutputState } from "@repo/content";
 import { DEFAULT_MAPS, resolveMobSpawner } from "@repo/content";
-import type { NeutralMobSpawner } from "@repo/content";
+import type { MapDefinition, NeutralMobSpawner } from "@repo/content";
 
 export type RaidLogicMode = "training" | "ai" | "online";
 
@@ -87,7 +94,7 @@ export interface RaidLogicRuntime {
 class BattleRuntime implements RaidLogicRuntime {
   readonly outputQueue = new BattleOutputQueue();
   private readonly model: BattleModel;
-  private readonly physics = new BattlePhysics();
+  private readonly physics: BattlePhysics;
   private initializePromise: Promise<void> | undefined;
 
   constructor(
@@ -99,9 +106,23 @@ class BattleRuntime implements RaidLogicRuntime {
     opponentInitPoint: number | undefined,
     ai: RaidLogicRuntimeOptions["ai"] | undefined,
   ) {
-    const spawner = resolveSpawner(mode, mapId);
+    const map = resolveMap(mapId);
+    const bounds = arenaBoundsForMap(map);
+    const spawner = resolveSpawner(mode, map);
+    this.physics = new BattlePhysics(bounds);
     this.model = new BattleModel(loadouts, {
       battleMode: battleMode ?? "versus",
+      arenaBounds: bounds,
+      playerSpawn: spawnPointOrDefault(
+        map?.spawnPoints[0],
+        bounds,
+        PLAYER_SPAWN,
+      ),
+      targetSpawn: spawnPointOrDefault(
+        map?.spawnPoints[1],
+        bounds,
+        TARGET_SPAWN,
+      ),
       enableCpuTarget: mode === "ai",
       neutralMobSpawner: spawner,
       playerInitPoint,
@@ -255,16 +276,45 @@ class BattleRuntime implements RaidLogicRuntime {
 
 function resolveSpawner(
   mode: RaidLogicMode,
-  mapId: string | undefined,
+  map: MapDefinition | undefined,
 ): NeutralMobSpawner | null | undefined {
-  if (mapId) {
-    const map = DEFAULT_MAPS.find((m) => m.id === mapId);
-    if (map?.mobSpawnerId) {
-      return resolveMobSpawner(map.mobSpawnerId) ?? undefined;
-    }
+  if (map?.mobSpawnerId) {
+    return resolveMobSpawner(map.mobSpawnerId) ?? undefined;
   }
   if (mode === "training") return null;
   return undefined;
+}
+
+function resolveMap(mapId: string | undefined): MapDefinition | undefined {
+  if (!mapId) return undefined;
+  return DEFAULT_MAPS.find((m) => m.id === mapId);
+}
+
+function arenaBoundsForMap(map: MapDefinition | undefined): ArenaBounds {
+  if (!map) return DEFAULT_ARENA_BOUNDS;
+  return normalizeArenaBounds({
+    width: map.width,
+    height: map.height,
+    viewportWidth: map.viewportWidth,
+    viewportHeight: map.viewportHeight,
+  });
+}
+
+function spawnPointOrDefault(
+  spawnPoint: { readonly x: number; readonly y: number } | undefined,
+  bounds: ArenaBounds,
+  fallback: { readonly x: number; readonly y: number },
+): { readonly x: number; readonly y: number } {
+  if (
+    spawnPoint &&
+    spawnPoint.x >= 0 &&
+    spawnPoint.x <= bounds.width &&
+    spawnPoint.y >= 0 &&
+    spawnPoint.y <= bounds.height
+  ) {
+    return spawnPoint;
+  }
+  return fallback;
 }
 
 export function createRaidLogicRuntime(

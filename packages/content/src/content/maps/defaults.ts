@@ -1,4 +1,11 @@
-import { ARENA_HEIGHT, ARENA_WIDTH } from "@repo/constants";
+import {
+  ARENA_HEIGHT,
+  ARENA_WIDTH,
+  COLLABORATE_ARENA_HEIGHT,
+  COLLABORATE_ARENA_WIDTH,
+  COLLABORATE_VIEWPORT_HEIGHT,
+  COLLABORATE_VIEWPORT_WIDTH,
+} from "@repo/constants";
 import type { MapDefinition } from "./types";
 
 const STANDARD_SPAWN_POINTS = [
@@ -28,16 +35,28 @@ const HAKUREI_SHRINE: MapDefinition = {
 const COLLABORATE_TEST_ARENA: MapDefinition = {
   id: "collaborate_test_arena",
   name: "合作测试竞技场",
-  width: 3200,
-  height: 1920,
+  width: COLLABORATE_ARENA_WIDTH,
+  height: COLLABORATE_ARENA_HEIGHT,
+  viewportWidth: COLLABORATE_VIEWPORT_WIDTH,
+  viewportHeight: COLLABORATE_VIEWPORT_HEIGHT,
   background: {
     textureKey: "map-bg-collaborate-test-arena",
     assetPath: "assets/bg/arena_standard.jpg",
   },
   bgmKey: "bgm_hakurei-shrine",
   spawnPoints: [
-    { id: "left", x: -320, y: 0, facingAngleTicks: 0 },
-    { id: "right", x: 320, y: 0, facingAngleTicks: 30000 },
+    {
+      id: "left",
+      x: COLLABORATE_ARENA_WIDTH / 2 - 160,
+      y: COLLABORATE_ARENA_HEIGHT / 2,
+      facingAngleTicks: 0,
+    },
+    {
+      id: "right",
+      x: COLLABORATE_ARENA_WIDTH / 2 + 160,
+      y: COLLABORATE_ARENA_HEIGHT / 2,
+      facingAngleTicks: 30000,
+    },
   ],
   mobSpawnerId: "default-a",
 };
@@ -95,7 +114,9 @@ export const DEFAULT_MAPS: readonly MapDefinition[] = [
   COLLABORATE_TEST_ARENA,
 ];
 
-export function getCombatMapDefinition(mapId: string): MapDefinition | undefined {
+export function getCombatMapDefinition(
+  mapId: string,
+): MapDefinition | undefined {
   return DEFAULT_MAPS.find((map) => map.id === mapId);
 }
 
@@ -104,7 +125,9 @@ export function getAvailableCombatMaps(): readonly MapDefinition[] {
 }
 
 export function getAvailableVersusMaps(): readonly MapDefinition[] {
-  return DEFAULT_MAPS.filter((map) => map.id !== "shoot_range" && map.id !== "collaborate_test_arena");
+  return DEFAULT_MAPS.filter(
+    (map) => map.id !== "shoot_range" && map.id !== "collaborate_test_arena",
+  );
 }
 
 export function getAvailableCollaborateMaps(): readonly MapDefinition[] {

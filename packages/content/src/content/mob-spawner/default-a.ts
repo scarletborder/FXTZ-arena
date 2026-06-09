@@ -1,8 +1,19 @@
 import { secondsToTicks } from "../seconds-to-ticks";
-import { ExampleFairy, type ExampleFairyMovementVariant } from "./mobs/example-fairy";
-import { HorizontalFairy, type HorizontalFairyMovementVariant } from "./mobs/horizontal-fairy";
+import {
+  ExampleFairy,
+  type ExampleFairyMovementVariant,
+} from "./mobs/example-fairy";
+import {
+  HorizontalFairy,
+  type HorizontalFairyMovementVariant,
+} from "./mobs/horizontal-fairy";
 import { EliteFairy, type EliteFairySide } from "./mobs/elite-fairy";
-import { NeutralMobSpawner, type BattleNeutralMob, type NeutralMobSpawnerContext, type NeutralMobSpawnerState } from "./base";
+import {
+  NeutralMobSpawner,
+  type BattleNeutralMob,
+  type NeutralMobSpawnerContext,
+  type NeutralMobSpawnerState,
+} from "./base";
 import type { PointRewardSize } from "@repo/constants";
 import type { NeutralMobState } from "@repo/types";
 
@@ -45,7 +56,9 @@ export class DefaultMobSpawnerA extends NeutralMobSpawner<DefaultMobSpawnerAStat
     // Default A is frame-derived and has no hidden counters.
   }
 
-  createMobFromSnapshot(snapshot: NeutralMobState): BattleNeutralMob | undefined {
+  createMobFromSnapshot(
+    snapshot: NeutralMobState,
+  ): BattleNeutralMob | undefined {
     switch (snapshot.kind) {
       case "example_fairy":
         return ExampleFairy.fromSnapshot(snapshot);
@@ -74,52 +87,72 @@ export class DefaultMobSpawnerA extends NeutralMobSpawner<DefaultMobSpawnerAStat
     if (cycleIndex <= 3) {
       // Regular waves (example-fairy and horizontal-fairy): 8 mobs at 0.2s interval
       const mobIndex = withinWave / MOB_INTERVAL_TICKS;
-      if (!Number.isInteger(mobIndex) || mobIndex < 0 || mobIndex >= MOB_COUNT) {
+      if (
+        !Number.isInteger(mobIndex) ||
+        mobIndex < 0 ||
+        mobIndex >= MOB_COUNT
+      ) {
         return;
       }
 
-      const pointRewardSize: PointRewardSize = mobIndex === MOB_COUNT - 1 ? "medium" : "small";
+      const pointRewardSize: PointRewardSize =
+        mobIndex === MOB_COUNT - 1 ? "medium" : "small";
 
       if (cycleIndex === 0 || cycleIndex === 1) {
-        const variant: ExampleFairyMovementVariant = cycleIndex === 0 ? "left" : "right";
-        ctx.spawnMob(new ExampleFairy({
-          waveId: waveIndex + 1,
-          id: ctx.allocateMobId({
+        const variant: ExampleFairyMovementVariant =
+          cycleIndex === 0 ? "left" : "right";
+        ctx.spawnMob(
+          new ExampleFairy({
+            arenaBounds: ctx.arenaBounds,
             waveId: waveIndex + 1,
-            waveMemberIndex: mobIndex,
+            id: ctx.allocateMobId({
+              waveId: waveIndex + 1,
+              waveMemberIndex: mobIndex,
+            }),
+            movementVariant: variant,
+            pointRewardSize,
           }),
-          movementVariant: variant,
-          pointRewardSize,
-        }));
+        );
       } else {
-        const variant: HorizontalFairyMovementVariant = cycleIndex === 2 ? "left_to_right" : "right_to_left";
-        ctx.spawnMob(new HorizontalFairy({
-          waveId: waveIndex + 1,
-          id: ctx.allocateMobId({
+        const variant: HorizontalFairyMovementVariant =
+          cycleIndex === 2 ? "left_to_right" : "right_to_left";
+        ctx.spawnMob(
+          new HorizontalFairy({
+            arenaBounds: ctx.arenaBounds,
             waveId: waveIndex + 1,
-            waveMemberIndex: mobIndex,
+            id: ctx.allocateMobId({
+              waveId: waveIndex + 1,
+              waveMemberIndex: mobIndex,
+            }),
+            movementVariant: variant,
+            pointRewardSize,
           }),
-          movementVariant: variant,
-          pointRewardSize,
-        }));
+        );
       }
     } else {
       // Elite-fairy wave (cycleIndex === 4): 2 mobs
       const mobIndex = withinWave / MOB_INTERVAL_TICKS;
-      if (!Number.isInteger(mobIndex) || mobIndex < 0 || mobIndex >= ELITE_COUNT) {
+      if (
+        !Number.isInteger(mobIndex) ||
+        mobIndex < 0 ||
+        mobIndex >= ELITE_COUNT
+      ) {
         return;
       }
 
       const side: EliteFairySide = mobIndex === 0 ? "left" : "right";
-      ctx.spawnMob(new EliteFairy({
-        waveId: waveIndex + 1,
-        id: ctx.allocateMobId({
+      ctx.spawnMob(
+        new EliteFairy({
+          arenaBounds: ctx.arenaBounds,
           waveId: waveIndex + 1,
-          waveMemberIndex: mobIndex,
+          id: ctx.allocateMobId({
+            waveId: waveIndex + 1,
+            waveMemberIndex: mobIndex,
+          }),
+          side,
+          pointRewardSize: "large",
         }),
-        side,
-        pointRewardSize: "large",
-      }));
+      );
     }
   }
 
@@ -137,10 +170,16 @@ export class DefaultMobSpawnerA extends NeutralMobSpawner<DefaultMobSpawnerAStat
       }
       const waveId = waveIndex + 1;
       for (const mob of ctx.neutralMobs) {
-        if (mob.state.kind !== "example_fairy" || mob.state.waveId !== waveId || !mob.state.active) {
+        if (
+          mob.state.kind !== "example_fairy" ||
+          mob.state.waveId !== waveId ||
+          !mob.state.active
+        ) {
           continue;
         }
-        (mob as ExampleFairy).queueVolleyAt(mob.state.ageTicks + secondsToTicks(0.5));
+        (mob as ExampleFairy).queueVolleyAt(
+          mob.state.ageTicks + secondsToTicks(0.5),
+        );
       }
     }
   }

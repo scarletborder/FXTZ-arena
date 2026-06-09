@@ -1,5 +1,5 @@
 import type { BattlePlayerId } from "../core";
-import type { PointRewardSize } from "@repo/constants";
+import type { ArenaBounds, PointRewardSize } from "@repo/constants";
 
 export type NeutralMobId = number;
 export type NeutralMobBehavior = "move" | "fire" | "switch_form" | "die";
@@ -37,6 +37,7 @@ export interface NeutralMobTargetState {
 
 export interface NeutralMobActionContext<TBulletParams, TLaserParams> {
   readonly frame: number;
+  readonly arenaBounds: ArenaBounds;
   readonly player: NeutralMobTargetState;
   readonly target: NeutralMobTargetState;
   spawnBullet(params: TBulletParams): void;
@@ -54,9 +55,15 @@ export abstract class NeutralMob<
     return this.state.id;
   }
 
-  abstract move(ctx: NeutralMobActionContext<TBulletParams, TLaserParams>): void;
-  abstract fire(ctx: NeutralMobActionContext<TBulletParams, TLaserParams>): void;
-  abstract switchForm(ctx: NeutralMobActionContext<TBulletParams, TLaserParams>): void;
+  abstract move(
+    ctx: NeutralMobActionContext<TBulletParams, TLaserParams>,
+  ): void;
+  abstract fire(
+    ctx: NeutralMobActionContext<TBulletParams, TLaserParams>,
+  ): void;
+  abstract switchForm(
+    ctx: NeutralMobActionContext<TBulletParams, TLaserParams>,
+  ): void;
   abstract die(ctx: NeutralMobActionContext<TBulletParams, TLaserParams>): void;
   abstract onProjectileHit(damage: number): "accepted" | "ignored";
   abstract onDeath(source: NeutralMobDeathSource): void;

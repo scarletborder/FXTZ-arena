@@ -1,7 +1,12 @@
 import { fp } from "@shaisrc/fixed-point";
 
 import { POINT_REWARD_VALUES, type PointRewardSize } from "@repo/constants";
-import { ARENA_HEIGHT, ARENA_WIDTH, speedRankToPixelsPerTick, type SpeedRank } from "@repo/types";
+import {
+  DEFAULT_ARENA_BOUNDS,
+  speedRankToPixelsPerTick,
+  type ArenaBounds,
+  type SpeedRank,
+} from "@repo/types";
 import type { PointPrefabId, PointState } from "@repo/content";
 
 export const POINT_COLLECT_TICKS = 10;
@@ -14,9 +19,24 @@ interface PointPrefab {
 }
 
 const POINT_PREFABS: readonly PointPrefab[] = [
-  { prefabId: "point_small", rewardSize: "small", value: POINT_REWARD_VALUES.small, size: 15 },
-  { prefabId: "point_medium", rewardSize: "medium", value: POINT_REWARD_VALUES.medium, size: 25 },
-  { prefabId: "point_large", rewardSize: "large", value: POINT_REWARD_VALUES.large, size: 35 },
+  {
+    prefabId: "point_small",
+    rewardSize: "small",
+    value: POINT_REWARD_VALUES.small,
+    size: 15,
+  },
+  {
+    prefabId: "point_medium",
+    rewardSize: "medium",
+    value: POINT_REWARD_VALUES.medium,
+    size: 25,
+  },
+  {
+    prefabId: "point_large",
+    rewardSize: "large",
+    value: POINT_REWARD_VALUES.large,
+    size: 35,
+  },
 ];
 
 const SQRT_HALF = 0.7071067811865476;
@@ -62,7 +82,8 @@ export function pointVelocityFromFrame(
   speedRank: SpeedRank = "low",
   seed = 0,
 ): { readonly vx: number; readonly vy: number } {
-  const direction = FRAME_DIRECTIONS[positiveModulo(frame + seed, FRAME_DIRECTIONS.length)]!;
+  const direction =
+    FRAME_DIRECTIONS[positiveModulo(frame + seed, FRAME_DIRECTIONS.length)]!;
   const fpSpeed = fp.fromFloat(speedRankToPixelsPerTick(speedRank));
   return {
     vx: fp.toFloat(fp.mul(fp.fromFloat(direction[0]), fpSpeed)),
@@ -70,18 +91,25 @@ export function pointVelocityFromFrame(
   };
 }
 
-export function pointIsOutsideArena(point: PointState): boolean {
+export function pointIsOutsideArena(
+  point: PointState,
+  arenaBounds: ArenaBounds = DEFAULT_ARENA_BOUNDS,
+): boolean {
   const halfSize = fp.div(fp.fromFloat(point.size), fp.fromInt(2));
   const fpX = fp.fromFloat(point.x);
   const fpY = fp.fromFloat(point.y);
-  return fp.lt(fpX, fp.negate(halfSize)) ||
-    fp.gt(fpX, fp.add(fp.fromFloat(ARENA_WIDTH), halfSize)) ||
+  return (
+    fp.lt(fpX, fp.negate(halfSize)) ||
+    fp.gt(fpX, fp.add(fp.fromFloat(arenaBounds.width), halfSize)) ||
     fp.lt(fpY, fp.negate(halfSize)) ||
-    fp.gt(fpY, fp.add(fp.fromFloat(ARENA_HEIGHT), halfSize));
+    fp.gt(fpY, fp.add(fp.fromFloat(arenaBounds.height), halfSize))
+  );
 }
 
 function prefabForRewardSize(rewardSize: PointRewardSize): PointPrefab {
-  const prefab = POINT_PREFABS.find((candidate) => candidate.rewardSize === rewardSize);
+  const prefab = POINT_PREFABS.find(
+    (candidate) => candidate.rewardSize === rewardSize,
+  );
   if (!prefab) {
     throw new Error(`Unsupported point reward size: ${rewardSize}`);
   }

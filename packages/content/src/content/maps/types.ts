@@ -5,6 +5,8 @@ export interface MapDefinition {
   readonly name: string;
   readonly width: number;
   readonly height: number;
+  readonly viewportWidth?: number;
+  readonly viewportHeight?: number;
   readonly background: MapBackgroundDefinition;
   readonly bgmKey?: string;
   readonly spawnPoints: readonly SpawnPointDefinition[];

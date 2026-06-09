@@ -7,11 +7,14 @@ import {
   GRAZE_CIRCLE_DIAMETER,
   HIT_CIRCLE_DIAMETER,
   POINT_REWARD_VALUES,
+  COLLABORATE_ARENA_BOUNDS,
+  PLAYER_CORE_RADIUS,
 } from "@repo/constants";
 import { POINT_COUNT_MAX } from "../constants";
 import { BattleModel } from ".";
 import { BattlePhysics } from "./physics-adapter";
 import { createPointState } from "./points";
+import { createRaidLogicRuntime } from "../runtime";
 import { stepBulletProjectile } from "./projectile/bullet";
 import { clearProjectilesAround } from "./projectile";
 import {
@@ -173,7 +176,9 @@ describe("BattleModel rollback snapshots", () => {
 
     model.step(input());
     model.step(input());
-    const originalMobIds = model.neutralMobManager.states().map((mob) => mob.id);
+    const originalMobIds = model.neutralMobManager
+      .states()
+      .map((mob) => mob.id);
     const originalHash = model.hashHex();
 
     model.deserialize(snapshot);
@@ -193,10 +198,16 @@ describe("BattleModel rollback snapshots", () => {
     const model = await createBattleModel();
 
     expect(
-      model.neutralMobManager.allocateNeutralMobId({ waveId: 2, waveMemberIndex: 4 }),
+      model.neutralMobManager.allocateNeutralMobId({
+        waveId: 2,
+        waveMemberIndex: 4,
+      }),
     ).toBe(2005);
     expect(
-      model.neutralMobManager.allocateNeutralMobId({ waveId: 2, waveMemberIndex: 4 }),
+      model.neutralMobManager.allocateNeutralMobId({
+        waveId: 2,
+        waveMemberIndex: 4,
+      }),
     ).toBe(2005);
   });
 });
@@ -372,7 +383,11 @@ describe("BattleModel collaborate projectile rules", () => {
     const model = await initializeBattleModel(
       new BattleModel(undefined, { battleMode: "collaborate" }),
     );
-    const mob = new TestNeutralMob(model.neutralMobManager.allocateNeutralMobId(), 500, 120);
+    const mob = new TestNeutralMob(
+      model.neutralMobManager.allocateNeutralMobId(),
+      500,
+      120,
+    );
     model.neutralMobManager.addNeutralMob(mob);
     model.projectiles.push(
       testProjectile({
@@ -458,9 +473,9 @@ describe("BattleModel collaborate projectile rules", () => {
 
     model.stepVersus(input(), input());
 
-    expect(model.projectiles.map((projectile) => projectile.id).sort()).toEqual([
-      1, 2,
-    ]);
+    expect(model.projectiles.map((projectile) => projectile.id).sort()).toEqual(
+      [1, 2],
+    );
   });
 });
 
@@ -889,7 +904,11 @@ describe("BattleModel character bombs", () => {
 
   it("includes neutral mob state and id allocation in rollback snapshots and hashes", async () => {
     const model = await createBattleModel();
-    const mob = new TestNeutralMob(model.neutralMobManager.allocateNeutralMobId(), 500, 120);
+    const mob = new TestNeutralMob(
+      model.neutralMobManager.allocateNeutralMobId(),
+      500,
+      120,
+    );
     model.neutralMobManager.addNeutralMob(mob);
 
     model.step(input());
@@ -909,7 +928,11 @@ describe("BattleModel character bombs", () => {
 
   it("attributes neutral mob death using deterministic projectile consumption order", async () => {
     const model = await createBattleModel();
-    const mob = new TestNeutralMob(model.neutralMobManager.allocateNeutralMobId(), 500, 120);
+    const mob = new TestNeutralMob(
+      model.neutralMobManager.allocateNeutralMobId(),
+      500,
+      120,
+    );
     mob.state.CurrentHealth = 2;
     model.neutralMobManager.addNeutralMob(mob);
     model.projectiles.push(
@@ -944,7 +967,11 @@ describe("BattleModel character bombs", () => {
 
   it("drops carried points when a neutral mob is killed", async () => {
     const model = await createBattleModel();
-    const mob = new TestNeutralMob(model.neutralMobManager.allocateNeutralMobId(), 500, 120);
+    const mob = new TestNeutralMob(
+      model.neutralMobManager.allocateNeutralMobId(),
+      500,
+      120,
+    );
     mob.state.CurrentHealth = 1;
     mob.state.pointRewardSize = "medium";
     model.neutralMobManager.addNeutralMob(mob);
@@ -969,7 +996,11 @@ describe("BattleModel character bombs", () => {
 
   it("attributes neutral mob active self-removal to a null death source", async () => {
     const model = await createBattleModel();
-    const mob = new TestNeutralMob(model.neutralMobManager.allocateNeutralMobId(), 500, 120);
+    const mob = new TestNeutralMob(
+      model.neutralMobManager.allocateNeutralMobId(),
+      500,
+      120,
+    );
     mob.state.ageTicks = 999;
     mob.state.pointRewardSize = "large";
     model.neutralMobManager.addNeutralMob(mob);
@@ -1200,6 +1231,74 @@ describe("BattleModel point power shooting tiers", () => {
     expect(model.projectiles.some((projectile) => projectile.id === 2)).toBe(
       true,
     );
+  });
+});
+
+describe("BattleModel arena bounds", () => {
+  it("uses collaborate map spawn points when the runtime is created for the collaborate arena", async () => {
+    const runtime = createRaidLogicRuntime({
+      mode: "online",
+      mapId: "collaborate_test_arena",
+      battleMode: "collaborate",
+    });
+    await runtime.initialize();
+
+    expect(runtime.state.player.x).toBe(1040);
+    expect(runtime.state.player.y).toBe(720);
+    expect(runtime.state.target.x).toBe(1360);
+    expect(runtime.state.target.y).toBe(720);
+  });
+
+  it("clamps fighter movement to injected collaborate arena bounds", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, {
+        battleMode: "collaborate",
+        arenaBounds: COLLABORATE_ARENA_BOUNDS,
+        playerSpawn: { x: 2390, y: 1430 },
+        targetSpawn: { x: 10, y: 10 },
+      }),
+    );
+
+    for (let index = 0; index < 120; index += 1) {
+      model.stepVersus(input({ moveX: 1, moveY: 1 }), input());
+    }
+
+    expect(model.player.x).toBeLessThanOrEqual(
+      COLLABORATE_ARENA_BOUNDS.width - PLAYER_CORE_RADIUS,
+    );
+    expect(model.player.y).toBeLessThanOrEqual(
+      COLLABORATE_ARENA_BOUNDS.height - PLAYER_CORE_RADIUS,
+    );
+  });
+
+  it("keeps projectiles alive inside collaborate arena bounds", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, {
+        battleMode: "collaborate",
+        arenaBounds: COLLABORATE_ARENA_BOUNDS,
+      }),
+    );
+    const padding = COLLABORATE_ARENA_BOUNDS.width * 0.2;
+    model.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Neutral",
+        x: COLLABORATE_ARENA_BOUNDS.width + padding - 1,
+        y: COLLABORATE_ARENA_BOUNDS.height + padding - 1,
+        pausedUntil: 999,
+      }),
+      testProjectile({
+        id: 2,
+        owner: "Neutral",
+        x: COLLABORATE_ARENA_BOUNDS.width + padding + 1,
+        y: COLLABORATE_ARENA_BOUNDS.height + padding + 1,
+        pausedUntil: 999,
+      }),
+    );
+
+    model.stepVersus(input(), input());
+
+    expect(model.projectiles.map((projectile) => projectile.id)).toEqual([1]);
   });
 });
 

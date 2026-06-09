@@ -336,6 +336,7 @@ export class MessageHandler {
       type: "room_joined",
       roomId: room.id,
       playerId: reconnect.playerId,
+      battleMode: room.battleMode,
     });
 
     const config = this.buildBattleConfig(room);
@@ -426,6 +427,7 @@ export class MessageHandler {
       type: "room_joined",
       roomId: room.id,
       playerId: assignment.playerId,
+      battleMode: room.battleMode,
     });
 
     this.send(connection, {
@@ -516,6 +518,7 @@ export class MessageHandler {
       type: "room_joined",
       roomId: room.id,
       playerId: assignment.playerId,
+      battleMode: room.battleMode,
     });
 
     // Get host info for lobby display
@@ -589,6 +592,7 @@ export class MessageHandler {
       type: "room_joined",
       roomId: room.id,
       spectator: true,
+      battleMode: room.battleMode,
     });
 
     const state = this.createRoomStateFor(room, undefined);
@@ -654,6 +658,7 @@ export class MessageHandler {
       type: "room_joined",
       roomId: match.id,
       playerId: assignment.playerId,
+      battleMode: match.battleMode,
     });
 
     const hostSession = this.sessionStore.get(match.connectionIds[0]!);

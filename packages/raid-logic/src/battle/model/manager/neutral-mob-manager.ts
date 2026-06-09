@@ -3,6 +3,7 @@ import type {
   NeutralMobActionContext,
   NeutralMobState,
 } from "@repo/types";
+import { DEFAULT_ARENA_BOUNDS, type ArenaBounds } from "@repo/types";
 import type { FighterKey, FighterState } from "@repo/content";
 import type { NeutralMobSpawner, NeutralMobSpawnerState } from "@repo/content";
 
@@ -22,7 +23,10 @@ export class NeutralMobManager {
   readonly mobs: BattleNeutralMob[] = [];
   private nextNeutralMobId = 1;
 
-  constructor(private readonly mobSpawner: NeutralMobSpawner | undefined) {}
+  constructor(
+    private readonly mobSpawner: NeutralMobSpawner | undefined,
+    private readonly arenaBounds: ArenaBounds = DEFAULT_ARENA_BOUNDS,
+  ) {}
 
   reset(): void {
     this.mobSpawner?.reset();
@@ -80,19 +84,24 @@ export class NeutralMobManager {
 
   stepSpawner(params: {
     readonly frame: number;
+    readonly arenaBounds?: ArenaBounds;
     readonly player: FighterState;
     readonly target: FighterState;
     readonly timeStopped: boolean;
   }): void {
     if (!this.mobSpawner || params.timeStopped) return;
-    this.mobSpawner.step({
+    const context: Parameters<NeutralMobSpawner["step"]>[0] & {
+      readonly arenaBounds: ArenaBounds;
+    } = {
       frame: params.frame,
+      arenaBounds: params.arenaBounds ?? this.arenaBounds,
       player: params.player,
       target: params.target,
       neutralMobs: this.mobs,
       allocateMobId: (idParams) => this.allocateNeutralMobId(idParams),
       spawnMob: (mob) => this.addNeutralMob(mob),
-    });
+    };
+    this.mobSpawner.step(context);
   }
 
   stepMobs(params: {
@@ -181,7 +190,10 @@ export class NeutralMobManager {
     this.sortNeutralMobs();
   }
 
-  restoreNextId(nextNeutralMobId: number, snapshots: readonly NeutralMobState[]): void {
+  restoreNextId(
+    nextNeutralMobId: number,
+    snapshots: readonly NeutralMobState[],
+  ): void {
     this.nextNeutralMobId = Math.max(
       nextNeutralMobId,
       1 + Math.max(0, ...snapshots.map((mob) => mob.id)),

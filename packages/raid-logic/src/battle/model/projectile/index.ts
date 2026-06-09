@@ -21,6 +21,7 @@ import {
   stepBulletProjectile,
 } from "./bullet";
 import { createLaserProjectile, stepLaserProjectile } from "./laser";
+import { BattleSizeManager } from "../size-manager";
 
 export type BulletProjectileParams = Omit<
   Parameters<typeof createBulletProjectile>[0],
@@ -66,6 +67,12 @@ export interface ProjectileHitTarget {
 
 export class ProjectileSystem {
   private nextProjectileId = 1;
+
+  constructor(
+    private readonly sizeManager = new BattleSizeManager({
+      battleMode: "versus",
+    }),
+  ) {}
 
   reset(): void {
     this.nextProjectileId = 1;
@@ -306,7 +313,14 @@ export class ProjectileSystem {
       const expired =
         projectile.expireAt !== undefined &&
         params.frame >= projectile.expireAt;
-      if (!expired && !isProjectileOutOfWorld(projectile)) {
+      if (
+        !expired &&
+        !isProjectileOutOfWorld(
+          projectile,
+          this.sizeManager.arenaBounds,
+          this.sizeManager.projectileWorldPadding(),
+        )
+      ) {
         remaining.push(projectile);
       }
     }

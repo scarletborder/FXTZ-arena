@@ -1,6 +1,7 @@
 import { fp } from "@shaisrc/fixed-point";
 
 import {
+  DEFAULT_ARENA_BOUNDS,
   PLAYER_CORE_RADIUS,
   ENEMY_PROJECTILE_GRAZE_POINT_REWARD,
   NEUTRAL_PROJECTILE_GRAZE_POINT_REWARD,
@@ -9,6 +10,7 @@ import {
   type NeutralMobActionContext,
   type NeutralMobState,
   type ProjectileCollisionContext,
+  type ArenaBounds,
 } from "@repo/types";
 
 import { getAbilityCard, getCharacter } from "../content";
@@ -51,11 +53,9 @@ import type { CharacterActionContext } from "@repo/content";
 import { fpClamp, fpAtan2 } from "@repo/content";
 import { ClearRingManager } from "./manager/clear-ring-manager";
 import { NeutralMobManager } from "./manager/neutral-mob-manager";
-import {
-  clampPointCount,
-  PointManager,
-} from "./manager/point-manager";
+import { clampPointCount, PointManager } from "./manager/point-manager";
 import { ActiveCardCooldownManager } from "./manager/active-card-cooldown-manager";
+import { BattleSizeManager } from "./size-manager";
 
 export class BattleModel {
   readonly projectiles: ProjectileState[] = [];
@@ -98,9 +98,9 @@ export class BattleModel {
   private readonly loadouts: BattleLoadouts;
   private readonly rules: BattleRules;
   readonly neutralMobManager: NeutralMobManager;
-  readonly pointManager = new PointManager();
+  readonly pointManager: PointManager;
   readonly clearRingManager = new ClearRingManager();
-  private readonly projectileSystem = new ProjectileSystem();
+  private readonly projectileSystem: ProjectileSystem;
   private readonly effectSystem = new EffectSystem();
   private readonly ticker = new TickerManager();
   private readonly activeCardCooldowns = new ActiveCardCooldownManager(
@@ -108,6 +108,10 @@ export class BattleModel {
   );
   private readonly playerInitPoint: number;
   private readonly opponentInitPoint: number;
+  private readonly arenaBounds: ArenaBounds;
+  private readonly sizeManager: BattleSizeManager;
+  private readonly playerSpawn: { readonly x: number; readonly y: number };
+  private readonly targetSpawn: { readonly x: number; readonly y: number };
   private readonly playerFighter: BattleFighter;
   private readonly targetFighter: BattleFighter;
   private readonly cpuPlayer: CpuPlayer | undefined;
@@ -125,6 +129,9 @@ export class BattleModel {
       readonly enableCpuTarget?: boolean;
       readonly neutralMobSpawner?: NeutralMobSpawner | null;
       readonly battleMode?: BattleRoomMode;
+      readonly arenaBounds?: ArenaBounds;
+      readonly playerSpawn?: { readonly x: number; readonly y: number };
+      readonly targetSpawn?: { readonly x: number; readonly y: number };
       readonly playerInitPoint?: number;
       readonly opponentInitPoint?: number;
       readonly ai?: {
@@ -134,40 +141,65 @@ export class BattleModel {
     } = {},
   ) {
     this.loadouts = loadouts;
-    this.rules = createBattleRules(params.battleMode ?? "versus");
+    const battleMode = params.battleMode ?? "versus";
+    this.rules = createBattleRules(battleMode);
+    this.sizeManager = new BattleSizeManager({
+      battleMode,
+      arenaBounds: params.arenaBounds ?? DEFAULT_ARENA_BOUNDS,
+    });
+    this.arenaBounds = this.sizeManager.arenaBounds;
+    this.playerSpawn = params.playerSpawn ?? PLAYER_SPAWN;
+    this.targetSpawn = params.targetSpawn ?? TARGET_SPAWN;
+    this.currentAimByFighter.Player1 = {
+      x: this.targetSpawn.x,
+      y: this.targetSpawn.y,
+    };
+    this.currentAimByFighter.Player2 = {
+      x: this.playerSpawn.x,
+      y: this.playerSpawn.y,
+    };
+    this.pointManager = new PointManager(this.arenaBounds);
+    this.projectileSystem = new ProjectileSystem(this.sizeManager);
     this.playerInitPoint = clampPointCount(params.playerInitPoint ?? 0);
     this.opponentInitPoint = clampPointCount(params.opponentInitPoint ?? 0);
     this.playerFighter = new BattleFighter(
       "Player1",
       getCharacter(loadouts.player.primaryCharacterId),
       getCharacter(loadouts.player.alternateCharacterId),
-      PLAYER_SPAWN.x,
-      PLAYER_SPAWN.y,
+      this.playerSpawn.x,
+      this.playerSpawn.y,
       loadouts.player.activeCardId
         ? getAbilityCard(loadouts.player.activeCardId)
         : undefined,
       loadoutCards(loadouts.player),
       loadouts.player.storyModeOverride,
+      this.arenaBounds,
     );
     this.targetFighter = new BattleFighter(
       "Player2",
       getCharacter(loadouts.target.primaryCharacterId),
       getCharacter(loadouts.target.alternateCharacterId),
-      TARGET_SPAWN.x,
-      TARGET_SPAWN.y,
+      this.targetSpawn.x,
+      this.targetSpawn.y,
       loadouts.target.activeCardId
         ? getAbilityCard(loadouts.target.activeCardId)
         : undefined,
       loadoutCards(loadouts.target),
       loadouts.target.storyModeOverride,
+      this.arenaBounds,
     );
     this.applyInitialPoints();
-    this.cpuPlayer = params.enableCpuTarget ? new CpuPlayer(params.ai) : undefined;
+    this.cpuPlayer = params.enableCpuTarget
+      ? new CpuPlayer(params.ai)
+      : undefined;
     const mobSpawner =
       params.neutralMobSpawner === undefined
         ? (resolveMobSpawner("default-a") ?? undefined)
         : (params.neutralMobSpawner ?? undefined);
-    this.neutralMobManager = new NeutralMobManager(mobSpawner);
+    this.neutralMobManager = new NeutralMobManager(
+      mobSpawner,
+      this.arenaBounds,
+    );
   }
 
   get player(): FighterState {
@@ -207,8 +239,8 @@ export class BattleModel {
     this.playerFighter.reset(
       getCharacter(this.loadouts.player.primaryCharacterId),
       getCharacter(this.loadouts.player.alternateCharacterId),
-      PLAYER_SPAWN.x,
-      PLAYER_SPAWN.y,
+      this.playerSpawn.x,
+      this.playerSpawn.y,
       this.loadouts.player.activeCardId
         ? getAbilityCard(this.loadouts.player.activeCardId)
         : undefined,
@@ -218,8 +250,8 @@ export class BattleModel {
     this.targetFighter.reset(
       getCharacter(this.loadouts.target.primaryCharacterId),
       getCharacter(this.loadouts.target.alternateCharacterId),
-      TARGET_SPAWN.x,
-      TARGET_SPAWN.y,
+      this.targetSpawn.x,
+      this.targetSpawn.y,
       this.loadouts.target.activeCardId
         ? getAbilityCard(this.loadouts.target.activeCardId)
         : undefined,
@@ -565,15 +597,15 @@ export class BattleModel {
       fighter.x = fp.toFloat(
         fpClamp(
           fp.add(fp.fromFloat(fighter.x), fpSinOffset),
-          fp.fromInt(780),
-          fp.fromInt(1150),
+          fp.fromFloat(this.arenaBounds.width * 0.65),
+          fp.fromFloat(this.arenaBounds.width - PLAYER_CORE_RADIUS),
         ),
       );
       fighter.y = fp.toFloat(
         fpClamp(
           fp.add(fp.fromFloat(fighter.y), fpCosOffset),
-          fp.fromInt(72),
-          fp.fromInt(600),
+          fp.fromFloat(PLAYER_CORE_RADIUS),
+          fp.fromFloat(this.arenaBounds.height - PLAYER_CORE_RADIUS),
         ),
       );
     }
@@ -595,8 +627,18 @@ export class BattleModel {
       );
     }
     this.lastTargetInput = {
-      moveX: Math.sin(this.frame / 36) > 0.01 ? 1 : Math.sin(this.frame / 36) < -0.01 ? -1 : 0,
-      moveY: Math.cos(this.frame / 50) > 0.01 ? 1 : Math.cos(this.frame / 50) < -0.01 ? -1 : 0,
+      moveX:
+        Math.sin(this.frame / 36) > 0.01
+          ? 1
+          : Math.sin(this.frame / 36) < -0.01
+            ? -1
+            : 0,
+      moveY:
+        Math.cos(this.frame / 50) > 0.01
+          ? 1
+          : Math.cos(this.frame / 50) < -0.01
+            ? -1
+            : 0,
       aimX: Math.trunc(this.player.x),
       aimY: Math.trunc(this.player.y),
       shootPressed,
@@ -822,8 +864,9 @@ export class BattleModel {
     LaserProjectileParams
   > {
     const frame = this.frame;
-    return {
+    const context = {
       frame,
+      arenaBounds: this.arenaBounds,
       player: { x: this.player.x, y: this.player.y },
       target: { x: this.target.x, y: this.target.y },
       spawnBullet: (params: BulletProjectileParams) => {
@@ -849,6 +892,7 @@ export class BattleModel {
         });
       },
     };
+    return context;
   }
 
   private stepMobSpawner(): void {
@@ -856,6 +900,7 @@ export class BattleModel {
       frame: this.frame,
       player: this.player,
       target: this.target,
+      arenaBounds: this.arenaBounds,
       timeStopped: this.timeStopped(),
     });
   }
@@ -960,8 +1005,7 @@ export class BattleModel {
             this.rules.canProjectileClearProjectile(
               master.owner,
               projectile.owner,
-            ) &&
-            hitsBeam(master, projectile.x, projectile.y),
+            ) && hitsBeam(master, projectile.x, projectile.y),
         );
       }),
     );
@@ -1049,4 +1093,3 @@ function loadoutCards(loadout: FighterLoadout) {
   }
   return Array.from(ids).map((id) => getAbilityCard(id));
 }
-

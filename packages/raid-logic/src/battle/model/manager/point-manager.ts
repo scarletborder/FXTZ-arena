@@ -2,6 +2,7 @@ import { fp } from "@shaisrc/fixed-point";
 
 import type { FighterState, PointState } from "@repo/content";
 import type { NeutralMobState } from "@repo/types";
+import { DEFAULT_ARENA_BOUNDS, type ArenaBounds } from "@repo/types";
 import { fpHypotFp } from "@repo/content";
 import { POINT_COUNT_MAX } from "../../constants";
 import {
@@ -19,6 +20,10 @@ export interface PointCollector {
 export class PointManager {
   readonly points: PointState[] = [];
   private nextPointId = 1;
+
+  constructor(
+    private readonly arenaBounds: ArenaBounds = DEFAULT_ARENA_BOUNDS,
+  ) {}
 
   reset(): void {
     this.points.length = 0;
@@ -87,7 +92,7 @@ export class PointManager {
       point.y = fp.toFloat(
         fp.add(fp.fromFloat(point.y), fp.fromFloat(point.vy)),
       );
-      if (pointIsOutsideArena(point)) {
+      if (pointIsOutsideArena(point, this.arenaBounds)) {
         point.active = false;
         continue;
       }

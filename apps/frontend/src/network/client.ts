@@ -270,6 +270,7 @@ export class ConnectionManager {
         this.playerNames = [];
         this.allowSpectators = null;
         this.spectatorCount = 0;
+        if (msg.battleMode !== undefined) this.battleMode = msg.battleMode;
         break;
       case "room_state": {
         const previousStatus = this.roomStatus;

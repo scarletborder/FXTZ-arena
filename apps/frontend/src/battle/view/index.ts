@@ -1,11 +1,13 @@
 import Phaser from "phaser";
 
 import {
-  ARENA_HEIGHT,
-  ARENA_WIDTH,
+  DEFAULT_ARENA_BOUNDS,
   PLAYER_CORE_RADIUS,
   YOUMU_BOMB_DASH_DISTANCE,
+  normalizeArenaBounds,
+  type ArenaBounds,
 } from "@repo/constants";
+import { getCombatMapDefinition } from "@repo/content";
 import type {
   BattleInputState,
   BattleOutputState,
@@ -36,9 +38,23 @@ export class BattleView {
   private readonly points: PointView;
   private readonly stage: BattleStage;
   private readonly debug: BattleDebugView;
+  private readonly arenaBounds: ArenaBounds;
 
-  constructor(scene: Phaser.Scene, mode: BattleViewMode = "training", mapId?: MapId) {
+  constructor(
+    scene: Phaser.Scene,
+    mode: BattleViewMode = "training",
+    mapId?: MapId,
+  ) {
     createBattleTextures(scene);
+    const map = getCombatMapDefinition(mapId ?? "hakurei_shrine");
+    this.arenaBounds = map
+      ? normalizeArenaBounds({
+          width: map.width,
+          height: map.height,
+          viewportWidth: map.viewportWidth,
+          viewportHeight: map.viewportHeight,
+        })
+      : DEFAULT_ARENA_BOUNDS;
     this.stage = createBattleStage(scene, mode, mapId);
     this.fighters = new FighterView(scene);
     this.mobs = new MobView(scene);
@@ -58,7 +74,7 @@ export class BattleView {
   ): void {
     const localFighter =
       localFighterKey === "Player1" ? state.player : state.target;
-    this.stage.render(state.player, state.target);
+    this.stage.render(localFighter, state.player, state.target);
     this.fighters.render(
       state.player,
       state.target,
@@ -90,7 +106,12 @@ export class BattleView {
       pointerX: input.aimX,
       pointerY: input.aimY,
       danger: localFighter.ammo <= 0 || localFighter.reloadRemaining > 0,
-      highlight: canYoumuDashToPointer(localFighter, input.aimX, input.aimY),
+      highlight: canYoumuDashToPointer(
+        localFighter,
+        input.aimX,
+        input.aimY,
+        this.arenaBounds,
+      ),
       ammoDisplay: localFighter.ammoDisplay,
       ammoCount: localFighter.ammo,
       ammoMax: localFighter.ammoCapacity,
@@ -122,13 +143,14 @@ function canYoumuDashToPointer(
   fighter: BattleOutputState["player"],
   pointerX: number,
   pointerY: number,
+  arenaBounds: ArenaBounds = DEFAULT_ARENA_BOUNDS,
 ): boolean {
   if (fighter.activeCharacter.id !== "youmu") return false;
   if (
     pointerX < PLAYER_CORE_RADIUS ||
-    pointerX > ARENA_WIDTH - PLAYER_CORE_RADIUS ||
+    pointerX > arenaBounds.width - PLAYER_CORE_RADIUS ||
     pointerY < PLAYER_CORE_RADIUS ||
-    pointerY > ARENA_HEIGHT - PLAYER_CORE_RADIUS
+    pointerY > arenaBounds.height - PLAYER_CORE_RADIUS
   ) {
     return false;
   }

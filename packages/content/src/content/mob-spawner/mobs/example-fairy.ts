@@ -1,10 +1,20 @@
 import { fp } from "@shaisrc/fixed-point";
-import { ARENA_HEIGHT, ARENA_WIDTH } from "@repo/constants";
+import { DEFAULT_ARENA_BOUNDS, type ArenaBounds } from "@repo/constants";
 import type { PointRewardSize } from "@repo/constants";
-import { NeutralMob, type NeutralMobActionContext, type NeutralMobDeathSource, type NeutralMobState } from "@repo/types";
+import {
+  NeutralMob,
+  type NeutralMobActionContext,
+  type NeutralMobDeathSource,
+  type NeutralMobState,
+} from "@repo/types";
 
 import { fpAtan2 } from "../../fp";
-import { hitCircleUnits, secondsToTicks, type BattleBulletSpawnParams, type BattleLaserSpawnParams } from "../../characters/base";
+import {
+  hitCircleUnits,
+  secondsToTicks,
+  type BattleBulletSpawnParams,
+  type BattleLaserSpawnParams,
+} from "../../characters/base";
 
 export type ExampleFairyMovementVariant = "left" | "right";
 
@@ -15,6 +25,13 @@ export interface ExampleFairyState extends NeutralMobState {
   volleyFireAge: number;
 }
 
+type BoundedMobActionContext = NeutralMobActionContext<
+  BattleBulletSpawnParams,
+  BattleLaserSpawnParams
+> & {
+  readonly arenaBounds: ArenaBounds;
+};
+
 const MAX_HEALTH = 50;
 const HIT_RADIUS = 36;
 const ENTER_TICKS = secondsToTicks(3);
@@ -22,14 +39,32 @@ const ARC_TICKS = secondsToTicks(2);
 const EXIT_TICKS = secondsToTicks(3);
 const TOTAL_TICKS = ENTER_TICKS + ARC_TICKS + EXIT_TICKS;
 
-const START = { x: ARENA_WIDTH / 2, y: 0 };
-const ENTER_END = { x: ARENA_WIDTH / 2, y: ARENA_HEIGHT * 0.75 };
-const LEFT_ARC_END = { x: ARENA_WIDTH * 0.1, y: ARENA_HEIGHT * 0.92 };
-const RIGHT_ARC_END = { x: ARENA_WIDTH * 0.9, y: ARENA_HEIGHT * 0.92 };
-const LEFT_EXIT = { x: -hitCircleUnits(12), y: ARENA_HEIGHT * 0.48 };
-const RIGHT_EXIT = { x: ARENA_WIDTH + hitCircleUnits(12), y: ARENA_HEIGHT * 0.48 };
+function pathPoints(bounds: ArenaBounds): {
+  readonly start: Point;
+  readonly enterEnd: Point;
+  readonly leftArcEnd: Point;
+  readonly rightArcEnd: Point;
+  readonly leftExit: Point;
+  readonly rightExit: Point;
+} {
+  return {
+    start: { x: bounds.width / 2, y: 0 },
+    enterEnd: { x: bounds.width / 2, y: bounds.height * 0.75 },
+    leftArcEnd: { x: bounds.width * 0.1, y: bounds.height * 0.92 },
+    rightArcEnd: { x: bounds.width * 0.9, y: bounds.height * 0.92 },
+    leftExit: { x: -hitCircleUnits(12), y: bounds.height * 0.48 },
+    rightExit: {
+      x: bounds.width + hitCircleUnits(12),
+      y: bounds.height * 0.48,
+    },
+  };
+}
 
-export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpawnParams, BattleLaserSpawnParams> {
+export class ExampleFairy extends NeutralMob<
+  ExampleFairyState,
+  BattleBulletSpawnParams,
+  BattleLaserSpawnParams
+> {
   readonly state: ExampleFairyState;
 
   constructor(params: {
@@ -37,17 +72,19 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
     readonly waveId: number;
     readonly movementVariant: ExampleFairyMovementVariant;
     readonly pointRewardSize?: PointRewardSize;
+    readonly arenaBounds?: ArenaBounds;
   }) {
     super();
+    const points = pathPoints(params.arenaBounds ?? DEFAULT_ARENA_BOUNDS);
     this.state = {
       id: params.id,
       key: "Neutral",
       kind: "example_fairy",
       textureKey: "enemy_type_1",
-      x: START.x,
-      y: START.y,
-      previousX: START.x,
-      previousY: START.y,
+      x: points.start.x,
+      y: points.start.y,
+      previousX: points.start.x,
+      previousY: points.start.y,
       hitRadius: HIT_RADIUS,
       waveId: params.waveId,
       movementVariant: params.movementVariant,
@@ -85,23 +122,30 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
     // Rewards will hook in here; ExampleFairy currently has no death reward.
   }
 
-  move(): void {
+  move(ctx: BoundedMobActionContext): void {
+    const points = pathPoints(ctx.arenaBounds);
     if (this.state.ageTicks <= ENTER_TICKS) {
       const t = ratio(this.state.ageTicks, ENTER_TICKS);
-      this.state.x = START.x;
-      this.state.y = lerp(START.y, ENTER_END.y, t);
+      this.state.x = points.start.x;
+      this.state.y = lerp(points.start.y, points.enterEnd.y, t);
       this.state.form = "enter";
       return;
     }
 
     if (this.state.ageTicks <= ENTER_TICKS + ARC_TICKS) {
       const t = ratio(this.state.ageTicks - ENTER_TICKS, ARC_TICKS);
-      const arcEnd = this.state.movementVariant === "left" ? LEFT_ARC_END : RIGHT_ARC_END;
+      const arcEnd =
+        this.state.movementVariant === "left"
+          ? points.leftArcEnd
+          : points.rightArcEnd;
       const control = {
-        x: this.state.movementVariant === "left" ? ARENA_WIDTH * 0.33 : ARENA_WIDTH * 0.67,
-        y: ARENA_HEIGHT,
+        x:
+          this.state.movementVariant === "left"
+            ? ctx.arenaBounds.width * 0.33
+            : ctx.arenaBounds.width * 0.67,
+        y: ctx.arenaBounds.height,
       };
-      const point = quadraticBezier(ENTER_END, control, arcEnd, t);
+      const point = quadraticBezier(points.enterEnd, control, arcEnd, t);
       this.state.x = point.x;
       this.state.y = point.y;
       this.state.form = "arc";
@@ -109,11 +153,20 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
     }
 
     const t = ratio(this.state.ageTicks - ENTER_TICKS - ARC_TICKS, EXIT_TICKS);
-    const arcEnd = this.state.movementVariant === "left" ? LEFT_ARC_END : RIGHT_ARC_END;
-    const exit = this.state.movementVariant === "left" ? LEFT_EXIT : RIGHT_EXIT;
+    const arcEnd =
+      this.state.movementVariant === "left"
+        ? points.leftArcEnd
+        : points.rightArcEnd;
+    const exit =
+      this.state.movementVariant === "left"
+        ? points.leftExit
+        : points.rightExit;
     const control = {
-      x: this.state.movementVariant === "left" ? ARENA_WIDTH * 0.02 : ARENA_WIDTH * 0.98,
-      y: ARENA_HEIGHT * 0.75,
+      x:
+        this.state.movementVariant === "left"
+          ? ctx.arenaBounds.width * 0.02
+          : ctx.arenaBounds.width * 0.98,
+      y: ctx.arenaBounds.height * 0.75,
     };
     const point = quadraticBezier(arcEnd, control, exit, t);
     this.state.x = point.x;
@@ -121,8 +174,16 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
     this.state.form = "exit";
   }
 
-  fire(ctx: NeutralMobActionContext<BattleBulletSpawnParams, BattleLaserSpawnParams>): void {
-    if (this.state.volleyFireAge < 0 || this.state.ageTicks < this.state.volleyFireAge) {
+  fire(
+    ctx: NeutralMobActionContext<
+      BattleBulletSpawnParams,
+      BattleLaserSpawnParams
+    >,
+  ): void {
+    if (
+      this.state.volleyFireAge < 0 ||
+      this.state.ageTicks < this.state.volleyFireAge
+    ) {
       return;
     }
     this.state.volleyFireAge = -1;
@@ -131,7 +192,10 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
   }
 
   switchForm(): void {
-    if (this.state.CurrentHealth <= this.state.MaxHealth / 2 && this.state.form !== "exit") {
+    if (
+      this.state.CurrentHealth <= this.state.MaxHealth / 2 &&
+      this.state.form !== "exit"
+    ) {
       this.state.form = `${this.state.form}_damaged`;
     }
   }
@@ -154,7 +218,10 @@ export class ExampleFairy extends NeutralMob<ExampleFairyState, BattleBulletSpaw
   }
 
   private spawnAimedBullet(
-    ctx: NeutralMobActionContext<BattleBulletSpawnParams, BattleLaserSpawnParams>,
+    ctx: NeutralMobActionContext<
+      BattleBulletSpawnParams,
+      BattleLaserSpawnParams
+    >,
     targetX: number,
     targetY: number,
   ): void {
@@ -185,16 +252,15 @@ function ratio(ticks: number, duration: number): number {
 }
 
 function lerp(start: number, end: number, t: number): number {
-  return fp.toFloat(fp.add(
-    fp.fromFloat(start),
-    fp.mul(fp.fromFloat(end - start), t),
-  ));
+  return fp.toFloat(
+    fp.add(fp.fromFloat(start), fp.mul(fp.fromFloat(end - start), t)),
+  );
 }
 
 function quadraticBezier(
-  start: { readonly x: number; readonly y: number },
-  control: { readonly x: number; readonly y: number },
-  end: { readonly x: number; readonly y: number },
+  start: Point,
+  control: Point,
+  end: Point,
   t: number,
 ): { readonly x: number; readonly y: number } {
   const oneMinusT = fp.sub(fp.fromInt(1), t);
@@ -202,13 +268,28 @@ function quadraticBezier(
   const b = fp.mul(fp.fromInt(2), fp.mul(oneMinusT, t));
   const c = fp.mul(t, t);
   return {
-    x: fp.toFloat(fp.add(
-      fp.add(fp.mul(fp.fromFloat(start.x), a), fp.mul(fp.fromFloat(control.x), b)),
-      fp.mul(fp.fromFloat(end.x), c),
-    )),
-    y: fp.toFloat(fp.add(
-      fp.add(fp.mul(fp.fromFloat(start.y), a), fp.mul(fp.fromFloat(control.y), b)),
-      fp.mul(fp.fromFloat(end.y), c),
-    )),
+    x: fp.toFloat(
+      fp.add(
+        fp.add(
+          fp.mul(fp.fromFloat(start.x), a),
+          fp.mul(fp.fromFloat(control.x), b),
+        ),
+        fp.mul(fp.fromFloat(end.x), c),
+      ),
+    ),
+    y: fp.toFloat(
+      fp.add(
+        fp.add(
+          fp.mul(fp.fromFloat(start.y), a),
+          fp.mul(fp.fromFloat(control.y), b),
+        ),
+        fp.mul(fp.fromFloat(end.y), c),
+      ),
+    ),
   };
+}
+
+interface Point {
+  readonly x: number;
+  readonly y: number;
 }

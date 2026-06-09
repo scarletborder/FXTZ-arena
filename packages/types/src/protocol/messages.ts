@@ -199,6 +199,7 @@ export interface RoomJoinedMessage {
   roomId: string;
   playerId?: PlayerId;
   spectator?: boolean;
+  battleMode?: BattleRoomMode;
 }
 
 export interface RoomStateMessage {

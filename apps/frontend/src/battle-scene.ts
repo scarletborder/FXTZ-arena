@@ -8,7 +8,15 @@ import {
   type RaidLogicRuntime,
 } from "@repo/raid-logic";
 
-import { FIXED_STEP_MS, GAME_HEIGHT, GAME_WIDTH } from "@repo/constants";
+import {
+  DEFAULT_ARENA_BOUNDS,
+  FIXED_STEP_MS,
+  GAME_HEIGHT,
+  GAME_WIDTH,
+  normalizeArenaBounds,
+  type ArenaBounds,
+} from "@repo/constants";
+import { getCombatMapDefinition } from "@repo/content";
 import {
   createBattleLayout,
   sameBattleLayout,
@@ -26,7 +34,10 @@ import {
   type BattleKeybinds,
   type BattleKeyMap,
 } from "./battle/keybind";
-import { BattleRollbackManager, type BattleHashBundle } from "./battle/rollback-manager";
+import {
+  BattleRollbackManager,
+  type BattleHashBundle,
+} from "./battle/rollback-manager";
 import type { BattleSceneData, BattleLoadouts } from "./battle/loadout";
 import {
   BattleMobileControls,
@@ -38,12 +49,20 @@ import { Depth } from "./utils/depth";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
 import BgmCmd from "./commands/BgmCmd";
 import { connectionManager } from "./menu/shared";
-import { installBattleAudioBridge, installBattleBgmBridge, type BattleAudioBridge, type BattleBgmBridge } from "./sound";
+import {
+  installBattleAudioBridge,
+  installBattleBgmBridge,
+  type BattleAudioBridge,
+  type BattleBgmBridge,
+} from "./sound";
 import { CombatSyncManager } from "./network/combat";
 import { P2pConnection } from "./network/p2p";
 import { uiSettings } from "./store/settings";
 import { BattleAudioDirector } from "./battle/audio";
-import { resolveResultWinnerName, resolveWinnerPlayerId } from "./battle/result";
+import {
+  resolveResultWinnerName,
+  resolveWinnerPlayerId,
+} from "./battle/result";
 import { advanceStoryAfterBattle } from "./story/state";
 import type { StoryProgressData, StoryResultData } from "./story/types";
 import type { ReplayFile } from "./replay/types";
@@ -67,7 +86,10 @@ export class BattleScene extends Phaser.Scene {
   private debugPhysicsEnabled = false;
   private resultScheduled = false;
   private sceneData: BattleSceneData = {};
-  private readonly rollbackManager = new BattleRollbackManager({ sceneData: {}, debug: false });
+  private readonly rollbackManager = new BattleRollbackManager({
+    sceneData: {},
+    debug: false,
+  });
   private lastInput!: BattleInputState & {
     readonly pointerX: number;
     readonly pointerY: number;
@@ -79,6 +101,7 @@ export class BattleScene extends Phaser.Scene {
   private mobileControlsEnabled = false;
   private previousScaleAutoCenter: Phaser.Scale.CenterType | undefined;
   private battleLayout: BattleLayout | undefined;
+  private arenaBounds: ArenaBounds = DEFAULT_ARENA_BOUNDS;
   private applyingBattleLayout = false;
   private pendingLayoutRefresh: Phaser.Time.TimerEvent | undefined;
   private rollbackVisualFrames = 0;
@@ -94,8 +117,7 @@ export class BattleScene extends Phaser.Scene {
     super("battle");
   }
 
-  preload(): void {
-  }
+  preload(): void {}
 
   create(data: BattleSceneData = {}): void {
     this.sceneData = data;
@@ -103,9 +125,18 @@ export class BattleScene extends Phaser.Scene {
     this.replayRecorder = undefined;
     this.replayOverride = null;
     this.spectatorOverride = null;
-    this.rollbackManager.reset({ sceneData: data, debug: this.shouldRecordDebugLog() });
+    this.rollbackManager.reset({
+      sceneData: data,
+      debug: this.shouldRecordDebugLog(),
+    });
+    this.arenaBounds = resolveArenaBounds(
+      data.mapId ?? data.battleConfig?.mapId,
+    );
     this.accumulator = 0;
-    this.mobileControlsEnabled = shouldEnableMobileBattleControls(this) && !data.replayData && !data.spectatorData;
+    this.mobileControlsEnabled =
+      shouldEnableMobileBattleControls(this) &&
+      !data.replayData &&
+      !data.spectatorData;
     if (this.mobileControlsEnabled) {
       this.previousScaleAutoCenter = this.scale.autoCenter;
       this.scale.autoCenter = Phaser.Scale.CENTER_HORIZONTALLY;
@@ -116,7 +147,9 @@ export class BattleScene extends Phaser.Scene {
     this.battleAudioBridge = installBattleAudioBridge(this);
     this.battleBgmBridge = installBattleBgmBridge(this);
     BgmCmd.PlayMap(data.mapId ?? data.battleConfig?.mapId);
-    this.input.setDefaultCursor(data.replayData || data.spectatorData ? "auto" : "none");
+    this.input.setDefaultCursor(
+      data.replayData || data.spectatorData ? "auto" : "none",
+    );
     this.input.mouse?.disableContextMenu();
     this.keybinds = createBattleKeybinds(this);
     this.keys = this.keybinds.keys;
@@ -128,7 +161,9 @@ export class BattleScene extends Phaser.Scene {
         bgmBridge: this.battleBgmBridge,
       });
       ConsoleCmd.uninstall(this);
-      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdownBattleScene());
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
+        this.shutdownBattleScene(),
+      );
       return;
     }
 
@@ -138,32 +173,35 @@ export class BattleScene extends Phaser.Scene {
         bgmBridge: this.battleBgmBridge,
       });
       ConsoleCmd.uninstall(this);
-      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdownBattleScene());
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
+        this.shutdownBattleScene(),
+      );
       return;
     }
 
     // --- Normal battle mode ---
     this.pauseMenu = this.isPausableLocalMode()
       ? new BattlePauseMenuController(this, {
-        restartEnabled: data.mode !== "training",
-        canOpen: () => !this.resultScheduled,
-        onPauseOpened: () => {
-          this.accumulator = 0;
-          this.battleBgmBridge?.pause();
-        },
-        onResumed: () => this.battleBgmBridge?.resume(),
-        onRestart: () => this.restartLocalBattle(),
-        onMainMenu: () => this.returnToMainMenu(),
-      })
+          restartEnabled: data.mode !== "training",
+          canOpen: () => !this.resultScheduled,
+          onPauseOpened: () => {
+            this.accumulator = 0;
+            this.battleBgmBridge?.pause();
+          },
+          onResumed: () => this.battleBgmBridge?.resume(),
+          onRestart: () => this.restartLocalBattle(),
+          onMainMenu: () => this.returnToMainMenu(),
+        })
       : undefined;
     this.runtime =
       data.runtime ??
       createRaidLogicRuntime({
-        mode: data.mode === "ai"
-          ? "ai"
-          : data.mode === "online" || data.mode === "local"
-            ? "online"
-            : "training",
+        mode:
+          data.mode === "ai"
+            ? "ai"
+            : data.mode === "online" || data.mode === "local"
+              ? "online"
+              : "training",
         loadouts: data.loadouts,
         mapId: data.mapId ?? data.battleConfig?.mapId,
         battleMode: data.battleMode ?? data.battleConfig?.battleMode,
@@ -179,11 +217,25 @@ export class BattleScene extends Phaser.Scene {
       });
     }
     if (data.mode === "online" || data.mode === "local") {
-      this.view = new BattleView(this, "online", data.mapId ?? data.battleConfig?.mapId);
+      this.view = new BattleView(
+        this,
+        "online",
+        data.mapId ?? data.battleConfig?.mapId,
+      );
     } else {
-      this.view = new BattleView(this, data.mode ?? "training", data.mapId ?? data.battleConfig?.mapId);
+      this.view = new BattleView(
+        this,
+        data.mode ?? "training",
+        data.mapId ?? data.battleConfig?.mapId,
+      );
     }
-    this.lastInput = createBattleInput(this, this.keys, this.mobileControls);
+    this.lastInput = createBattleInput(
+      this,
+      this.keys,
+      this.mobileControls,
+      undefined,
+      this.arenaBounds,
+    );
     this.autoReloadObservedShotsFired = this.localFighterState().shotsFired;
     this.recordDebugFrame();
     this.setupNetworkBattle(data);
@@ -214,7 +266,9 @@ export class BattleScene extends Phaser.Scene {
         playerInitPoint: data.playerInitPoint,
         opponentInitPoint: data.opponentInitPoint,
         stageIndex: this.sceneData.story.stageIndex,
-        stageTitle: this.sceneData.story.story.stages[this.sceneData.story.stageIndex]?.title,
+        stageTitle:
+          this.sceneData.story.story.stages[this.sceneData.story.stageIndex]
+            ?.title,
         loadouts: data.loadouts,
       });
     }
@@ -263,11 +317,16 @@ export class BattleScene extends Phaser.Scene {
             fighter: this.localFighterState(),
             previousShotsFired: this.autoReloadObservedShotsFired,
           },
+          this.arenaBounds,
         ) satisfies BattleInputState & {
           readonly pointerX: number;
           readonly pointerY: number;
         };
-        if ((this.sceneData.mode === "online" || this.sceneData.mode === "local") && this.logicReady) {
+        if (
+          (this.sceneData.mode === "online" ||
+            this.sceneData.mode === "local") &&
+          this.logicReady
+        ) {
           this.combatSync?.step(this.lastInput);
         } else if (
           this.runtime.gameOver &&
@@ -288,7 +347,11 @@ export class BattleScene extends Phaser.Scene {
       }
       this.accumulator -= FIXED_STEP_MS;
     }
-    const pointerWorld = getBattlePointerWorld(this, this.mobileControls);
+    const pointerWorld = getBattlePointerWorld(
+      this,
+      this.mobileControls,
+      this.arenaBounds,
+    );
     this.lastInput = {
       ...this.lastInput,
       aimX: Math.trunc(pointerWorld.x),
@@ -384,7 +447,11 @@ export class BattleScene extends Phaser.Scene {
     if (this.sceneData.mode === "online" || this.sceneData.mode === "local") {
       return false;
     }
-    const pointer = getBattlePointerWorld(this, this.mobileControls);
+    const pointer = getBattlePointerWorld(
+      this,
+      this.mobileControls,
+      this.arenaBounds,
+    );
     this.runtime.debugSpawnPoint({
       rewardSize: pointRewardSizeForDebugSize(size),
       x: pointer.x,
@@ -440,7 +507,10 @@ export class BattleScene extends Phaser.Scene {
     }
 
     for (let frame = 0; frame < framesToCatchUp; frame += 1) {
-      if ((data.mode === "online" || data.mode === "local") && this.combatSync) {
+      if (
+        (data.mode === "online" || data.mode === "local") &&
+        this.combatSync
+      ) {
         this.combatSync.step(this.lastInput);
       } else {
         this.stepRuntimeWithDebugInput(this.lastInput);
@@ -489,14 +559,16 @@ export class BattleScene extends Phaser.Scene {
       data.mode === "local"
         ? createLocalBattleConnectionManager()
         : connectionManager;
-    const p2p = data.p2p ?? new P2pConnection(battleConnectionManager, {
-      localPlayerId: data.localPlayerId ?? "Player1",
-      enabled:
-        data.mode === "local" ? true : data.battleConfig?.p2pEnabled === true,
-      stunServer: uiSettings.stunServer,
-      onStatus: () => undefined,
-      onMessage: () => undefined,
-    });
+    const p2p =
+      data.p2p ??
+      new P2pConnection(battleConnectionManager, {
+        localPlayerId: data.localPlayerId ?? "Player1",
+        enabled:
+          data.mode === "local" ? true : data.battleConfig?.p2pEnabled === true,
+        stunServer: uiSettings.stunServer,
+        onStatus: () => undefined,
+        onMessage: () => undefined,
+      });
 
     p2p.setStatusHandler((status) => {
       if (status === "connecting") {
@@ -535,35 +607,40 @@ export class BattleScene extends Phaser.Scene {
       this.combatSync?.receivePeerMessage(message),
     );
 
-    this.combatSync = new CombatSyncManager(this.runtime, battleConnectionManager, {
-      sceneData: data,
-      p2p,
-      callbacks: {
-        recordStepInputs: (record) => {
-          this.rollbackManager.recordStepInputs(record);
-          this.forwardSpectatorInputs(record);
+    this.combatSync = new CombatSyncManager(
+      this.runtime,
+      battleConnectionManager,
+      {
+        sceneData: data,
+        p2p,
+        callbacks: {
+          recordStepInputs: (record) => {
+            this.rollbackManager.recordStepInputs(record);
+            this.forwardSpectatorInputs(record);
+          },
+          recordConfirmedInputs: (record) =>
+            this.rollbackManager.recordConfirmedInputs(record),
+          recordFrame: (aimConsumed) => this.recordDebugFrame(aimConsumed),
+          getRollbackRecord: (frame) =>
+            this.rollbackManager.getRollbackRecord(frame),
+          pruneRollbackHistoryAfter: (frame) =>
+            this.rollbackManager.pruneAfter(frame),
+          pruneRollbackHistoryBefore: (frame) =>
+            this.rollbackManager.pruneBefore(frame),
+          onRollback: () => {
+            this.rollbackVisualFrames = 2;
+          },
+          setStatusText: (text) =>
+            this.onlineStatusText?.setText(text).setVisible(true),
+          hideStatusText: () => this.onlineStatusText?.setVisible(false),
+          delay: (ms, callback) => {
+            this.time.delayedCall(ms, callback);
+          },
+          finishBattle: (winnerPlayerId, serverConfirmedFrame) =>
+            this.goToOnlineResult(winnerPlayerId, serverConfirmedFrame),
         },
-        recordConfirmedInputs: (record) =>
-          this.rollbackManager.recordConfirmedInputs(record),
-        recordFrame: (aimConsumed) => this.recordDebugFrame(aimConsumed),
-        getRollbackRecord: (frame) => this.rollbackManager.getRollbackRecord(frame),
-        pruneRollbackHistoryAfter: (frame) =>
-          this.rollbackManager.pruneAfter(frame),
-        pruneRollbackHistoryBefore: (frame) =>
-          this.rollbackManager.pruneBefore(frame),
-        onRollback: () => {
-          this.rollbackVisualFrames = 2;
-        },
-        setStatusText: (text) =>
-          this.onlineStatusText?.setText(text).setVisible(true),
-        hideStatusText: () => this.onlineStatusText?.setVisible(false),
-        delay: (ms, callback) => {
-          this.time.delayedCall(ms, callback);
-        },
-        finishBattle: (winnerPlayerId, serverConfirmedFrame) =>
-          this.goToOnlineResult(winnerPlayerId, serverConfirmedFrame),
       },
-    });
+    );
     p2p.start();
   }
 
@@ -574,7 +651,9 @@ export class BattleScene extends Phaser.Scene {
   }): void {
     if ((this.sceneData.localPlayerId ?? "Player1") !== "Player1") return;
     const shouldForwardOnline = this.sceneData.mode === "online";
-    const shouldForwardLocal = this.sceneData.mode === "local" && this.sceneData.spectatorForward !== undefined;
+    const shouldForwardLocal =
+      this.sceneData.mode === "local" &&
+      this.sceneData.spectatorForward !== undefined;
     if (!shouldForwardOnline && !shouldForwardLocal) return;
     const playerMessage = {
       type: "spectator_input_frame",
@@ -595,8 +674,14 @@ export class BattleScene extends Phaser.Scene {
       connectionManager.send(targetMessage);
       return;
     }
-    this.sceneData.spectatorForward?.({ ...playerMessage, type: "input_frame" });
-    this.sceneData.spectatorForward?.({ ...targetMessage, type: "input_frame" });
+    this.sceneData.spectatorForward?.({
+      ...playerMessage,
+      type: "input_frame",
+    });
+    this.sceneData.spectatorForward?.({
+      ...targetMessage,
+      type: "input_frame",
+    });
   }
 
   private shutdownBattleScene(): void {
@@ -624,6 +709,7 @@ export class BattleScene extends Phaser.Scene {
     }
     this.mobileControls?.destroy();
     this.mobileControls = undefined;
+    this.arenaBounds = DEFAULT_ARENA_BOUNDS;
     this.scale.setGameSize(GAME_WIDTH, GAME_HEIGHT);
     this.cameras.main?.setSize(GAME_WIDTH, GAME_HEIGHT);
     this.cameras.main?.setScroll(0, 0);
@@ -672,7 +758,9 @@ export class BattleScene extends Phaser.Scene {
   ): void {
     if (this.resultScheduled) return;
     this.resultScheduled = true;
-    this.replayRecorder?.endBattle(this.resolveReplayWinnerPlayerId(winnerPlayerId));
+    this.replayRecorder?.endBattle(
+      this.resolveReplayWinnerPlayerId(winnerPlayerId),
+    );
     if (this.shouldRecordDebugLog()) {
       this.printDebugHashBundle(winnerPlayerId, serverConfirmedFrame);
     }
@@ -715,7 +803,10 @@ export class BattleScene extends Phaser.Scene {
     const outputs = this.runtime.outputQueue.drainAll();
     for (const output of outputs) {
       this.currentOutput = output;
-      this.rollbackManager.recordRollbackSnapshot(output.frame, output.snapshot);
+      this.rollbackManager.recordRollbackSnapshot(
+        output.frame,
+        output.snapshot,
+      );
       this.audioDirector.sync(output.state, {
         eventTypes: output.events.map((event) => event.type),
       });
@@ -741,7 +832,11 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private shouldRecordDebugLog(): boolean {
-    return Boolean(this.sceneData.debug) || uiSettings.debug || this.debugLiveHashEnabled;
+    return (
+      Boolean(this.sceneData.debug) ||
+      uiSettings.debug ||
+      this.debugLiveHashEnabled
+    );
   }
 
   private syncRollbackManagerState(): void {
@@ -800,11 +895,22 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private createResultData(winnerPlayerId: PlayerId | null) {
-    const localPlayerName = this.sceneData.playerName ?? uiSettings.username ?? "Player";
-    const opponentName = this.sceneData.opponentName ?? (this.sceneData.mode === "online" || this.sceneData.mode === "local" ? "Opponent" : "CPU");
+    const localPlayerName =
+      this.sceneData.playerName ?? uiSettings.username ?? "Player";
+    const opponentName =
+      this.sceneData.opponentName ??
+      (this.sceneData.mode === "online" || this.sceneData.mode === "local"
+        ? "Opponent"
+        : "CPU");
     const localFighterKey = this.combatSync?.localFighterKey() ?? "Player1";
-    const localFighterState = localFighterKey === "Player1" ? this.currentOutput.state.player : this.currentOutput.state.target;
-    const opponentFighterState = localFighterKey === "Player1" ? this.currentOutput.state.target : this.currentOutput.state.player;
+    const localFighterState =
+      localFighterKey === "Player1"
+        ? this.currentOutput.state.player
+        : this.currentOutput.state.target;
+    const opponentFighterState =
+      localFighterKey === "Player1"
+        ? this.currentOutput.state.target
+        : this.currentOutput.state.player;
     const debugHashes = this.getFinalDebugHashes();
     const winnerSlot = this.resolveReplayWinnerPlayerId(winnerPlayerId);
     const replay = this.buildNormalReplayFile(winnerSlot);
@@ -812,7 +918,10 @@ export class BattleScene extends Phaser.Scene {
     return {
       winnerName: resolveResultWinnerName({
         winnerPlayerId,
-        localPlayerId: this.combatSync?.localPlayerId ?? this.sceneData.localPlayerId ?? null,
+        localPlayerId:
+          this.combatSync?.localPlayerId ??
+          this.sceneData.localPlayerId ??
+          null,
         localPlayerName,
         opponentName,
         playerDeaths: this.currentOutput.state.player.deaths,
@@ -829,15 +938,23 @@ export class BattleScene extends Phaser.Scene {
     };
   }
 
-  private buildNormalReplayFile(winnerPlayerId: "Player1" | "Player2"): ReplayFile | undefined {
+  private buildNormalReplayFile(
+    winnerPlayerId: "Player1" | "Player2",
+  ): ReplayFile | undefined {
     if (!this.replayRecorder || !this.sceneData.loadouts) return undefined;
     return this.replayRecorder.finalize({
       title: `${this.sceneData.playerName ?? "Player"} vs ${this.sceneData.opponentName ?? "Opponent"}`,
-      mode: (this.sceneData.mode === "ai" || this.sceneData.mode === "training") ? "ai" : (this.sceneData.mode === "online" || this.sceneData.mode === "local" ? "online" : "ai"),
+      mode:
+        this.sceneData.mode === "ai" || this.sceneData.mode === "training"
+          ? "ai"
+          : this.sceneData.mode === "online" || this.sceneData.mode === "local"
+            ? "online"
+            : "ai",
       player1Id: this.sceneData.playerName ?? "Player",
       player2Id: this.sceneData.opponentName ?? "Opponent",
       winnerPlayerId,
-      finalGlobalInputHash: this.getFinalDebugHashes()?.finalGlobalInputHash ?? null,
+      finalGlobalInputHash:
+        this.getFinalDebugHashes()?.finalGlobalInputHash ?? null,
       loadouts: this.sceneData.loadouts,
     });
   }
@@ -846,7 +963,10 @@ export class BattleScene extends Phaser.Scene {
     if (!this.replayRecorder || !this.sceneData.story) return undefined;
     const storyCtx = this.sceneData.story;
     const stage = storyCtx.story.stages[storyCtx.stageIndex];
-    const fallback: BattleLoadouts = { player: { primaryCharacterId: "reimu", alternateCharacterId: "marisa" }, target: { primaryCharacterId: "sakuya", alternateCharacterId: "cirno" } };
+    const fallback: BattleLoadouts = {
+      player: { primaryCharacterId: "reimu", alternateCharacterId: "marisa" },
+      target: { primaryCharacterId: "sakuya", alternateCharacterId: "cirno" },
+    };
     return this.replayRecorder.finalize({
       title: `${storyCtx.story.title} - ${stage?.title ?? "Stage"}`,
       mode: "story",
@@ -854,15 +974,21 @@ export class BattleScene extends Phaser.Scene {
       player1Id: this.sceneData.playerName ?? uiSettings.username ?? "Player",
       player2Id: this.sceneData.opponentName ?? "CPU",
       winnerPlayerId: this.resolveReplayWinnerPlayerId(null),
-      finalGlobalInputHash: this.getFinalDebugHashes()?.finalGlobalInputHash ?? null,
+      finalGlobalInputHash:
+        this.getFinalDebugHashes()?.finalGlobalInputHash ?? null,
       loadouts: this.sceneData.loadouts ?? fallback,
     });
   }
 
-  private resolveReplayWinnerPlayerId(winnerPlayerId: PlayerId | null): "Player1" | "Player2" {
+  private resolveReplayWinnerPlayerId(
+    winnerPlayerId: PlayerId | null,
+  ): "Player1" | "Player2" {
     return resolveWinnerPlayerId({
       winnerPlayerId,
-      localPlayerId: this.combatSync?.localPlayerId ?? this.sceneData.localPlayerId ?? "Player1",
+      localPlayerId:
+        this.combatSync?.localPlayerId ??
+        this.sceneData.localPlayerId ??
+        "Player1",
       playerDeaths: this.currentOutput.state.player.deaths,
       targetDeaths: this.currentOutput.state.target.deaths,
     });
@@ -895,8 +1021,9 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const label = `FXTZ Debug Hash Bundle (mode=${this.sceneData.mode ?? "offline"
-      }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${bundle.localConfirmedFrame}, serverConfirmedFrame=${bundle.serverConfirmedFrame}, authoritativeFrame=${bundle.authoritativeFrame}, sampledUpTo=${bundle.sampledUpTo}, cachedRows=${bundle.rows.length})`;
+    const label = `FXTZ Debug Hash Bundle (mode=${
+      this.sceneData.mode ?? "offline"
+    }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${bundle.localConfirmedFrame}, serverConfirmedFrame=${bundle.serverConfirmedFrame}, authoritativeFrame=${bundle.authoritativeFrame}, sampledUpTo=${bundle.sampledUpTo}, cachedRows=${bundle.rows.length})`;
 
     console.group(label);
     console.log(
@@ -1018,7 +1145,23 @@ function createLocalBattleConnectionManager(): typeof connectionManager {
   } as unknown as typeof connectionManager;
 }
 
-function createResultPlayerSummary(name: string, fighterState: { shotsFired: number; bombUses: number; hitsTaken: number; }) {
+function resolveArenaBounds(mapId: string | undefined): ArenaBounds {
+  const map = getCombatMapDefinition(mapId ?? "hakurei_shrine");
+  if (!map) {
+    return DEFAULT_ARENA_BOUNDS;
+  }
+  return normalizeArenaBounds({
+    width: map.width,
+    height: map.height,
+    viewportWidth: map.viewportWidth,
+    viewportHeight: map.viewportHeight,
+  });
+}
+
+function createResultPlayerSummary(
+  name: string,
+  fighterState: { shotsFired: number; bombUses: number; hitsTaken: number },
+) {
   return {
     name,
     shots: fighterState.shotsFired,

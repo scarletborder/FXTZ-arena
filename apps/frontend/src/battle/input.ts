@@ -1,7 +1,11 @@
 import Phaser from "phaser";
 
 import type { BattleInputState } from "@repo/raid-logic";
-import { ARENA_HEIGHT_PX, ARENA_WIDTH_PX } from "@repo/constants";
+import {
+  ARENA_HEIGHT_PX,
+  ARENA_WIDTH_PX,
+  type ArenaBounds,
+} from "@repo/constants";
 import type { FighterState } from "./types";
 import type { BattleKeyMap } from "./keybind";
 import type { BattleMobileControls } from "./keybind";
@@ -23,9 +27,14 @@ export function createBattleInput(
   keys: BattleKeyMap,
   mobileControls?: BattleMobileControls,
   autoReloadContext?: BattleInputAutoReloadContext,
+  arenaBounds?: ArenaBounds,
 ): BattleInputBundle {
   const mobileState = mobileControls?.readState();
-  const pointerWorld = getBattlePointerWorld(scene, mobileControls);
+  const pointerWorld = getBattlePointerWorld(
+    scene,
+    mobileControls,
+    arenaBounds,
+  );
   const pointer = scene.input.activePointer;
   const keyboardMoveX = ((keys.d.isDown ? 1 : 0) - (keys.a.isDown ? 1 : 0)) as
     | -1
@@ -37,7 +46,8 @@ export function createBattleInput(
     | 1;
   const moveX = mobileState?.moveX || keyboardMoveX;
   const moveY = mobileState?.moveY || keyboardMoveY;
-  const manualReloadPressed = (mobileState?.reloadPressed ?? false) || keys.r.isDown;
+  const manualReloadPressed =
+    (mobileState?.reloadPressed ?? false) || keys.r.isDown;
   const shootPressed =
     mobileState?.shootPressed ??
     (pointer.leftButtonDown() && !pointer.rightButtonDown());
@@ -99,6 +109,7 @@ function shouldAutoReloadAfterLastShot(
 export function getBattlePointerWorld(
   scene: Phaser.Scene,
   mobileControls?: BattleMobileControls,
+  arenaBounds?: ArenaBounds,
 ): { readonly x: number; readonly y: number } {
   const mobileAim = mobileControls?.aimWorld();
   if (mobileAim) {
@@ -111,7 +122,7 @@ export function getBattlePointerWorld(
   const x = Number.isFinite(cameraPoint.x) ? cameraPoint.x : pointer.x;
   const y = Number.isFinite(cameraPoint.y) ? cameraPoint.y : pointer.y;
   return {
-    x: Phaser.Math.Clamp(x, 0, ARENA_WIDTH_PX),
-    y: Phaser.Math.Clamp(y, 0, ARENA_HEIGHT_PX),
+    x: Phaser.Math.Clamp(x, 0, arenaBounds?.width ?? ARENA_WIDTH_PX),
+    y: Phaser.Math.Clamp(y, 0, arenaBounds?.height ?? ARENA_HEIGHT_PX),
   };
 }
