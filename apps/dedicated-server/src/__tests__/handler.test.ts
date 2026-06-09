@@ -478,6 +478,42 @@ describe("MessageHandler", () => {
       const fullList = viewer.findSentMessage("room_list");
       expect(fullList?.rooms.some((room) => room.hostName === "Bob" && room.hasPassword)).toBe(true);
     });
+
+    it("filters room list by battle mode", () => {
+      const { handler } = createHandler();
+      const versusHost = new MockConnection("versus-host");
+      const collaborateHost = new MockConnection("collaborate-host");
+      const viewer = new MockConnection("mode-viewer");
+
+      performHello(handler, versusHost, "Alice");
+      performHello(handler, collaborateHost, "Bob");
+      performHello(handler, viewer, "Viewer");
+
+      handler.handle(versusHost, {
+        type: "create_room",
+        name: "Versus",
+        battleMode: "versus",
+        mapId: "hakurei_shrine",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+      handler.handle(collaborateHost, {
+        type: "create_room",
+        name: "Co-op",
+        battleMode: "collaborate",
+        mapId: "collaborate_test_arena",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+
+      viewer.clearMessages();
+      handler.handle(viewer, { type: "list_rooms", page: 1, pageSize: 12, battleMode: "collaborate" });
+      const list = viewer.findSentMessage("room_list");
+
+      expect(list?.rooms).toHaveLength(1);
+      expect(list?.rooms[0].battleMode).toBe("collaborate");
+      expect(list?.rooms[0].mapId).toBe("collaborate_test_arena");
+    });
   });
 
   describe("quick match", () => {
@@ -537,6 +573,33 @@ describe("MessageHandler", () => {
 
       const error = conn.findSentMessage("error");
       expect(error?.code).toBe("already_in_room");
+    });
+  });
+
+  describe("collaborate rooms", () => {
+    it("rejects spectator joins", () => {
+      const { handler } = createHandler();
+      const host = new MockConnection("collab-host");
+      const spectator = new MockConnection("collab-spectator");
+
+      performHello(handler, host, "Host");
+      handler.handle(host, {
+        type: "create_room",
+        name: "Co-op",
+        battleMode: "collaborate",
+        mapId: "collaborate_test_arena",
+        lifeCount: 2,
+        costLimit: 10,
+        allowSpectators: true,
+      });
+      const roomId = host.findSentMessage("room_created")!.roomId;
+
+      performHello(handler, spectator, "Viewer");
+      spectator.clearMessages();
+      handler.handle(spectator, { type: "join_room", roomId, spectator: true });
+
+      const error = spectator.findSentMessage("error");
+      expect(error?.code).toBe("invalid_state");
     });
   });
 

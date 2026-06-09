@@ -8,6 +8,7 @@ function createRoom(overrides?: Partial<InternalRoom>): InternalRoom {
     id: "room-001",
     name: "Test Room",
     password: null,
+    battleMode: "versus",
     mapId: "hakurei_shrine",
     lifeCount: 2,
     costLimit: 10,
@@ -66,6 +67,14 @@ describe("findQuickMatchRoom", () => {
     const room = createRoom({ password: "secret" });
     const result = findQuickMatchRoom([room]);
     expect(result).toBeNull();
+  });
+
+  it("only matches rooms in the requested battle mode", () => {
+    const versus = createRoom({ id: "versus", battleMode: "versus" });
+    const collaborate = createRoom({ id: "collaborate", battleMode: "collaborate" });
+
+    expect(findQuickMatchRoom([versus, collaborate], "versus")?.id).toBe("versus");
+    expect(findQuickMatchRoom([versus, collaborate], "collaborate")?.id).toBe("collaborate");
   });
 
   it("excludes rooms not in waiting status", () => {

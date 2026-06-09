@@ -1,8 +1,8 @@
 import Phaser from "phaser";
 import { MAX_ROOM_NAME_LENGTH } from "@repo/constants";
-import { getAvailableCombatMaps } from "@repo/content";
+import { getAvailableCollaborateMaps, getAvailableVersusMaps } from "@repo/content";
 import { t } from "@repo/i18n";
-import type { MapId, PlayerId, RoomSummary, ServerMessage } from "@repo/types";
+import type { BattleRoomMode, MapId, PlayerId, RoomSummary, ServerMessage } from "@repo/types";
 
 import { createCheckbox, createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop } from "./ui";
 import { createMapDropdown } from "./map-dialog";
@@ -24,6 +24,9 @@ export class RoomListScene extends Phaser.Scene {
   private passwordDialog: Phaser.GameObjects.Container | null = null;
   private createRoomDialog: Phaser.GameObjects.Container | null = null;
   private spectatorMode = false;
+  private battleMode: BattleRoomMode = "versus";
+  private spectatorToggleContainer: Phaser.GameObjects.Container | null = null;
+  private modeButtonLayer!: Phaser.GameObjects.Container;
 
   private readonly onKeyDown = (event: KeyboardEvent) => this.activeField?.handleKey(event);
   private readonly onPaste = (event: ClipboardEvent) => this.activeField?.handlePaste(event.clipboardData?.getData("text") ?? "");
@@ -42,14 +45,18 @@ export class RoomListScene extends Phaser.Scene {
       color: "#f6f1e6",
     });
     createFightButton(this, 1138, 62, 160, 44, t("room_list.back"), () => this.scene.start("battle-start"), { accent: 0x5c7185 });
-    this.add.existing(createCheckbox(this, 930, 104, this.spectatorMode, {
+    this.modeButtonLayer = this.add.container(0, 0);
+    this.createModeButtons();
+    this.spectatorToggleContainer = createCheckbox(this, 930, 104, this.spectatorMode, {
       label: t("room_list.spectator_mode"),
       onChange: (checked) => {
         this.spectatorMode = checked;
         this.page = 1;
         this.requestRooms();
       },
-    }).container);
+    }).container;
+    this.add.existing(this.spectatorToggleContainer);
+    this.updateSpectatorToggle();
 
     this.listLayer = this.add.container(0, 0);
     this.pageLabel = this.add.text(640, 680, "", {
@@ -92,7 +99,7 @@ export class RoomListScene extends Phaser.Scene {
   }
 
   private requestRooms(): void {
-    connectionManager.send({ type: "list_rooms", page: this.page, pageSize: PAGE_SIZE, spectatorsOnly: this.spectatorMode });
+    connectionManager.send({ type: "list_rooms", page: this.page, pageSize: PAGE_SIZE, battleMode: this.battleMode, spectatorsOnly: this.battleMode === "versus" ? this.spectatorMode : false });
   }
 
   private gotoPage(nextPage: number): void {
@@ -101,7 +108,35 @@ export class RoomListScene extends Phaser.Scene {
   }
 
   private tryQuickMatch(): void {
-    connectionManager.send({ type: "quick_match", username: uiSettings.username, p2pEnabled: uiSettings.p2pEnabled });
+    connectionManager.send({ type: "quick_match", username: uiSettings.username, p2pEnabled: uiSettings.p2pEnabled, battleMode: this.battleMode });
+  }
+
+  private createModeButtons(): void {
+    this.modeButtonLayer.destroy();
+    this.modeButtonLayer = this.add.container(0, 0);
+    const selectMode = (mode: BattleRoomMode) => {
+      if (this.battleMode === mode) return;
+      this.battleMode = mode;
+      this.spectatorMode = false;
+      this.page = 1;
+      this.createRoomDialog?.destroy();
+      this.createRoomDialog = null;
+      this.createModeButtons();
+      this.updateSpectatorToggle();
+      this.requestRooms();
+    };
+    this.modeButtonLayer.add(createFightButton(this, 616, 96, 150, 38, t("room_list.versus_mode"), () => selectMode("versus"), {
+      enabled: this.battleMode !== "versus",
+      accent: 0xe33d44,
+    }).container);
+    this.modeButtonLayer.add(createFightButton(this, 778, 96, 150, 38, t("room_list.collaborate_mode"), () => selectMode("collaborate"), {
+      enabled: this.battleMode !== "collaborate",
+      accent: 0x34d399,
+    }).container);
+  }
+
+  private updateSpectatorToggle(): void {
+    this.spectatorToggleContainer?.setVisible(this.battleMode === "versus");
   }
 
   private showCreateRoom(): void {
@@ -127,8 +162,9 @@ export class RoomListScene extends Phaser.Scene {
     c.add(this.add.text(cx, py + 28, t("battle_start.create_room"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "22px", fontStyle: "700", color: "#ffcf6e" }).setOrigin(0.5));
     let roomName = Array.from(t("battle_start.default_room_name", { name: uiSettings.username })).slice(0, MAX_ROOM_NAME_LENGTH).join("");
     let roomPassword = "";
-    let allowSpectators = true;
-    let selectedMapId: MapId = "hakurei_shrine";
+    let allowSpectators = this.battleMode === "versus";
+    const maps = this.battleMode === "collaborate" ? getAvailableCollaborateMaps() : getAvailableVersusMaps();
+    let selectedMapId: MapId = maps[0]?.id ?? (this.battleMode === "collaborate" ? "collaborate_test_arena" : "hakurei_shrine");
     c.add(this.add.text(cx - 140, py + 78, t("battle_start.room_name"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
     const nameField = createTextField(this, cx - 140, py + 108, 280, {
       value: roomName,
@@ -139,7 +175,6 @@ export class RoomListScene extends Phaser.Scene {
     });
     c.add(nameField.container);
     this.activeField = nameField;
-    const maps = getAvailableCombatMaps();
     c.add(this.add.text(cx - 140, py + 160, t("battle_start.map"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
     const mapDropdown = createMapDropdown(this, cx - 140, py + 188, 280, maps, selectedMapId, (mapId) => {
       selectedMapId = mapId;
@@ -169,10 +204,12 @@ export class RoomListScene extends Phaser.Scene {
       variant: "rect",
     });
     optionsLayer.add(passwordField.container);
-    optionsLayer.add(createCheckbox(this, optionsX + 20, optionsY + 142, allowSpectators, {
-      label: t("battle_start.allow_spectators"),
-      onChange: (checked) => { allowSpectators = checked; },
-    }).container);
+    if (this.battleMode === "versus") {
+      optionsLayer.add(createCheckbox(this, optionsX + 20, optionsY + 142, allowSpectators, {
+        label: t("battle_start.allow_spectators"),
+        onChange: (checked) => { allowSpectators = checked; },
+      }).container);
+    }
     const toggle = this.add.text(cx - 140, py + 248, t("battle_start.extended_options"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#ffcf6e" })
       .setInteractive({ useHandCursor: true });
     const updateOptions = () => {
@@ -190,7 +227,7 @@ export class RoomListScene extends Phaser.Scene {
     });
     c.add(toggle);
     c.add(createFightButton(this, cx - 80, py + ph - 60, 140, 44, t("battle_start.create"), () => {
-      connectionManager.send({ type: "create_room", name: roomName, username: uiSettings.username, password: roomPassword || undefined, mapId: selectedMapId, lifeCount: parseInt(lifeLabel.text, 10), costLimit: 10, p2pEnabled: uiSettings.p2pEnabled, allowSpectators });
+      connectionManager.send({ type: "create_room", name: roomName, username: uiSettings.username, password: roomPassword || undefined, battleMode: this.battleMode, mapId: selectedMapId, lifeCount: parseInt(lifeLabel.text, 10), costLimit: 10, p2pEnabled: uiSettings.p2pEnabled, allowSpectators: this.battleMode === "versus" ? allowSpectators : false });
       c.destroy();
       this.createRoomDialog = null;
       this.activeField = null;
@@ -225,8 +262,9 @@ export class RoomListScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .on("pointerup", () => {
         this.roomIdValue = room.id;
-        if (room.hasPassword) this.showPasswordDialog(room.id, this.spectatorMode);
-        else this.tryJoin(room.id, undefined, this.spectatorMode);
+        const spectator = this.battleMode === "versus" && this.spectatorMode;
+        if (room.hasPassword) this.showPasswordDialog(room.id, spectator);
+        else this.tryJoin(room.id, undefined, spectator);
       }));
     this.listLayer.add(this.add.text(x + 24, y + 13, room.name, {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
@@ -255,8 +293,9 @@ export class RoomListScene extends Phaser.Scene {
       return;
     }
     this.pendingJoinRoomId = roomId;
-    this.pendingJoinSpectator = spectator;
-    connectionManager.send({ type: "join_room", roomId, username: uiSettings.username, password, p2pEnabled: uiSettings.p2pEnabled, spectator });
+    const normalizedSpectator = this.battleMode === "versus" && spectator;
+    this.pendingJoinSpectator = normalizedSpectator;
+    connectionManager.send({ type: "join_room", roomId, username: uiSettings.username, password, p2pEnabled: uiSettings.p2pEnabled, spectator: normalizedSpectator });
   }
 
   private showPasswordDialog(roomId: string, spectator = false): void {

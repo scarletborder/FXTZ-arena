@@ -1,9 +1,10 @@
-import type { MapId, PlayerId, PlayerLoadout, RoomStatus, ServerMessage } from "@repo/types";
+import type { BattleRoomMode, MapId, PlayerId, PlayerLoadout, RoomStatus, ServerMessage } from "@repo/types";
 
 export interface InternalRoom {
   id: string;
   name: string;
   password: string | null;
+  battleMode: BattleRoomMode;
   mapId: MapId;
   lifeCount: number;
   costLimit: number;

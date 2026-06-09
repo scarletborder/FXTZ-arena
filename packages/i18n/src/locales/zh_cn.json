@@ -96,13 +96,14 @@
   "room_list": {
     "title": "房间列表", "back": "返回", "room_id": "房间号", "join": "加入", "password": "输入密码",
     "quick_match": "快速匹配", "create_room": "创建房间", "spectator_mode": "观战模式",
+    "versus_mode": "对战模式", "collaborate_mode": "合作模式",
     "password_cancel": "取消", "password_confirm": "确认", "enter_room_id": "请输入房间号",
     "host": "房主: {{name}}  {{count}}/{{max}}  #{{id}}", "lock": "LOCK"
   },
   "room_lobby": {
     "title": "等待房间", "copy": "复制", "copied": "已复制房间号", "start": "开始游戏", "ready": "准备", "cancel_ready": "取消准备",
     "waiting": "等待中…", "selecting": "正在选择配装…", "room_info": "房间信息", "room_name": "房间名: {{name}}",
-    "host": "房主: {{name}}", "lives": "命数: {{count}}", "cost_limit": "Cost 上限: {{count}}", "status": "状态: {{status}}",
+    "host": "房主: {{name}}", "battle_mode": "模式: {{mode}}", "mode_versus": "对战模式", "mode_collaborate": "合作模式", "lives": "命数: {{count}}", "cost_limit": "Cost 上限: {{count}}", "status": "状态: {{status}}",
     "status_waiting": "等待中", "status_selecting": "配装中", "status_unknown": "未知", "players": "玩家", "host_badge": "房主",
     "waiting_player": "等待中…", "default_player": "玩家-1", "wait_opponent": "等待对手加入…", "wait_ready": "等待对手准备…",
     "ready_wait_start": "已准备，等待房主开始游戏", "ready_hint": "准备好后请点击准备", "peer_left": "对方已经退出房间",

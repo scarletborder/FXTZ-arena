@@ -1,3 +1,5 @@
+import type { BattleRoomMode } from "@repo/types";
+
 import type { InternalRoom } from "../room/types";
 
 /**
@@ -9,8 +11,9 @@ import type { InternalRoom } from "../room/types";
  * 3. Must have at least one open slot.
  * 4. Prefer rooms that already have one player (closer to full).
  */
-export function findQuickMatchRoom(rooms: InternalRoom[]): InternalRoom | null {
+export function findQuickMatchRoom(rooms: InternalRoom[], battleMode: BattleRoomMode = "versus"): InternalRoom | null {
   const available = rooms.filter((r) => {
+    if (r.battleMode !== battleMode) return false;
     if (r.password) return false;
     if (r.status !== "waiting") return false;
     return r.connectionIds.some((c) => c === null);

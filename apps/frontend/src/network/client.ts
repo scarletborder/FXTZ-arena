@@ -1,4 +1,4 @@
-import type { BattleConfig, ClientMessage, PlayerId, ServerMessage } from "@repo/types";
+import type { BattleConfig, BattleRoomMode, ClientMessage, PlayerId, ServerMessage } from "@repo/types";
 import { APP_BUILD_LABEL, IS_DESKTOP_APP } from "@repo/constants";
 import { isWebTransportAddress, normalizeServerAddress } from "./address";
 import { findServerCertificateFingerprint } from "./fingerprint";
@@ -35,6 +35,8 @@ export class ConnectionManager {
   opponentUsername: string | null = null;
   /** Latest room status received from the server. */
   roomStatus: string | null = null;
+  /** Current room battle mode. */
+  battleMode: BattleRoomMode | null = null;
   /** Battle configuration received from server when both players ready. */
   battleConfig: BattleConfig | null = null;
 
@@ -263,6 +265,7 @@ export class ConnectionManager {
         this.hostName = null;
         this.lifeCount = null;
         this.costLimit = null;
+        this.battleMode = null;
         this.spectatorNames = [];
         this.playerNames = [];
         this.allowSpectators = null;
@@ -291,6 +294,7 @@ export class ConnectionManager {
         if (msg.hostName !== undefined) this.hostName = msg.hostName;
         if (msg.lifeCount !== undefined) this.lifeCount = msg.lifeCount;
         if (msg.costLimit !== undefined) this.costLimit = msg.costLimit;
+        if (msg.battleMode !== undefined) this.battleMode = msg.battleMode;
         if (msg.opponentReady !== undefined) this.opponentReady = msg.opponentReady;
         if (msg.allowSpectators !== undefined) this.allowSpectators = msg.allowSpectators;
         if (msg.spectatorCount !== undefined) this.spectatorCount = msg.spectatorCount;
@@ -322,6 +326,7 @@ export class ConnectionManager {
     this.hostName = null;
     this.lifeCount = null;
     this.costLimit = null;
+    this.battleMode = null;
     this.opponentReady = null;
     this.isSpectator = false;
     this.spectatorNames = [];

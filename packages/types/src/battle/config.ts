@@ -4,7 +4,7 @@ import {
   DEFAULT_LIVES,
   TICK_RATE,
 } from "../core";
-import type { MapId, PlayerId } from "../core";
+import type { BattleRoomMode, MapId, PlayerId } from "../core";
 import type { PlayerLoadout } from "./loadout";
 
 export interface BattlePlayerConfig {
@@ -16,6 +16,7 @@ export interface BattlePlayerConfig {
 
 export interface BattleConfig {
   readonly battleId: string;
+  readonly battleMode: BattleRoomMode;
   readonly mapId: MapId;
   readonly seed: number;
   readonly fps: typeof TICK_RATE;
@@ -32,6 +33,7 @@ export function createDefaultBattleConfig(
 ): BattleConfig {
   return {
     battleId,
+    battleMode: "versus",
     mapId: "hakurei_shrine",
     seed: 1,
     fps: TICK_RATE,

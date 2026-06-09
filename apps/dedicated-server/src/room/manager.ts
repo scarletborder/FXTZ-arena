@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import type { MapId, RoomStatus, RoomSummary } from "@repo/types";
+import type { BattleRoomMode, MapId, RoomStatus, RoomSummary } from "@repo/types";
 
 import type { InternalRoom } from "./types";
 import { MAX_PLAYERS_PER_ROOM } from "./types";
@@ -9,6 +9,7 @@ import { PlayerId } from "@repo/types";
 export interface CreateRoomParams {
   name: string;
   password?: string;
+  battleMode?: BattleRoomMode;
   mapId: MapId;
   lifeCount: number;
   costLimit: number;
@@ -24,10 +25,11 @@ export class RoomManager {
       id,
       name: params.name,
       password: params.password ?? null,
+      battleMode: params.battleMode ?? "versus",
       mapId: params.mapId,
       lifeCount: params.lifeCount,
       costLimit: params.costLimit,
-      allowSpectators: params.allowSpectators ?? true,
+      allowSpectators: (params.battleMode ?? "versus") === "collaborate" ? false : params.allowSpectators ?? true,
       status: "waiting",
       connectionIds: [null, null],
       playerSlots: [null, null],
@@ -156,10 +158,11 @@ export class RoomManager {
     }
   }
 
-  getPublicRooms(): RoomSummary[] {
+  getPublicRooms(battleMode: BattleRoomMode = "versus"): RoomSummary[] {
     const result: RoomSummary[] = [];
     for (const room of Array.from(this.rooms.values())) {
       if (room.password) continue;
+      if (room.battleMode !== battleMode) continue;
       if (room.status !== "waiting") continue;
       const openSlot = this.getOpenSlotIndex(room);
       if (openSlot === -1) continue;
@@ -168,15 +171,16 @@ export class RoomManager {
     return result;
   }
 
-  getListableRooms(): InternalRoom[] {
+  getListableRooms(battleMode: BattleRoomMode = "versus"): InternalRoom[] {
     return Array.from(this.rooms.values()).filter((room) => {
+      if (room.battleMode !== battleMode) return false;
       if (room.status !== "waiting") return false;
       return this.getOpenSlotIndex(room) !== -1;
     });
   }
 
-  getSpectatableRooms(): InternalRoom[] {
-    return Array.from(this.rooms.values()).filter((room) => room.allowSpectators);
+  getSpectatableRooms(battleMode: BattleRoomMode = "versus"): InternalRoom[] {
+    return Array.from(this.rooms.values()).filter((room) => room.battleMode === battleMode && room.allowSpectators);
   }
 
   toSummary(room: InternalRoom): RoomSummary {
@@ -184,6 +188,7 @@ export class RoomManager {
       id: room.id,
       name: room.name,
       hasPassword: room.password !== null,
+      battleMode: room.battleMode,
       mapId: room.mapId,
       lifeCount: room.lifeCount,
       costLimit: room.costLimit,

@@ -21,4 +21,5 @@ export type MapId =
   | "bamboo_lost"
   | "mana_forest"
   | "x_shoot_range"
+  | "collaborate_test_arena"
   | "shoot_range";

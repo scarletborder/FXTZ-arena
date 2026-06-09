@@ -1,6 +1,6 @@
 import { validateLoadout } from "@repo/raid-logic";
 import { MAX_PLAYER_NAME_LENGTH, MAX_ROOM_NAME_LENGTH } from "@repo/constants";
-import type { BattleConfig, PlayerId } from "@repo/types";
+import type { BattleConfig, BattleRoomMode, PlayerId } from "@repo/types";
 
 import type { ServerConfig } from "../config";
 import { findQuickMatchRoom } from "../matchmaking";
@@ -193,6 +193,7 @@ export class MessageHandler {
               hostName: this.hostName(room),
               lifeCount: room.lifeCount,
               costLimit: room.costLimit,
+              battleMode: room.battleMode,
             });
 
             // Clean up remaining players' sessions so they can create/join new rooms
@@ -224,6 +225,7 @@ export class MessageHandler {
             hostName: this.hostName(room),
             lifeCount: room.lifeCount,
             costLimit: room.costLimit,
+            battleMode: room.battleMode,
           });
         } else {
           if (slotIdx !== -1 && session.playerId) {
@@ -240,6 +242,7 @@ export class MessageHandler {
               hostName: remainingSession?.username ?? "",
               lifeCount: room.lifeCount,
               costLimit: room.costLimit,
+              battleMode: room.battleMode,
             });
 
             // Clean up remaining player: remove from room and clear session
@@ -353,6 +356,9 @@ export class MessageHandler {
       hostName: this.hostName(room),
       lifeCount: room.lifeCount,
       costLimit: room.costLimit,
+      battleMode: room.battleMode,
+      allowSpectators: room.allowSpectators,
+      spectatorCount: room.spectatorConnectionIds.length,
     });
     this.notifyPeerStatus(room, slotIndex, reconnect.playerId, "reconnected");
     return true;
@@ -389,10 +395,11 @@ export class MessageHandler {
     const room = this.roomManager.create({
       name: normalizeDisplayName(msg.name, MAX_ROOM_NAME_LENGTH, `${session.username}'s room`),
       password: msg.password,
+      battleMode: normalizeBattleMode(msg.battleMode),
       mapId: msg.mapId,
       lifeCount: msg.lifeCount,
       costLimit: msg.costLimit,
-      allowSpectators: msg.allowSpectators !== false,
+      allowSpectators: normalizeBattleMode(msg.battleMode) === "collaborate" ? false : msg.allowSpectators !== false,
     });
 
     const assignment = this.roomManager.assignSlot(room, connection.id);
@@ -430,6 +437,7 @@ export class MessageHandler {
       hostName: session.username,
       lifeCount: room.lifeCount,
       costLimit: room.costLimit,
+      battleMode: room.battleMode,
       allowSpectators: room.allowSpectators,
       spectatorCount: room.spectatorConnectionIds.length,
       spectatorNames: this.spectatorNames(room),
@@ -523,6 +531,7 @@ export class MessageHandler {
       hostName: hostSession?.username ?? "",
       lifeCount: room.lifeCount,
       costLimit: room.costLimit,
+      battleMode: room.battleMode,
     });
 
     // Notify the other player about room state change
@@ -541,6 +550,9 @@ export class MessageHandler {
         hostName: otherSession?.username ?? "",
         lifeCount: room.lifeCount,
         costLimit: room.costLimit,
+        battleMode: room.battleMode,
+        allowSpectators: room.allowSpectators,
+        spectatorCount: room.spectatorConnectionIds.length,
       });
     }
   }
@@ -551,6 +563,15 @@ export class MessageHandler {
   ): void {
     const session = this.sessionStore.get(connection.id);
     if (!session) return;
+
+    if (room.battleMode === "collaborate") {
+      this.send(connection, {
+        type: "error",
+        code: ErrorCodes.INVALID_STATE,
+        message: "Collaborate rooms do not support spectators",
+      });
+      return;
+    }
 
     if (!room.allowSpectators) {
       this.send(connection, {
@@ -602,8 +623,9 @@ export class MessageHandler {
       return;
     }
 
+    const battleMode = normalizeBattleMode(msg.battleMode);
     const rooms = this.roomManager.getAllRooms();
-    const match = findQuickMatchRoom(rooms);
+    const match = findQuickMatchRoom(rooms, battleMode);
 
     if (!match) {
       this.send(connection, {
@@ -646,6 +668,9 @@ export class MessageHandler {
       hostName: hostSession?.username ?? "",
       lifeCount: match.lifeCount,
       costLimit: match.costLimit,
+      battleMode: match.battleMode,
+      allowSpectators: match.allowSpectators,
+      spectatorCount: match.spectatorConnectionIds.length,
     });
 
     // Notify the other player
@@ -664,6 +689,9 @@ export class MessageHandler {
         hostName: otherSession?.username ?? "",
         lifeCount: match.lifeCount,
         costLimit: match.costLimit,
+        battleMode: match.battleMode,
+        allowSpectators: match.allowSpectators,
+        spectatorCount: match.spectatorConnectionIds.length,
       });
     }
   }
@@ -671,8 +699,9 @@ export class MessageHandler {
   private handleListRooms(connection: TransportConnection, msg: ListRoomsMessage): void {
     const pageSize = Math.max(1, Math.min(24, Math.floor(Number(msg.pageSize) || 12)));
     const page = Math.max(1, Math.floor(Number(msg.page) || 1));
+    const battleMode = normalizeBattleMode(msg.battleMode);
     const rooms = this.roomManager
-      [msg.spectatorsOnly === true ? "getSpectatableRooms" : "getListableRooms"]()
+      [msg.spectatorsOnly === true ? "getSpectatableRooms" : "getListableRooms"](battleMode)
       .sort((a, b) => b.createdAt - a.createdAt);
     const total = rooms.length;
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -741,6 +770,7 @@ export class MessageHandler {
         hostName: this.hostName(room),
         lifeCount: room.lifeCount,
         costLimit: room.costLimit,
+        battleMode: room.battleMode,
       });
       return;
     }
@@ -765,6 +795,7 @@ export class MessageHandler {
         hostName: "",
         lifeCount: room.lifeCount,
         costLimit: room.costLimit,
+        battleMode: room.battleMode,
       });
     }
 
@@ -905,6 +936,7 @@ export class MessageHandler {
         hostName: hostSession?.username ?? "",
         lifeCount: room.lifeCount,
         costLimit: room.costLimit,
+        battleMode: room.battleMode,
       });
     }
   }
@@ -1179,6 +1211,7 @@ export class MessageHandler {
       hostName: this.hostName(room),
       lifeCount: room.lifeCount,
       costLimit: room.costLimit,
+      battleMode: room.battleMode,
     });
 
     // Clean up all players' sessions so they can create/join new rooms after the match
@@ -1289,6 +1322,7 @@ export class MessageHandler {
       hostName: this.hostName(room),
       lifeCount: room.lifeCount,
       costLimit: room.costLimit,
+      battleMode: room.battleMode,
       allowSpectators: room.allowSpectators,
       spectatorCount: room.spectatorConnectionIds.length,
       spectatorNames: this.spectatorNames(room),
@@ -1348,6 +1382,7 @@ export class MessageHandler {
     }
     return this.withUsernames(room, {
       battleId: room.battleId,
+      battleMode: room.battleMode,
       mapId: room.mapId,
       seed: room.seed,
       fps: 60,
@@ -1436,6 +1471,10 @@ function normalizeOptionalDisplayName(value: string | undefined, maxLength: numb
   const trimmed = value?.trim();
   if (!trimmed) return undefined;
   return Array.from(trimmed).slice(0, maxLength).join("");
+}
+
+function normalizeBattleMode(value: BattleRoomMode | undefined): BattleRoomMode {
+  return value === "collaborate" ? "collaborate" : "versus";
 }
 
 function normalizeP2pSignal(signal: P2pSignalMessage["signal"] | undefined): P2pSignalMessage["signal"] | null {

@@ -96,13 +96,14 @@
   "room_list": {
     "title": "Room List", "back": "Back", "room_id": "Room ID", "join": "Join", "password": "Enter Password",
     "quick_match": "Quick Match", "create_room": "Create Room", "spectator_mode": "Spectator Mode",
+    "versus_mode": "Versus", "collaborate_mode": "Co-op",
     "password_cancel": "Cancel", "password_confirm": "Confirm", "enter_room_id": "Enter a room ID",
     "host": "Host: {{name}}  {{count}}/{{max}}  #{{id}}", "lock": "LOCK"
   },
   "room_lobby": {
     "title": "Waiting Room", "copy": "Copy", "copied": "Room ID copied", "start": "Start Game", "ready": "Ready", "cancel_ready": "Cancel Ready",
     "waiting": "Waiting…", "selecting": "Choosing loadout…", "room_info": "Room Info", "room_name": "Room name: {{name}}",
-    "host": "Host: {{name}}", "lives": "Lives: {{count}}", "cost_limit": "Cost limit: {{count}}", "status": "Status: {{status}}",
+    "host": "Host: {{name}}", "battle_mode": "Mode: {{mode}}", "mode_versus": "Versus", "mode_collaborate": "Co-op", "lives": "Lives: {{count}}", "cost_limit": "Cost limit: {{count}}", "status": "Status: {{status}}",
     "status_waiting": "Waiting", "status_selecting": "Loadout", "status_unknown": "Unknown", "players": "Players", "host_badge": "Host",
     "waiting_player": "Waiting…", "default_player": "Player-1", "wait_opponent": "Waiting for opponent…", "wait_ready": "Waiting for opponent ready…",
     "ready_wait_start": "Ready, waiting for host to start", "ready_hint": "Click ready when prepared", "peer_left": "Opponent left the room",

@@ -279,6 +279,7 @@ export class UdpConnectScene extends Phaser.Scene {
       type: "battle_start",
       config: {
         battleId: `${Date.now()}`,
+        battleMode: "versus",
         mapId: this.selectedMapId,
         seed: 1,
         fps: 60,

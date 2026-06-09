@@ -30,6 +30,7 @@ export class RoomLifecycle {
 
       const config: BattleConfig = {
         battleId: room.battleId,
+        battleMode: room.battleMode,
         mapId: room.mapId,
         seed: room.seed,
         fps: 60,

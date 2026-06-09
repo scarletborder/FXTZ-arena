@@ -1,5 +1,6 @@
 import type {
   BattleConfig,
+  BattleRoomMode,
   MapId,
   PlayerId,
   PlayerLoadout,
@@ -28,6 +29,7 @@ export interface CreateRoomMessage {
   name: string;
   username?: string;
   password?: string;
+  battleMode?: BattleRoomMode;
   mapId: MapId;
   lifeCount: number;
   costLimit: number;
@@ -48,12 +50,14 @@ export interface QuickMatchMessage {
   type: "quick_match";
   username?: string;
   p2pEnabled?: boolean;
+  battleMode?: BattleRoomMode;
 }
 
 export interface ListRoomsMessage {
   type: "list_rooms";
   page: number;
   pageSize: number;
+  battleMode?: BattleRoomMode;
   spectatorsOnly?: boolean;
 }
 
@@ -208,6 +212,7 @@ export interface RoomStateMessage {
   hostName?: string;
   lifeCount?: number;
   costLimit?: number;
+  battleMode?: BattleRoomMode;
   allowSpectators?: boolean;
   spectatorCount?: number;
   spectatorNames?: readonly string[];
