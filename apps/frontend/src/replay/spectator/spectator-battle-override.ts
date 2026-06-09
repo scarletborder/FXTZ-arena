@@ -70,7 +70,12 @@ export class SpectatorBattleOverride {
       }
     });
 
-    this.view = new BattleView(this.scene, "online", config.mapId);
+    this.view = new BattleView(
+      this.scene,
+      "online",
+      config.mapId,
+      config.battleMode ?? "versus",
+    );
     this.pointerInput = createBattleInput(this.scene, deps.keys);
     this.pauseMenu = new BattlePauseMenuController(this.scene, {
       restartEnabled: false,

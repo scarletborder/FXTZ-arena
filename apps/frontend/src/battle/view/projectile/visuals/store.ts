@@ -15,6 +15,7 @@ import { destroyVisual } from "./lifecycle";
 import { average } from "./math";
 import { projectileFrameRenderSize } from "./projectileFrameRenderSize";
 import { drawYoumuSlashArc, type YoumuSlashArcGroup } from "./youmuSlashArc";
+import type { BattleRoomMode } from "@repo/types";
 
 export class ProjectileVisualStore {
   private readonly visuals = new Map<number, ProjectileVisual>();
@@ -30,6 +31,7 @@ export class ProjectileVisualStore {
     display: ProjectileDisplay,
     spec: Extract<ProjectileSpec, { readonly kind: "image" | "fallback" }>,
     localFighterKey: FighterKey,
+    battleMode: BattleRoomMode,
     rollbackBlend = 1,
   ): void {
     const visual = this.ensureImageVisual(projectile.id, display.x, display.y);
@@ -57,7 +59,7 @@ export class ProjectileVisualStore {
     sprite.setAlpha(
       smoothValue(
         sprite.alpha,
-        projectileAlpha(projectile, localFighterKey),
+        projectileAlpha(projectile, localFighterKey, battleMode),
         rollbackBlend,
       ),
     );
@@ -69,6 +71,7 @@ export class ProjectileVisualStore {
     display: ProjectileDisplay,
     spec: Extract<ProjectileSpec, { readonly kind: "laser" }>,
     localFighterKey: FighterKey,
+    battleMode: BattleRoomMode,
     rollbackBlend = 1,
   ): void {
     const visual = this.ensureLaserVisual(projectile.id, display.x, display.y);
@@ -82,7 +85,7 @@ export class ProjectileVisualStore {
     container.setAlpha(
       smoothValue(
         container.alpha,
-        projectileAlpha(projectile, localFighterKey),
+        projectileAlpha(projectile, localFighterKey, battleMode),
         rollbackBlend,
       ),
     );

@@ -5,15 +5,17 @@ import {
   COLLABORATE_ARENA_WIDTH,
   COLLABORATE_VIEWPORT_HEIGHT,
   COLLABORATE_VIEWPORT_WIDTH,
+  PLAYER_SPAWN,
+  TARGET_SPAWN,
 } from "@repo/constants";
 import type { MapDefinition } from "./types";
 
 const STANDARD_SPAWN_POINTS = [
-  { id: "left", x: -ARENA_WIDTH / 4, y: 0, facingAngleTicks: 0 },
+  { id: "left", x: PLAYER_SPAWN.x, y: PLAYER_SPAWN.y, facingAngleTicks: 0 },
   {
     id: "right",
-    x: ARENA_WIDTH / 4,
-    y: 0,
+    x: TARGET_SPAWN.x,
+    y: TARGET_SPAWN.y,
     facingAngleTicks: 30000,
   },
 ] as const;
@@ -47,14 +49,14 @@ const COLLABORATE_TEST_ARENA: MapDefinition = {
   spawnPoints: [
     {
       id: "left",
-      x: COLLABORATE_ARENA_WIDTH / 2 - 160,
-      y: COLLABORATE_ARENA_HEIGHT / 2,
+      x: 1200,
+      y: 720,
       facingAngleTicks: 0,
     },
     {
       id: "right",
-      x: COLLABORATE_ARENA_WIDTH / 2 + 160,
-      y: COLLABORATE_ARENA_HEIGHT / 2,
+      x: 1200,
+      y: 720,
       facingAngleTicks: 30000,
     },
   ],

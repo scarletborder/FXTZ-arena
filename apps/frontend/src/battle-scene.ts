@@ -221,12 +221,14 @@ export class BattleScene extends Phaser.Scene {
         this,
         "online",
         data.mapId ?? data.battleConfig?.mapId,
+        data.battleMode ?? data.battleConfig?.battleMode ?? "versus",
       );
     } else {
       this.view = new BattleView(
         this,
         data.mode ?? "training",
         data.mapId ?? data.battleConfig?.mapId,
+        data.battleMode ?? data.battleConfig?.battleMode ?? "versus",
       );
     }
     this.lastInput = createBattleInput(

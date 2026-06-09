@@ -39,11 +39,13 @@ export class BattleView {
   private readonly stage: BattleStage;
   private readonly debug: BattleDebugView;
   private readonly arenaBounds: ArenaBounds;
+  private readonly battleMode: "versus" | "collaborate";
 
   constructor(
     scene: Phaser.Scene,
     mode: BattleViewMode = "training",
     mapId?: MapId,
+    battleMode: "versus" | "collaborate" = "versus",
   ) {
     createBattleTextures(scene);
     const map = getCombatMapDefinition(mapId ?? "hakurei_shrine");
@@ -56,6 +58,7 @@ export class BattleView {
         })
       : DEFAULT_ARENA_BOUNDS;
     this.stage = createBattleStage(scene, mode, mapId);
+    this.battleMode = battleMode;
     this.fighters = new FighterView(scene);
     this.mobs = new MobView(scene);
     this.points = new PointView(scene);
@@ -98,6 +101,7 @@ export class BattleView {
       state.frame,
       { player: state.player, target: state.target },
       localFighterKey,
+      this.battleMode,
       alpha,
       rollbackBlend,
     );

@@ -109,20 +109,13 @@ class BattleRuntime implements RaidLogicRuntime {
     const map = resolveMap(mapId);
     const bounds = arenaBoundsForMap(map);
     const spawner = resolveSpawner(mode, map);
+    const spawnPoints = resolveSpawnPoints(battleMode ?? "versus", map, bounds);
     this.physics = new BattlePhysics(bounds);
     this.model = new BattleModel(loadouts, {
       battleMode: battleMode ?? "versus",
       arenaBounds: bounds,
-      playerSpawn: spawnPointOrDefault(
-        map?.spawnPoints[0],
-        bounds,
-        PLAYER_SPAWN,
-      ),
-      targetSpawn: spawnPointOrDefault(
-        map?.spawnPoints[1],
-        bounds,
-        TARGET_SPAWN,
-      ),
+      playerSpawn: spawnPoints.playerSpawn,
+      targetSpawn: spawnPoints.targetSpawn,
       enableCpuTarget: mode === "ai",
       neutralMobSpawner: spawner,
       playerInitPoint,
@@ -298,6 +291,30 @@ function arenaBoundsForMap(map: MapDefinition | undefined): ArenaBounds {
     viewportWidth: map.viewportWidth,
     viewportHeight: map.viewportHeight,
   });
+}
+
+function resolveSpawnPoints(
+  battleMode: BattleRoomMode,
+  map: MapDefinition | undefined,
+  bounds: ArenaBounds,
+): {
+  readonly playerSpawn: { readonly x: number; readonly y: number };
+  readonly targetSpawn: { readonly x: number; readonly y: number };
+} {
+  if (battleMode === "collaborate") {
+    const spawn = spawnPointOrDefault(map?.spawnPoints[0], bounds, {
+      x: 1200,
+      y: 720,
+    });
+    return {
+      playerSpawn: spawn,
+      targetSpawn: spawn,
+    };
+  }
+  return {
+    playerSpawn: PLAYER_SPAWN,
+    targetSpawn: TARGET_SPAWN,
+  };
 }
 
 function spawnPointOrDefault(

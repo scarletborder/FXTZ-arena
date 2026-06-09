@@ -1,5 +1,6 @@
 import type { ProjectileState } from "@repo/raid-logic";
 import { OWN_PROJECTILE_ALPHA } from "@repo/constants";
+import type { BattleRoomMode } from "@repo/types";
 
 import type { FighterKey, ProjectileDisplay } from "./types";
 
@@ -17,8 +18,13 @@ export function shouldRenderPreviewLine(projectile: ProjectileState): boolean {
 export function projectileAlpha(
   projectile: ProjectileState,
   localFighterKey: FighterKey,
+  battleMode: BattleRoomMode = "versus",
 ): number {
-  if (projectile.owner === localFighterKey) {
+  if (
+    projectile.owner === localFighterKey ||
+    (battleMode === "collaborate" &&
+      (projectile.owner === "Player1" || projectile.owner === "Player2"))
+  ) {
     return OWN_PROJECTILE_ALPHA;
   }
   return projectile.damage === 0 ? PROJECTILE_PREVIEW_ALPHA : 1;

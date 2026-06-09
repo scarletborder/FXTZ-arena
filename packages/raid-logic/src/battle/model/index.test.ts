@@ -9,6 +9,8 @@ import {
   POINT_REWARD_VALUES,
   COLLABORATE_ARENA_BOUNDS,
   PLAYER_CORE_RADIUS,
+  PLAYER_SPAWN,
+  TARGET_SPAWN,
 } from "@repo/constants";
 import { POINT_COUNT_MAX } from "../constants";
 import { BattleModel } from ".";
@@ -1235,6 +1237,20 @@ describe("BattleModel point power shooting tiers", () => {
 });
 
 describe("BattleModel arena bounds", () => {
+  it("uses versus spawn points for normal map runtimes", async () => {
+    const runtime = createRaidLogicRuntime({
+      mode: "ai",
+      mapId: "hakurei_shrine",
+      battleMode: "versus",
+    });
+    await runtime.initialize();
+
+    expect(runtime.state.player.x).toBe(PLAYER_SPAWN.x);
+    expect(runtime.state.player.y).toBe(PLAYER_SPAWN.y);
+    expect(runtime.state.target.x).toBe(TARGET_SPAWN.x);
+    expect(runtime.state.target.y).toBe(TARGET_SPAWN.y);
+  });
+
   it("uses collaborate map spawn points when the runtime is created for the collaborate arena", async () => {
     const runtime = createRaidLogicRuntime({
       mode: "online",
@@ -1243,9 +1259,9 @@ describe("BattleModel arena bounds", () => {
     });
     await runtime.initialize();
 
-    expect(runtime.state.player.x).toBe(1040);
+    expect(runtime.state.player.x).toBe(1200);
     expect(runtime.state.player.y).toBe(720);
-    expect(runtime.state.target.x).toBe(1360);
+    expect(runtime.state.target.x).toBe(1200);
     expect(runtime.state.target.y).toBe(720);
   });
 
