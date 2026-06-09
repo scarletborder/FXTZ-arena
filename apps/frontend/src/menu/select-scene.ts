@@ -19,7 +19,6 @@ import {
   createSmallTab,
   drawCharacterPreviewIcon,
   drawFightingBackdrop,
-  drawAngledPanel,
   drawPanelToLayer,
   bodyStyle,
 } from "./ui";
@@ -297,7 +296,10 @@ export class SelectScene extends Phaser.Scene {
     const height = 140;
     const box = this.add.container(x - width / 2, y - height / 2);
     const graphics = this.add.graphics();
-    drawAngledPanel(graphics, 0, 0, width, height, 0x111821, 0x5c7185, 0.95);
+    graphics.fillStyle(0x111821, 0.95);
+    graphics.fillRect(0, 0, width, height);
+    graphics.lineStyle(2, 0x5c7185, 0.95);
+    graphics.strokeRect(1, 1, width - 2, height - 2);
     graphics.lineStyle(1, 0x273548, 0.6);
     graphics.lineBetween(18, 46, width - 18, 46);
     box.add(graphics);
@@ -323,7 +325,7 @@ export class SelectScene extends Phaser.Scene {
   private addCharacterRoster(): void {
     const collaborateMode = this.isCollaborateMode();
     const panel = collaborateMode
-      ? { x: 66, y: 40, width: 906, height: 548 }
+      ? { x: 66, y: 40, width: 706, height: 548 }
       : { x: 66, y: 40, width: 612, height: 392 };
     drawPanelToLayer(this, this.layer, panel.x, panel.y, panel.width, panel.height, t("select.characters"));
     const roleFilters = [
@@ -412,7 +414,13 @@ export class SelectScene extends Phaser.Scene {
 
   private addCardRoster(): void {
     const panel = { x: 66, y: 440, width: 820, height: 272 };
-    drawPanelToLayer(this, this.layer, panel.x, panel.y, panel.width, panel.height, t("select.cards"));
+    const panelGraphics = this.add.graphics();
+    panelGraphics.fillStyle(0x101820, 0.88);
+    panelGraphics.fillRect(panel.x, panel.y, panel.width, panel.height);
+    panelGraphics.lineStyle(2, 0x34475c, 0.88);
+    panelGraphics.strokeRect(panel.x + 1, panel.y + 1, panel.width - 2, panel.height - 2);
+    this.layer.add(panelGraphics);
+    this.layer.add(this.add.text(panel.x + 24, panel.y + 18, t("select.cards"), bodyStyle("#ffcf6e", 17)));
     const cardFilters = [
       ["all", t("select.all")],
       ["active", t("select.active")],
