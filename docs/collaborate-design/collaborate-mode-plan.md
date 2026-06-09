@@ -137,35 +137,65 @@
 - HUD 不随 camera 移动。
 - 对战模式原有显示与碰撞不被合作 camera 改动影响。
 
-## 阶段 5：CollaborateExtraState 与回滚
+
+## 阶段 5：CollaborateExtraState、阶段就绪同步与回滚
 
 ### 计划
 
-1. 在 `BattleModelSnapshot` 中增加可选字段 `collaborateExtra?: CollaborateExtraState`。
-2. 普通对战模式不保存该字段。
-3. `CollaborateExtraState` 至少包含：
-   - 当前合作胜负状态：`running | victory | defeat`。
+1. **扩展快照字段**：
+   在 `BattleModelSnapshot` 中增加可选字段 `collaborateExtra?: CollaborateExtraState`。
+
+2. **定义 `CollaborateExtraState` 结构**：
+   该状态至少包含：
+   - 当前合作状态：`running | transition_sync | victory | defeat`。
+   - 转换同步状态（用于进入阶段前的暂停与同步）：
+     - `pendingTransitionTarget`: 接下来要进入的目标（`"elite" | "boss" | "shop"`）。
+     - `transitionType`: 同步类型（`"auto"` 用于商店，`"manual"` 用于 elite/boss）。
+     - `player1TransitionReady: boolean` 和 `player2TransitionReady: boolean`。
    - wave 进度、当前 wave id、wave 开始帧、下一波允许帧、强制下一波帧。
    - shop 状态：是否打开、第几个商店、货物列表、每位玩家购买记录、ready 状态。
-   - 两位玩家 money。
-   - 两位玩家 score。
+   - 两位玩家独立 money 与 score。
    - boss 是否已击败。
    - spawner 内部确定性 RNG 状态或抽卡种子。
    - elite/boss spellCard 阶段、当前符卡剩余帧、符卡血量、非符血量段进度。
-4. mob 自身状态中保存 spellCard 相关字段；spawner 全局状态保存 wave/shop 节奏。
-5. hash 必须纳入 collaborate extra，否则回滚分歧难以及时发现。
 
-在这一步中还需要修改各个角色的 诱导攻击 和 狙击攻击 的子弹
+3. **细化就绪同步机制（Transition Sync）**：
+   当上一波小怪被清空，且下一阶段为特殊阶段时，游戏逻辑的核心循环（如弹幕移动、常规计时器等）暂停，变更为 `transition_sync` 状态：
+   
+   - **进入商店前（自动同步 - 用户无感）**：
+     - `transitionType` 设为 `"auto"`。
+     - 客户端检测到该状态后，在逻辑帧中**自动、静默**地向输入队列发送各自的“准备就绪”输入帧。
+     - 逻辑层在两名玩家的就绪帧均被处理（`player1TransitionReady` & `player2TransitionReady` 均为 `true`）的下一帧，直接开启商店，用户无任何弹窗干扰。
+     
+   - **进入 Elite / Boss 前（手动同步 - 弹窗确认）**：
+     - `transitionType` 设为 `"manual"`。
+     - 客户端渲染层弹出一个 Dialog 提示框，显示内容为：“准备挑战 [精英怪/Boss] (已就绪: X/2)”，并提供一个“准备”按钮。
+     - 玩家必须手动点击“准备”按钮，才会向输入队列发送“准备就绪”输入帧。
+     - 逻辑层处理输入并更新对应的 ready 状态；当两人均就绪时，关闭 Dialog，正式切换回 `running` 状态并生成对应的精英怪/Boss。
 
-首先确保将所有角色的这两种子弹用一种入口，只不过是初始化参数的不同。接着诱导攻击和狙击攻击的目标不再是另一位玩家，而是改为距离准心最近的怪物，如果场上没有怪物则为准心方向发射并失去诱导和狙击能力，通过neutral-mob-manager提供接口。注意，这要确保计算的确定性和回滚后确定性。
+4. **重构特殊子弹（诱导攻击与狙击攻击）**：
+   - 确保所有角色的诱导攻击和狙击攻击子弹使用统一的入口，仅通过初始化参数区分。
+   - 在合作模式下，这两种子弹的目标不再是另一位玩家，而是改为**距离准心最近的怪物**（通过 `neutral-mob-manager` 提供的接口检索）。
+   - 如果场上没有怪物，则子弹朝准心方向发射，并失去诱导/狙击能力。
+   - 此目标检索计算必须保证跨端确定性，且支持在回滚后得出一致的计算结果。
 
 ### 测试清单
 
-- 对战模式 snapshot 不含 `collaborateExtra`。
-- 合作模式 snapshot 含完整 `collaborateExtra`。
-- 序列化后反序列化，money、score、wave、shop、spellCard 阶段完全一致。
-- 回滚到商店打开前、购买后、ready 后均可继续稳定推进。
-- hash 能反映 money、score、shop 货物、spellCard 阶段变化。
+- 对战模式 snapshot 不含 `collaborateExtra`，合作模式 snapshot 包含完整的 `collaborateExtra`。
+- 序列化与反序列化后，money、score、wave、过渡就绪状态（类型、目标及双方 ready 标记）、shop 状态完全一致。
+- **商店前自动同步测试**：
+  - 清空波次且下一阶段为商店时，游戏短暂暂停并迅速自动恢复，直接展现商店界面，玩家不需要进行任何多余的确认点击。
+  - 抓包或日志层面确认有基于确定性输入的自动同步帧交互。
+- **Elite/Boss 前手动同步测试**：
+  - 清空波次且下一阶段为 Elite/Boss 时，游戏暂停，两端屏幕上均弹出 Dialog。
+  - Dialog 实时、准确显示当前就绪人数（0/2、1/2、2/2）。
+  - 点击“准备”按钮后，本地就绪状态更新，按钮变灰或显示已准备。
+  - 只有两名玩家均点击准备后，Dialog 才会消失，战斗逻辑恢复且怪物正式出现。
+  - 在就绪 Dialog 开启期间发生网络回滚，Dialog 的显示状态（如已就绪人数、本地按钮状态）能够正确恢复且不产生 desync。
+- **子弹导向测试**：
+  - 合作模式下，诱导/狙击子弹能正确朝距离准心最近的怪物偏折。
+  - 场上无怪物时，子弹直线朝准心方向发射，不产生偏移。
+  - 验证回滚后同一帧的子弹目标指向与位置跨端完全一致。
 
 ## 阶段 6：wave spawner 机制
 
