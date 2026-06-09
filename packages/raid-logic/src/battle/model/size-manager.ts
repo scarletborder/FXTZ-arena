@@ -8,11 +8,13 @@ import type { BattleRoomMode } from "@repo/types";
 
 export class BattleSizeManager {
   readonly arenaBounds: ArenaBounds;
+  readonly battleMode: BattleRoomMode;
 
   constructor(params: {
     readonly battleMode: BattleRoomMode;
     readonly arenaBounds?: Partial<ArenaBounds>;
   }) {
+    this.battleMode = params.battleMode;
     this.arenaBounds = normalizeArenaBounds(
       params.arenaBounds ??
         (params.battleMode === "collaborate"

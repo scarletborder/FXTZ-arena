@@ -33,6 +33,7 @@ function isValidBattleInputState(state: unknown): boolean {
   for (const f of boolFields) {
     if (typeof s[f] !== "boolean") return false;
   }
+  if (s.transitionReadyPressed !== undefined && typeof s.transitionReadyPressed !== "boolean") return false;
 
   return true;
 }

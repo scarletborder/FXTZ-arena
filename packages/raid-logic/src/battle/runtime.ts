@@ -49,6 +49,7 @@ export interface RaidLogicRuntimeOptions {
   readonly battleMode?: BattleRoomMode;
   readonly playerInitPoint?: number;
   readonly opponentInitPoint?: number;
+  readonly seed?: number;
   readonly ai?: {
     readonly smartDurationSeconds?: number;
     readonly dumbRampSeconds?: number;
@@ -104,6 +105,7 @@ class BattleRuntime implements RaidLogicRuntime {
     battleMode: BattleRoomMode | undefined,
     playerInitPoint: number | undefined,
     opponentInitPoint: number | undefined,
+    seed: number | undefined,
     ai: RaidLogicRuntimeOptions["ai"] | undefined,
   ) {
     const map = resolveMap(mapId);
@@ -120,6 +122,7 @@ class BattleRuntime implements RaidLogicRuntime {
       neutralMobSpawner: spawner,
       playerInitPoint,
       opponentInitPoint,
+      seed,
       ai,
     });
     this.enqueueOutput([
@@ -344,6 +347,7 @@ export function createRaidLogicRuntime(
     options.battleMode,
     options.playerInitPoint,
     options.opponentInitPoint,
+    options.seed,
     options.ai,
   );
 }

@@ -212,6 +212,44 @@ describe("BattleModel rollback snapshots", () => {
       }),
     ).toBe(2005);
   });
+
+  it("omits collaborate extra state from versus snapshots", async () => {
+    const model = await createBattleModel();
+
+    expect(model.serialize().collaborateExtra).toBeUndefined();
+  });
+
+  it("serializes and restores collaborate transition ready state", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate", seed: 2468 }),
+    );
+    model.beginCollaborateTransition("boss", "manual");
+    model.stepVersus(input({ transitionReadyPressed: true }), input());
+
+    const snapshot = model.serialize();
+    expect(snapshot.collaborateExtra).toMatchObject({
+      state: "transition_sync",
+      pendingTransitionTarget: "boss",
+      transitionType: "manual",
+      player1TransitionReady: true,
+      player2TransitionReady: false,
+      spawnerRngState: "2468",
+      cardDrawSeed: 2468,
+    });
+
+    model.stepVersus(input(), input({ transitionReadyPressed: true }));
+    expect(model.serialize().collaborateExtra?.state).toBe("running");
+
+    model.deserialize(snapshot);
+
+    expect(model.serialize().collaborateExtra).toMatchObject({
+      state: "transition_sync",
+      pendingTransitionTarget: "boss",
+      transitionType: "manual",
+      player1TransitionReady: true,
+      player2TransitionReady: false,
+    });
+  });
 });
 
 describe("BattleModel reload timing", () => {

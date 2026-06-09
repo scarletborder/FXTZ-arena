@@ -421,6 +421,7 @@ export class MessageHandler {
     this.send(connection, {
       type: "room_created",
       roomId: room.id,
+      seed: room.seed ?? undefined,
     });
 
     this.send(connection, {
@@ -428,6 +429,7 @@ export class MessageHandler {
       roomId: room.id,
       playerId: assignment.playerId,
       battleMode: room.battleMode,
+      seed: room.seed ?? undefined,
     });
 
     this.send(connection, {
@@ -519,6 +521,7 @@ export class MessageHandler {
       roomId: room.id,
       playerId: assignment.playerId,
       battleMode: room.battleMode,
+      seed: room.seed ?? undefined,
     });
 
     // Get host info for lobby display
@@ -659,6 +662,7 @@ export class MessageHandler {
       roomId: match.id,
       playerId: assignment.playerId,
       battleMode: match.battleMode,
+      seed: match.seed ?? undefined,
     });
 
     const hostSession = this.sessionStore.get(match.connectionIds[0]!);
@@ -1136,6 +1140,7 @@ export class MessageHandler {
       reloadPressed: msg.reloadPressed,
       alternateHeld: msg.alternateHeld,
       infoHeld: msg.infoHeld,
+      transitionReadyPressed: msg.transitionReadyPressed === true,
       UnreliableLinkExtra: msg.UnreliableLinkExtra,
     });
 
@@ -1356,6 +1361,7 @@ export class MessageHandler {
       reloadPressed: msg.reloadPressed,
       alternateHeld: msg.alternateHeld,
       infoHeld: msg.infoHeld,
+      transitionReadyPressed: msg.transitionReadyPressed === true,
       UnreliableLinkExtra: msg.UnreliableLinkExtra,
     };
     this.rememberSpectatorInput(room, relay);

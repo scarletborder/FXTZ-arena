@@ -185,7 +185,8 @@
     "adjudication_done": "双方裁决完成，进入结算…", "peer_disconnected": "对手断线，等待重连…", "peer_reconnected": "对手已重连",
     "peer_left": "对手已退出，战斗结束", "reconnect_timeout": "对手重连超时，战斗结束", "peer_adjudicated": "对手已提交终局裁决，发送本地确认…",
     "local_adjudicated": "已提交终局裁决，等待对手确认…", "recovering": "重整中", "fighter_status": "命数 {{lives}}  bomb {{bombs}}",
-    "mobile_aim": "瞄准", "mobile_switch": "切换", "mobile_reload": "装填", "mobile_shoot": "射击", "mobile_bomb": "Bomb", "mobile_card": "卡"
+    "mobile_aim": "瞄准", "mobile_switch": "切换", "mobile_reload": "装填", "mobile_shoot": "射击", "mobile_bomb": "Bomb", "mobile_card": "卡",
+    "transition_target_elite": "精英怪", "transition_target_boss": "Boss", "transition_ready_prompt": "准备挑战 {{target}}\n已就绪: {{ready}}/2", "transition_ready_button": "准备", "transition_ready_done": "已准备"
   },
   "replay": {
     "save_title": "保存回放", "save_hint": "选择空槽位保存回放，或点击已有回放覆盖",

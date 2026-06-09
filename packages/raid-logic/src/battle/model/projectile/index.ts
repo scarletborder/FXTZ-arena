@@ -191,10 +191,12 @@ export class ProjectileSystem {
         if (projectile.kind === "laser" || projectile.kind === "spark") {
           stepLaserProjectile(projectile);
         } else {
-          const target =
-            projectile.owner === "Player1" ? params.target : params.player;
           syncOwnerBoundProjectile(projectile, params);
-          stepBulletProjectile(projectile, params.frame, target);
+          stepBulletProjectile(
+            projectile,
+            params.frame,
+            this.resolveBulletTarget(projectile, params),
+          );
         }
       }
     }
@@ -327,6 +329,38 @@ export class ProjectileSystem {
 
     params.projectiles.splice(0, params.projectiles.length, ...remaining);
   }
+
+  private resolveBulletTarget(
+    projectile: ProjectileState,
+    params: {
+      readonly player: FighterState;
+      readonly target: FighterState;
+      readonly hitTargets?: readonly ProjectileHitTarget[];
+      readonly aimByFighter?: ProjectileAimByFighter;
+    },
+  ): FighterState {
+    if (
+      this.sizeManager.battleMode === "collaborate" &&
+      (projectile.owner === "Player1" || projectile.owner === "Player2")
+    ) {
+      const aim = params.aimByFighter?.[projectile.owner];
+      const mob = aim
+        ? nearestNeutralTargetToPoint(params.hitTargets ?? [], aim.x, aim.y)
+        : undefined;
+      if (mob) {
+        return mobTargetAsFighter(mob);
+      }
+      if (aim) {
+        projectile.homingUntil = 0;
+        return {
+          ...(projectile.owner === "Player1" ? params.target : params.player),
+          x: aim.x,
+          y: aim.y,
+        };
+      }
+    }
+    return projectile.owner === "Player1" ? params.target : params.player;
+  }
 }
 
 function syncOwnerBoundProjectile(
@@ -335,8 +369,10 @@ function syncOwnerBoundProjectile(
     readonly frame: number;
     readonly player: FighterState;
     readonly target: FighterState;
+    readonly hitTargets?: readonly ProjectileHitTarget[];
     readonly aimByFighter?: ProjectileAimByFighter;
     readonly aimConsumedRef?: { value: boolean };
+    readonly rules?: BattleRules;
   },
 ): void {
   if (projectile.polarFollowOwner !== undefined) {
@@ -353,8 +389,13 @@ function syncOwnerBoundProjectile(
   ) {
     const aim = params.aimByFighter?.[projectile.retargetAimOwner];
     if (aim) {
-      projectile.retargetX = aim.x;
-      projectile.retargetY = aim.y;
+      const neutralTarget =
+        params.rules?.mode === "collaborate" &&
+        (projectile.owner === "Player1" || projectile.owner === "Player2")
+          ? nearestNeutralTargetToPoint(params.hitTargets ?? [], aim.x, aim.y)
+          : undefined;
+      projectile.retargetX = neutralTarget?.x ?? aim.x;
+      projectile.retargetY = neutralTarget?.y ?? aim.y;
       if (params.aimConsumedRef) {
         params.aimConsumedRef.value = true;
       }
@@ -367,6 +408,37 @@ function syncOwnerBoundProjectile(
     // deterministic once the retarget moment has passed.
     projectile.retargetAimOwner = undefined;
   }
+}
+
+function nearestNeutralTargetToPoint(
+  targets: readonly ProjectileHitTarget[],
+  x: number,
+  y: number,
+): ProjectileHitTarget | undefined {
+  let best: ProjectileHitTarget | undefined;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const target of targets) {
+    if (target.key !== "Neutral") {
+      continue;
+    }
+    const distance = (target.x - x) ** 2 + (target.y - y) ** 2;
+    if (
+      distance < bestDistance ||
+      (distance === bestDistance && (target.mobId ?? 0) < (best?.mobId ?? 0))
+    ) {
+      best = target;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+function mobTargetAsFighter(target: ProjectileHitTarget): FighterState {
+  return {
+    key: "Neutral",
+    x: target.x,
+    y: target.y,
+  } as FighterState;
 }
 
 function physicsGrazeTargets(

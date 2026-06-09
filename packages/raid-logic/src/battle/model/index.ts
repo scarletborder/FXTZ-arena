@@ -7,10 +7,12 @@ import {
   NEUTRAL_PROJECTILE_GRAZE_POINT_REWARD,
   PLAYER_SPAWN,
   TARGET_SPAWN,
+  createDefaultCollaborateExtraState,
   type NeutralMobActionContext,
   type NeutralMobState,
   type ProjectileCollisionContext,
   type ArenaBounds,
+  type CollaborateExtraState,
 } from "@repo/types";
 
 import { getAbilityCard, getCharacter } from "../content";
@@ -43,6 +45,7 @@ import {
 } from "./projectile";
 import {
   createBattleModelSnapshot,
+  cloneCollaborateExtra,
   restoreEffectSnapshot,
   restoreFighterSnapshot,
   restoreProjectileSnapshot,
@@ -108,7 +111,10 @@ export class BattleModel {
   );
   private readonly playerInitPoint: number;
   private readonly opponentInitPoint: number;
+  private readonly seed: number;
   private readonly arenaBounds: ArenaBounds;
+  private readonly battleMode: BattleRoomMode;
+  private collaborateExtra: CollaborateExtraState | undefined;
   private readonly sizeManager: BattleSizeManager;
   private readonly playerSpawn: { readonly x: number; readonly y: number };
   private readonly targetSpawn: { readonly x: number; readonly y: number };
@@ -134,6 +140,7 @@ export class BattleModel {
       readonly targetSpawn?: { readonly x: number; readonly y: number };
       readonly playerInitPoint?: number;
       readonly opponentInitPoint?: number;
+      readonly seed?: number;
       readonly ai?: {
         readonly smartDurationSeconds?: number;
         readonly dumbRampSeconds?: number;
@@ -142,6 +149,11 @@ export class BattleModel {
   ) {
     this.loadouts = loadouts;
     const battleMode = params.battleMode ?? "versus";
+    this.battleMode = battleMode;
+    this.collaborateExtra =
+      battleMode === "collaborate"
+        ? createDefaultCollaborateExtraState(0, params.seed ?? 1)
+        : undefined;
     this.rules = createBattleRules(battleMode);
     this.sizeManager = new BattleSizeManager({
       battleMode,
@@ -162,6 +174,7 @@ export class BattleModel {
     this.projectileSystem = new ProjectileSystem(this.sizeManager);
     this.playerInitPoint = clampPointCount(params.playerInitPoint ?? 0);
     this.opponentInitPoint = clampPointCount(params.opponentInitPoint ?? 0);
+    this.seed = params.seed ?? 1;
     this.playerFighter = new BattleFighter(
       "Player1",
       getCharacter(loadouts.player.primaryCharacterId),
@@ -234,6 +247,10 @@ export class BattleModel {
     this.frame = 0;
     this.ticker.reset();
     this.gameOver = false;
+    this.collaborateExtra =
+      this.battleMode === "collaborate"
+        ? createDefaultCollaborateExtraState(0, this.seed)
+        : undefined;
     this.physics?.reset();
     this.cpuPlayer?.reset();
     this.playerFighter.reset(
@@ -298,6 +315,16 @@ export class BattleModel {
     this.lastPlayerInput = null;
     this.ticker.setCurrentFrame(this.frame);
     this.stats.elapsedTicks += 1;
+
+    if (
+      this.processCollaborateTransitionSync(
+        firstInput,
+        secondInput,
+        firstIsPlayer,
+      )
+    ) {
+      return;
+    }
 
     // --- Phase 1: Timer ticking (order-independent) ---
     this.pendingSpawns = [];
@@ -393,6 +420,9 @@ export class BattleModel {
       effects: this.effects,
       shields: this.currentShields(),
       stats: this.stats,
+      collaborateExtra: this.collaborateExtra
+        ? cloneCollaborateExtra(this.collaborateExtra)
+        : undefined,
     };
   }
 
@@ -415,6 +445,7 @@ export class BattleModel {
       clearRings: this.clearRings,
       mobSpawner: this.neutralMobManager.mobSpawnerState(),
       ticker: this.ticker.snapshot(),
+      collaborateExtra: this.collaborateExtra,
     });
   }
 
@@ -434,6 +465,13 @@ export class BattleModel {
     );
     this.ticker.setCurrentFrame(this.frame);
     this.gameOver = snapshot.gameOver;
+    this.collaborateExtra =
+      this.battleMode === "collaborate"
+        ? cloneCollaborateExtra(
+            snapshot.collaborateExtra ??
+              createDefaultCollaborateExtraState(snapshot.frame, 1),
+          )
+        : undefined;
     restoreFighterSnapshot(this.player, snapshot.player, this.frame);
     restoreFighterSnapshot(this.target, snapshot.target, this.frame);
     this.projectiles.splice(
@@ -470,6 +508,21 @@ export class BattleModel {
     );
     this.neutralMobManager.restoreSpawner(snapshot.mobSpawner);
     this.physics?.reset();
+  }
+
+  beginCollaborateTransition(
+    target: "elite" | "boss" | "shop",
+    type: "auto" | "manual",
+  ): void {
+    if (!this.collaborateExtra) return;
+    this.collaborateExtra = {
+      ...this.collaborateExtra,
+      state: "transition_sync",
+      pendingTransitionTarget: target,
+      transitionType: type,
+      player1TransitionReady: false,
+      player2TransitionReady: false,
+    };
   }
 
   setPhysics(physics: BattlePhysics): void {
@@ -535,6 +588,53 @@ export class BattleModel {
       fighter.fire(ctx, input.aimX, input.aimY);
       this.aimConsumedThisFrame = true;
     }
+  }
+
+  private processCollaborateTransitionSync(
+    firstInput: BattleInputState,
+    secondInput: BattleInputState | undefined,
+    firstIsPlayer: boolean,
+  ): boolean {
+    const extra = this.collaborateExtra;
+    if (!extra || extra.state !== "transition_sync") {
+      return false;
+    }
+
+    const playerInput = firstIsPlayer ? firstInput : secondInput;
+    const targetInput = firstIsPlayer ? secondInput : firstInput;
+    const player1Ready = Boolean(playerInput?.transitionReadyPressed || extra.player1TransitionReady);
+    const player2Ready = Boolean(targetInput?.transitionReadyPressed || extra.player2TransitionReady);
+    if (!player1Ready || !player2Ready) {
+      this.collaborateExtra = {
+        ...extra,
+        player1TransitionReady: player1Ready,
+        player2TransitionReady: player2Ready,
+      };
+      return true;
+    }
+
+    const opensShop = extra.pendingTransitionTarget === "shop";
+    this.collaborateExtra = {
+      ...extra,
+      state: "running",
+      pendingTransitionTarget: null,
+      transitionType: null,
+      player1TransitionReady: false,
+      player2TransitionReady: false,
+      shop: opensShop
+        ? {
+            ...extra.shop,
+            open: true,
+            shopIndex: extra.shop.shopIndex + 1,
+            readyByPlayerId: {
+              Player1: false,
+              Player2: false,
+              Neutral: false,
+            },
+          }
+        : extra.shop,
+    };
+    return true;
   }
 
   private stepTargetAi(): void {

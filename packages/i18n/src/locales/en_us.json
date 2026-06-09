@@ -185,7 +185,8 @@
     "adjudication_done": "Both adjudications complete, entering results…", "peer_disconnected": "Opponent disconnected, waiting for reconnect…", "peer_reconnected": "Opponent reconnected",
     "peer_left": "Opponent left, battle ended", "reconnect_timeout": "Opponent reconnect timed out, battle ended", "peer_adjudicated": "Opponent submitted final adjudication, sending local confirmation…",
     "local_adjudicated": "Submitted final adjudication, waiting for opponent…", "recovering": "Recovering", "fighter_status": "Lives {{lives}}  bomb {{bombs}}",
-    "mobile_aim": "Aim", "mobile_switch": "Switch", "mobile_reload": "Reload", "mobile_shoot": "Shoot", "mobile_bomb": "Bomb", "mobile_card": "Card"
+    "mobile_aim": "Aim", "mobile_switch": "Switch", "mobile_reload": "Reload", "mobile_shoot": "Shoot", "mobile_bomb": "Bomb", "mobile_card": "Card",
+    "transition_target_elite": "Elite", "transition_target_boss": "Boss", "transition_ready_prompt": "Ready to challenge {{target}}\nReady: {{ready}}/2", "transition_ready_button": "Ready", "transition_ready_done": "Ready"
   },
   "replay": {
     "save_title": "Save Replay", "save_hint": "Click an empty slot to save, or click an existing replay to overwrite",

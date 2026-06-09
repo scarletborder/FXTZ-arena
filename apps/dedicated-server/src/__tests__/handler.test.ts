@@ -649,6 +649,34 @@ describe("MessageHandler", () => {
       expect(error?.message).toContain("collaborate_ability_cards_forbidden");
     });
 
+    it("returns the deterministic seed to host and guest for collaborate rooms", () => {
+      const { handler } = createHandler();
+      const host = new MockConnection("collab-seed-host");
+      const guest = new MockConnection("collab-seed-guest");
+
+      performHello(handler, host, "Host");
+      performHello(handler, guest, "Guest");
+
+      handler.handle(host, {
+        type: "create_room",
+        name: "Co-op",
+        battleMode: "collaborate",
+        mapId: "collaborate_test_arena",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+
+      const created = host.findSentMessage("room_created");
+      const hostJoined = host.findSentMessage("room_joined");
+      expect(created?.seed).toEqual(expect.any(Number));
+      expect(hostJoined?.seed).toBe(created?.seed);
+
+      handler.handle(guest, { type: "join_room", roomId: created!.roomId });
+
+      const guestJoined = guest.findSentMessage("room_joined");
+      expect(guestJoined?.seed).toBe(created?.seed);
+    });
+
     it("includes battle mode when starting loadout selection", () => {
       const { handler } = createHandler();
       const host = new MockConnection("collab-start-host");

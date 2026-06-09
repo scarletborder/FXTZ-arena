@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 
 import type { BattleRoomMode, MapId, RoomStatus, RoomSummary } from "@repo/types";
 
@@ -45,7 +45,10 @@ export class RoomManager {
       spectatorInputHistory: [],
       createdAt: Date.now(),
       battleId: null,
-      seed: null,
+      seed:
+        (params.battleMode ?? "versus") === "collaborate"
+          ? randomInt(0, 2_147_483_647)
+          : null,
     };
     this.rooms.set(id, room);
     return room;

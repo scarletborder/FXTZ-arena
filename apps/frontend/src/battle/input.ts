@@ -71,6 +71,7 @@ export function createBattleInput(
       shouldAutoReloadAfterLastShot(autoReloadContext),
     alternateHeld: (mobileState?.alternateHeld ?? false) || keys.shift.isDown,
     infoHeld: keys.tab.isDown,
+    transitionReadyPressed: false,
     pointerX: pointerWorld.x,
     pointerY: pointerWorld.y,
   };

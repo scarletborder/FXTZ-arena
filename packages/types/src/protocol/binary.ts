@@ -246,6 +246,7 @@ function readInputFields(view: DataView, offset: number): Omit<Extract<ClientMes
   if (!UnreliableLinkExtra && aimY.nextOffset !== view.byteLength) {
     throw new Error("Invalid protocol input frame size");
   }
+  const transitionReadyPressed = (buttons & 64) !== 0;
   return {
     frame: view.getUint32(offset, true),
     ackFrame: view.getUint32(offset + 4, true),
@@ -259,6 +260,7 @@ function readInputFields(view: DataView, offset: number): Omit<Extract<ClientMes
     reloadPressed: (buttons & 8) !== 0,
     alternateHeld: (buttons & 16) !== 0,
     infoHeld: (buttons & 32) !== 0,
+    ...(transitionReadyPressed ? { transitionReadyPressed } : {}),
     ...(UnreliableLinkExtra ? { UnreliableLinkExtra } : {}),
   };
 }
@@ -339,6 +341,7 @@ function readUnreliableLinkExtra(
     const buttons = view.getUint16(cursor + 6, true);
     const aimX = readLengthPrefixedString(view, cursor + REDUNDANT_INPUT_FIXED_FIELDS_SIZE);
     const aimY = readLengthPrefixedString(view, aimX.nextOffset);
+    const transitionReadyPressed = (buttons & 64) !== 0;
     redundantInputs.push({
       frame: view.getUint32(cursor, true),
       moveX: view.getInt8(cursor + 4) as -1 | 0 | 1,
@@ -351,6 +354,7 @@ function readUnreliableLinkExtra(
       reloadPressed: (buttons & 8) !== 0,
       alternateHeld: (buttons & 16) !== 0,
       infoHeld: (buttons & 32) !== 0,
+      ...(transitionReadyPressed ? { transitionReadyPressed } : {}),
     });
     cursor = aimY.nextOffset;
   }
@@ -406,13 +410,15 @@ function encodeButtons(message: {
   readonly reloadPressed: boolean;
   readonly alternateHeld: boolean;
   readonly infoHeld: boolean;
+  readonly transitionReadyPressed?: boolean;
 }): number {
   return (message.shootPressed ? 1 : 0)
     | (message.bombPressed ? 2 : 0)
     | (message.activeCardPressed ? 4 : 0)
     | (message.reloadPressed ? 8 : 0)
     | (message.alternateHeld ? 16 : 0)
-    | (message.infoHeld ? 32 : 0);
+    | (message.infoHeld ? 32 : 0)
+    | (message.transitionReadyPressed ? 64 : 0);
 }
 
 function encodePlayerId(playerId: "Player1" | "Player2" | "Neutral"): number {

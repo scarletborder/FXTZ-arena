@@ -52,4 +52,5 @@ function writeReplayInputHash(
   hasher.writeNumber(input.reloadPressed ? 1 : 0);
   hasher.writeNumber(input.alternateHeld ? 1 : 0);
   hasher.writeNumber(input.infoHeld ? 1 : 0);
+  hasher.writeNumber(input.transitionReadyPressed ? 1 : 0);
 }

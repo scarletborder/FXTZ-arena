@@ -265,6 +265,7 @@ function cloneDebugInput(input: BattleInputState): BattleInputState {
     reloadPressed: input.reloadPressed,
     alternateHeld: input.alternateHeld,
     infoHeld: input.infoHeld,
+    transitionReadyPressed: input.transitionReadyPressed === true,
   };
 }
 

@@ -233,9 +233,9 @@
 
 1. 为 mode 增加胜负策略。
 2. 合作模式胜利：
-   - boss 正式阵亡后立即胜利。
+   - boss 正式阵亡后立即胜利。result-scene 显示挑战胜利
 3. 合作模式失败：
-   - boss 未击败时，两位玩家都处于阵亡状态，游戏失败。
+   - boss 未击败时，两位玩家都处于阵亡状态，游戏失败。result-scene显示挑战失败
 4. 对战模式保留现有 `BattleFighter.onProjectileHit()` 触发 game over 的逻辑。
 5. 输出状态中区分 `gameOver` 和 `result`，便于结果页显示“胜利/失败/对战胜者”。
 
@@ -327,6 +327,7 @@
    - 上：居中“商店#x”，居右显示两位玩家金额，高亮本地玩家金额。
    - 中：货物列表，包含基础物资和能力卡物资。
    - 下：就绪按钮和两个 checkbox。
+   商店Ui应该定义在目录apps\frontend\src\battle\view\ui
 5. 基础物资：
    - `+1命`。
    - `+1bomb`。

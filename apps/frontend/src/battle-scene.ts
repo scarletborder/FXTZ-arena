@@ -44,6 +44,7 @@ import {
   shouldEnableMobileBattleControls,
 } from "./battle/keybind";
 import { BattleView } from "./battle/view";
+import { CollaborateTransitionDialog } from "./battle/view/ui/CollaborateTransitionDialog";
 import { BattlePauseMenuController } from "./battle/view/pause";
 import { Depth } from "./utils/depth";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
@@ -112,6 +113,8 @@ export class BattleScene extends Phaser.Scene {
   private replayRecorder: ReplayRecorder | undefined;
   private replayOverride: ReplayBattleOverride | null = null;
   private spectatorOverride: SpectatorBattleOverride | null = null;
+  private transitionReadyRequested = false;
+  private transitionDialog: CollaborateTransitionDialog | undefined;
 
   constructor() {
     super("battle");
@@ -205,6 +208,7 @@ export class BattleScene extends Phaser.Scene {
         loadouts: data.loadouts,
         mapId: data.mapId ?? data.battleConfig?.mapId,
         battleMode: data.battleMode ?? data.battleConfig?.battleMode,
+        seed: data.battleConfig?.seed,
         playerInitPoint: data.playerInitPoint,
         opponentInitPoint: data.opponentInitPoint,
         ai: data.ai,
@@ -231,6 +235,9 @@ export class BattleScene extends Phaser.Scene {
         data.battleMode ?? data.battleConfig?.battleMode ?? "versus",
       );
     }
+    this.transitionDialog = new CollaborateTransitionDialog(this, () =>
+      this.requestCollaborateTransitionReady(),
+    );
     this.lastInput = createBattleInput(
       this,
       this.keys,
@@ -324,6 +331,7 @@ export class BattleScene extends Phaser.Scene {
           readonly pointerX: number;
           readonly pointerY: number;
         };
+        this.lastInput = this.applyCollaborateTransitionReady(this.lastInput);
         if (
           (this.sceneData.mode === "online" ||
             this.sceneData.mode === "local") &&
@@ -367,6 +375,10 @@ export class BattleScene extends Phaser.Scene {
       this.combatSync?.localFighterKey() ?? "Player1",
       this.accumulator / FIXED_STEP_MS,
       this.rollbackVisualFrames > 0 ? 0.7 : 1,
+    );
+    this.transitionDialog?.update(
+      this.currentOutput.state.collaborateExtra,
+      this.combatSync?.localFighterKey() ?? "Player1",
     );
     if (this.rollbackVisualFrames > 0) {
       this.rollbackVisualFrames -= 1;
@@ -542,6 +554,49 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
+  private applyCollaborateTransitionReady<T extends BattleInputState>(
+    input: T,
+  ): T {
+    const extra = this.currentOutput?.state.collaborateExtra;
+    if (!extra || extra.state !== "transition_sync") {
+      this.transitionReadyRequested = false;
+      return { ...input, transitionReadyPressed: false };
+    }
+    const localKey = this.combatSync?.localFighterKey() ?? "Player1";
+    const localReady =
+      localKey === "Player1"
+        ? extra.player1TransitionReady
+        : extra.player2TransitionReady;
+    if (localReady) {
+      this.transitionReadyRequested = false;
+    }
+    const shouldReady =
+      !localReady &&
+      (extra.transitionType === "auto" || this.transitionReadyRequested);
+    if (shouldReady) {
+      this.transitionReadyRequested = false;
+    }
+    return { ...input, transitionReadyPressed: shouldReady };
+  }
+
+  private requestCollaborateTransitionReady(): void {
+    const extra = this.currentOutput?.state.collaborateExtra;
+    if (!extra) return;
+    const localKey = this.combatSync?.localFighterKey() ?? "Player1";
+    const localReady =
+      localKey === "Player1"
+        ? extra.player1TransitionReady
+        : extra.player2TransitionReady;
+    if (!localReady) {
+      this.transitionReadyRequested = true;
+    }
+  }
+
+  private destroyTransitionDialog(): void {
+    this.transitionDialog?.destroy();
+    this.transitionDialog = undefined;
+  }
+
   private setupNetworkBattle(data: BattleSceneData): void {
     if (data.mode !== "online" && data.mode !== "local") return;
     const isLocalBattle = data.mode === "local";
@@ -711,6 +766,7 @@ export class BattleScene extends Phaser.Scene {
     }
     this.mobileControls?.destroy();
     this.mobileControls = undefined;
+    this.destroyTransitionDialog();
     this.arenaBounds = DEFAULT_ARENA_BOUNDS;
     this.scale.setGameSize(GAME_WIDTH, GAME_HEIGHT);
     this.cameras.main?.setSize(GAME_WIDTH, GAME_HEIGHT);

@@ -1,6 +1,6 @@
 import { fp } from "@shaisrc/fixed-point";
 import type { BattleModel } from ".";
-import type { NeutralMobState } from "@repo/types";
+import type { CollaborateExtraState, NeutralMobState } from "@repo/types";
 import type { ClearRingState } from "./entities/clear-ring";
 import type {
   EffectState,
@@ -91,6 +91,7 @@ export function hashBattleModel(model: BattleModel): number {
   writePoints(hasher, model.pointManager.pointStates());
   writeClearRings(hasher, model.clearRings);
   writeSpawnerState(hasher, model.neutralMobManager.mobSpawnerState());
+  writeCollaborateExtra(hasher, model.toOutputState().collaborateExtra);
   writeProjectiles(hasher, model.projectiles);
   writeEffects(hasher, model.effects);
   writeStats(hasher, model.stats);
@@ -130,6 +131,9 @@ export function hashBattleModelComponents(
     clearRings: hash("rings", (h) => writeClearRings(h, model.clearRings)),
     spawner: hash("spawner", (h) =>
       writeSpawnerState(h, model.neutralMobManager.mobSpawnerState()),
+    ),
+    collaborateExtra: hash("collab", (h) =>
+      writeCollaborateExtra(h, model.toOutputState().collaborateExtra),
     ),
     projectiles: hash("projs", (h) => writeProjectiles(h, model.projectiles)),
     effects: hash("effects", (h) => writeEffects(h, model.effects)),
@@ -406,6 +410,21 @@ function writeSpawnerState(
   }
   hasher.writeNumber(1);
   writeStateValue(hasher, state as NeutralMobSpawnerStateValue);
+}
+
+function writeCollaborateExtra(
+  hasher: DeterministicHasher,
+  state: CollaborateExtraState | undefined,
+): void {
+  if (!state) {
+    hasher.writeNumber(0);
+    return;
+  }
+  hasher.writeNumber(1);
+  writeStateValue(
+    hasher,
+    state as unknown as NeutralMobSpawnerStateValue,
+  );
 }
 
 function writeStateValue(

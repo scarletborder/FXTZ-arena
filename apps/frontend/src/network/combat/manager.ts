@@ -515,6 +515,7 @@ function neutralInput(): BattleInputState {
     reloadPressed: false,
     alternateHeld: false,
     infoHeld: false,
+    transitionReadyPressed: false,
   };
 }
 
@@ -530,6 +531,7 @@ function cloneInput(input: BattleInputState): BattleInputState {
     reloadPressed: input.reloadPressed,
     alternateHeld: input.alternateHeld,
     infoHeld: input.infoHeld,
+    transitionReadyPressed: input.transitionReadyPressed === true,
   };
 }
 
@@ -552,6 +554,7 @@ function canonicalizeInput(input: BattleInputState): BattleInputState {
     reloadPressed: input.reloadPressed,
     alternateHeld: input.alternateHeld,
     infoHeld: input.infoHeld,
+    transitionReadyPressed: input.transitionReadyPressed === true,
   };
 }
 
@@ -560,7 +563,7 @@ function canonicalizeInput(input: BattleInputState): BattleInputState {
  *
  * Always-compared fields (discrete / boolean):
  *   moveX, moveY, shootPressed, bombPressed, activeCardPressed,
- *   reloadPressed, alternateHeld, infoHeld
+ *   reloadPressed, alternateHeld, infoHeld, transitionReadyPressed
  *
  * Conditionally-compared field (aimX, aimY):
  *   The player moves the mouse every single frame, so aim coordinates
@@ -591,6 +594,7 @@ function sameIntentWithAim(left: BattleInputState, right: BattleInputState): boo
   if (left.reloadPressed !== right.reloadPressed) return false;
   if (left.alternateHeld !== right.alternateHeld) return false;
   if (left.infoHeld !== right.infoHeld) return false;
+  if ((left.transitionReadyPressed === true) !== (right.transitionReadyPressed === true)) return false;
 
   return left.aimX === right.aimX && left.aimY === right.aimY;
 }
@@ -605,6 +609,7 @@ function sameIntent(left: BattleInputState, right: BattleInputState): boolean {
   if (left.reloadPressed !== right.reloadPressed) return false;
   if (left.alternateHeld !== right.alternateHeld) return false;
   if (left.infoHeld !== right.infoHeld) return false;
+  if ((left.transitionReadyPressed === true) !== (right.transitionReadyPressed === true)) return false;
 
   // Aim only matters when something consumes it.
   if (!hasAimConsumingAction(left) && !hasAimConsumingAction(right)) {

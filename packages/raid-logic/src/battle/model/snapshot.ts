@@ -1,4 +1,4 @@
-import type { NeutralMobState } from "@repo/types";
+import type { CollaborateExtraState, NeutralMobState } from "@repo/types";
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
 
 import { getAbilityCard, getCharacter } from "../content";
@@ -36,6 +36,7 @@ export interface BattleModelSnapshot {
   readonly projectiles: readonly ProjectileSnapshot[];
   readonly effects: readonly EffectSnapshot[];
   readonly stats: TrainingStats;
+  readonly collaborateExtra?: CollaborateExtraState;
 }
 
 export type FighterSnapshot = Omit<
@@ -97,6 +98,7 @@ export function createBattleModelSnapshot(params: {
   readonly clearRings: readonly ClearRingState[];
   readonly mobSpawner: NeutralMobSpawnerState | undefined;
   readonly ticker?: TickerManagerSnapshot;
+  readonly collaborateExtra?: CollaborateExtraState;
 }): BattleModelSnapshot {
   const ticker = new TickerManager();
   ticker.setCurrentFrame(params.frame);
@@ -125,6 +127,31 @@ export function createBattleModelSnapshot(params: {
       serializeEffect(effect, params.frame),
     ),
     stats: { ...params.stats },
+    collaborateExtra: params.collaborateExtra
+      ? cloneCollaborateExtra(params.collaborateExtra)
+      : undefined,
+  };
+}
+
+export function cloneCollaborateExtra(
+  state: CollaborateExtraState,
+): CollaborateExtraState {
+  return {
+    ...state,
+    wave: { ...state.wave },
+    shop: {
+      ...state.shop,
+      goods: state.shop.goods.map((item) => ({ ...item })),
+      purchasesByPlayerId: {
+        Player1: [...state.shop.purchasesByPlayerId.Player1],
+        Player2: [...state.shop.purchasesByPlayerId.Player2],
+        Neutral: [...state.shop.purchasesByPlayerId.Neutral],
+      },
+      readyByPlayerId: { ...state.shop.readyByPlayerId },
+    },
+    moneyByPlayerId: { ...state.moneyByPlayerId },
+    scoreByPlayerId: { ...state.scoreByPlayerId },
+    eliteBossSpell: { ...state.eliteBossSpell },
   };
 }
 

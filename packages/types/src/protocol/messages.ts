@@ -114,6 +114,7 @@ export interface InputFrameMessage {
   reloadPressed: boolean;
   alternateHeld: boolean;
   infoHeld: boolean;
+  transitionReadyPressed?: boolean;
   UnreliableLinkExtra?: UnreliableLinkExtra;
 }
 
@@ -138,6 +139,7 @@ export interface RedundantInputFrame {
   readonly reloadPressed: boolean;
   readonly alternateHeld: boolean;
   readonly infoHeld: boolean;
+  readonly transitionReadyPressed?: boolean;
 }
 
 export interface GameOverMessage {
@@ -192,6 +194,7 @@ export interface RoomListMessage {
 export interface RoomCreatedMessage {
   type: "room_created";
   roomId: string;
+  seed?: number;
 }
 
 export interface RoomJoinedMessage {
@@ -200,6 +203,7 @@ export interface RoomJoinedMessage {
   playerId?: PlayerId;
   spectator?: boolean;
   battleMode?: BattleRoomMode;
+  seed?: number;
 }
 
 export interface RoomStateMessage {
@@ -249,6 +253,7 @@ export interface InputFrameRelayMessage {
   reloadPressed: boolean;
   alternateHeld: boolean;
   infoHeld: boolean;
+  transitionReadyPressed?: boolean;
   UnreliableLinkExtra?: UnreliableLinkExtra;
 }
 

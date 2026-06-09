@@ -11,6 +11,7 @@ export interface BattleInputState {
   readonly reloadPressed: boolean;
   readonly alternateHeld: boolean;
   readonly infoHeld: boolean;
+  readonly transitionReadyPressed?: boolean;
 }
 
 export interface PlayerFrameInput {
@@ -25,6 +26,7 @@ export interface PlayerFrameInput {
   readonly reloadPressed: boolean;
   readonly alternateHeld: boolean;
   readonly infoHeld: boolean;
+  readonly transitionReadyPressed?: boolean;
 }
 
 export interface FrameInput {

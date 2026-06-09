@@ -39,6 +39,8 @@ export class ConnectionManager {
   battleMode: BattleRoomMode | null = null;
   /** Battle configuration received from server when both players ready. */
   battleConfig: BattleConfig | null = null;
+  /** Deterministic room seed assigned by the dedicated server. */
+  roomSeed: number | null = null;
 
   /** Lobby: room display name. */
   roomName: string | null = null;
@@ -252,6 +254,9 @@ export class ConnectionManager {
         this.serverVersion = msg.serverVersion;
         this.notifyStatusListeners();
         break;
+      case "room_created":
+        if (msg.seed !== undefined) this.roomSeed = msg.seed;
+        break;
       case "room_joined":
         this.roomId = msg.roomId;
         this.playerId = msg.playerId ?? null;
@@ -266,11 +271,13 @@ export class ConnectionManager {
         this.lifeCount = null;
         this.costLimit = null;
         this.battleMode = null;
+        this.roomSeed = null;
         this.spectatorNames = [];
         this.playerNames = [];
         this.allowSpectators = null;
         this.spectatorCount = 0;
         if (msg.battleMode !== undefined) this.battleMode = msg.battleMode;
+        if (msg.seed !== undefined) this.roomSeed = msg.seed;
         break;
       case "room_state": {
         const previousStatus = this.roomStatus;
@@ -306,6 +313,7 @@ export class ConnectionManager {
       case "battle_start":
         this.battleConfig = msg.config;
         this.battleMode = msg.config.battleMode;
+        this.roomSeed = msg.config.seed;
         break;
       case "game_starting":
         if (msg.battleMode !== undefined) this.battleMode = msg.battleMode;
@@ -327,6 +335,7 @@ export class ConnectionManager {
     this.opponentUsername = null;
     this.roomStatus = null;
     this.battleConfig = null;
+    this.roomSeed = null;
     this.roomName = null;
     this.hostName = null;
     this.lifeCount = null;
