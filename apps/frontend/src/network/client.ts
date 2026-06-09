@@ -48,6 +48,16 @@ export class ConnectionManager {
   costLimit: number | null = null;
   /** Lobby: whether the opponent has readied up. */
   opponentReady: boolean | null = null;
+  /** Whether this connection is watching a room instead of playing. */
+  isSpectator = false;
+  /** Spectator display names reported by the server. */
+  spectatorNames: readonly string[] = [];
+  /** Player display names reported by the server, in Player1/Player2 order. */
+  playerNames: readonly string[] = [];
+  /** Whether the current room allows spectators. */
+  allowSpectators: boolean | null = null;
+  /** Current spectator count for the room. */
+  spectatorCount = 0;
 
   private readonly statusListeners = new Set<(status: ConnectionStatus) => void>();
   private _handler: ((msg: ServerMessage) => void) | null = null;
@@ -242,7 +252,8 @@ export class ConnectionManager {
         break;
       case "room_joined":
         this.roomId = msg.roomId;
-        this.playerId = msg.playerId;
+        this.playerId = msg.playerId ?? null;
+        this.isSpectator = msg.spectator === true;
         // Clear stale state from previous room (opponentUsername, etc.)
         this.opponentUsername = null;
         this.opponentReady = null;
@@ -252,6 +263,10 @@ export class ConnectionManager {
         this.hostName = null;
         this.lifeCount = null;
         this.costLimit = null;
+        this.spectatorNames = [];
+        this.playerNames = [];
+        this.allowSpectators = null;
+        this.spectatorCount = 0;
         break;
       case "room_state": {
         const previousStatus = this.roomStatus;
@@ -277,6 +292,10 @@ export class ConnectionManager {
         if (msg.lifeCount !== undefined) this.lifeCount = msg.lifeCount;
         if (msg.costLimit !== undefined) this.costLimit = msg.costLimit;
         if (msg.opponentReady !== undefined) this.opponentReady = msg.opponentReady;
+        if (msg.allowSpectators !== undefined) this.allowSpectators = msg.allowSpectators;
+        if (msg.spectatorCount !== undefined) this.spectatorCount = msg.spectatorCount;
+        if (msg.spectatorNames !== undefined) this.spectatorNames = msg.spectatorNames;
+        if (msg.playerNames !== undefined) this.playerNames = msg.playerNames;
         break;
       }
       case "battle_start":
@@ -304,6 +323,11 @@ export class ConnectionManager {
     this.lifeCount = null;
     this.costLimit = null;
     this.opponentReady = null;
+    this.isSpectator = false;
+    this.spectatorNames = [];
+    this.playerNames = [];
+    this.allowSpectators = null;
+    this.spectatorCount = 0;
   }
 
   private startPing(): void {

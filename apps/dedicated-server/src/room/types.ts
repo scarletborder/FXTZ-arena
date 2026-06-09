@@ -1,4 +1,4 @@
-import type { MapId, PlayerId, PlayerLoadout, RoomStatus } from "@repo/types";
+import type { MapId, PlayerId, PlayerLoadout, RoomStatus, ServerMessage } from "@repo/types";
 
 export interface InternalRoom {
   id: string;
@@ -7,6 +7,7 @@ export interface InternalRoom {
   mapId: MapId;
   lifeCount: number;
   costLimit: number;
+  allowSpectators: boolean;
   status: RoomStatus;
   connectionIds: (string | null)[]; // [Player1 connectionId, Player2 connectionId]
   playerSlots: (PlayerId | null)[]; // ["Player1" | "Player2" | null]
@@ -18,6 +19,8 @@ export interface InternalRoom {
   disconnectTimers: (ReturnType<typeof setTimeout> | null)[];
   lastAckFrameIds: number[];
   gameOverVerdicts: ({ frame: number; ackFrame: number; winnerPlayerId: PlayerId } | null)[];
+  spectatorConnectionIds: string[];
+  spectatorInputHistory: Extract<ServerMessage, { type: "input_frame" }>[];
   createdAt: number;
   battleId: string | null;
   seed: number | null;

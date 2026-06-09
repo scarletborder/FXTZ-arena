@@ -32,6 +32,7 @@ export interface CreateRoomMessage {
   lifeCount: number;
   costLimit: number;
   p2pEnabled?: boolean;
+  allowSpectators?: boolean;
 }
 
 export interface JoinRoomMessage {
@@ -40,6 +41,7 @@ export interface JoinRoomMessage {
   username?: string;
   password?: string;
   p2pEnabled?: boolean;
+  spectator?: boolean;
 }
 
 export interface QuickMatchMessage {
@@ -52,6 +54,7 @@ export interface ListRoomsMessage {
   type: "list_rooms";
   page: number;
   pageSize: number;
+  spectatorsOnly?: boolean;
 }
 
 export interface LeaveRoomMessage {
@@ -110,6 +113,11 @@ export interface InputFrameMessage {
   UnreliableLinkExtra?: UnreliableLinkExtra;
 }
 
+export interface SpectatorInputFrameMessage extends Omit<InputFrameMessage, "type"> {
+  type: "spectator_input_frame";
+  playerId: PlayerId;
+}
+
 export interface UnreliableLinkExtra {
   readonly redundantInputs: readonly RedundantInputFrame[];
 }
@@ -155,6 +163,7 @@ export type ClientMessage =
   | P2pSignalMessage
   | P2pReadyMessage
   | InputFrameMessage
+  | SpectatorInputFrameMessage
   | GameOverMessage
   | PingMessage;
 
@@ -184,7 +193,8 @@ export interface RoomCreatedMessage {
 export interface RoomJoinedMessage {
   type: "room_joined";
   roomId: string;
-  playerId: PlayerId;
+  playerId?: PlayerId;
+  spectator?: boolean;
 }
 
 export interface RoomStateMessage {
@@ -198,6 +208,10 @@ export interface RoomStateMessage {
   hostName?: string;
   lifeCount?: number;
   costLimit?: number;
+  allowSpectators?: boolean;
+  spectatorCount?: number;
+  spectatorNames?: readonly string[];
+  playerNames?: readonly string[];
 }
 
 export interface GameStartingMessage {

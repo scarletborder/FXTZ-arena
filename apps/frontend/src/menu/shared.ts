@@ -25,7 +25,8 @@ export type SceneKey =
   | "story-loadout"
   | "story-result"
   | "replay-record"
-  | "replay-playback";
+  | "replay-playback"
+  | "spectator-loading";
 export type SelectionMode = "ai" | "training" | "online" | "local";
 export type CodexTab = "characters" | "cards";
 export type CpuLoadoutPresetId = "marisa_solo" | "sakuya_cirno" | "kaguya_reisen";

@@ -45,6 +45,7 @@ import type { StoryProgressData, StoryResultData } from "./story/types";
 import type { ReplayFile } from "./replay/types";
 import { ReplayBattleOverride } from "./replay/replay-battle-override";
 import { ReplayRecorder, globalReplayRecorder } from "./replay/recorder";
+import { SpectatorBattleOverride } from "./replay/spectator/spectator-battle-override";
 
 type DebugPointSize = "small" | "medium" | "large";
 
@@ -104,6 +105,7 @@ export class BattleScene extends Phaser.Scene {
   private pauseMenu: BattlePauseMenuController | undefined;
   private replayRecorder: ReplayRecorder | undefined;
   private replayOverride: ReplayBattleOverride | null = null;
+  private spectatorOverride: SpectatorBattleOverride | null = null;
 
   constructor() {
     super("battle");
@@ -117,9 +119,10 @@ export class BattleScene extends Phaser.Scene {
     this.resultScheduled = false;
     this.replayRecorder = undefined;
     this.replayOverride = null;
+    this.spectatorOverride = null;
     this.rollbackManager.reset({ sceneData: data, debug: this.shouldRecordDebugLog() });
     this.accumulator = 0;
-    this.mobileControlsEnabled = shouldEnableMobileBattleControls(this) && !data.replayData;
+    this.mobileControlsEnabled = shouldEnableMobileBattleControls(this) && !data.replayData && !data.spectatorData;
     if (this.mobileControlsEnabled) {
       this.previousScaleAutoCenter = this.scale.autoCenter;
       this.scale.autoCenter = Phaser.Scale.CENTER_HORIZONTALLY;
@@ -130,7 +133,7 @@ export class BattleScene extends Phaser.Scene {
     this.battleAudioBridge = installBattleAudioBridge(this);
     this.battleBgmBridge = installBattleBgmBridge(this);
     BgmCmd.PlayMap(data.mapId ?? data.battleConfig?.mapId);
-    this.input.setDefaultCursor(data.replayData ? "auto" : "none");
+    this.input.setDefaultCursor(data.replayData || data.spectatorData ? "auto" : "none");
     this.input.mouse?.disableContextMenu();
     this.keybinds = createBattleKeybinds(this);
     this.keys = this.keybinds.keys;
@@ -139,6 +142,17 @@ export class BattleScene extends Phaser.Scene {
     if (data.replayData) {
       this.replayOverride = new ReplayBattleOverride(this, data, {
         keys: this.keys,
+        bgmBridge: this.battleBgmBridge,
+      });
+      ConsoleCmd.uninstall(this);
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdownBattleScene());
+      return;
+    }
+
+    if (data.spectatorData) {
+      this.spectatorOverride = new SpectatorBattleOverride(this, data, {
+        keys: this.keys,
+        bgmBridge: this.battleBgmBridge,
       });
       ConsoleCmd.uninstall(this);
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdownBattleScene());
@@ -237,14 +251,19 @@ export class BattleScene extends Phaser.Scene {
   }
 
   update(_: number, delta: number): void {
-    if (this.pauseMenu?.isPaused()) {
-      this.pauseMenu.update(delta);
-      return;
-    }
-
     // --- Replay playback mode ---
     if (this.replayOverride) {
       this.replayOverride.update(delta);
+      return;
+    }
+
+    if (this.spectatorOverride) {
+      this.spectatorOverride.update(delta);
+      return;
+    }
+
+    if (this.pauseMenu?.isPaused()) {
+      this.pauseMenu.update(delta);
       return;
     }
 
@@ -508,7 +527,10 @@ export class BattleScene extends Phaser.Scene {
       sceneData: data,
       p2p,
       callbacks: {
-        recordStepInputs: (record) => this.rollbackManager.recordStepInputs(record),
+        recordStepInputs: (record) => {
+          this.rollbackManager.recordStepInputs(record);
+          this.forwardSpectatorInputs(record);
+        },
         recordConfirmedInputs: (record) => this.rollbackManager.recordConfirmedInputs(record),
         recordFrame: (aimConsumed) => this.recordDebugFrame(aimConsumed),
         getRollbackRecord: (frame) => this.rollbackManager.getRollbackRecord(frame),
@@ -535,6 +557,38 @@ export class BattleScene extends Phaser.Scene {
       },
     });
     p2p.start();
+  }
+
+  private forwardSpectatorInputs(record: {
+    readonly frame: number;
+    readonly player: BattleInputState;
+    readonly target: BattleInputState;
+  }): void {
+    if ((this.sceneData.localPlayerId ?? "Player1") !== "Player1") return;
+    const shouldForwardOnline = this.sceneData.mode === "online";
+    const shouldForwardLocal = this.sceneData.mode === "local" && this.sceneData.spectatorForward !== undefined;
+    if (!shouldForwardOnline && !shouldForwardLocal) return;
+    const playerMessage = {
+      type: "spectator_input_frame",
+      playerId: "Player1",
+      frame: record.frame,
+      ackFrame: record.frame,
+      ...record.player,
+    } as const;
+    const targetMessage = {
+      type: "spectator_input_frame",
+      playerId: "Player2",
+      frame: record.frame,
+      ackFrame: record.frame,
+      ...record.target,
+    } as const;
+    if (this.sceneData.mode === "online") {
+      connectionManager.send(playerMessage);
+      connectionManager.send(targetMessage);
+      return;
+    }
+    this.sceneData.spectatorForward?.({ ...playerMessage, type: "input_frame" });
+    this.sceneData.spectatorForward?.({ ...targetMessage, type: "input_frame" });
   }
 
   private shutdownBattleScene(): void {

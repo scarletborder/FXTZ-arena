@@ -14,7 +14,7 @@ const RESTART_KEY_RADIUS = 15;
 type PauseConfirmAction = "mainMenu" | "restart";
 
 interface PauseMenuButton {
-  readonly key: "resume" | "mainMenu" | "restart";
+  readonly key: "resume" | "mainMenu" | "restart" | "speed";
   readonly container: Phaser.GameObjects.Container;
   readonly label: Phaser.GameObjects.Text;
   readonly progressRing?: Phaser.GameObjects.Graphics;
@@ -42,7 +42,11 @@ export interface BattlePauseMenuOptions {
   readonly replaySpeed?: number;
   /** Called when user toggles playback speed. */
   readonly onSpeedChange?: (speed: number) => void;
+  /** Spectator menu keeps the battle running and only exposes resume/exit. */
+  readonly spectator?: boolean;
 }
+
+const REPLAY_SPEEDS = [0.5, 1, 2, 4, 8] as const;
 
 export class BattlePauseMenuController {
   private menu: PauseMenuState | undefined;
@@ -133,7 +137,7 @@ export class BattlePauseMenuController {
     }
     this.paused = false;
     this.destroyMenu();
-    this.scene.input.setDefaultCursor("none");
+    this.scene.input.setDefaultCursor(this.options.spectator ? "auto" : "none");
     this.options.onResumed();
   }
 
@@ -152,8 +156,9 @@ export class BattlePauseMenuController {
     const menuCenterY = Math.max(220, height - MENU_BOTTOM_MARGIN - MENU_BUTTON_HEIGHT / 2 - 64);
 
     const isReplay = this.options.replaySpeed !== undefined;
+    const isSpectator = this.options.spectator === true;
     const title = this.scene.add
-      .text(menuCenterX, menuCenterY - 138, isReplay ? t("pause.replay_title") : t("pause.title"), {
+      .text(menuCenterX, menuCenterY - 138, isSpectator ? t("pause.spectator_title") : isReplay ? t("pause.replay_title") : t("pause.title"), {
         fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
         fontSize: "30px",
         fontStyle: "900",
@@ -171,11 +176,30 @@ export class BattlePauseMenuController {
 
     const buttons: PauseMenuButton[] = [];
 
-    if (isReplay) {
+    if (isSpectator) {
+      buttons.push(
+        this.createMenuButton(layer, menuCenterX, menuCenterY - 32, t("pause.resume"), true, () => this.resume(), "resume"),
+        this.createMenuButton(layer, menuCenterX, menuCenterY + 32, t("pause.exit_spectator"), true, () => this.options.onMainMenu(), "mainMenu"),
+      );
+    } else if (isReplay) {
+      let currentSpeed = this.options.replaySpeed ?? 1;
+      const speedButton = this.createMenuButton(
+        layer,
+        menuCenterX,
+        menuCenterY + 64,
+        t("pause.speed_value", { speed: formatSpeed(currentSpeed) }),
+        true,
+        () => {
+          currentSpeed = nextReplaySpeed(currentSpeed);
+          this.options.onSpeedChange?.(currentSpeed);
+          speedButton.label.setText(t("pause.speed_value", { speed: formatSpeed(currentSpeed) }));
+        },
+        "speed",
+      );
       buttons.push(
         this.createMenuButton(layer, menuCenterX, menuCenterY - 64, t("pause.resume"), true, () => this.resume(), "resume"),
         this.createMenuButton(layer, menuCenterX, menuCenterY, t("pause.exit_replay"), true, () => this.options.onMainMenu(), "mainMenu"),
-        this.createMenuButton(layer, menuCenterX, menuCenterY + 64, t("pause.restart"), true, () => this.openConfirm("restart"), "restart"),
+        speedButton,
       );
     } else {
       buttons.push(
@@ -255,7 +279,7 @@ export class BattlePauseMenuController {
     if (enabled) {
       hover.setInteractive({ useHandCursor: true });
       hover.on("pointerover", () => {
-        label.setColor(key === "resume" ? "#ffcf6e" : "#ff5c66");
+        label.setColor(key === "resume" || key === "speed" ? "#ffcf6e" : "#ff5c66");
         hover.setFillStyle(0xffffff, 0.06);
       });
       hover.on("pointerout", () => {
@@ -388,4 +412,13 @@ export class BattlePauseMenuController {
     this.menu?.confirmLayer?.destroy(true);
     this.menu = undefined;
   }
+}
+
+function nextReplaySpeed(speed: number): number {
+  const currentIndex = REPLAY_SPEEDS.findIndex((value) => value === speed);
+  return REPLAY_SPEEDS[(currentIndex + 1) % REPLAY_SPEEDS.length] ?? 1;
+}
+
+function formatSpeed(speed: number): string {
+  return Number.isInteger(speed) ? `${speed}` : speed.toString();
 }

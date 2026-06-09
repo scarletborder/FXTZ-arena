@@ -24,7 +24,7 @@
     "wait_opponent_after_create": "设置后等待对手加入", "browse_rooms": "浏览公开和加密房间", "choose_loadout": "选择配装后开战",
     "no_cost_limit": "无 cost 上限", "discover_lan_players": "发现局域网玩家", "connected": "已连接", "connecting": "正在连接...",
     "error": "连接失败", "disconnected": "未连接", "matching": "正在匹配...", "create_room_title": "创建房间",
-    "room_name": "房间名", "default_room_name": "{{name}} 的房间", "room_password": "密码(可选)", "lives": "命数", "map": "地图", "select_map": "选择地图", "ai_loadout": "人机配装",
+    "room_name": "房间名", "default_room_name": "{{name}} 的房间", "room_password": "密码(可选)", "extended_options": "拓展选项 ▸", "extended_options_open": "拓展选项 ▾", "allow_spectators": "允许观战", "lives": "命数", "map": "地图", "select_map": "选择地图", "ai_loadout": "人机配装",
     "cpu_loadout.marisa_solo": "魔理沙solo", "cpu_loadout.sakuya_cirno": "雾之湖二人组", "cpu_loadout.kaguya_reisen": "永远亭自宅警备队",
     "create": "创建", "cancel": "取消", "creating_room": "正在创建房间...", "udp_connect": "UDP 连接",
     "use_desktop_client": "请使用客户端软件", "udp_connect_ready": "使用IP直连"
@@ -32,7 +32,8 @@
   "udp_connect": {
     "title": "UDP 连接", "as_host": "作为主机", "port": "开放端口", "host_game": "主持游戏", "start_listen": "开始监听",
     "waiting": "等待连接中", "stop": "停止", "as_guest": "作为客机", "address": "对方地址",
-    "address_tip": "范例：192.168.1.23:10800 或 example.com:10800", "connect": "连接",
+    "address_tip": "范例：192.168.1.23:10800 或 example.com:10800", "connect": "连接", "spectate": "观战",
+    "allow_spectators": "允许观战", "spectate_sent": "已发送 UDP 观战请求", "spectators": "观战者：{{names}}", "no_spectators": "暂无",
     "address_required": "请输入 ip:port", "connect_clipboard": "从剪贴板地址连接", "connect_sent": "已发送 UDP 握手包",
     "received_from": "收到来自 {{addr}} 的 UDP 数据"
   },
@@ -70,7 +71,10 @@
     "confirm": "确定",
     "replay_title": "回放",
     "exit_replay": "退出回放",
-    "speed": "速度"
+    "speed": "速度",
+    "speed_value": "加速 {{speed}}x",
+    "spectator_title": "观战",
+    "exit_spectator": "退出观战"
   },
   "public_server": {
     "connectivity": "公共服务器连通性", "hint": "正在测试所有公共服务器，你可以在[设置]页面重新测试\n部分公开服务器需手动信任证书，[去信任]->[高级]->[继续访问]",
@@ -91,7 +95,7 @@
   },
   "room_list": {
     "title": "房间列表", "back": "返回", "room_id": "房间号", "join": "加入", "password": "输入密码",
-    "quick_match": "快速匹配", "create_room": "创建房间",
+    "quick_match": "快速匹配", "create_room": "创建房间", "spectator_mode": "观战模式",
     "password_cancel": "取消", "password_confirm": "确认", "enter_room_id": "请输入房间号",
     "host": "房主: {{name}}  {{count}}/{{max}}  #{{id}}", "lock": "LOCK"
   },
@@ -101,7 +105,20 @@
     "host": "房主: {{name}}", "lives": "命数: {{count}}", "cost_limit": "Cost 上限: {{count}}", "status": "状态: {{status}}",
     "status_waiting": "等待中", "status_selecting": "配装中", "status_unknown": "未知", "players": "玩家", "host_badge": "房主",
     "waiting_player": "等待中…", "default_player": "玩家-1", "wait_opponent": "等待对手加入…", "wait_ready": "等待对手准备…",
-    "ready_wait_start": "已准备，等待房主开始游戏", "ready_hint": "准备好后请点击准备", "peer_left": "对方已经退出房间"
+    "ready_wait_start": "已准备，等待房主开始游戏", "ready_hint": "准备好后请点击准备", "peer_left": "对方已经退出房间",
+    "spectator_seats": "观战席位", "no_spectators": "暂无观战者"
+  },
+  "spectator": {
+    "loading_title": "观战准备中",
+    "players_waiting": "等待玩家入场",
+    "players": "玩家：{{names}}",
+    "wait_room_start": "等待房间开始",
+    "wait_loadout": "等待玩家选择配装",
+    "wait_player_loading": "等待玩家加载同步",
+    "loading_resources": "正在加载战斗资源",
+    "wait_game_start": "等待游戏开始",
+    "finished": "战斗已结束",
+    "cancel": "取消观战"
   },
   "select": {
     "confirmed": "对手已确认", "opponent": "对手", "error": "错误: {{message}}", "peer_left": "对方已经退出房间",

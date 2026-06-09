@@ -4,7 +4,7 @@ import { getAvailableCombatMaps } from "@repo/content";
 import { t } from "@repo/i18n";
 import type { MapId, PlayerId, RoomSummary, ServerMessage } from "@repo/types";
 
-import { createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop } from "./ui";
+import { createCheckbox, createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop } from "./ui";
 import { createMapDropdown } from "./map-dialog";
 import { connectionManager, installMenuAudioUnlock, type SceneKey, type SelectionData, type TextFieldControl } from "./shared";
 import { uiSettings } from "../store/settings";
@@ -20,8 +20,10 @@ export class RoomListScene extends Phaser.Scene {
   private roomIdValue = "";
   private activeField: TextFieldControl | null = null;
   private pendingJoinRoomId: string | null = null;
+  private pendingJoinSpectator = false;
   private passwordDialog: Phaser.GameObjects.Container | null = null;
   private createRoomDialog: Phaser.GameObjects.Container | null = null;
+  private spectatorMode = false;
 
   private readonly onKeyDown = (event: KeyboardEvent) => this.activeField?.handleKey(event);
   private readonly onPaste = (event: ClipboardEvent) => this.activeField?.handlePaste(event.clipboardData?.getData("text") ?? "");
@@ -40,6 +42,14 @@ export class RoomListScene extends Phaser.Scene {
       color: "#f6f1e6",
     });
     createFightButton(this, 1138, 62, 160, 44, t("room_list.back"), () => this.scene.start("battle-start"), { accent: 0x5c7185 });
+    this.add.existing(createCheckbox(this, 930, 104, this.spectatorMode, {
+      label: t("room_list.spectator_mode"),
+      onChange: (checked) => {
+        this.spectatorMode = checked;
+        this.page = 1;
+        this.requestRooms();
+      },
+    }).container);
 
     this.listLayer = this.add.container(0, 0);
     this.pageLabel = this.add.text(640, 680, "", {
@@ -82,7 +92,7 @@ export class RoomListScene extends Phaser.Scene {
   }
 
   private requestRooms(): void {
-    connectionManager.send({ type: "list_rooms", page: this.page, pageSize: PAGE_SIZE });
+    connectionManager.send({ type: "list_rooms", page: this.page, pageSize: PAGE_SIZE, spectatorsOnly: this.spectatorMode });
   }
 
   private gotoPage(nextPage: number): void {
@@ -117,6 +127,7 @@ export class RoomListScene extends Phaser.Scene {
     c.add(this.add.text(cx, py + 28, t("battle_start.create_room"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "22px", fontStyle: "700", color: "#ffcf6e" }).setOrigin(0.5));
     let roomName = Array.from(t("battle_start.default_room_name", { name: uiSettings.username })).slice(0, MAX_ROOM_NAME_LENGTH).join("");
     let roomPassword = "";
+    let allowSpectators = true;
     let selectedMapId: MapId = "hakurei_shrine";
     c.add(this.add.text(cx - 140, py + 78, t("battle_start.room_name"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
     const nameField = createTextField(this, cx - 140, py + 108, 280, {
@@ -124,29 +135,62 @@ export class RoomListScene extends Phaser.Scene {
       maxLength: MAX_ROOM_NAME_LENGTH,
       onFocus: (field) => { this.activeField = field; },
       onChange: (v) => { roomName = v; },
+      variant: "rect",
     });
     c.add(nameField.container);
     this.activeField = nameField;
-    c.add(this.add.text(cx - 140, py + 158, t("battle_start.room_password"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
-    const passwordField = createTextField(this, cx - 140, py + 188, 280, {
-      value: roomPassword,
-      onFocus: (field) => { this.activeField = field; },
-      onChange: (v) => { roomPassword = v; },
-    });
-    c.add(passwordField.container);
     const maps = getAvailableCombatMaps();
-    c.add(this.add.text(cx - 140, py + 238, t("battle_start.map"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
-    const mapDropdown = createMapDropdown(this, cx - 140, py + 266, 280, maps, selectedMapId, (mapId) => {
+    c.add(this.add.text(cx - 140, py + 160, t("battle_start.map"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
+    const mapDropdown = createMapDropdown(this, cx - 140, py + 188, 280, maps, selectedMapId, (mapId) => {
       selectedMapId = mapId;
     });
     c.add(mapDropdown.container);
-    c.add(this.add.text(cx + 20, py + 238, t("battle_start.lives"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
-    const lifeLabel = this.add.text(cx + 140, py + 238, "2", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#34d399" });
+    c.add(this.add.text(cx + 20, py + 160, t("battle_start.lives"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
+    const lifeLabel = this.add.text(cx + 140, py + 160, "2", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#34d399" });
     c.add(lifeLabel);
-    c.add(this.add.text(cx + 100, py + 238, "<", { fontFamily: "Arial", fontSize: "16px", color: "#b7c7d8" }).setInteractive({ useHandCursor: true }).on("pointerdown", () => lifeLabel.setText(String(Math.max(1, parseInt(lifeLabel.text, 10) - 1)))));
-    c.add(this.add.text(cx + 164, py + 238, ">", { fontFamily: "Arial", fontSize: "16px", color: "#b7c7d8" }).setInteractive({ useHandCursor: true }).on("pointerdown", () => lifeLabel.setText(String(Math.min(9, parseInt(lifeLabel.text, 10) + 1)))));
+    c.add(this.add.text(cx + 100, py + 160, "<", { fontFamily: "Arial", fontSize: "16px", color: "#b7c7d8" }).setInteractive({ useHandCursor: true }).on("pointerdown", () => lifeLabel.setText(String(Math.max(1, parseInt(lifeLabel.text, 10) - 1)))));
+    c.add(this.add.text(cx + 164, py + 160, ">", { fontFamily: "Arial", fontSize: "16px", color: "#b7c7d8" }).setInteractive({ useHandCursor: true }).on("pointerdown", () => lifeLabel.setText(String(Math.min(9, parseInt(lifeLabel.text, 10) + 1)))));
+
+    let optionsOpen = false;
+    const optionsLayer = this.add.container(0, 0).setVisible(false).setAlpha(0);
+    c.add(optionsLayer);
+    const optionsX = px - 318;
+    const optionsY = py + 152;
+    const optionsBg = this.add.graphics();
+    optionsBg.fillStyle(0x0f141d, 0.98).fillRect(optionsX, optionsY, 292, 184);
+    optionsBg.lineStyle(1, 0x5c7185, 1).strokeRect(optionsX, optionsY, 292, 184);
+    optionsLayer.add(optionsBg);
+    optionsLayer.add(this.add.text(optionsX + 20, optionsY + 18, t("battle_start.extended_options_open"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "17px", fontStyle: "700", color: "#ffcf6e" }));
+    optionsLayer.add(this.add.text(optionsX + 20, optionsY + 56, t("battle_start.room_password"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
+    const passwordField = createTextField(this, optionsX + 20, optionsY + 86, 252, {
+      value: roomPassword,
+      onFocus: (field) => { this.activeField = field; },
+      onChange: (v) => { roomPassword = v; },
+      variant: "rect",
+    });
+    optionsLayer.add(passwordField.container);
+    optionsLayer.add(createCheckbox(this, optionsX + 20, optionsY + 142, allowSpectators, {
+      label: t("battle_start.allow_spectators"),
+      onChange: (checked) => { allowSpectators = checked; },
+    }).container);
+    const toggle = this.add.text(cx - 140, py + 248, t("battle_start.extended_options"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#ffcf6e" })
+      .setInteractive({ useHandCursor: true });
+    const updateOptions = () => {
+      toggle.setText(optionsOpen ? t("battle_start.extended_options_open") : t("battle_start.extended_options"));
+      if (optionsOpen) {
+        optionsLayer.setVisible(true).setAlpha(0).setX(24);
+        this.tweens.add({ targets: optionsLayer, alpha: 1, x: 0, duration: 140, ease: "Cubic.easeOut" });
+      } else {
+        this.tweens.add({ targets: optionsLayer, alpha: 0, x: 24, duration: 110, ease: "Cubic.easeIn", onComplete: () => optionsLayer.setVisible(false) });
+      }
+    };
+    toggle.on("pointerup", () => {
+      optionsOpen = !optionsOpen;
+      updateOptions();
+    });
+    c.add(toggle);
     c.add(createFightButton(this, cx - 80, py + ph - 60, 140, 44, t("battle_start.create"), () => {
-      connectionManager.send({ type: "create_room", name: roomName, username: uiSettings.username, password: roomPassword || undefined, mapId: selectedMapId, lifeCount: parseInt(lifeLabel.text, 10), costLimit: 10, p2pEnabled: uiSettings.p2pEnabled });
+      connectionManager.send({ type: "create_room", name: roomName, username: uiSettings.username, password: roomPassword || undefined, mapId: selectedMapId, lifeCount: parseInt(lifeLabel.text, 10), costLimit: 10, p2pEnabled: uiSettings.p2pEnabled, allowSpectators });
       c.destroy();
       this.createRoomDialog = null;
       this.activeField = null;
@@ -181,8 +225,8 @@ export class RoomListScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .on("pointerup", () => {
         this.roomIdValue = room.id;
-        if (room.hasPassword) this.showPasswordDialog(room.id);
-        else this.tryJoin(room.id);
+        if (room.hasPassword) this.showPasswordDialog(room.id, this.spectatorMode);
+        else this.tryJoin(room.id, undefined, this.spectatorMode);
       }));
     this.listLayer.add(this.add.text(x + 24, y + 13, room.name, {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
@@ -205,16 +249,17 @@ export class RoomListScene extends Phaser.Scene {
     }
   }
 
-  private tryJoin(roomId: string, password?: string): void {
+  private tryJoin(roomId: string, password?: string, spectator = false): void {
     if (!roomId) {
       this.showToast(t("room_list.enter_room_id"));
       return;
     }
     this.pendingJoinRoomId = roomId;
-    connectionManager.send({ type: "join_room", roomId, username: uiSettings.username, password, p2pEnabled: uiSettings.p2pEnabled });
+    this.pendingJoinSpectator = spectator;
+    connectionManager.send({ type: "join_room", roomId, username: uiSettings.username, password, p2pEnabled: uiSettings.p2pEnabled, spectator });
   }
 
-  private showPasswordDialog(roomId: string): void {
+  private showPasswordDialog(roomId: string, spectator = false): void {
     this.passwordDialog?.destroy();
     const c = this.add.container(0, 0);
     this.passwordDialog = c;
@@ -247,7 +292,7 @@ export class RoomListScene extends Phaser.Scene {
       c.destroy();
       this.passwordDialog = null;
       this.activeField = null;
-      this.tryJoin(roomId, password);
+      this.tryJoin(roomId, password, spectator);
     }, { accent: 0x34d399 }).container);
   }
 
@@ -260,10 +305,14 @@ export class RoomListScene extends Phaser.Scene {
         this.renderList();
         break;
       case "room_joined":
-        this.scene.start("lobby", { mode: "online", roomId: msg.roomId, playerId: msg.playerId as PlayerId } satisfies SelectionData);
+        if (msg.spectator) {
+          this.scene.start("spectator-loading", { source: "online", roomId: msg.roomId });
+        } else {
+          this.scene.start("lobby", { mode: "online", roomId: msg.roomId, playerId: msg.playerId as PlayerId } satisfies SelectionData);
+        }
         break;
       case "error":
-        if (msg.code === "wrong_password" && this.pendingJoinRoomId) this.showPasswordDialog(this.pendingJoinRoomId);
+        if (msg.code === "wrong_password" && this.pendingJoinRoomId) this.showPasswordDialog(this.pendingJoinRoomId, this.pendingJoinSpectator);
         else this.showToast(`${msg.code}: ${msg.message}`);
         break;
     }

@@ -11,6 +11,7 @@ interface TextFieldOptions {
   readonly onChange: (value: string) => void;
   readonly maxLength?: number;
   readonly onFocus?: (field: TextFieldControl) => void;
+  readonly variant?: "angled" | "rect";
 }
 
 let activeTextField: TextFieldControl | undefined;
@@ -32,6 +33,7 @@ export function createTextField(
   let value = options.value;
   let cursorIndex = value.length;
   const maxLength = options.maxLength ?? 42;
+  const variant = options.variant ?? "angled";
   const domEvents = "input focusin focusout keydown keyup click pointerdown touchstart mouseup touchend select";
   const domElement = scene.add.dom(0, 0).createFromHTML('<input name="textField" type="text" />').setOrigin(0, 0);
   const nativeInput = domElement.getChildByName("textField") as HTMLInputElement | null;
@@ -68,7 +70,7 @@ export function createTextField(
       return;
     }
     background.clear();
-    drawAngledPanel(background, 0, 0, width, 46, active ? 0x151b26 : 0x0f141d, active ? 0xffcf6e : 0x5c7185, 1);
+    drawFieldBackground(background, width, active ? 0x151b26 : 0x0f141d, active ? 0xffcf6e : 0x5c7185, variant);
     label.setColor(active ? "#ffcf6e" : "#f6f1e6");
     const displayValue = active
       ? `${value.slice(0, cursorIndex)}_${value.slice(cursorIndex)}`
@@ -238,7 +240,7 @@ export function createTextField(
   hitArea.on("pointerover", () => {
     if (!active) {
       background.clear();
-      drawAngledPanel(background, 0, 0, width, 46, 0x121822, 0x7f8994, 1);
+      drawFieldBackground(background, width, 0x121822, 0x7f8994, variant);
     }
   });
   hitArea.on("pointerout", () => {
@@ -263,4 +265,21 @@ export function createTextField(
   redraw();
 
   return control;
+}
+
+function drawFieldBackground(
+  graphics: Phaser.GameObjects.Graphics,
+  width: number,
+  fillColor: number,
+  strokeColor: number,
+  variant: "angled" | "rect",
+): void {
+  if (variant === "rect") {
+    graphics.fillStyle(fillColor, 1);
+    graphics.fillRect(0, 0, width, 46);
+    graphics.lineStyle(1, strokeColor, 1);
+    graphics.strokeRect(0, 0, width, 46);
+    return;
+  }
+  drawAngledPanel(graphics, 0, 0, width, 46, fillColor, strokeColor, 1);
 }

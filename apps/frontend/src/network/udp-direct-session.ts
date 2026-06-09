@@ -10,19 +10,31 @@ export interface UdpDirectSessionCallbacks {
   readonly onMatch?: (peer: ClientInfo) => void;
   readonly onBattleReady?: (peer: ClientInfo, loadout: PlayerLoadout) => void;
   readonly onPacket?: (addr: string) => void;
+  readonly onSpectatorJoin?: (spectator: ClientInfo) => void;
+  readonly onSpectatorWelcome?: (host: ClientInfo) => void;
+  readonly onSpectatorMessage?: (message: ServerMessage) => void;
 }
 
 type UdpPayload =
   | {
     kind: "hello";
     client: ClientInfo;
+    spectator?: boolean;
   }
   | {
     kind: "welcome";
     client: ClientInfo;
   }
   | {
+    kind: "spectator_welcome";
+    client: ClientInfo;
+  }
+  | {
     kind: "p2p_packet";
+    message: ServerMessage;
+  }
+  | {
+    kind: "spectator_packet";
     message: ServerMessage;
   }
   | {
@@ -35,7 +47,10 @@ export class UdpDirectSession {
   private client: ClientInfo | null = null;
   private peer: ClientInfo | null = null;
   private peerAddr: string | null = null;
+  private readonly spectatorAddrs = new Map<string, ClientInfo>();
+  private readonly spectatorHistory: ServerMessage[] = [];
   private peerPacketHandler: ((message: ServerMessage) => void) | null = null;
+  private spectatorMessageHandler: ((message: ServerMessage) => void) | null = null;
 
   constructor(
     private readonly role: "host" | "guest",
@@ -58,27 +73,34 @@ export class UdpDirectSession {
     return addr;
   }
 
-  async connect(addr: string, username: string): Promise<void> {
+  async connect(addr: string, username: string, spectator = false): Promise<void> {
     this.client = this.createClientInfo(username);
     this.peerAddr = addr;
     await listenUdp(0);
     this.unlisten?.();
     this.unlisten = await subscribeUdp((packet) => this.handlePacket(packet.addr, packet.data));
-    await this.sendPayload({ kind: "hello", client: this.client });
+    await this.sendPayload({ kind: "hello", client: this.client, spectator });
   }
 
   close(): void {
     this.unlisten?.();
     this.unlisten = null;
     this.peerPacketHandler = null;
+    this.spectatorMessageHandler = null;
     this.peer = null;
     this.peerAddr = null;
+    this.spectatorAddrs.clear();
+    this.spectatorHistory.length = 0;
     this.client = null;
     void stopUdp().catch(() => undefined);
   }
 
   setPeerPacketHandler(handler: ((message: ServerMessage) => void) | null): void {
     this.peerPacketHandler = handler;
+  }
+
+  setSpectatorMessageHandler(handler: ((message: ServerMessage) => void) | null): void {
+    this.spectatorMessageHandler = handler;
   }
 
   createP2pBridge(localPlayerId: PlayerId): Pick<ConnectionManager, "send"> {
@@ -102,6 +124,16 @@ export class UdpDirectSession {
       return;
     }
 
+    if (payload.kind === "hello" && this.role === "host" && payload.spectator === true) {
+      this.spectatorAddrs.set(addr, payload.client);
+      await this.sendPayloadTo(addr, { kind: "spectator_welcome", client: this.client });
+      for (const message of this.spectatorHistory) {
+        await this.sendPayloadTo(addr, { kind: "spectator_packet", message });
+      }
+      this.callbacks.onSpectatorJoin?.(payload.client);
+      return;
+    }
+
     if (payload.kind === "hello" && this.role === "host") {
       this.peer = payload.client;
       this.peerAddr = addr;
@@ -114,6 +146,19 @@ export class UdpDirectSession {
       this.peer = payload.client;
       this.peerAddr = addr;
       this.callbacks.onMatch?.(this.peer);
+      return;
+    }
+
+    if (payload.kind === "spectator_welcome" && this.role === "guest") {
+      this.peer = payload.client;
+      this.peerAddr = addr;
+      this.callbacks.onSpectatorWelcome?.(payload.client);
+      return;
+    }
+
+    if (payload.kind === "spectator_packet" && this.role === "guest") {
+      this.spectatorMessageHandler?.(payload.message);
+      this.callbacks.onSpectatorMessage?.(payload.message);
       return;
     }
 
@@ -140,11 +185,63 @@ export class UdpDirectSession {
     return true;
   }
 
+  spectatorCount(): number {
+    return this.spectatorAddrs.size;
+  }
+
+  spectatorNames(): readonly string[] {
+    return [...this.spectatorAddrs.values()].map((client) => client.alias);
+  }
+
+  sendToSpectators(message: ServerMessage): void {
+    this.rememberSpectatorMessage(message);
+    for (const addr of this.spectatorAddrs.keys()) {
+      void this.sendPayloadTo(addr, { kind: "spectator_packet", message });
+    }
+  }
+
+  private rememberSpectatorMessage(message: ServerMessage): void {
+    if (message.type === "battle_start") {
+      const firstInputIndex = this.spectatorHistory.findIndex((item) => item.type === "input_frame");
+      const battleStartIndex = this.spectatorHistory.findIndex((item) => item.type === "battle_start");
+      if (battleStartIndex === -1) {
+        if (firstInputIndex === -1) this.spectatorHistory.push(message);
+        else this.spectatorHistory.splice(firstInputIndex, 0, message);
+        return;
+      }
+      this.spectatorHistory[battleStartIndex] = message;
+      return;
+    }
+
+    if (message.type !== "input_frame") {
+      return;
+    }
+
+    const existingIndex = this.spectatorHistory.findIndex(
+      (item) => item.type === "input_frame" && item.playerId === message.playerId && item.frame === message.frame,
+    );
+    if (existingIndex === -1) {
+      this.spectatorHistory.push(message);
+      this.spectatorHistory.sort((a, b) => {
+        if (a.type === "battle_start") return b.type === "battle_start" ? 0 : -1;
+        if (b.type === "battle_start") return 1;
+        if (a.type !== "input_frame" || b.type !== "input_frame") return 0;
+        return a.frame - b.frame || a.playerId.localeCompare(b.playerId);
+      });
+      return;
+    }
+    this.spectatorHistory[existingIndex] = message;
+  }
+
   private async sendPayload(payload: UdpPayload): Promise<void> {
     if (!this.peerAddr) {
       return;
     }
-    await sendUdp(this.peerAddr, new TextEncoder().encode(JSON.stringify(payload)));
+    await this.sendPayloadTo(this.peerAddr, payload);
+  }
+
+  private async sendPayloadTo(addr: string, payload: UdpPayload): Promise<void> {
+    await sendUdp(addr, new TextEncoder().encode(JSON.stringify(payload)));
   }
 
   private decodePayload(data: Uint8Array): UdpPayload | null {

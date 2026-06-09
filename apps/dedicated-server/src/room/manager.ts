@@ -12,6 +12,7 @@ export interface CreateRoomParams {
   mapId: MapId;
   lifeCount: number;
   costLimit: number;
+  allowSpectators?: boolean;
 }
 
 export class RoomManager {
@@ -26,6 +27,7 @@ export class RoomManager {
       mapId: params.mapId,
       lifeCount: params.lifeCount,
       costLimit: params.costLimit,
+      allowSpectators: params.allowSpectators ?? true,
       status: "waiting",
       connectionIds: [null, null],
       playerSlots: [null, null],
@@ -37,6 +39,8 @@ export class RoomManager {
       disconnectTimers: [null, null],
       lastAckFrameIds: [0, 0],
       gameOverVerdicts: [null, null],
+      spectatorConnectionIds: [],
+      spectatorInputHistory: [],
       createdAt: Date.now(),
       battleId: null,
       seed: null,
@@ -76,6 +80,12 @@ export class RoomManager {
     return { slotIndex, playerId };
   }
 
+  addSpectator(room: InternalRoom, connectionId: string): void {
+    if (!room.spectatorConnectionIds.includes(connectionId)) {
+      room.spectatorConnectionIds.push(connectionId);
+    }
+  }
+
   reconnectSlot(room: InternalRoom, slotIndex: number, connectionId: string): { playerId: PlayerId } | null {
     if (slotIndex < 0 || slotIndex >= room.connectionIds.length) return null;
     const playerId = room.playerSlots[slotIndex];
@@ -91,6 +101,12 @@ export class RoomManager {
   }
 
   removePlayer(room: InternalRoom, connectionId: string): void {
+    const spectatorIndex = room.spectatorConnectionIds.indexOf(connectionId);
+    if (spectatorIndex !== -1) {
+      room.spectatorConnectionIds.splice(spectatorIndex, 1);
+      return;
+    }
+
     const idx = room.connectionIds.indexOf(connectionId);
     if (idx !== -1) {
       room.connectionIds[idx] = null;
@@ -159,6 +175,10 @@ export class RoomManager {
     });
   }
 
+  getSpectatableRooms(): InternalRoom[] {
+    return Array.from(this.rooms.values()).filter((room) => room.allowSpectators);
+  }
+
   toSummary(room: InternalRoom): RoomSummary {
     return {
       id: room.id,
@@ -170,6 +190,8 @@ export class RoomManager {
       playerCount: room.connectionIds.filter((c) => c !== null).length,
       maxPlayers: MAX_PLAYERS_PER_ROOM,
       status: room.status as RoomStatus,
+      allowSpectators: room.allowSpectators,
+      spectatorCount: room.spectatorConnectionIds.length,
     };
   }
 

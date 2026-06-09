@@ -12,10 +12,12 @@ import type { BattleKeyMap } from "../battle/keybind";
 import type { BattleMobileControls } from "../battle/keybind";
 import { BattleView } from "../battle/view";
 import { BattlePauseMenuController } from "../battle/view/pause";
+import { BattleAudioDirector } from "../battle/audio";
 import { Depth } from "../utils/depth";
 import type { BattleSceneData } from "../battle/loadout";
 import type { ReplayFile } from "./types";
 import { FONT } from "../menu/ui/constants";
+import type { BattleBgmBridge } from "../sound";
 
 // ---------------------------------------------------------------------------
 // Player info overlay panel
@@ -147,6 +149,7 @@ function destroyInfoPanel(panel: PanelState): void {
 export interface ReplayBattleDeps {
   readonly keys: BattleKeyMap;
   readonly mobileControls?: BattleMobileControls;
+  readonly bgmBridge?: BattleBgmBridge;
 }
 
 export class ReplayBattleOverride {
@@ -165,6 +168,7 @@ export class ReplayBattleOverride {
 
   // UI
   private pauseMenu: BattlePauseMenuController;
+  private readonly audioDirector = new BattleAudioDirector();
   private player1Panel: PanelState;
   private player2Panel: PanelState;
 
@@ -221,8 +225,9 @@ export class ReplayBattleOverride {
       canOpen: () => !this.resultScheduled,
       onPauseOpened: () => {
         this.accumulator = 0;
+        deps.bgmBridge?.pause();
       },
-      onResumed: () => { /* no-op */ },
+      onResumed: () => deps.bgmBridge?.resume(),
       onRestart: () => this.restart(),
       onMainMenu: () => this.exitToMenu(),
       replaySpeed: this.replaySpeed,
@@ -325,6 +330,9 @@ export class ReplayBattleOverride {
     const outputs = this.runtime.outputQueue.drainAll();
     for (const output of outputs) {
       this.currentOutput = output;
+      this.audioDirector.sync(output.state, {
+        eventTypes: output.events.map((event) => event.type),
+      });
     }
   }
 

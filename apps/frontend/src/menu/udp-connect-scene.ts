@@ -1,14 +1,14 @@
 import Phaser from "phaser";
 import { IS_DESKTOP_APP } from "@repo/constants";
 import { t } from "@repo/i18n";
-import type { MapId, PlayerLoadout } from "@repo/types";
+import type { MapId, PlayerLoadout, ServerMessage } from "@repo/types";
 
 import type { PeerConnection } from "../network/p2p";
 import { type UdpDirectSession, UdpDirectSession as UdpSession } from "../network/udp-direct-session";
 import { uiSettings } from "../store/settings";
 import { showMapDialog } from "./map-dialog";
 import { installMenuAudioUnlock, type SceneKey, type TextFieldControl } from "./shared";
-import { createBackButton, createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop, drawPanel } from "./ui";
+import { createBackButton, createCheckbox, createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop, drawPanel } from "./ui";
 
 export class UdpConnectScene extends Phaser.Scene {
   private activeField: TextFieldControl | null = null;
@@ -23,6 +23,8 @@ export class UdpConnectScene extends Phaser.Scene {
   private localLoadout: PlayerLoadout | null = null;
   private remoteLoadout: PlayerLoadout | null = null;
   private selectedMapId: MapId = "hakurei_shrine";
+  private allowSpectators = true;
+  private spectatorNames: readonly string[] = [];
 
   private readonly onKeyDown = (event: KeyboardEvent) => this.activeField?.handleKey(event);
   private readonly onPaste = (event: ClipboardEvent) => this.activeField?.handlePaste(event.clipboardData?.getData("text") ?? "");
@@ -55,6 +57,10 @@ export class UdpConnectScene extends Phaser.Scene {
       onChange: (value) => { this.listenPort = value.replace(/\D/g, "").slice(0, 5); },
     });
     this.add.existing(portField.container);
+    this.add.existing(createCheckbox(this, 198, 328, this.allowSpectators, {
+      label: t("udp_connect.allow_spectators"),
+      onChange: (checked) => { this.allowSpectators = checked; },
+    }).container);
     createFightButton(this, 840, 284, 220, 52, t("udp_connect.host_game"), () => this.showHostMapDialog(), { accent: 0x34d399 });
 
     const divider = this.add.graphics();
@@ -101,7 +107,8 @@ export class UdpConnectScene extends Phaser.Scene {
         this.showToast(error instanceof Error ? error.message : String(error));
       }
     });
-    createFightButton(this, 840, 552, 220, 52, t("udp_connect.connect"), () => void this.connectGuest(), { accent: 0x34d399 });
+    createFightButton(this, 840, 524, 220, 46, t("udp_connect.connect"), () => void this.connectGuest(), { accent: 0x34d399 });
+    createFightButton(this, 840, 586, 220, 46, t("udp_connect.spectate"), () => void this.connectSpectator(), { accent: 0x26c6da });
 
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("paste", this.onPaste);
@@ -135,6 +142,11 @@ export class UdpConnectScene extends Phaser.Scene {
       this.session = new UdpSession("host", {
         onPacket: (addr) => this.showToast(t("udp_connect.received_from", { addr })),
         onMatch: (peer) => this.launchSelection(peer.alias, "Player1"),
+        onSpectatorJoin: (spectator) => {
+          if (!this.allowSpectators) return;
+          this.spectatorNames = this.session?.spectatorNames() ?? [spectator.alias];
+          this.renderSpectatorsInWaitDialog();
+        },
         onBattleReady: (_peer, loadout) => {
           this.remoteLoadout = loadout;
           this.tryLaunchLoading();
@@ -165,6 +177,32 @@ export class UdpConnectScene extends Phaser.Scene {
       });
       await this.session.connect(this.guestAddress, uiSettings.username);
       this.showToast(t("udp_connect.connect_sent"));
+    } catch (error) {
+      this.showToast(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  private async connectSpectator(): Promise<void> {
+    if (!IS_DESKTOP_APP) return;
+    if (!this.guestAddress.includes(":")) {
+      this.showToast(t("udp_connect.address_required"));
+      return;
+    }
+    try {
+      this.resetSession();
+      this.session = new UdpSession("guest", {
+        onPacket: (addr) => this.showToast(t("udp_connect.received_from", { addr })),
+        onSpectatorWelcome: () => {
+          const spectatorSession = this.session;
+          this.session = null;
+          this.scene.start("spectator-loading", {
+            source: "udp",
+            udpSession: spectatorSession,
+          });
+        },
+      });
+      await this.session.connect(this.guestAddress, uiSettings.username, true);
+      this.showToast(t("udp_connect.spectate_sent"));
     } catch (error) {
       this.showToast(error instanceof Error ? error.message : String(error));
     }
@@ -231,6 +269,37 @@ export class UdpConnectScene extends Phaser.Scene {
       debug: uiSettings.debug,
       localPlayerId: this.localPlayerId,
       p2p: this.currentPeer,
+      spectatorForward: (message: ServerMessage) => this.session?.sendToSpectators(message),
+      spectatorCountProvider: () => this.session?.spectatorCount() ?? 0,
+    });
+    const playerOneLoadout = this.localPlayerId === "Player1" ? this.localLoadout : this.remoteLoadout;
+    const playerTwoLoadout = this.localPlayerId === "Player1" ? this.remoteLoadout : this.localLoadout;
+    if (!playerOneLoadout || !playerTwoLoadout) return;
+    this.session.sendToSpectators({
+      type: "battle_start",
+      config: {
+        battleId: `${Date.now()}`,
+        mapId: this.selectedMapId,
+        seed: 1,
+        fps: 60,
+        lifeCount: 2,
+        defaultBombCount: 3,
+        costLimit: 10,
+        players: [
+          {
+            playerId: "Player1",
+            username: this.localPlayerId === "Player1" ? uiSettings.username : this.matchedPeerName ?? "",
+            loadout: playerOneLoadout,
+            spawnPointId: "spawn-1",
+          },
+          {
+            playerId: "Player2",
+            username: this.localPlayerId === "Player1" ? this.matchedPeerName ?? "" : uiSettings.username,
+            loadout: playerTwoLoadout,
+            spawnPointId: "spawn-2",
+          },
+        ],
+      },
     });
   }
 
@@ -253,6 +322,22 @@ export class UdpConnectScene extends Phaser.Scene {
       this.waitDialog?.destroy();
       this.waitDialog = null;
     }, { accent: 0xff5c66 }).container);
+    this.renderSpectatorsInWaitDialog();
+  }
+
+  private renderSpectatorsInWaitDialog(): void {
+    const c = this.waitDialog;
+    if (!c) return;
+    const existing = c.getByName("spectators") as Phaser.GameObjects.Text | null;
+    existing?.destroy();
+    const text = this.add.text(640, 368, t("udp_connect.spectators", {
+      names: this.spectatorNames.length > 0 ? this.spectatorNames.join(", ") : t("udp_connect.no_spectators"),
+    }), {
+      fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+      fontSize: "15px",
+      color: "#b7c7d8",
+    }).setOrigin(0.5).setName("spectators");
+    c.add(text);
   }
 
   private showToast(message: string): void {

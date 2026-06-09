@@ -18,4 +18,6 @@ export interface RoomSummary {
   readonly playerCount: number;
   readonly maxPlayers: 2;
   readonly status: RoomStatus;
+  readonly allowSpectators?: boolean;
+  readonly spectatorCount?: number;
 }

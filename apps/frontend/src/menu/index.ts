@@ -15,3 +15,4 @@ export * from "./loading-scene";
 export * from "./result-scene";
 export * from "../replay/replay-record-scene";
 export * from "../replay/replay-playback-scene";
+export * from "../replay/spectator/spectator-loading-scene";

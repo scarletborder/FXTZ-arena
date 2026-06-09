@@ -40,4 +40,5 @@ export type {
   ServerHelloMessage,
   ServerMessage,
   StartGameMessage,
+  SpectatorInputFrameMessage,
 } from "@repo/types";

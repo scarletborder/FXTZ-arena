@@ -134,7 +134,7 @@ export class RoomLobbyScene extends Phaser.Scene {
     });
 
     // ── Right panel: player slots ──────────────────────────
-    this.drawPanelToContainer(548, 176, 660, 300, t("room_lobby.players"));
+    this.drawPanelToContainer(548, 176, 660, 360, t("room_lobby.players"));
 
     if (isHost) {
       // 1P = self (green), 2P = opponent (no subtitle)
@@ -147,6 +147,21 @@ export class RoomLobbyScene extends Phaser.Scene {
       const guestOccupied = !!opponentName;
       this.drawPlayerSlot(556, 332, "2P", myName, "", guestOccupied, true);
     }
+
+    this.contentContainer.add(
+      this.add.text(582, 470, t("room_lobby.spectator_seats"), {
+        fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+        fontSize: "15px",
+        color: "#ffcf6e",
+      }),
+    );
+    this.contentContainer.add(
+      this.add.text(720, 470, formatSpectatorNames(connectionManager.spectatorNames), {
+        fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+        fontSize: "15px",
+        color: "#d7e3ef",
+      }).setWordWrapWidth(450),
+    );
 
     // ── Bottom status text and buttons ──────────────────────
     if (isHost) {
@@ -304,4 +319,8 @@ export class RoomLobbyScene extends Phaser.Scene {
       onComplete: () => toast.destroy(),
     });
   }
+}
+
+function formatSpectatorNames(names: readonly string[]): string {
+  return names.length > 0 ? names.join(", ") : t("room_lobby.no_spectators");
 }

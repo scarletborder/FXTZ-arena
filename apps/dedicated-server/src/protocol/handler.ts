@@ -26,6 +26,7 @@ import type {
   ReadyMessage,
   ServerMessage,
   StartGameMessage,
+  SpectatorInputFrameMessage,
 } from "./messages";
 
 export const ErrorCodes = {
@@ -127,6 +128,8 @@ export class MessageHandler {
         return this.handleP2pReady(connection, raw as P2pReadyMessage);
       case "input_frame":
         return this.handleInputFrame(connection, raw as InputFrameMessage);
+      case "spectator_input_frame":
+        return this.handleSpectatorInputFrame(connection, raw as SpectatorInputFrameMessage);
       case "game_over":
         return this.handleGameOver(connection, raw as GameOverMessage);
       case "ping":
@@ -152,6 +155,13 @@ export class MessageHandler {
     if (session.roomId) {
       const room = this.roomManager.get(session.roomId);
       if (room) {
+        if (room.spectatorConnectionIds.includes(connectionId)) {
+          this.roomManager.removePlayer(room, connectionId);
+          this.notifyAllConnected(room, this.createRoomStateFor(room, undefined));
+          this.sessionStore.remove(connectionId);
+          return;
+        }
+
         const slotIdx = room.connectionIds.indexOf(connectionId);
         if (slotIdx !== -1 && session.playerId && (room.status === "loading" || room.status === "fighting")) {
           room.connectionIds[slotIdx] = null;
@@ -382,6 +392,7 @@ export class MessageHandler {
       mapId: msg.mapId,
       lifeCount: msg.lifeCount,
       costLimit: msg.costLimit,
+      allowSpectators: msg.allowSpectators !== false,
     });
 
     const assignment = this.roomManager.assignSlot(room, connection.id);
@@ -419,6 +430,10 @@ export class MessageHandler {
       hostName: session.username,
       lifeCount: room.lifeCount,
       costLimit: room.costLimit,
+      allowSpectators: room.allowSpectators,
+      spectatorCount: room.spectatorConnectionIds.length,
+      spectatorNames: this.spectatorNames(room),
+      playerNames: this.playerNames(room),
     });
   }
 
@@ -457,6 +472,11 @@ export class MessageHandler {
         code: ErrorCodes.WRONG_PASSWORD,
         message: "Incorrect password",
       });
+      return;
+    }
+
+    if (msg.spectator === true) {
+      this.handleJoinSpectator(connection, room);
       return;
     }
 
@@ -522,6 +542,47 @@ export class MessageHandler {
         lifeCount: room.lifeCount,
         costLimit: room.costLimit,
       });
+    }
+  }
+
+  private handleJoinSpectator(
+    connection: TransportConnection,
+    room: import("../room/types").InternalRoom,
+  ): void {
+    const session = this.sessionStore.get(connection.id);
+    if (!session) return;
+
+    if (!room.allowSpectators) {
+      this.send(connection, {
+        type: "error",
+        code: ErrorCodes.INVALID_STATE,
+        message: "Spectating is disabled for this room",
+      });
+      return;
+    }
+
+    this.roomManager.addSpectator(room, connection.id);
+    this.sessionStore.setRoomId(connection.id, room.id);
+
+    this.send(connection, {
+      type: "room_joined",
+      roomId: room.id,
+      spectator: true,
+    });
+
+    const state = this.createRoomStateFor(room, undefined);
+    this.send(connection, state);
+    this.notifyAllConnected(room, state);
+
+    const config = this.buildBattleConfig(room);
+    if (config) {
+      this.send(connection, {
+        type: "battle_start",
+        config,
+      });
+      for (const frame of room.spectatorInputHistory) {
+        this.send(connection, frame);
+      }
     }
   }
 
@@ -611,7 +672,7 @@ export class MessageHandler {
     const pageSize = Math.max(1, Math.min(24, Math.floor(Number(msg.pageSize) || 12)));
     const page = Math.max(1, Math.floor(Number(msg.page) || 1));
     const rooms = this.roomManager
-      .getListableRooms()
+      [msg.spectatorsOnly === true ? "getSpectatableRooms" : "getListableRooms"]()
       .sort((a, b) => b.createdAt - a.createdAt);
     const total = rooms.length;
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -643,6 +704,13 @@ export class MessageHandler {
 
     const room = this.roomManager.get(session.roomId);
     if (!room) return;
+
+    if (room.spectatorConnectionIds.includes(connection.id)) {
+      this.roomManager.removePlayer(room, connection.id);
+      this.sessionStore.setRoomId(connection.id, null);
+      this.notifyAllConnected(room, this.createRoomStateFor(room, undefined));
+      return;
+    }
 
     const ownSlotIndex = room.connectionIds.indexOf(connection.id);
     const guestLeavesWaitingRoom = room.status === "waiting" && ownSlotIndex === 1;
@@ -776,14 +844,9 @@ export class MessageHandler {
     room.status = "selecting";
     room.lobbyReady = [false, false];
 
-    // Broadcast game_starting to both players
-    for (const connId of room.connectionIds) {
-      if (connId) {
-        this.sendToConnection(connId, {
-          type: "game_starting",
-        });
-      }
-    }
+    this.notifyAllConnected(room, {
+      type: "game_starting",
+    });
   }
 
   // ─── Lobby Ready ────────────────────────────────────
@@ -904,14 +967,11 @@ export class MessageHandler {
       // Both players ready — send battle_start to both
       const configWithUsernames = this.withUsernames(room, result.battleConfig);
 
-      for (const connId of room.connectionIds) {
-        if (connId) {
-          this.sendToConnection(connId, {
-            type: "battle_start",
-            config: configWithUsernames,
-          });
-        }
-      }
+      this.notifyAllConnected(room, this.createRoomStateFor(room, undefined));
+      this.notifyAllConnected(room, {
+        type: "battle_start",
+        config: configWithUsernames,
+      });
     }
   }
 
@@ -932,12 +992,7 @@ export class MessageHandler {
     if (!room) return;
 
     if (room.status === "fighting") {
-      this.send(connection, {
-        type: "room_state",
-        roomId: room.id,
-        playerCount: room.connectionIds.filter(Boolean).length,
-        status: "fighting",
-      });
+      this.send(connection, this.createRoomStateFor(room, undefined));
       return;
     }
 
@@ -954,16 +1009,7 @@ export class MessageHandler {
 
     if (bothLoaded) {
       // Both players loaded — fighting begins
-      for (const connId of room.connectionIds) {
-        if (connId) {
-          this.sendToConnection(connId, {
-            type: "room_state",
-            roomId: room.id,
-            playerCount: 2,
-            status: "fighting",
-          });
-        }
-      }
+      this.notifyAllConnected(room, this.createRoomStateFor(room, undefined));
     }
   }
 
@@ -1054,6 +1100,24 @@ export class MessageHandler {
       infoHeld: msg.infoHeld,
       UnreliableLinkExtra: msg.UnreliableLinkExtra,
     });
+
+    this.broadcastInputToSpectators(room, session.playerId, msg);
+  }
+
+  private handleSpectatorInputFrame(
+    connection: TransportConnection,
+    msg: SpectatorInputFrameMessage,
+  ): void {
+    const session = this.sessionStore.get(connection.id);
+    if (!session || !session.roomId || session.playerId !== "Player1") {
+      return;
+    }
+
+    const room = this.roomManager.get(session.roomId);
+    if (!room || room.status !== "fighting") return;
+    if (msg.playerId !== "Player1" && msg.playerId !== "Player2") return;
+
+    this.broadcastInputToSpectators(room, msg.playerId, msg);
   }
 
   // ─── Game Over Verdict ────────────────────────────
@@ -1125,6 +1189,9 @@ export class MessageHandler {
         this.roomManager.removePlayer(room, connId);
       }
     }
+    for (const connId of room.spectatorConnectionIds) {
+      this.sessionStore.setRoomId(connId, null);
+    }
     this.roomManager.delete(room.id);
   }
 
@@ -1177,11 +1244,14 @@ export class MessageHandler {
     });
   }
 
-  private notifyAllConnected(room: { connectionIds: (string | null)[] }, message: ServerMessage): void {
+  private notifyAllConnected(room: { connectionIds: (string | null)[]; spectatorConnectionIds?: string[] }, message: ServerMessage): void {
     for (const connId of room.connectionIds) {
       if (connId) {
         this.sendToConnection(connId, message);
       }
+    }
+    for (const connId of room.spectatorConnectionIds ?? []) {
+      this.sendToConnection(connId, message);
     }
   }
 
@@ -1202,6 +1272,74 @@ export class MessageHandler {
     }
 
     this.sendToSlot(room, otherIdx, message);
+  }
+
+  private createRoomStateFor(
+    room: import("../room/types").InternalRoom,
+    ownSlotIndex: number | undefined,
+  ): Extract<ServerMessage, { type: "room_state" }> {
+    return {
+      type: "room_state",
+      roomId: room.id,
+      playerCount: room.connectionIds.filter(Boolean).length,
+      status: room.status,
+      opponentUsername: ownSlotIndex === undefined ? undefined : this.opponentName(room, ownSlotIndex),
+      opponentReady: ownSlotIndex === 0 ? room.lobbyReady[1] : undefined,
+      roomName: room.name,
+      hostName: this.hostName(room),
+      lifeCount: room.lifeCount,
+      costLimit: room.costLimit,
+      allowSpectators: room.allowSpectators,
+      spectatorCount: room.spectatorConnectionIds.length,
+      spectatorNames: this.spectatorNames(room),
+      playerNames: this.playerNames(room),
+    };
+  }
+
+  private broadcastInputToSpectators(
+    room: import("../room/types").InternalRoom,
+    playerId: PlayerId,
+    msg: InputFrameMessage | SpectatorInputFrameMessage,
+  ): void {
+    const relay: Extract<ServerMessage, { type: "input_frame" }> = {
+      type: "input_frame",
+      playerId,
+      frame: msg.frame,
+      ackFrame: msg.ackFrame ?? 0,
+      moveX: msg.moveX,
+      moveY: msg.moveY,
+      aimX: msg.aimX,
+      aimY: msg.aimY,
+      shootPressed: msg.shootPressed,
+      bombPressed: msg.bombPressed,
+      activeCardPressed: msg.activeCardPressed,
+      reloadPressed: msg.reloadPressed,
+      alternateHeld: msg.alternateHeld,
+      infoHeld: msg.infoHeld,
+      UnreliableLinkExtra: msg.UnreliableLinkExtra,
+    };
+    this.rememberSpectatorInput(room, relay);
+    if (room.spectatorConnectionIds.length === 0) {
+      return;
+    }
+    for (const connId of room.spectatorConnectionIds) {
+      this.sendToConnection(connId, relay);
+    }
+  }
+
+  private rememberSpectatorInput(
+    room: import("../room/types").InternalRoom,
+    relay: Extract<ServerMessage, { type: "input_frame" }>,
+  ): void {
+    const existingIndex = room.spectatorInputHistory.findIndex(
+      (frame) => frame.playerId === relay.playerId && frame.frame === relay.frame,
+    );
+    if (existingIndex === -1) {
+      room.spectatorInputHistory.push(relay);
+      room.spectatorInputHistory.sort((a, b) => a.frame - b.frame || a.playerId.localeCompare(b.playerId));
+      return;
+    }
+    room.spectatorInputHistory[existingIndex] = relay;
   }
 
   private buildBattleConfig(room: import("../room/types").InternalRoom): BattleConfig | null {
@@ -1271,6 +1409,22 @@ export class MessageHandler {
       return this.sessionStore.get(otherConnectionId)?.username ?? "";
     }
     return playerId ? this.sessionStore.findByRoomAndPlayer(room.id, playerId)?.username ?? "" : "";
+  }
+
+  private playerNames(room: import("../room/types").InternalRoom): readonly string[] {
+    return room.connectionIds.map((connectionId, index) => {
+      const playerId = room.playerSlots[index];
+      if (connectionId) {
+        return this.sessionStore.get(connectionId)?.username ?? "";
+      }
+      return playerId ? this.sessionStore.findByRoomAndPlayer(room.id, playerId)?.username ?? "" : "";
+    });
+  }
+
+  private spectatorNames(room: import("../room/types").InternalRoom): readonly string[] {
+    return room.spectatorConnectionIds
+      .map((connectionId) => this.sessionStore.get(connectionId)?.username ?? "")
+      .filter((name) => name.length > 0);
   }
 }
 
