@@ -321,7 +321,10 @@ export class SelectScene extends Phaser.Scene {
   }
 
   private addCharacterRoster(): void {
-    const panel = { x: 66, y: 40, width: 612, height: 392 };
+    const collaborateMode = this.isCollaborateMode();
+    const panel = collaborateMode
+      ? { x: 66, y: 40, width: 906, height: 548 }
+      : { x: 66, y: 40, width: 612, height: 392 };
     drawPanelToLayer(this, this.layer, panel.x, panel.y, panel.width, panel.height, t("select.characters"));
     const roleFilters = [
       ["all", t("select.all")],
@@ -356,7 +359,7 @@ export class SelectScene extends Phaser.Scene {
       panel.height - 92,
     );
     const listContainer = this.add.container(0, 0);
-    const columns = 4;
+    const columns = collaborateMode ? 5 : 4;
     const tileWidth = 112;
     const tileHeight = 152;
     const gapX = 18;
