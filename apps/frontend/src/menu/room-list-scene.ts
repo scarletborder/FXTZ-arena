@@ -125,14 +125,29 @@ export class RoomListScene extends Phaser.Scene {
       this.updateSpectatorToggle();
       this.requestRooms();
     };
-    this.modeButtonLayer.add(createFightButton(this, 616, 96, 150, 38, t("room_list.versus_mode"), () => selectMode("versus"), {
-      enabled: this.battleMode !== "versus",
-      accent: 0xe33d44,
-    }).container);
-    this.modeButtonLayer.add(createFightButton(this, 778, 96, 150, 38, t("room_list.collaborate_mode"), () => selectMode("collaborate"), {
-      enabled: this.battleMode !== "collaborate",
-      accent: 0x34d399,
-    }).container);
+    const addModeButton = (x: number, mode: BattleRoomMode, label: string, accent: number) => {
+      const selected = this.battleMode === mode;
+      if (selected) {
+        const outerGlow = this.add.graphics();
+        drawAngledPanel(outerGlow, x - 80, 72, 160, 52, 0xffcf6e, 0xffcf6e, 0.14);
+        const innerGlow = this.add.graphics();
+        drawAngledPanel(innerGlow, x - 74, 76, 148, 44, 0xfff1c8, 0xffcf6e, 0.10);
+        this.modeButtonLayer.add([outerGlow, innerGlow]);
+      }
+      this.modeButtonLayer.add(createFightButton(this, x, 96, 150, 38, label, () => selectMode(mode), {
+        accent: selected ? 0xffcf6e : accent,
+      }).container);
+      if (selected) {
+        this.modeButtonLayer.add(this.add.text(x, 130, "^", {
+          fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+          fontSize: "20px",
+          fontStyle: "900",
+          color: "#ffcf6e",
+        }).setOrigin(0.5));
+      }
+    };
+    addModeButton(416, "versus", t("room_list.versus_mode"), 0xe33d44);
+    addModeButton(578, "collaborate", t("room_list.collaborate_mode"), 0x34d399);
   }
 
   private updateSpectatorToggle(): void {
