@@ -3,6 +3,7 @@ import { fp } from "@shaisrc/fixed-point";
 import type { FighterKey, FighterState, ProjectileState } from "@repo/content";
 import { fpHypotFp } from "@repo/content";
 import type { PhysicsBodyDef } from "../../../physics-world";
+import type { BattleRules } from "../battle-rules";
 
 export interface ClearRingState {
   readonly id: number;
@@ -48,6 +49,7 @@ export function stepClearRings(params: {
   readonly clearRings: ClearRingState[];
   readonly projectiles: ProjectileState[];
   readonly fighters: Readonly<Record<FighterKey, FighterState | undefined>>;
+  readonly rules?: BattleRules;
 }): void {
   const activeRings: ClearRingState[] = [];
   for (const ring of params.clearRings) {
@@ -79,10 +81,21 @@ export function stepClearRings(params: {
         !canClearProjectile(projectile) ||
         !activeRings.some(
           (ring) =>
-            ring.owner !== projectile.owner &&
+            canRingClearProjectile(ring, projectile, params.rules) &&
             projectileIntersectsRing(projectile, ring),
         ),
     ),
+  );
+}
+
+function canRingClearProjectile(
+  ring: Pick<ClearRingState, "owner">,
+  projectile: Pick<ProjectileState, "owner">,
+  rules: BattleRules | undefined,
+): boolean {
+  return (
+    rules?.canProjectileClearProjectile(ring.owner, projectile.owner) ??
+    ring.owner !== projectile.owner
   );
 }
 

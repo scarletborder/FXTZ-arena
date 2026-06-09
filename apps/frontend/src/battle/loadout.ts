@@ -1,4 +1,4 @@
-import type { BattleConfig, MapId, PlayerId, ServerMessage } from "@repo/types";
+import type { BattleConfig, BattleRoomMode, MapId, PlayerId, ServerMessage } from "@repo/types";
 import type { BattleLoadouts, RaidLogicRuntime } from "@repo/raid-logic";
 import type { PeerConnection } from "../network/p2p";
 import type { StoryAiOverride, StoryBattleContext } from "../story/types";
@@ -15,6 +15,7 @@ export interface BattleSceneData {
   readonly returnScene?: string;
   readonly loadouts?: BattleLoadouts;
   readonly mapId?: MapId;
+  readonly battleMode?: BattleRoomMode;
   readonly playerInitPoint?: number;
   readonly opponentInitPoint?: number;
   readonly debug?: boolean;

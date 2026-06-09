@@ -109,7 +109,7 @@ export async function shootOnceAtPoint(
   pointCount: number,
 ): Promise<BattleModel> {
   const model = await createBattleModel(characterId, "reimu");
-  model.setPlayerPointCount(pointCount);
+  model.pointManager.setPointCount(model.player, pointCount);
   model.step(
     input({
       shootPressed: true,

@@ -82,15 +82,15 @@ export function hashBattleModel(model: BattleModel): number {
   const hasher = new DeterministicHasher();
   hasher.writeNumber(model.frame);
   hasher.writeNumber(model.gameOver ? 1 : 0);
-  hasher.writeNumber(model.getNextNeutralMobId());
-  hasher.writeNumber(model.getNextPointId());
-  hasher.writeNumber(model.getNextClearRingId());
+  hasher.writeNumber(model.neutralMobManager.getNextNeutralMobId());
+  hasher.writeNumber(model.pointManager.getNextPointId());
+  hasher.writeNumber(model.clearRingManager.getNextClearRingId());
   writeFighter(hasher, model.player);
   writeFighter(hasher, model.target);
-  writeNeutralMobs(hasher, model.neutralMobStates());
-  writePoints(hasher, model.pointStates());
+  writeNeutralMobs(hasher, model.neutralMobManager.states());
+  writePoints(hasher, model.pointManager.pointStates());
   writeClearRings(hasher, model.clearRings);
-  writeSpawnerState(hasher, model.mobSpawnerState());
+  writeSpawnerState(hasher, model.neutralMobManager.mobSpawnerState());
   writeProjectiles(hasher, model.projectiles);
   writeEffects(hasher, model.effects);
   writeStats(hasher, model.stats);
@@ -117,19 +117,19 @@ export function hashBattleModelComponents(
   return {
     frame: hash("frame", (h) => h.writeNumber(model.frame)),
     counters: hash("counters", (h) => {
-      h.writeNumber(model.getNextNeutralMobId());
-      h.writeNumber(model.getNextPointId());
-      h.writeNumber(model.getNextClearRingId());
+      h.writeNumber(model.neutralMobManager.getNextNeutralMobId());
+      h.writeNumber(model.pointManager.getNextPointId());
+      h.writeNumber(model.clearRingManager.getNextClearRingId());
     }),
     player: hash("player", (h) => writeFighter(h, model.player)),
     target: hash("target", (h) => writeFighter(h, model.target)),
     neutralMobs: hash("mobs", (h) =>
-      writeNeutralMobs(h, model.neutralMobStates()),
+      writeNeutralMobs(h, model.neutralMobManager.states()),
     ),
-    points: hash("points", (h) => writePoints(h, model.pointStates())),
+    points: hash("points", (h) => writePoints(h, model.pointManager.pointStates())),
     clearRings: hash("rings", (h) => writeClearRings(h, model.clearRings)),
     spawner: hash("spawner", (h) =>
-      writeSpawnerState(h, model.mobSpawnerState()),
+      writeSpawnerState(h, model.neutralMobManager.mobSpawnerState()),
     ),
     projectiles: hash("projs", (h) => writeProjectiles(h, model.projectiles)),
     effects: hash("effects", (h) => writeEffects(h, model.effects)),

@@ -8,14 +8,18 @@ import {
   type RaidLogicRuntime,
 } from "@repo/raid-logic";
 
+import { FIXED_STEP_MS, GAME_HEIGHT, GAME_WIDTH } from "@repo/constants";
 import {
-  ARENA_HEIGHT_PX,
-  ARENA_WIDTH_PX,
-  FIXED_STEP_MS,
-  GAME_HEIGHT,
-  GAME_WIDTH,
-} from "@repo/constants";
-import type { PointRewardSize } from "@repo/constants";
+  createBattleLayout,
+  sameBattleLayout,
+  type BattleLayout,
+} from "./battle/manager/layout-manager";
+import {
+  createPresetScriptInput,
+  describePresetScriptAction,
+  type DebugPointSize,
+  pointRewardSizeForDebugSize,
+} from "./battle/manager/debug-manager";
 import { createBattleInput, getBattlePointerWorld } from "./battle/input";
 import {
   createBattleKeybinds,
@@ -47,29 +51,8 @@ import { ReplayBattleOverride } from "./replay/replay-battle-override";
 import { ReplayRecorder, globalReplayRecorder } from "./replay/recorder";
 import { SpectatorBattleOverride } from "./replay/spectator/spectator-battle-override";
 
-type DebugPointSize = "small" | "medium" | "large";
-
-function pointRewardSizeForDebugSize(size: DebugPointSize): PointRewardSize {
-  switch (size) {
-    case "small":
-      return "small";
-    case "medium":
-      return "medium";
-    case "large":
-      return "large";
-  }
-}
-
 const PRESET_SCRIPT_ROLLBACK_FRAME = 30;
 const PRESET_SCRIPT_FRAMES = 420;
-const ARENA_ASPECT_RATIO = ARENA_WIDTH_PX / ARENA_HEIGHT_PX;
-
-interface BattleLayout {
-  readonly width: number;
-  readonly height: number;
-  readonly arenaInsetX: number;
-  readonly arenaInsetY: number;
-}
 
 export class BattleScene extends Phaser.Scene {
   private accumulator = 0;
@@ -183,6 +166,7 @@ export class BattleScene extends Phaser.Scene {
             : "training",
         loadouts: data.loadouts,
         mapId: data.mapId ?? data.battleConfig?.mapId,
+        battleMode: data.battleMode ?? data.battleConfig?.battleMode,
         playerInitPoint: data.playerInitPoint,
         opponentInitPoint: data.opponentInitPoint,
         ai: data.ai,
@@ -501,10 +485,14 @@ export class BattleScene extends Phaser.Scene {
       .setDepth(Depth.OnlineStatus)
       .setVisible(false);
 
-    const battleConnectionManager = data.mode === "local" ? createLocalBattleConnectionManager() : connectionManager;
+    const battleConnectionManager =
+      data.mode === "local"
+        ? createLocalBattleConnectionManager()
+        : connectionManager;
     const p2p = data.p2p ?? new P2pConnection(battleConnectionManager, {
       localPlayerId: data.localPlayerId ?? "Player1",
-      enabled: data.mode === "local" ? true : data.battleConfig?.p2pEnabled === true,
+      enabled:
+        data.mode === "local" ? true : data.battleConfig?.p2pEnabled === true,
       stunServer: uiSettings.stunServer,
       onStatus: () => undefined,
       onMessage: () => undefined,
@@ -512,16 +500,40 @@ export class BattleScene extends Phaser.Scene {
 
     p2p.setStatusHandler((status) => {
       if (status === "connecting") {
-        this.onlineStatusText?.setText(isLocalBattle ? t("battle.p2p_attempt_local") : t("battle.p2p_attempt_online")).setVisible(true);
+        this.onlineStatusText
+          ?.setText(
+            isLocalBattle
+              ? t("battle.p2p_attempt_local")
+              : t("battle.p2p_attempt_online"),
+          )
+          .setVisible(true);
       } else if (status === "connected") {
-        this.onlineStatusText?.setText(isLocalBattle ? t("battle.p2p_connected_local") : t("battle.p2p_connected_online")).setVisible(true);
-        this.time.delayedCall(700, () => this.onlineStatusText?.setVisible(false));
+        this.onlineStatusText
+          ?.setText(
+            isLocalBattle
+              ? t("battle.p2p_connected_local")
+              : t("battle.p2p_connected_online"),
+          )
+          .setVisible(true);
+        this.time.delayedCall(700, () =>
+          this.onlineStatusText?.setVisible(false),
+        );
       } else if (status === "failed") {
-        this.onlineStatusText?.setText(isLocalBattle ? t("battle.p2p_failed_local") : t("battle.p2p_failed_online")).setVisible(true);
-        this.time.delayedCall(1100, () => this.onlineStatusText?.setVisible(false));
+        this.onlineStatusText
+          ?.setText(
+            isLocalBattle
+              ? t("battle.p2p_failed_local")
+              : t("battle.p2p_failed_online"),
+          )
+          .setVisible(true);
+        this.time.delayedCall(1100, () =>
+          this.onlineStatusText?.setVisible(false),
+        );
       }
     });
-    p2p.setMessageHandler((message) => this.combatSync?.receivePeerMessage(message));
+    p2p.setMessageHandler((message) =>
+      this.combatSync?.receivePeerMessage(message),
+    );
 
     this.combatSync = new CombatSyncManager(this.runtime, battleConnectionManager, {
       sceneData: data,
@@ -531,7 +543,8 @@ export class BattleScene extends Phaser.Scene {
           this.rollbackManager.recordStepInputs(record);
           this.forwardSpectatorInputs(record);
         },
-        recordConfirmedInputs: (record) => this.rollbackManager.recordConfirmedInputs(record),
+        recordConfirmedInputs: (record) =>
+          this.rollbackManager.recordConfirmedInputs(record),
         recordFrame: (aimConsumed) => this.recordDebugFrame(aimConsumed),
         getRollbackRecord: (frame) => this.rollbackManager.getRollbackRecord(frame),
         pruneRollbackHistoryAfter: (frame) =>
@@ -539,11 +552,6 @@ export class BattleScene extends Phaser.Scene {
         pruneRollbackHistoryBefore: (frame) =>
           this.rollbackManager.pruneBefore(frame),
         onRollback: () => {
-          // Don't snap accumulator — keep the current render blend so
-          // the visual position interpolates smoothly through rolls.
-          // A small visual-only catch-up (rollbackVisualFrames) tells
-          // the render path to use ~0.7 blend instead of 1, giving a
-          // subtle 2-frame ease toward corrected positions.
           this.rollbackVisualFrames = 2;
         },
         setStatusText: (text) =>
@@ -1017,155 +1025,4 @@ function createResultPlayerSummary(name: string, fighterState: { shotsFired: num
     bombUses: fighterState.bombUses,
     hitsTaken: fighterState.hitsTaken,
   };
-}
-
-function createBattleLayout(): BattleLayout {
-  const viewport = readViewportSize();
-  const viewportAspect =
-    viewport.width > 0 && viewport.height > 0
-      ? viewport.width / viewport.height
-      : ARENA_ASPECT_RATIO;
-  const width =
-    viewportAspect >= ARENA_ASPECT_RATIO
-      ? Math.round(ARENA_HEIGHT_PX * viewportAspect)
-      : ARENA_WIDTH_PX;
-  const height =
-    viewportAspect >= ARENA_ASPECT_RATIO
-      ? ARENA_HEIGHT_PX
-      : Math.round(ARENA_WIDTH_PX / viewportAspect);
-  return {
-    width,
-    height,
-    arenaInsetX: Math.max(0, Math.round((width - ARENA_WIDTH_PX) / 2)),
-    arenaInsetY: Math.max(0, Math.round((height - ARENA_HEIGHT_PX) / 2)),
-  };
-}
-
-function readViewportSize(): {
-  readonly width: number;
-  readonly height: number;
-} {
-  const viewport = window.visualViewport;
-  return {
-    width: Math.max(1, Math.round(viewport?.width ?? window.innerWidth)),
-    height: Math.max(1, Math.round(viewport?.height ?? window.innerHeight)),
-  };
-}
-
-function sameBattleLayout(
-  left: BattleLayout | undefined,
-  right: BattleLayout,
-): boolean {
-  return (
-    left !== undefined &&
-    left.width === right.width &&
-    left.height === right.height &&
-    left.arenaInsetX === right.arenaInsetX &&
-    left.arenaInsetY === right.arenaInsetY
-  );
-}
-
-function createPresetScriptInput(offset: number): BattleInputState {
-  const aimAngle = -0.5 + offset * 0.018;
-  return {
-    moveX: presetMoveX(offset),
-    moveY: presetMoveY(offset),
-    aimX: 640 + Math.cos(aimAngle) * 390,
-    aimY: 338 + Math.sin(aimAngle) * 250,
-    shootPressed: isPresetShootFrame(offset),
-    bombPressed: isPresetBombFrame(offset),
-    activeCardPressed: offset === 320,
-    reloadPressed: isPresetReloadFrame(offset),
-    alternateHeld: isPresetAlternateHeld(offset),
-    infoHeld: false,
-  };
-}
-
-function presetMoveX(offset: number): -1 | 0 | 1 {
-  if (offset < 36) {
-    return 1;
-  }
-  if (offset < 72) {
-    return -1;
-  }
-  if (offset >= 155 && offset < 260) {
-    return offset % 32 < 16 ? 1 : -1;
-  }
-  if (offset >= 260 && offset < 330) {
-    return 1;
-  }
-  return offset % 48 < 16 ? -1 : offset % 48 < 32 ? 1 : 0;
-}
-
-function presetMoveY(offset: number): -1 | 0 | 1 {
-  if (offset < 28) {
-    return -1;
-  }
-  if (offset < 64) {
-    return 1;
-  }
-  if (offset >= 155 && offset < 260) {
-    return offset % 28 < 14 ? -1 : 1;
-  }
-  return offset % 42 < 14 ? 1 : offset % 42 < 28 ? -1 : 0;
-}
-
-function isPresetShootFrame(offset: number): boolean {
-  return [
-    4, 10, 18, 35, 78, 90, 118, 146, 166, 174, 182, 205, 238, 274, 330, 360,
-    390,
-  ].includes(offset);
-}
-
-function isPresetReloadFrame(offset: number): boolean {
-  return [22, 52, 104, 132, 176, 215, 285, 345].includes(offset);
-}
-
-function isPresetBombFrame(offset: number): boolean {
-  return [64, 150, 188, 250, 404].includes(offset);
-}
-
-function isPresetAlternateHeld(offset: number): boolean {
-  return (
-    (offset >= 72 && offset < 122) ||
-    (offset >= 144 && offset < 248) ||
-    (offset >= 255 && offset < 305) ||
-    (offset >= 350 && offset < 382)
-  );
-}
-
-function describePresetScriptAction(offset: number): string {
-  const actions: string[] = [];
-  if (isPresetAlternateHeld(offset)) {
-    actions.push("alternateHeld");
-  }
-  if (isPresetShootFrame(offset)) {
-    actions.push("shoot");
-  }
-  if (isPresetReloadFrame(offset)) {
-    actions.push("reload");
-  }
-  if (isPresetBombFrame(offset)) {
-    actions.push("bomb");
-  }
-  if (offset === 150) {
-    actions.push("marisaBombStart");
-  }
-  if (
-    offset > 150 &&
-    offset < 390 &&
-    (isPresetAlternateHeld(offset) ||
-      isPresetShootFrame(offset) ||
-      isPresetReloadFrame(offset) ||
-      isPresetBombFrame(offset))
-  ) {
-    actions.push("duringMarisaBombLock");
-  }
-  if (offset === 320) {
-    actions.push("activeCard");
-  }
-  if (actions.length === 0) {
-    return "move+aim";
-  }
-  return actions.join("+");
 }

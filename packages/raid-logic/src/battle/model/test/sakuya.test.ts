@@ -180,7 +180,7 @@ describe("BattleModel Sakuya", () => {
 
   it("sakuya time stop pauses same-frame snipe knife until time resumes", async () => {
     const model = await createBattleModel("sakuya", "reimu");
-    model.setPlayerPointCount(300);
+    model.pointManager.setPointCount(model.player, 300);
 
     model.step(input({ bombPressed: true, shootPressed: true }));
 

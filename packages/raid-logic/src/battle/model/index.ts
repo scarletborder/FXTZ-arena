@@ -6,7 +6,6 @@ import {
   NEUTRAL_PROJECTILE_GRAZE_POINT_REWARD,
   PLAYER_SPAWN,
   TARGET_SPAWN,
-  type NeutralMob,
   type NeutralMobActionContext,
   type NeutralMobState,
   type ProjectileCollisionContext,
@@ -14,7 +13,7 @@ import {
 
 import { getAbilityCard, getCharacter } from "../content";
 import type { BattleLoadouts, FighterLoadout } from "../loadout";
-import type { BattleInputState } from "@repo/types";
+import type { BattleInputState, BattleRoomMode } from "@repo/types";
 import type {
   BattleOutputState,
   EffectState,
@@ -25,25 +24,15 @@ import type {
   ShieldState,
   TrainingStats,
 } from "@repo/content";
-import type { NeutralMobSpawner, NeutralMobSpawnerState } from "@repo/content";
+import type { NeutralMobSpawner } from "@repo/content";
 import { resolveMobSpawner } from "@repo/content";
 import { BattleFighter } from "./battle-fighter";
-import { POINT_COUNT_MAX } from "../constants";
+import { createBattleRules, type BattleRules } from "./battle-rules";
 import { CpuPlayer } from "../aicpu";
 import { EffectSystem } from "./effects";
-import {
-  createClearRingState,
-  stepClearRings,
-  type ClearRingState,
-} from "./entities/clear-ring";
+import type { ClearRingState } from "./entities/clear-ring";
 import { hashBattleModel, hashBattleModelComponents, hashToHex } from "./hash";
 import { BattlePhysics } from "./physics-adapter";
-import {
-  createPointState,
-  POINT_COLLECT_TICKS,
-  pointIsOutsideArena,
-  pointVelocityFromFrame,
-} from "./points";
 import {
   ProjectileSystem,
   type BulletProjectileParams,
@@ -53,22 +42,24 @@ import {
 import {
   createBattleModelSnapshot,
   restoreEffectSnapshot,
-  restoreClearRingSnapshot,
   restoreFighterSnapshot,
   restoreProjectileSnapshot,
   type BattleModelSnapshot,
 } from "./snapshot";
 import { TickerManager } from "./ticker-manager";
 import type { CharacterActionContext } from "@repo/content";
-import { fpClamp, fpAtan2, fpHypotFp } from "@repo/content";
-
-const ACTIVE_CARD_COOLDOWN_GROUP_PREFIX = "active-card-cooldown";
+import { fpClamp, fpAtan2 } from "@repo/content";
+import { ClearRingManager } from "./manager/clear-ring-manager";
+import { NeutralMobManager } from "./manager/neutral-mob-manager";
+import {
+  clampPointCount,
+  PointManager,
+} from "./manager/point-manager";
+import { ActiveCardCooldownManager } from "./manager/active-card-cooldown-manager";
 
 export class BattleModel {
   readonly projectiles: ProjectileState[] = [];
   readonly effects: EffectState[] = [];
-  readonly clearRings: ClearRingState[] = [];
-  readonly points: PointState[] = [];
   readonly stats: TrainingStats = {
     shots: 0,
     hits: 0,
@@ -104,24 +95,22 @@ export class BattleModel {
     Player2: { x: PLAYER_SPAWN.x, y: PLAYER_SPAWN.y },
     Neutral: { x: 0, y: 0 },
   };
-  private readonly neutralMobs: NeutralMob<
-    NeutralMobState,
-    BulletProjectileParams,
-    LaserProjectileParams
-  >[] = [];
-  private nextNeutralMobId = 1;
-  private nextPointId = 1;
-  private nextClearRingId = 1;
   private readonly loadouts: BattleLoadouts;
+  private readonly rules: BattleRules;
+  readonly neutralMobManager: NeutralMobManager;
+  readonly pointManager = new PointManager();
+  readonly clearRingManager = new ClearRingManager();
   private readonly projectileSystem = new ProjectileSystem();
   private readonly effectSystem = new EffectSystem();
   private readonly ticker = new TickerManager();
+  private readonly activeCardCooldowns = new ActiveCardCooldownManager(
+    this.ticker,
+  );
   private readonly playerInitPoint: number;
   private readonly opponentInitPoint: number;
   private readonly playerFighter: BattleFighter;
   private readonly targetFighter: BattleFighter;
   private readonly cpuPlayer: CpuPlayer | undefined;
-  private readonly mobSpawner: NeutralMobSpawner | undefined;
   private physics: BattlePhysics | undefined;
   private pendingSpawns: Array<() => void> = [];
 
@@ -135,6 +124,7 @@ export class BattleModel {
     params: {
       readonly enableCpuTarget?: boolean;
       readonly neutralMobSpawner?: NeutralMobSpawner | null;
+      readonly battleMode?: BattleRoomMode;
       readonly playerInitPoint?: number;
       readonly opponentInitPoint?: number;
       readonly ai?: {
@@ -144,6 +134,7 @@ export class BattleModel {
     } = {},
   ) {
     this.loadouts = loadouts;
+    this.rules = createBattleRules(params.battleMode ?? "versus");
     this.playerInitPoint = clampPointCount(params.playerInitPoint ?? 0);
     this.opponentInitPoint = clampPointCount(params.opponentInitPoint ?? 0);
     this.playerFighter = new BattleFighter(
@@ -172,10 +163,11 @@ export class BattleModel {
     );
     this.applyInitialPoints();
     this.cpuPlayer = params.enableCpuTarget ? new CpuPlayer(params.ai) : undefined;
-    this.mobSpawner =
+    const mobSpawner =
       params.neutralMobSpawner === undefined
         ? (resolveMobSpawner("default-a") ?? undefined)
         : (params.neutralMobSpawner ?? undefined);
+    this.neutralMobManager = new NeutralMobManager(mobSpawner);
   }
 
   get player(): FighterState {
@@ -186,16 +178,20 @@ export class BattleModel {
     return this.targetFighter.state;
   }
 
+  get points(): PointState[] {
+    return this.pointManager.points;
+  }
+
+  get clearRings(): ClearRingState[] {
+    return this.clearRingManager.clearRings;
+  }
+
   reset(): void {
     this.projectileSystem.reset();
     this.effectSystem.reset();
-    this.mobSpawner?.reset();
-    this.neutralMobs.length = 0;
-    this.nextNeutralMobId = 1;
-    this.points.length = 0;
-    this.nextPointId = 1;
-    this.clearRings.length = 0;
-    this.nextClearRingId = 1;
+    this.neutralMobManager.reset();
+    this.pointManager.reset();
+    this.clearRingManager.reset();
     this.projectiles.length = 0;
     this.effects.length = 0;
     this.stats.shots = 0;
@@ -233,73 +229,9 @@ export class BattleModel {
     this.applyInitialPoints();
   }
 
-  allocateNeutralMobId(params?: {
-    readonly waveId: number;
-    readonly waveMemberIndex: number;
-  }): number {
-    if (params) {
-      const id = stableNeutralMobId(params.waveId, params.waveMemberIndex);
-      this.nextNeutralMobId = Math.max(this.nextNeutralMobId, id + 1);
-      return id;
-    }
-    return this.nextNeutralMobId++;
-  }
-
-  addNeutralMob(
-    mob: NeutralMob<
-      NeutralMobState,
-      BulletProjectileParams,
-      LaserProjectileParams
-    >,
-  ): void {
-    if (this.neutralMobs.some((existing) => existing.id === mob.id)) {
-      throw new Error(`Duplicate neutral mob id: ${mob.id}`);
-    }
-    this.neutralMobs.push(mob);
-    this.nextNeutralMobId = Math.max(this.nextNeutralMobId, mob.id + 1);
-    this.sortNeutralMobs();
-  }
-
-  neutralMobStates(): readonly NeutralMobState[] {
-    return this.neutralMobs.map((mob) => mob.snapshot());
-  }
-
-  getNextNeutralMobId(): number {
-    return this.nextNeutralMobId;
-  }
-
-  allocatePointId(): number {
-    return this.nextPointId++;
-  }
-
-  addPoint(point: PointState): void {
-    if (this.points.some((existing) => existing.id === point.id)) {
-      throw new Error(`Duplicate point id: ${point.id}`);
-    }
-    this.points.push(point);
-    this.nextPointId = Math.max(this.nextPointId, point.id + 1);
-    this.sortPoints();
-  }
-
-  pointStates(): readonly PointState[] {
-    return this.points;
-  }
-
-  setPlayerPointCount(pointCount: number): void {
-    this.player.pointCount = clampPointCount(pointCount);
-  }
-
   private applyInitialPoints(): void {
-    this.player.pointCount = this.playerInitPoint;
-    this.target.pointCount = this.opponentInitPoint;
-  }
-
-  getNextPointId(): number {
-    return this.nextPointId;
-  }
-
-  getNextClearRingId(): number {
-    return this.nextClearRingId;
+    this.pointManager.setPointCount(this.player, this.playerInitPoint);
+    this.pointManager.setPointCount(this.target, this.opponentInitPoint);
   }
 
   step(input: BattleInputState): void {
@@ -339,7 +271,7 @@ export class BattleModel {
     this.pendingSpawns = [];
     this.playerFighter.tickTimers();
     this.targetFighter.tickTimers();
-    this.syncActiveCardCooldownsFromTicker();
+    this.activeCardCooldowns.sync([this.player, this.target]);
 
     if (this.gameOver) return;
 
@@ -371,6 +303,7 @@ export class BattleModel {
       aimConsumedRef: projAimConsumed,
       hitTargets: this.currentHitTargets(),
       shields: this.currentShields(),
+      rules: this.rules,
       computeRapierHits: physics
         ? (projectiles) =>
             physics.computeCollisions(
@@ -378,7 +311,7 @@ export class BattleModel {
               this.player,
               this.target,
               this.currentShields(),
-              this.neutralMobStates(),
+              this.neutralMobManager.states(),
               this.points,
               {
                 Player1: this.playerFighter.getGrazeRadiusMultiplier(),
@@ -395,7 +328,7 @@ export class BattleModel {
     }
     this.removeInactiveNeutralMobs();
     this.stepPoints();
-    physics?.syncPointBodies(this.points);
+    physics?.syncPointBodies(this.pointManager.points);
     this.flushDeferredSpawns();
     this.effectSystem.stepEffects(this.effects, this.frame);
   }
@@ -423,7 +356,7 @@ export class BattleModel {
       player: this.player,
       target: this.target,
       points: this.points,
-      neutralMobs: this.neutralMobStates(),
+      neutralMobs: this.neutralMobManager.states(),
       projectiles: this.projectiles,
       effects: this.effects,
       shields: this.currentShields(),
@@ -442,13 +375,13 @@ export class BattleModel {
       stats: this.stats,
       nextProjectileId: this.projectileSystem.getNextId(),
       nextEffectId: this.effectSystem.getNextId(),
-      nextNeutralMobId: this.nextNeutralMobId,
-      nextPointId: this.nextPointId,
-      nextClearRingId: this.nextClearRingId,
-      neutralMobs: this.neutralMobStates(),
+      nextNeutralMobId: this.neutralMobManager.getNextNeutralMobId(),
+      nextPointId: this.pointManager.getNextPointId(),
+      nextClearRingId: this.clearRingManager.getNextClearRingId(),
+      neutralMobs: this.neutralMobManager.states(),
       points: this.points,
       clearRings: this.clearRings,
-      mobSpawner: this.mobSpawnerState(),
+      mobSpawner: this.neutralMobManager.mobSpawnerState(),
       ticker: this.ticker.snapshot(),
     });
   }
@@ -485,42 +418,25 @@ export class BattleModel {
         restoreEffectSnapshot(effect, this.frame),
       ),
     );
-    this.points.splice(
-      0,
-      this.points.length,
-      ...snapshot.points.map((point) => ({ ...point })),
+    this.pointManager.restore(snapshot.points, snapshot.nextPointId);
+    this.clearRingManager.restore(
+      snapshot.clearRings,
+      this.frame,
+      snapshot.nextClearRingId,
     );
-    this.clearRings.splice(
-      0,
-      this.clearRings.length,
-      ...snapshot.clearRings.map((ring) =>
-        restoreClearRingSnapshot(ring, this.frame),
-      ),
-    );
-    this.restoreActiveCardCooldownTimer(this.player);
-    this.restoreActiveCardCooldownTimer(this.target);
-    this.restoreNeutralMobSnapshots(snapshot.neutralMobs);
+    this.activeCardCooldowns.restore([this.player, this.target], this.frame);
+    this.neutralMobManager.restoreSnapshots(snapshot.neutralMobs);
     Object.assign(this.stats, snapshot.stats);
     this.projectileSystem.restoreNextId(
       this.projectiles,
       snapshot.nextProjectileId,
     );
     this.effectSystem.restoreNextId(this.effects, snapshot.nextEffectId);
-    this.nextNeutralMobId = Math.max(
+    this.neutralMobManager.restoreNextId(
       snapshot.nextNeutralMobId,
-      1 + Math.max(0, ...snapshot.neutralMobs.map((mob) => mob.id)),
+      snapshot.neutralMobs,
     );
-    this.nextPointId = Math.max(
-      snapshot.nextPointId,
-      1 + Math.max(0, ...snapshot.points.map((point) => point.id)),
-    );
-    this.nextClearRingId = Math.max(
-      snapshot.nextClearRingId,
-      1 + Math.max(0, ...snapshot.clearRings.map((ring) => ring.id)),
-    );
-    if (snapshot.mobSpawner) {
-      this.mobSpawner?.restore(snapshot.mobSpawner);
-    }
+    this.neutralMobManager.restoreSpawner(snapshot.mobSpawner);
     this.physics?.reset();
   }
 
@@ -565,7 +481,7 @@ export class BattleModel {
     const ctx = this.fighterActionContext(state);
     if (input.activeCardPressed) {
       if (fighter.useActiveCard(ctx)) {
-        this.registerActiveCardCooldown(state);
+        this.activeCardCooldowns.register(state, this.frame);
         this.aimConsumedThisFrame = true;
       }
     }
@@ -577,7 +493,8 @@ export class BattleModel {
         state.activeCharacter.bombId === "sakuya_time_stop" &&
         state.timeStopUntil > previousTimeStopUntil
       ) {
-        this.pauseActiveCardCooldowns(
+        this.activeCardCooldowns.pause(
+          [this.player, this.target],
           state.timeStopUntil - previousTimeStopUntil,
         );
       }
@@ -595,7 +512,7 @@ export class BattleModel {
       self: fighter,
       opponent: this.player,
       projectiles: this.projectiles,
-      neutralMobs: this.neutralMobStates(),
+      neutralMobs: this.neutralMobManager.states(),
       points: this.points,
     });
 
@@ -621,7 +538,8 @@ export class BattleModel {
         fighter.activeCharacter.bombId === "sakuya_time_stop" &&
         fighter.timeStopUntil > previousTimeStopUntil
       ) {
-        this.pauseActiveCardCooldowns(
+        this.activeCardCooldowns.pause(
+          [this.player, this.target],
           fighter.timeStopUntil - previousTimeStopUntil,
         );
       }
@@ -698,25 +616,16 @@ export class BattleModel {
     >,
   ): boolean {
     const { owner, victim } = ctx;
+    if (!this.rules.canProjectileDamageTarget(owner, victim.key)) {
+      return false;
+    }
     if (victim.key === "Neutral") {
-      const mob = this.neutralMobs.find(
-        (candidate) => candidate.id === neutralMobIdFromHitTarget(victim),
-      );
-      const mobDamage = ctx.projectile.damage;
-      if (!mob) {
-        return false;
-      }
-      const wasActive = mob.state.active;
-      const result = mob.onProjectileHit(mobDamage);
-      if (result === "ignored") {
-        return false;
-      }
-      if (wasActive && !mob.state.active) {
-        mob.onDeath(owner);
-        this.dropPointFromMob(mob.state);
-        mob.onDeathEffect();
-      }
-      return true;
+      return this.neutralMobManager.handleProjectileHit({
+        target: victim,
+        owner,
+        damage: ctx.projectile.damage,
+        onKilled: (mob) => this.dropPointFromMob(mob),
+      });
     }
     const damage = ctx.damage;
     const fighterState = victim.key === "Player1" ? this.player : this.target;
@@ -763,7 +672,7 @@ export class BattleModel {
     if (victim.key !== "Player1" && victim.key !== "Player2") {
       return;
     }
-    if (owner !== "Neutral" && owner === victim.key) {
+    if (!this.rules.canProjectileGrazeTarget(owner, victim.key)) {
       return;
     }
     const fighter = victim.key === "Player1" ? this.player : this.target;
@@ -796,79 +705,10 @@ export class BattleModel {
     for (const projectile of this.projectiles) {
       this.ticker.resumeProjectileTimeline(projectile, remainingPauseTicks);
     }
-    this.resumeActiveCardCooldowns(remainingPauseTicks);
-  }
-
-  private registerActiveCardCooldown(fighter: FighterState): void {
-    const group = activeCardCooldownGroup(fighter.key);
-    this.ticker.removeGroup(group);
-    if (fighter.activeCardCooldownUntil > 0) {
-      this.ticker.register(this.frame + fighter.activeCardCooldownUntil, group);
-    }
-  }
-
-  private syncActiveCardCooldownsFromTicker(): void {
-    this.syncActiveCardCooldownFromTicker(this.player);
-    this.syncActiveCardCooldownFromTicker(this.target);
-  }
-
-  private syncActiveCardCooldownFromTicker(fighter: FighterState): void {
-    const group = activeCardCooldownGroup(fighter.key);
-    if (fighter.activeCardCooldownUntil <= 0) {
-      fighter.activeCardCooldownUntil = 0;
-      this.ticker.removeGroup(group);
-      return;
-    }
-
-    const remaining = Math.max(
-      0,
-      this.ticker.getRemainingTicks(group) - this.timeStopRemaining(),
+    this.activeCardCooldowns.resume(
+      [this.player, this.target],
+      remainingPauseTicks,
     );
-    fighter.activeCardCooldownUntil = remaining;
-    if (remaining <= 0) {
-      this.ticker.removeGroup(group);
-    }
-  }
-
-  private restoreActiveCardCooldownTimer(fighter: FighterState): void {
-    const group = activeCardCooldownGroup(fighter.key);
-    if (fighter.activeCardCooldownUntil <= 0) {
-      fighter.activeCardCooldownUntil = 0;
-      this.ticker.removeGroup(group);
-      return;
-    }
-
-    const tickerRemaining = this.ticker.getRemainingTicks(group);
-    if (tickerRemaining > 0) {
-      fighter.activeCardCooldownUntil = Math.max(
-        0,
-        tickerRemaining - this.timeStopRemaining(),
-      );
-      return;
-    }
-
-    this.ticker.register(
-      this.frame + fighter.activeCardCooldownUntil + this.timeStopRemaining(),
-      group,
-    );
-  }
-
-  private timeStopRemaining(): number {
-    return Math.max(this.player.timeStopUntil, this.target.timeStopUntil);
-  }
-
-  private pauseActiveCardCooldowns(ticks: number): void {
-    if (ticks <= 0) return;
-    this.ticker.pauseGroup(activeCardCooldownGroup("Player1"), ticks);
-    this.ticker.pauseGroup(activeCardCooldownGroup("Player2"), ticks);
-    this.syncActiveCardCooldownsFromTicker();
-  }
-
-  private resumeActiveCardCooldowns(ticks: number): void {
-    if (ticks <= 0) return;
-    this.ticker.resumeGroup(activeCardCooldownGroup("Player1"), ticks);
-    this.ticker.resumeGroup(activeCardCooldownGroup("Player2"), ticks);
-    this.syncActiveCardCooldownsFromTicker();
   }
 
   private fighterActionContext(self: FighterState): CharacterActionContext {
@@ -1011,174 +851,35 @@ export class BattleModel {
     };
   }
 
-  mobSpawnerState(): NeutralMobSpawnerState | undefined {
-    return this.mobSpawner?.snapshot();
-  }
-
   private stepMobSpawner(): void {
-    if (!this.mobSpawner) return;
-    // During time stop, freeze spawner (no new mobs, no volley scheduling)
-    if (this.player.timeStopUntil > 0 || this.target.timeStopUntil > 0) return;
-    this.mobSpawner.step({
+    this.neutralMobManager.stepSpawner({
       frame: this.frame,
       player: this.player,
       target: this.target,
-      neutralMobs: this.neutralMobs,
-      allocateMobId: (params) => this.allocateNeutralMobId(params),
-      spawnMob: (mob) => this.addNeutralMob(mob),
+      timeStopped: this.timeStopped(),
     });
   }
 
   private stepNeutralMobs(): void {
-    this.sortNeutralMobs();
-    const timeStopped =
-      this.player.timeStopUntil > 0 || this.target.timeStopUntil > 0;
-    if (timeStopped) {
-      // During time stop: update previous positions for interpolation, freeze everything else
-      for (const mob of this.neutralMobs) {
-        mob.state.previousX = mob.state.x;
-        mob.state.previousY = mob.state.y;
-      }
-      return;
-    }
-    for (const mob of this.neutralMobs) {
-      const wasActive = mob.state.active;
-      mob.step(this.neutralMobActionContext());
-      if (wasActive && !mob.state.active) {
-        mob.onDeath(null);
-        mob.onDeathEffect();
-      }
-    }
-    this.removeInactiveNeutralMobs();
-  }
-
-  private sortNeutralMobs(): void {
-    this.neutralMobs.sort((left, right) => left.id - right.id);
-  }
-
-  private sortPoints(): void {
-    this.points.sort((left, right) => left.id - right.id);
+    this.neutralMobManager.stepMobs({
+      timeStopped: this.timeStopped(),
+      createActionContext: () => this.neutralMobActionContext(),
+    });
   }
 
   private removeInactiveNeutralMobs(): void {
-    this.neutralMobs.splice(
-      0,
-      this.neutralMobs.length,
-      ...this.neutralMobs.filter((mob) => mob.state.active),
-    );
+    this.neutralMobManager.removeInactive();
   }
 
   private stepPoints(): void {
-    this.sortPoints();
-    const timeStopped =
-      this.player.timeStopUntil > 0 || this.target.timeStopUntil > 0;
-    for (const point of this.points) {
-      point.previousX = point.x;
-      point.previousY = point.y;
-      if (point.collectingBy) {
-        point.collectTicksRemaining -= 1;
-        if (point.collectTicksRemaining <= 0) {
-          this.awardPoint(point);
-          point.active = false;
-        }
-        continue;
-      }
-      if (timeStopped) {
-        continue;
-      }
-      point.x = fp.toFloat(
-        fp.add(fp.fromFloat(point.x), fp.fromFloat(point.vx)),
-      );
-      point.y = fp.toFloat(
-        fp.add(fp.fromFloat(point.y), fp.fromFloat(point.vy)),
-      );
-      if (pointIsOutsideArena(point)) {
-        point.active = false;
-        continue;
-      }
-      this.tryCollectPoint(point);
-    }
-    this.points.splice(
-      0,
-      this.points.length,
-      ...this.points.filter((point) => point.active),
-    );
-  }
-
-  private tryCollectPoint(point: PointState): void {
-    for (const fighter of [this.playerFighter, this.targetFighter]) {
-      const state = fighter.state;
-      if (state.deadUntil > 0) {
-        continue;
-      }
-      const fpDistance = fpHypotFp(
-        fp.sub(fp.fromFloat(point.x), fp.fromFloat(state.x)),
-        fp.sub(fp.fromFloat(point.y), fp.fromFloat(state.y)),
-      );
-      if (fp.lte(fpDistance, fp.fromFloat(fighter.getPointCollectRadius()))) {
-        point.collectingBy = state.key;
-        point.collectTicksRemaining = POINT_COLLECT_TICKS;
-        return;
-      }
-    }
-  }
-
-  private awardPoint(point: PointState): void {
-    const fighter =
-      point.collectingBy === "Player1"
-        ? this.player
-        : point.collectingBy === "Player2"
-          ? this.target
-          : undefined;
-    if (fighter) {
-      fighter.pointCount = Math.min(
-        POINT_COUNT_MAX,
-        fighter.pointCount + point.value,
-      );
-    }
+    this.pointManager.step({
+      collectors: [this.playerFighter, this.targetFighter],
+      timeStopped: this.timeStopped(),
+    });
   }
 
   private dropPointFromMob(mob: NeutralMobState): void {
-    const rewardSize = mob.pointRewardSize;
-    if (!rewardSize) {
-      return;
-    }
-    const velocity = pointVelocityFromFrame(this.frame, "low", mob.id);
-    this.addPoint(
-      createPointState({
-        id: this.allocatePointId(),
-        x: mob.x,
-        y: mob.y,
-        rewardSize,
-        vx: velocity.vx,
-        vy: velocity.vy,
-      }),
-    );
-  }
-
-  private restoreNeutralMobSnapshots(
-    snapshots: readonly NeutralMobState[],
-  ): void {
-    const ids = new Set(snapshots.map((snapshot) => snapshot.id));
-    this.neutralMobs.splice(
-      0,
-      this.neutralMobs.length,
-      ...this.neutralMobs.filter((mob) => ids.has(mob.id)),
-    );
-    for (const snapshot of snapshots) {
-      const existing = this.neutralMobs.find(
-        (candidate) => candidate.id === snapshot.id,
-      );
-      if (existing) {
-        existing.restore(snapshot);
-      } else if (this.mobSpawner) {
-        const created = this.mobSpawner.createMobFromSnapshot(snapshot);
-        if (created) {
-          this.neutralMobs.push(created);
-        }
-      }
-    }
-    this.sortNeutralMobs();
+    this.pointManager.dropPointFromMob(this.frame, mob);
   }
 
   private flushDeferredSpawns(): void {
@@ -1196,8 +897,7 @@ export class BattleModel {
     readonly duration: number;
     readonly followsOwner?: boolean;
   }): void {
-    const ring = createClearRingState({
-      id: this.nextClearRingId++,
+    this.clearRingManager.spawn({
       owner: params.owner,
       x: params.x,
       y: params.y,
@@ -1206,23 +906,26 @@ export class BattleModel {
       duration: params.duration,
       followsOwner: params.followsOwner,
     });
-    this.clearRings.push(ring);
     this.stepClearRings(this.projectiles);
   }
 
   private stepClearRings(
     projectiles: ProjectileState[] = this.projectiles,
   ): void {
-    stepClearRings({
+    this.clearRingManager.step({
       frame: this.frame,
-      clearRings: this.clearRings,
       projectiles,
       fighters: {
         Player1: this.player,
         Player2: this.target,
         Neutral: undefined,
       },
+      rules: this.rules,
     });
+  }
+
+  private timeStopped(): boolean {
+    return this.player.timeStopUntil > 0 || this.target.timeStopUntil > 0;
   }
 
   private capturePreviousFighterState(): void {
@@ -1254,7 +957,10 @@ export class BattleModel {
         }
         return !masters.some(
           (master) =>
-            master.owner !== projectile.owner &&
+            this.rules.canProjectileClearProjectile(
+              master.owner,
+              projectile.owner,
+            ) &&
             hitsBeam(master, projectile.x, projectile.y),
         );
       }),
@@ -1286,40 +992,13 @@ export class BattleModel {
         y: this.target.y,
         hitRadius: fighterHitRadius(this.target),
       },
-      ...this.neutralMobs
-        .filter((mob) => mob.state.active)
-        .sort((left, right) => left.id - right.id)
-        .map((mob) => ({
-          key: mob.state.key,
-          x: mob.state.x,
-          y: mob.state.y,
-          hitRadius: mob.state.hitRadius,
-          hitWidth: mob.state.hitWidth,
-          hitHeight: mob.state.hitHeight,
-          mobId: mob.id,
-        })),
+      ...this.neutralMobManager.hitTargets(),
     ];
   }
 }
 
 function fighterHitRadius(fighter: FighterState): number {
   return PLAYER_CORE_RADIUS * fighter.hitCircleRadiusMultiplier;
-}
-
-function neutralMobIdFromHitTarget(
-  target: ProjectileHitTarget,
-): number | undefined {
-  return target.mobId;
-}
-
-function stableNeutralMobId(waveId: number, waveMemberIndex: number): number {
-  const normalizedWaveId = Math.max(0, Math.floor(waveId));
-  const normalizedMemberIndex = Math.max(0, Math.floor(waveMemberIndex));
-  return normalizedWaveId * 1000 + normalizedMemberIndex + 1;
-}
-
-function activeCardCooldownGroup(key: FighterKey): string {
-  return `${ACTIVE_CARD_COOLDOWN_GROUP_PREFIX}:${key}`;
 }
 
 const DEFAULT_BATTLE_LOADOUTS: BattleLoadouts = {
@@ -1371,9 +1050,3 @@ function loadoutCards(loadout: FighterLoadout) {
   return Array.from(ids).map((id) => getAbilityCard(id));
 }
 
-function clampPointCount(pointCount: number): number {
-  if (!Number.isFinite(pointCount)) {
-    return 0;
-  }
-  return Math.max(0, Math.min(POINT_COUNT_MAX, Math.floor(pointCount)));
-}

@@ -42,7 +42,7 @@ describe("BattleModel Cirno", () => {
 
   it("turns nearby clearable enemy projectiles into Cirno high-speed diamonds and spends point bomb cost", async () => {
     const model = await createBattleModel("cirno", "reimu");
-    model.setPlayerPointCount(250);
+    model.pointManager.setPointCount(model.player, 250);
     model.projectiles.push(
       testProjectile({
         id: 100,

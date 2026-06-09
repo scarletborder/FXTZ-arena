@@ -9,6 +9,7 @@ import {
   type BattleOutputFrame,
 } from "./output";
 import type { BattleInputState } from "@repo/types";
+import type { BattleRoomMode } from "@repo/types";
 import type { PointRewardSize } from "@repo/constants";
 import type { BattleOutputState } from "@repo/content";
 import { DEFAULT_MAPS, resolveMobSpawner } from "@repo/content";
@@ -38,6 +39,7 @@ export interface RaidLogicRuntimeOptions {
   readonly mode: RaidLogicMode;
   readonly loadouts?: BattleLoadouts;
   readonly mapId?: string;
+  readonly battleMode?: BattleRoomMode;
   readonly playerInitPoint?: number;
   readonly opponentInitPoint?: number;
   readonly ai?: {
@@ -92,12 +94,14 @@ class BattleRuntime implements RaidLogicRuntime {
     readonly mode: RaidLogicMode,
     loadouts: BattleLoadouts | undefined,
     mapId: string | undefined,
+    battleMode: BattleRoomMode | undefined,
     playerInitPoint: number | undefined,
     opponentInitPoint: number | undefined,
     ai: RaidLogicRuntimeOptions["ai"] | undefined,
   ) {
     const spawner = resolveSpawner(mode, mapId);
     this.model = new BattleModel(loadouts, {
+      battleMode: battleMode ?? "versus",
       enableCpuTarget: mode === "ai",
       neutralMobSpawner: spawner,
       playerInitPoint,
@@ -154,9 +158,9 @@ class BattleRuntime implements RaidLogicRuntime {
     readonly y: number;
   }): BattleOutputFrame {
     const velocity = pointVelocityFromFrame(this.model.frame, "low");
-    this.model.addPoint(
+    this.model.pointManager.addPoint(
       createPointState({
-        id: this.model.allocatePointId(),
+        id: this.model.pointManager.allocatePointId(),
         x: params.x,
         y: params.y,
         rewardSize: params.rewardSize,
@@ -171,7 +175,7 @@ class BattleRuntime implements RaidLogicRuntime {
   }
 
   debugSetPoint(pointCount: number): BattleOutputFrame {
-    this.model.setPlayerPointCount(pointCount);
+    this.model.pointManager.setPointCount(this.model.player, pointCount);
     return this.enqueueOutput([
       { type: "snapshot_restored", frame: this.model.frame },
     ]);
@@ -270,6 +274,7 @@ export function createRaidLogicRuntime(
     options.mode,
     options.loadouts,
     options.mapId,
+    options.battleMode,
     options.playerInitPoint,
     options.opponentInitPoint,
     options.ai,

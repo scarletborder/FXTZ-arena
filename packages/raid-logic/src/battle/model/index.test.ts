@@ -122,13 +122,13 @@ describe("BattleModel rollback snapshots", () => {
   it("restores queued neutral mob volleys after rollback", async () => {
     const model = await createBattleModel();
     const mob = new ExampleFairy({
-      id: model.allocateNeutralMobId(),
+      id: model.neutralMobManager.allocateNeutralMobId(),
       waveId: 1,
       movementVariant: "left",
     });
     mob.state.ageTicks = 10;
     mob.queueVolleyAt(12);
-    model.addNeutralMob(mob);
+    model.neutralMobManager.addNeutralMob(mob);
 
     const snapshot = model.serialize();
     const snapshotHash = model.hashHex();
@@ -173,7 +173,7 @@ describe("BattleModel rollback snapshots", () => {
 
     model.step(input());
     model.step(input());
-    const originalMobIds = model.neutralMobStates().map((mob) => mob.id);
+    const originalMobIds = model.neutralMobManager.states().map((mob) => mob.id);
     const originalHash = model.hashHex();
 
     model.deserialize(snapshot);
@@ -183,7 +183,7 @@ describe("BattleModel rollback snapshots", () => {
     model.step(input());
     model.step(input());
 
-    expect(model.neutralMobStates().map((mob) => mob.id)).toEqual(
+    expect(model.neutralMobManager.states().map((mob) => mob.id)).toEqual(
       originalMobIds,
     );
     expect(model.hashHex()).toBe(originalHash);
@@ -193,10 +193,10 @@ describe("BattleModel rollback snapshots", () => {
     const model = await createBattleModel();
 
     expect(
-      model.allocateNeutralMobId({ waveId: 2, waveMemberIndex: 4 }),
+      model.neutralMobManager.allocateNeutralMobId({ waveId: 2, waveMemberIndex: 4 }),
     ).toBe(2005);
     expect(
-      model.allocateNeutralMobId({ waveId: 2, waveMemberIndex: 4 }),
+      model.neutralMobManager.allocateNeutralMobId({ waveId: 2, waveMemberIndex: 4 }),
     ).toBe(2005);
   });
 });
@@ -320,6 +320,147 @@ describe("BattleModel hit recovery", () => {
     expect(model.target.lives).toBe(0);
     expect(model.target.deaths).toBe(1);
     expect(model.gameOver).toBe(true);
+  });
+});
+
+describe("BattleModel collaborate projectile rules", () => {
+  it("lets Player1 projectiles pass through Player2 without damage in collaborate mode", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate" }),
+    );
+    model.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Player1",
+        x: model.target.x,
+        y: model.target.y,
+        pausedUntil: 999,
+      }),
+    );
+
+    model.stepVersus(input(), input());
+
+    expect(model.target.lives).toBe(2);
+    expect(model.projectiles.some((projectile) => projectile.id === 1)).toBe(
+      true,
+    );
+  });
+
+  it("lets Player2 projectiles pass through Player1 without damage in collaborate mode", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate" }),
+    );
+    model.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Player2",
+        x: model.player.x,
+        y: model.player.y,
+        pausedUntil: 999,
+      }),
+    );
+
+    model.stepVersus(input(), input());
+
+    expect(model.player.lives).toBe(2);
+    expect(model.projectiles.some((projectile) => projectile.id === 1)).toBe(
+      true,
+    );
+  });
+
+  it("keeps player projectiles damaging neutral mobs in collaborate mode", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate" }),
+    );
+    const mob = new TestNeutralMob(model.neutralMobManager.allocateNeutralMobId(), 500, 120);
+    model.neutralMobManager.addNeutralMob(mob);
+    model.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Player1",
+        x: mob.state.x,
+        y: mob.state.y,
+        damage: 1,
+        pausedUntil: 999,
+      }),
+    );
+
+    model.stepVersus(input(), input());
+
+    expect(mob.state.CurrentHealth).toBe(2);
+  });
+
+  it("lets Neutral projectiles damage both players in collaborate mode", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate" }),
+    );
+    model.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Neutral",
+        x: model.player.x,
+        y: model.player.y,
+        pausedUntil: 999,
+      }),
+      testProjectile({
+        id: 2,
+        owner: "Neutral",
+        x: model.target.x,
+        y: model.target.y,
+        pausedUntil: 999,
+      }),
+    );
+
+    model.stepVersus(input(), input());
+
+    expect(model.player.lives).toBe(1);
+    expect(model.target.lives).toBe(1);
+  });
+
+  it("keeps versus player projectiles damaging the opposing player", async () => {
+    const model = await createBattleModel();
+    model.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Player1",
+        x: model.target.x,
+        y: model.target.y,
+        pausedUntil: 999,
+      }),
+    );
+
+    model.stepVersus(input(), input());
+
+    expect(model.target.lives).toBe(1);
+  });
+
+  it("does not mutually clear Player1 and Player2 projectiles in collaborate mode", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate" }),
+    );
+    model.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Player1",
+        x: 500,
+        y: 240,
+        clearsProjectiles: true,
+        pausedUntil: 999,
+      }),
+      testProjectile({
+        id: 2,
+        owner: "Player2",
+        x: 500,
+        y: 240,
+        pausedUntil: 999,
+      }),
+    );
+
+    model.stepVersus(input(), input());
+
+    expect(model.projectiles.map((projectile) => projectile.id).sort()).toEqual([
+      1, 2,
+    ]);
   });
 });
 
@@ -623,7 +764,7 @@ describe("BattleModel character bombs", () => {
   it("allows bomb use at the point threshold even with no bombs remaining", async () => {
     const model = await createBattleModel("reimu", "marisa");
     model.player.bombs = 0;
-    model.setPlayerPointCount(300);
+    model.pointManager.setPointCount(model.player, 300);
 
     model.step(input({ bombPressed: true }));
 
@@ -636,7 +777,7 @@ describe("BattleModel character bombs", () => {
 
   it("spends points instead of a bomb when point count reaches the bomb threshold", async () => {
     const model = await createBattleModel("reimu", "marisa");
-    model.setPlayerPointCount(300);
+    model.pointManager.setPointCount(model.player, 300);
 
     model.step(input({ bombPressed: true }));
 
@@ -647,7 +788,7 @@ describe("BattleModel character bombs", () => {
 
   it("spends a bomb below the point bomb threshold", async () => {
     const model = await createBattleModel("reimu", "marisa");
-    model.setPlayerPointCount(299);
+    model.pointManager.setPointCount(model.player, 299);
 
     model.step(input({ bombPressed: true }));
 
@@ -659,7 +800,7 @@ describe("BattleModel character bombs", () => {
   it("blocks bomb use below the point bomb threshold when no bombs remain", async () => {
     const model = await createBattleModel("reimu", "marisa");
     model.player.bombs = 0;
-    model.setPlayerPointCount(299);
+    model.pointManager.setPointCount(model.player, 299);
 
     model.step(input({ bombPressed: true }));
 
@@ -702,11 +843,11 @@ describe("BattleModel character bombs", () => {
     const model = await createBattleModel("marisa", "reimu");
     model.target.y = 600;
     const mob = new StaticRectNeutralMob(
-      model.allocateNeutralMobId(),
+      model.neutralMobManager.allocateNeutralMobId(),
       model.player.x + 200,
       model.player.y,
     );
-    model.addNeutralMob(mob);
+    model.neutralMobManager.addNeutralMob(mob);
 
     model.step(
       input({ bombPressed: true, aimX: mob.state.x, aimY: mob.state.y }),
@@ -720,8 +861,8 @@ describe("BattleModel character bombs", () => {
 
   it("drives neutral mobs after Player1 and Player2 in stable mob id order", async () => {
     const model = await createBattleModel("reimu", "marisa");
-    model.addNeutralMob(new TestNeutralMob(2, 640, 240));
-    model.addNeutralMob(new TestNeutralMob(1, 640, 200));
+    model.neutralMobManager.addNeutralMob(new TestNeutralMob(2, 640, 240));
+    model.neutralMobManager.addNeutralMob(new TestNeutralMob(1, 640, 200));
 
     model.stepVersus(
       input({ shootPressed: true, aimX: model.target.x, aimY: model.target.y }),
@@ -748,8 +889,8 @@ describe("BattleModel character bombs", () => {
 
   it("includes neutral mob state and id allocation in rollback snapshots and hashes", async () => {
     const model = await createBattleModel();
-    const mob = new TestNeutralMob(model.allocateNeutralMobId(), 500, 120);
-    model.addNeutralMob(mob);
+    const mob = new TestNeutralMob(model.neutralMobManager.allocateNeutralMobId(), 500, 120);
+    model.neutralMobManager.addNeutralMob(mob);
 
     model.step(input());
     const snapshot = model.serialize();
@@ -760,7 +901,7 @@ describe("BattleModel character bombs", () => {
 
     model.deserialize(snapshot);
     expect(model.hashHex()).toBe(snapshotHash);
-    expect(model.getNextNeutralMobId()).toBe(2);
+    expect(model.neutralMobManager.getNextNeutralMobId()).toBe(2);
 
     model.step(input());
     expect(model.hashHex()).toBe(originalHash);
@@ -768,9 +909,9 @@ describe("BattleModel character bombs", () => {
 
   it("attributes neutral mob death using deterministic projectile consumption order", async () => {
     const model = await createBattleModel();
-    const mob = new TestNeutralMob(model.allocateNeutralMobId(), 500, 120);
+    const mob = new TestNeutralMob(model.neutralMobManager.allocateNeutralMobId(), 500, 120);
     mob.state.CurrentHealth = 2;
-    model.addNeutralMob(mob);
+    model.neutralMobManager.addNeutralMob(mob);
     model.projectiles.push(
       testProjectile({
         id: 10,
@@ -798,15 +939,15 @@ describe("BattleModel character bombs", () => {
     model.step(input());
 
     expect(mob.deathSources).toEqual(["Player1"]);
-    expect(model.neutralMobStates()).toHaveLength(0);
+    expect(model.neutralMobManager.states()).toHaveLength(0);
   });
 
   it("drops carried points when a neutral mob is killed", async () => {
     const model = await createBattleModel();
-    const mob = new TestNeutralMob(model.allocateNeutralMobId(), 500, 120);
+    const mob = new TestNeutralMob(model.neutralMobManager.allocateNeutralMobId(), 500, 120);
     mob.state.CurrentHealth = 1;
     mob.state.pointRewardSize = "medium";
-    model.addNeutralMob(mob);
+    model.neutralMobManager.addNeutralMob(mob);
     model.projectiles.push(
       testProjectile({
         id: 10,
@@ -828,15 +969,15 @@ describe("BattleModel character bombs", () => {
 
   it("attributes neutral mob active self-removal to a null death source", async () => {
     const model = await createBattleModel();
-    const mob = new TestNeutralMob(model.allocateNeutralMobId(), 500, 120);
+    const mob = new TestNeutralMob(model.neutralMobManager.allocateNeutralMobId(), 500, 120);
     mob.state.ageTicks = 999;
     mob.state.pointRewardSize = "large";
-    model.addNeutralMob(mob);
+    model.neutralMobManager.addNeutralMob(mob);
 
     model.step(input());
 
     expect(mob.deathSources).toEqual([null]);
-    expect(model.neutralMobStates()).toHaveLength(0);
+    expect(model.neutralMobManager.states()).toHaveLength(0);
     expect(model.points).toHaveLength(0);
   });
 });
@@ -844,9 +985,9 @@ describe("BattleModel character bombs", () => {
 describe("BattleModel point pickups", () => {
   it("collects a nearby point after the visual collection delay", async () => {
     const model = await createBattleModel();
-    model.addPoint(
+    model.pointManager.addPoint(
       createPointState({
-        id: model.allocatePointId(),
+        id: model.pointManager.allocatePointId(),
         x: model.player.x + 31,
         y: model.player.y,
         rewardSize: "small",
@@ -874,9 +1015,9 @@ describe("BattleModel point pickups", () => {
   it("keeps collecting points at the point count limit without increasing the count", async () => {
     const model = await createBattleModel();
     model.player.pointCount = POINT_COUNT_MAX;
-    model.addPoint(
+    model.pointManager.addPoint(
       createPointState({
-        id: model.allocatePointId(),
+        id: model.pointManager.allocatePointId(),
         x: model.player.x + 31,
         y: model.player.y,
         rewardSize: "medium",
@@ -899,9 +1040,9 @@ describe("BattleModel point pickups", () => {
 
   it("uses Marisa's larger base point collection radius", async () => {
     const model = await createBattleModel("marisa", "reimu");
-    model.addPoint(
+    model.pointManager.addPoint(
       createPointState({
-        id: model.allocatePointId(),
+        id: model.pointManager.allocatePointId(),
         x: model.player.x + 47,
         y: model.player.y,
         rewardSize: "small",
@@ -917,9 +1058,9 @@ describe("BattleModel point pickups", () => {
 
   it("extends point collection radius through passive cards", async () => {
     const model = await createBattleModel("reimu", "marisa", ["extension"]);
-    model.addPoint(
+    model.pointManager.addPoint(
       createPointState({
-        id: model.allocatePointId(),
+        id: model.pointManager.allocatePointId(),
         x: model.player.x + 47,
         y: model.player.y,
         rewardSize: "small",
@@ -935,9 +1076,9 @@ describe("BattleModel point pickups", () => {
 
   it("restores point state and point id allocation in rollback snapshots and hashes", async () => {
     const model = await createBattleModel();
-    model.addPoint(
+    model.pointManager.addPoint(
       createPointState({
-        id: model.allocatePointId(),
+        id: model.pointManager.allocatePointId(),
         x: 900,
         y: 200,
         rewardSize: "large",
@@ -955,7 +1096,7 @@ describe("BattleModel point pickups", () => {
 
     model.deserialize(snapshot);
     expect(model.hashHex()).toBe(snapshotHash);
-    expect(model.getNextPointId()).toBe(2);
+    expect(model.pointManager.getNextPointId()).toBe(2);
 
     model.step(input());
     expect(model.hashHex()).toBe(originalHash);
@@ -974,7 +1115,7 @@ describe("BattleModel point power shooting tiers", () => {
     expect(model.player.pointCount).toBe(35);
     expect(model.target.pointCount).toBe(75);
 
-    model.setPlayerPointCount(120);
+    model.pointManager.setPointCount(model.player, 120);
     model.target.pointCount = 10;
     model.reset();
 
@@ -985,24 +1126,24 @@ describe("BattleModel point power shooting tiers", () => {
   it("sets Player1 point directly for debug testing and clamps to the battle limit", async () => {
     const model = await createBattleModel();
 
-    model.setPlayerPointCount(123.8);
+    model.pointManager.setPointCount(model.player, 123.8);
     expect(model.player.pointCount).toBe(123);
 
-    model.setPlayerPointCount(999);
+    model.pointManager.setPointCount(model.player, 999);
     expect(model.player.pointCount).toBe(POINT_COUNT_MAX);
 
-    model.setPlayerPointCount(-10);
+    model.pointManager.setPointCount(model.player, -10);
     expect(model.player.pointCount).toBe(0);
   });
 
   it("applies piercing bullet damage every frame while overlapping", async () => {
     const model = await createBattleModel("reimu", "marisa");
     const mob = new StaticRectNeutralMob(
-      model.allocateNeutralMobId(),
+      model.neutralMobManager.allocateNeutralMobId(),
       500,
       240,
     );
-    model.addNeutralMob(mob);
+    model.neutralMobManager.addNeutralMob(mob);
     model.projectiles.push(
       testProjectile({
         id: 10,

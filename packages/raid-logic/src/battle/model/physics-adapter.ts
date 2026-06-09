@@ -32,6 +32,7 @@ export interface CollisionResult {
   readonly victimMobId?: number;
   readonly grazedByKey?: FighterKey;
   readonly blockedByShield?: true;
+  readonly blockedByShieldOwner?: FighterKey;
 }
 
 /**
@@ -398,7 +399,11 @@ function resolveCollision(
     if (projectileMap.get(projectileNum)?.owner === shieldOwner) {
       return null;
     }
-    return { projectileId: projectileNum, blockedByShield: true };
+    return {
+      projectileId: projectileNum,
+      blockedByShield: true,
+      blockedByShieldOwner: shieldOwner as FighterKey,
+    };
   }
 
   if (otherId.startsWith("graze:")) {
