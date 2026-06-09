@@ -210,6 +210,8 @@
    - 到最小下一波时间后，如果场上怪物已清空，进入下一波。
    - 到最长下一波时间后，强制进入下一波。
    - elite 或 boss 在场时，计时推进失效；只有场上怪物全部击败才步进。
+   - elite,boss,商店之前，计时推进暂时失效，只有所有玩家都就绪才步进。
+   - 位于商店时，游戏计时暂停，只有都结束购买就绪后才步进。
    - shop 节点也禁用计时推进；必须两位玩家 ready 后立即刷新下一波。
 3. wave 定义中的秒数在初始化时换算为 tick。
 4. spawner snapshot 必须保存当前 wave index、当前阶段、shop 序号、waveStartFrame、已生成成员等必要状态。
@@ -341,8 +343,8 @@
 7. 单次商店最多出现 3 个能力卡物资。
 8. 按 spawner 配置的稀有度数量，从可选池随机不放回抽取。
 9. 所有物资初始价格为 46。
-10. 每种物资每名玩家只能购买一次。
-11. 货物显示为上 icon、下金额；购买后翻牌，不可再次购买。
+10. 每种物资每名玩家只能购买一次。一种物资可被每名玩家分别购买。
+11. 货物显示为上 icon、下金额；某名玩家购买后货物进行翻牌效果，这名玩家不可再次购买。
 12. 鼠标悬浮货物时，本地玩家金额旁显示 `xx(-yy)`：
    - 买得起为绿色。
    - 买不起为红色。
@@ -364,40 +366,17 @@
 - 单人 ready 不退出商店。
 - 双人 ready 后退出商店并立即进入下一波。
 
-## 阶段 11：replay 策略
+
+## 阶段 11：example-collaborate-mob-spawner
 
 ### 计划
 
-1. replay metadata 显示模式名：
-   - 对战模式。
-   - 合作模式。
-2. 在合作 replay 完整实现前：
-   - 合作模式不写入 replay。
-   - UI 上提示“合作模式暂不保存回放”。
-3. 未来完整支持时，replay 需要记录：
-   - battle mode。
-   - map id。
-   - 两名玩家 loadout。
-   - 初始 money。
-   - spawner id 和初始配置。
-   - 确定性 RNG 初始状态。
-   - 每帧两位玩家输入。
-   - 合作 extra snapshot 版本。
+新增 `example-collaborate-mob-spawner`,他被用于“合作测试竞技场”，推荐文件：
 
-### 测试清单
-
-- 对战模式 replay 保存不受影响。
-- 合作模式结束后不保存 replay。
-- replay 列表不会出现不完整合作 replay。
-- 如果未来手动构造合作 replay，校验阶段能识别 metadata。
-
-## 阶段 12：example-collaborate-mob-spawner
-
-### 计划
-
-新增 `example-collaborate-mob-spawner`，推荐文件：
-
-- `packages/content/src/content/mob-spawner/collaborate/example-collaborate-mob-spawner.ts`。
+- `packages/content/src/content/mob-spawner/collaborate/example-collaborate-mob-spawner`。
+  - `waves.ts`
+  - `elites/`
+  - `boss/`
 - `packages/content/src/content/mob-spawner/collaborate/wave-types.ts`。
 - `packages/content/src/content/mob-spawner/collaborate/spell-card.ts`。
 
@@ -485,3 +464,27 @@
 - boss 未击败且双人阵亡后失败。
 - 合作模式战局不保存 replay。
 - 双端同输入下 hash 稳定，无新增 desync。
+
+
+## 阶段 12：replay 策略
+
+### 计划
+
+1. replay metadata 显示模式名：
+   - 对战模式。
+   - 合作模式。
+2. replay 需要记录：
+   - battle mode。
+   - map id。
+   - 两名玩家 loadout。
+   - 初始 money。
+   - spawner id 和初始配置。
+   - 确定性 RNG 初始状态。
+   - 每帧两位玩家输入。
+   - 合作 extra snapshot 版本。
+
+### 测试清单
+
+- 对战模式 replay 保存不受影响。
+- replay 列表不会出现不完整合作 replay。
+- 导入时，validation校验阶段能识别 metadata。
