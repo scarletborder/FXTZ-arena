@@ -203,7 +203,7 @@ export class SpectatorBattleOverride {
       return;
     }
     this.resultStarted = true;
-    this.replayRecorder.endBattle();
+    this.replayRecorder.endBattle(winnerPlayerId === "Player2" ? "Player2" : "Player1");
     if (this.udpSession) {
       this.udpSession.close();
     }
@@ -217,6 +217,7 @@ export class SpectatorBattleOverride {
       mode: "online",
       player1Id: this.playerName,
       player2Id: this.opponentName,
+      winnerPlayerId: winnerPlayerId === "Player2" ? "Player2" : "Player1",
       finalGlobalInputHash: null,
       loadouts: this.loadouts,
     });

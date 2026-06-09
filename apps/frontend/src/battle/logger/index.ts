@@ -1,7 +1,6 @@
 import type { PlayerId } from "@repo/types";
 import { IS_DESKTOP_APP } from "@repo/constants";
 import {
-  type DeterministicHasher,
   stableHash,
   type BattleInputState,
   type BattleOutputFrame,
@@ -13,6 +12,7 @@ import type {
   CombatConfirmedFrameInputRecord,
   CombatFrameInputRecord,
 } from "../../network/combat";
+import { hashReplayFrameInputsHex } from "../../replay/input-hash";
 
 export interface DebugFrameLogRecord {
   readonly sequence: number;
@@ -269,33 +269,18 @@ function cloneDebugInput(input: BattleInputState): BattleInputState {
 }
 
 function hashInputsHex(record: CombatConfirmedFrameInputRecord | null): string {
-  const hash = stableHash((hasher) => {
-    hasher.writeString("fxtz-arena:authoritative-input:v1");
-    if (!record) {
+  if (!record) {
+    const hash = stableHash((hasher) => {
+      hasher.writeString("fxtz-arena:authoritative-input:v1");
       hasher.writeNumber(0);
-      return;
-    }
-    hasher.writeNumber(record.frame);
-    writeInputHash(hasher, record.player);
-    writeInputHash(hasher, record.target);
+    });
+    return hash.toString(16).padStart(8, "0");
+  }
+  return hashReplayFrameInputsHex({
+    frame: record.frame,
+    player1: record.player,
+    player2: record.target,
   });
-  return hash.toString(16).padStart(8, "0");
-}
-
-function writeInputHash(
-  hasher: DeterministicHasher,
-  input: BattleInputState,
-): void {
-  hasher.writeNumber(input.moveX);
-  hasher.writeNumber(input.moveY);
-  hasher.writeNumber(Math.trunc(input.aimX));
-  hasher.writeNumber(Math.trunc(input.aimY));
-  hasher.writeNumber(input.shootPressed ? 1 : 0);
-  hasher.writeNumber(input.bombPressed ? 1 : 0);
-  hasher.writeNumber(input.activeCardPressed ? 1 : 0);
-  hasher.writeNumber(input.reloadPressed ? 1 : 0);
-  hasher.writeNumber(input.alternateHeld ? 1 : 0);
-  hasher.writeNumber(input.infoHeld ? 1 : 0);
 }
 
 function createDebugLogFilename(sceneData: BattleSceneData, localPlayerId: PlayerId | null, targetFrame: number): string {

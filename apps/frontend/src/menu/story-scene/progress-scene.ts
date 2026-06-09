@@ -371,6 +371,7 @@ export class StoryProgressScene extends Phaser.Scene {
                 difficulty: this.state.difficulty,
                 player1Id: this.story.playableCharacterId,
                 player2Id: t("select.cpu"),
+                winnerPlayerId: "Player1",
                 finalGlobalInputHash: null,
                 loadouts: {
                   player: {

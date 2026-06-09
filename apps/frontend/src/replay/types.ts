@@ -1,4 +1,4 @@
-import type { BattleInputState, EnumDifficulty } from "@repo/types";
+import type { BattleInputState, EnumDifficulty, PlayerId } from "@repo/types";
 import type { BattleLoadouts } from "../battle/loadout";
 
 export interface ReplayFrame {
@@ -9,6 +9,7 @@ export interface ReplayFrame {
 
 export interface ReplayBattleRecord {
   readonly inputs: ReplayFrame[];
+  readonly winnerPlayerId?: Exclude<PlayerId, "Neutral">;
   readonly stageIndex?: number;
   readonly stageTitle?: string;
   readonly playerName: string;
@@ -33,6 +34,7 @@ export interface ReplayFile {
   readonly difficulty?: EnumDifficulty;
   readonly player1Id: string;
   readonly player2Id: string;
+  readonly winnerPlayerId?: Exclude<PlayerId, "Neutral">;
   readonly finalGlobalInputHash: string | null;
   readonly loadouts: BattleLoadouts;
   readonly battles: ReplayBattleRecord[];

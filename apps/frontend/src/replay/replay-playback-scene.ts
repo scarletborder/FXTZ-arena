@@ -230,7 +230,7 @@ export class ReplayPlaybackScene extends Phaser.Scene {
 
     // Dialog panel
     const dlgW = 720;
-    const dlgH = showStageTabs ? 540 : 460;
+    const dlgH = showStageTabs ? 580 : 500;
     const dlgX = (1280 - dlgW) / 2;
     const dlgY = (720 - dlgH) / 2;
     const cx = 640; // center X
@@ -269,6 +269,14 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     const modeLabel = t(`replay.mode_${replay.mode}` as any) ?? replay.mode;
     this.addDialogText(layer, contentX, ly, `${t("replay.col_mode")}: ${modeLabel}    ${t("replay.col_time")}: ${formatSlotTime(replay.timestamp)}`, "#b7c7d8", 14);
     ly += lineH + 4;
+
+    if (!showStageTabs) {
+      this.addDialogText(layer, contentX, ly, replayMatchupLine(replay), "#d7e3ef", 14);
+      ly += lineH + 2;
+
+      this.addDialogText(layer, contentX, ly, t("replay.winner", { name: replayWinnerLabel(replay) }), "#ffcf6e", 14);
+      ly += lineH + 2;
+    }
 
     this.addDialogText(layer, contentX, ly, t("replay.version", { version: replay.appVersion?.trim() || "unkwon" }), "#9fb4c8", 14);
     ly += lineH + 2;
@@ -337,7 +345,7 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     const lineH = 20;
 
     // Player loadout
-    this.addDialogText(layer, x, y, `【${t("replay.player_loadout")}】`, "#ffcf6e", 14);
+    this.addDialogText(layer, x, y, `【${t("replay.p1_loadout")}】`, "#ffcf6e", 14);
     y += lineH + 2;
 
     const ply = loadouts.player;
@@ -347,7 +355,7 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     y += 4;
 
     // Opponent loadout
-    this.addDialogText(layer, x, y, `【${t("replay.opponent_loadout")}】`, "#ffcf6e", 14);
+    this.addDialogText(layer, x, y, `【${t("replay.p2_loadout")}】`, "#ffcf6e", 14);
     y += lineH + 2;
 
     const opp = loadouts.target;
@@ -399,6 +407,7 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     const tabW = 36;
     const tabGap = 6;
     const panelW = dlgW - 56;
+    const panelH = 196 + 8;
     let selectedBi = 0;
 
     // Section label
@@ -478,9 +487,9 @@ export class ReplayPlaybackScene extends Phaser.Scene {
       // Info panel background
       const bg = this.add.graphics();
       bg.fillStyle(0x0b1118, 0.75);
-      bg.fillRoundedRect(x, y, panelW, 86, 6);
+      bg.fillRoundedRect(x, y, panelW, panelH, 6);
       bg.lineStyle(1, 0xffcf6e, 0.3);
-      bg.strokeRoundedRect(x, y, panelW, 86, 6);
+      bg.strokeRoundedRect(x, y, panelW, panelH, 6);
       infoContainer.add(bg);
 
       // Stage title
@@ -501,13 +510,18 @@ export class ReplayPlaybackScene extends Phaser.Scene {
 
       // Player names
       const playerText = this.add.text(x + 12, y + 66,
-        `${battle.playerName} vs ${battle.opponentName}`,
+        replayBattleMatchupLine(battle),
         bodyStyle("#d7e3ef", 13));
       infoContainer.add(playerText);
 
+      const winnerText = this.add.text(x + 12, y + 84,
+        t("replay.winner", { name: replayBattleWinnerLabel(replay, battle) }),
+        bodyStyle("#ffcf6e", 13));
+      infoContainer.add(winnerText);
+
       // ── Loadout per stage ────────────────────────────────────────
       const lo = battle.loadouts ?? replay.loadouts;
-      const ly = y + 96;
+      const ly = y + 116;
 
       const priCharDef = getCharacterDefinition(lo.player.primaryCharacterId);
       const altCharDef = getCharacterDefinition(lo.player.alternateCharacterId);
@@ -520,8 +534,8 @@ export class ReplayPlaybackScene extends Phaser.Scene {
       const oppAltName = oppAltDef?.name ?? lo.target.alternateCharacterId;
 
       // Player
-      const playerLoadoutLabel = this.add.text(x, ly + 6,
-        `【${t("replay.player_loadout")}】 ${priName} / ${altName}`,
+      const playerLoadoutLabel = this.add.text(x + 12, ly + 6,
+        `【${t("replay.p1_loadout")}】 ${priName} / ${altName}`,
         bodyStyle("#ffcf6e", 13));
       loadoutContainer.add(playerLoadoutLabel);
 
@@ -530,15 +544,15 @@ export class ReplayPlaybackScene extends Phaser.Scene {
         return def?.name ?? cid;
       });
       if (playerCards.length > 0) {
-        const cardText = this.add.text(x, ly + 26,
+        const cardText = this.add.text(x + 12, ly + 26,
           `${t("replay.card", { name: playerCards.join(", ") })}`,
           bodyStyle("#b7c7d8", 12));
         loadoutContainer.add(cardText);
       }
 
       // Opponent
-      const oppLoadoutLabel = this.add.text(x, ly + 44,
-        `【${t("replay.opponent_loadout")}】 ${oppPriName} / ${oppAltName}`,
+      const oppLoadoutLabel = this.add.text(x + 12, ly + 44,
+        `【${t("replay.p2_loadout")}】 ${oppPriName} / ${oppAltName}`,
         bodyStyle("#ffcf6e", 13));
       loadoutContainer.add(oppLoadoutLabel);
 
@@ -547,7 +561,7 @@ export class ReplayPlaybackScene extends Phaser.Scene {
         return def?.name ?? cid;
       });
       if (oppCards.length > 0) {
-        const cardText = this.add.text(x, ly + 64,
+        const cardText = this.add.text(x + 12, ly + 64,
           `${t("replay.card", { name: oppCards.join(", ") })}`,
           bodyStyle("#b7c7d8", 12));
         loadoutContainer.add(cardText);
@@ -556,7 +570,7 @@ export class ReplayPlaybackScene extends Phaser.Scene {
 
     renderInfo(0);
 
-    return y + 186; // panel 86 + gap 10 + loadout section 82 + gap 8
+    return y + panelH + 8;
   }
 
   private addDialogText(
@@ -780,6 +794,53 @@ function replayDifficultyLabel(difficulty: ReplayFile["difficulty"]): string {
     default:
       return t("replay.difficulty_unknown");
   }
+}
+
+function replayMatchupLine(replay: ReplayFile): string {
+  return replayBattleMatchupLine({
+    playerName: replay.player1Id,
+    opponentName: replay.player2Id,
+  });
+}
+
+function replayBattleMatchupLine(battle: Pick<ReplayFile["battles"][number], "playerName" | "opponentName">): string {
+  return `${replayPlayerLabel(battle.playerName, "Player1")} vs ${replayPlayerLabel(battle.opponentName, "Player2")}`;
+}
+
+function replayWinnerLabel(replay: ReplayFile): string {
+  return replayWinnerSlotLabel(replay.winnerPlayerId, replay.player1Id, replay.player2Id);
+}
+
+function replayBattleWinnerLabel(
+  replay: ReplayFile,
+  battle: Pick<ReplayFile["battles"][number], "winnerPlayerId" | "playerName" | "opponentName">,
+): string {
+  return replayWinnerSlotLabel(
+    battle.winnerPlayerId ?? replay.winnerPlayerId,
+    battle.playerName,
+    battle.opponentName,
+  );
+}
+
+function replayWinnerSlotLabel(
+  winnerPlayerId: ReplayFile["winnerPlayerId"],
+  player1Name: string,
+  player2Name: string,
+): string {
+  if (winnerPlayerId === "Player1") {
+    return replayPlayerLabel(player1Name, "Player1");
+  }
+  if (winnerPlayerId === "Player2") {
+    return replayPlayerLabel(player2Name, "Player2");
+  }
+  return t("replay.winner_unknown");
+}
+
+function replayPlayerLabel(name: string, playerId: "Player1" | "Player2"): string {
+  return t("replay.player_slot_label", {
+    name,
+    slot: playerId === "Player1" ? "P1" : "P2",
+  });
 }
 
 function replayInitPointLine(battle: ReplayFile["battles"][number]): string {

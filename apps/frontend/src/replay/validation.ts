@@ -63,6 +63,13 @@ function isValidReplayBattleRecord(battle: unknown): battle is ReplayBattleRecor
   // playerName / opponentName
   if (!isNonEmptyString(b.playerName) || !isNonEmptyString(b.opponentName)) return false;
 
+  // winnerPlayerId is optional for legacy battles
+  if (
+    b.winnerPlayerId !== undefined &&
+    b.winnerPlayerId !== "Player1" &&
+    b.winnerPlayerId !== "Player2"
+  ) return false;
+
   // mapId must be a string
   if (typeof b.mapId !== "string") return false;
 
@@ -110,6 +117,13 @@ export function validateReplayJson(data: unknown): ReplayFile | null {
 
   // player IDs
   if (!isNonEmptyString(obj.player1Id) || !isNonEmptyString(obj.player2Id)) return null;
+
+  // winnerPlayerId is optional for legacy replays
+  if (
+    obj.winnerPlayerId !== undefined &&
+    obj.winnerPlayerId !== "Player1" &&
+    obj.winnerPlayerId !== "Player2"
+  ) return null;
 
   // finalGlobalInputHash: string or null
   if (obj.finalGlobalInputHash !== null && typeof obj.finalGlobalInputHash !== "string") return null;

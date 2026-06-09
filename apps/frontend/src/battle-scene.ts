@@ -39,7 +39,7 @@ import { CombatSyncManager } from "./network/combat";
 import { P2pConnection } from "./network/p2p";
 import { uiSettings } from "./store/settings";
 import { BattleAudioDirector } from "./battle/audio";
-import { resolveResultWinnerName } from "./battle/result";
+import { resolveResultWinnerName, resolveWinnerPlayerId } from "./battle/result";
 import { advanceStoryAfterBattle } from "./story/state";
 import type { StoryProgressData, StoryResultData } from "./story/types";
 import type { ReplayFile } from "./replay/types";
@@ -664,7 +664,7 @@ export class BattleScene extends Phaser.Scene {
   ): void {
     if (this.resultScheduled) return;
     this.resultScheduled = true;
-    this.replayRecorder?.endBattle();
+    this.replayRecorder?.endBattle(this.resolveReplayWinnerPlayerId(winnerPlayerId));
     if (this.shouldRecordDebugLog()) {
       this.printDebugHashBundle(winnerPlayerId, serverConfirmedFrame);
     }
@@ -744,7 +744,6 @@ export class BattleScene extends Phaser.Scene {
     if (!this.runtime.gameOver) {
       return;
     }
-    this.replayRecorder?.endBattle();
     if (this.shouldRecordDebugLog()) {
       this.printDebugHashBundle(null);
     }
@@ -752,6 +751,7 @@ export class BattleScene extends Phaser.Scene {
       this.goToStoryResult();
       return;
     }
+    this.replayRecorder?.endBattle(this.resolveReplayWinnerPlayerId(null));
     this.scene.start("result", this.createResultData(null));
   }
 
@@ -772,6 +772,7 @@ export class BattleScene extends Phaser.Scene {
       won,
     });
     if (won) {
+      this.replayRecorder?.endBattle("Player1");
       this.scene.start("story-progress", {
         state: nextState,
         fromBattle: true,
@@ -780,6 +781,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     // Story failed: finalize replay and pass to result scene
+    this.replayRecorder?.endBattle(this.resolveReplayWinnerPlayerId(null));
     const replay = this.buildStoryReplayFile();
     this.scene.start("story-result", {
       story: story.story,
@@ -796,7 +798,8 @@ export class BattleScene extends Phaser.Scene {
     const localFighterState = localFighterKey === "Player1" ? this.currentOutput.state.player : this.currentOutput.state.target;
     const opponentFighterState = localFighterKey === "Player1" ? this.currentOutput.state.target : this.currentOutput.state.player;
     const debugHashes = this.getFinalDebugHashes();
-    const replay = this.buildNormalReplayFile();
+    const winnerSlot = this.resolveReplayWinnerPlayerId(winnerPlayerId);
+    const replay = this.buildNormalReplayFile(winnerSlot);
 
     return {
       winnerName: resolveResultWinnerName({
@@ -818,13 +821,14 @@ export class BattleScene extends Phaser.Scene {
     };
   }
 
-  private buildNormalReplayFile(): ReplayFile | undefined {
+  private buildNormalReplayFile(winnerPlayerId: "Player1" | "Player2"): ReplayFile | undefined {
     if (!this.replayRecorder || !this.sceneData.loadouts) return undefined;
     return this.replayRecorder.finalize({
       title: `${this.sceneData.playerName ?? "Player"} vs ${this.sceneData.opponentName ?? "Opponent"}`,
       mode: (this.sceneData.mode === "ai" || this.sceneData.mode === "training") ? "ai" : (this.sceneData.mode === "online" || this.sceneData.mode === "local" ? "online" : "ai"),
       player1Id: this.sceneData.playerName ?? "Player",
       player2Id: this.sceneData.opponentName ?? "Opponent",
+      winnerPlayerId,
       finalGlobalInputHash: this.getFinalDebugHashes()?.finalGlobalInputHash ?? null,
       loadouts: this.sceneData.loadouts,
     });
@@ -841,8 +845,18 @@ export class BattleScene extends Phaser.Scene {
       difficulty: storyCtx.state.difficulty,
       player1Id: this.sceneData.playerName ?? uiSettings.username ?? "Player",
       player2Id: this.sceneData.opponentName ?? "CPU",
+      winnerPlayerId: this.resolveReplayWinnerPlayerId(null),
       finalGlobalInputHash: this.getFinalDebugHashes()?.finalGlobalInputHash ?? null,
       loadouts: this.sceneData.loadouts ?? fallback,
+    });
+  }
+
+  private resolveReplayWinnerPlayerId(winnerPlayerId: PlayerId | null): "Player1" | "Player2" {
+    return resolveWinnerPlayerId({
+      winnerPlayerId,
+      localPlayerId: this.combatSync?.localPlayerId ?? this.sceneData.localPlayerId ?? "Player1",
+      playerDeaths: this.currentOutput.state.player.deaths,
+      targetDeaths: this.currentOutput.state.target.deaths,
     });
   }
 

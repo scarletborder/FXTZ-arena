@@ -38,15 +38,17 @@ export interface BattlePauseMenuOptions {
   readonly onRestart: () => void;
   readonly onMainMenu: () => void;
   readonly canOpen?: () => boolean;
-  /** Replay playback speed (0.5, 1, 2, 4, 8). When set, show replay-specific menu. */
+  /** Replay playback speed (1, 2, 4, 8). When set, show replay-specific menu. */
   readonly replaySpeed?: number;
+  /** Reads the current replay playback speed when the menu is opened. */
+  readonly getReplaySpeed?: () => number;
   /** Called when user toggles playback speed. */
   readonly onSpeedChange?: (speed: number) => void;
   /** Spectator menu keeps the battle running and only exposes resume/exit. */
   readonly spectator?: boolean;
 }
 
-const REPLAY_SPEEDS = [0.5, 1, 2, 4, 8] as const;
+const REPLAY_SPEEDS = [1, 2, 4, 8] as const;
 
 export class BattlePauseMenuController {
   private menu: PauseMenuState | undefined;
@@ -182,7 +184,7 @@ export class BattlePauseMenuController {
         this.createMenuButton(layer, menuCenterX, menuCenterY + 32, t("pause.exit_spectator"), true, () => this.options.onMainMenu(), "mainMenu"),
       );
     } else if (isReplay) {
-      let currentSpeed = this.options.replaySpeed ?? 1;
+      let currentSpeed = this.options.getReplaySpeed?.() ?? this.options.replaySpeed ?? 1;
       const speedButton = this.createMenuButton(
         layer,
         menuCenterX,

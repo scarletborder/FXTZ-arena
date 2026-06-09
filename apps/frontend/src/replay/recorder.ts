@@ -1,7 +1,8 @@
-import type { BattleInputState } from "@repo/types";
+import type { BattleInputState, PlayerId } from "@repo/types";
 import { APP_BUILD_LABEL } from "@repo/constants";
 import type { BattleLoadouts } from "../battle/loadout";
 import type { ReplayBattleRecord, ReplayFile, ReplayFrame } from "./types";
+import { finalReplayInputHash } from "./input-hash";
 
 export class ReplayRecorder {
   private battles: ReplayBattleRecord[] = [];
@@ -54,10 +55,11 @@ export class ReplayRecorder {
   }
 
   /** End the current battle recording and store it. */
-  endBattle(): void {
+  endBattle(winnerPlayerId?: Exclude<PlayerId, "Neutral">): void {
     if (!this.recording || !this.battleParams) return;
     this.battles.push({
       inputs: this.frames,
+      winnerPlayerId,
       stageIndex: this.battleParams.stageIndex,
       stageTitle: this.battleParams.stageTitle,
       playerName: this.battleParams.playerName,
@@ -79,9 +81,13 @@ export class ReplayRecorder {
     difficulty?: ReplayFile["difficulty"];
     player1Id: string;
     player2Id: string;
+    winnerPlayerId?: Exclude<PlayerId, "Neutral">;
     finalGlobalInputHash: string | null;
     loadouts: BattleLoadouts;
   }): ReplayFile {
+    const recordedInputHash = finalReplayInputHash(
+      this.battles.flatMap((battle) => battle.inputs),
+    );
     return {
       version: 1,
       appVersion: APP_BUILD_LABEL,
@@ -91,7 +97,8 @@ export class ReplayRecorder {
       difficulty: metadata.difficulty,
       player1Id: metadata.player1Id,
       player2Id: metadata.player2Id,
-      finalGlobalInputHash: metadata.finalGlobalInputHash,
+      winnerPlayerId: metadata.winnerPlayerId,
+      finalGlobalInputHash: metadata.finalGlobalInputHash ?? recordedInputHash,
       loadouts: metadata.loadouts,
       battles: this.battles,
     };

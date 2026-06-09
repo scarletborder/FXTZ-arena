@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveResultWinnerName } from "./result";
+import { resolveResultWinnerName, resolveWinnerPlayerId } from "./result";
 
 describe("resolveResultWinnerName", () => {
   it("uses deaths rather than lives for offline battle results", () => {
@@ -25,5 +25,29 @@ describe("resolveResultWinnerName", () => {
         targetDeaths: 0,
       }),
     ).toBe("CPU");
+  });
+});
+
+describe("resolveWinnerPlayerId", () => {
+  it("keeps the winner as a player slot even when display names match", () => {
+    expect(
+      resolveWinnerPlayerId({
+        winnerPlayerId: "Player2",
+        localPlayerId: "Player1",
+        playerDeaths: 0,
+        targetDeaths: 0,
+      }),
+    ).toBe("Player2");
+  });
+
+  it("derives offline winner slot from deaths", () => {
+    expect(
+      resolveWinnerPlayerId({
+        winnerPlayerId: null,
+        localPlayerId: "Player1",
+        playerDeaths: 1,
+        targetDeaths: 0,
+      }),
+    ).toBe("Player2");
   });
 });

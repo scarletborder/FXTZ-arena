@@ -231,6 +231,7 @@ export class ReplayBattleOverride {
       onRestart: () => this.restart(),
       onMainMenu: () => this.exitToMenu(),
       replaySpeed: this.replaySpeed,
+      getReplaySpeed: () => this.replaySpeed,
       onSpeedChange: (speed) => { this.replaySpeed = speed; },
     });
 
