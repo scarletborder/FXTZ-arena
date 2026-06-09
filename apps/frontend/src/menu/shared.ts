@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { getAbilityCardDefinition, getCharacterDefinition, type AbilityCardDefinition, type CharacterDefinition } from "@repo/content";
 import { t } from "@repo/i18n";
-import type { PlayerId, PlayerLoadout } from "@repo/types";
+import type { BattleRoomMode, PlayerId, PlayerLoadout } from "@repo/types";
 
 import type { BattleSceneData } from "../battle/loadout";
 import type { ReplayFile } from "../replay/types";
@@ -39,6 +39,8 @@ export interface SelectionData {
   readonly roomId?: string;
   /** Set when mode === "online" — this client's player slot. */
   readonly playerId?: PlayerId;
+  /** Battle room mode for online selection rules. */
+  readonly battleMode?: BattleRoomMode;
   /** Optional callback used by local LAN to hand the chosen loadout back to the orchestrator. */
   readonly onLocalConfirm?: (loadout: PlayerLoadout) => void;
   /** Optional scene key to return to when leaving the selection screen. */

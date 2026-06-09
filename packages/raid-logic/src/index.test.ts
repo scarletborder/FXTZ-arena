@@ -114,6 +114,46 @@ describe("@repo/raid-logic loadout validation", () => {
     expect(result.valid).toBe(true);
   });
 
+  it("accepts collaborate loadouts with two characters and no ability cards", () => {
+    const result = validateLoadout(
+      {
+        primaryCharacterId: "reimu",
+        alternateCharacterId: "sakuya",
+        abilityCardIds: [],
+      },
+      { mode: "collaborate" },
+    );
+
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it("rejects collaborate loadouts with ability cards or an active card", () => {
+    const withCards = validateLoadout(
+      {
+        primaryCharacterId: "reimu",
+        alternateCharacterId: "sakuya",
+        abilityCardIds: ["spirit_strike_card"],
+        activeAbilityCardId: "spirit_strike_card",
+      },
+      { mode: "collaborate" },
+    );
+    const withActiveOnly = validateLoadout(
+      {
+        primaryCharacterId: "reimu",
+        alternateCharacterId: "sakuya",
+        abilityCardIds: [],
+        activeAbilityCardId: "spirit_strike_card",
+      },
+      { mode: "collaborate" },
+    );
+
+    expect(withCards.errors).toContain("collaborate_ability_cards_forbidden");
+    expect(withCards.valid).toBe(false);
+    expect(withActiveOnly.errors).toContain("collaborate_ability_cards_forbidden");
+    expect(withActiveOnly.valid).toBe(false);
+  });
+
   it("rejects duplicate characters", () => {
     const result = validateLoadout({
       primaryCharacterId: "reimu",

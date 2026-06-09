@@ -1,8 +1,10 @@
 import { getAbilityCardDefinition, getCharacterDefinition } from "@repo/content";
-import { DEFAULT_COST_LIMIT, type BattleMode, type PlayerLoadout } from "@repo/types";
+import { DEFAULT_COST_LIMIT, type BattleMode, type BattleRoomMode, type PlayerLoadout } from "@repo/types";
+
+export type LoadoutValidationMode = BattleMode | BattleRoomMode;
 
 export interface LoadoutValidationOptions {
-  readonly mode?: BattleMode;
+  readonly mode?: LoadoutValidationMode;
   readonly costLimit?: number;
 }
 
@@ -20,6 +22,7 @@ export type LoadoutValidationError =
   | "too_many_active_cards"
   | "active_card_id_required"
   | "active_card_id_invalid"
+  | "collaborate_ability_cards_forbidden"
   | "cost_limit_reached";
 
 export function calculateLoadoutCost(loadout: PlayerLoadout): number {
@@ -38,7 +41,7 @@ export function validateLoadout(
   loadout: PlayerLoadout,
   options: LoadoutValidationOptions = {},
 ): LoadoutValidationResult {
-  const mode = options.mode ?? "standard";
+  const mode = options.mode ?? "versus";
   const costLimit = options.costLimit ?? DEFAULT_COST_LIMIT;
   const errors: LoadoutValidationError[] = [];
   const primary = getCharacterDefinition(loadout.primaryCharacterId);
@@ -56,6 +59,18 @@ export function validateLoadout(
 
   if (loadout.primaryCharacterId === loadout.alternateCharacterId) {
     errors.push("duplicate_characters");
+  }
+
+  if (mode === "collaborate") {
+    if (loadout.abilityCardIds.length > 0 || loadout.activeAbilityCardId) {
+      errors.push("collaborate_ability_cards_forbidden");
+    }
+
+    return {
+      valid: errors.length === 0,
+      totalCost: calculateLoadoutCost(loadout),
+      errors,
+    };
   }
 
   if (cards.some((card) => !card)) {
@@ -78,7 +93,7 @@ export function validateLoadout(
 
   const totalCost = calculateLoadoutCost(loadout);
 
-  if (mode === "standard" && totalCost > costLimit) {
+  if ((mode === "standard" || mode === "versus") && totalCost > costLimit) {
     errors.push("cost_limit_reached");
   }
 

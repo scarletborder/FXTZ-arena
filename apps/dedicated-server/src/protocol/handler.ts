@@ -877,6 +877,7 @@ export class MessageHandler {
 
     this.notifyAllConnected(room, {
       type: "game_starting",
+      battleMode: room.battleMode,
     });
   }
 
@@ -968,7 +969,7 @@ export class MessageHandler {
 
     // Validate loadout
     const validation = validateLoadout(msg.loadout, {
-      mode: "standard",
+      mode: room.battleMode,
       costLimit: room.costLimit,
     });
     if (!validation.valid) {

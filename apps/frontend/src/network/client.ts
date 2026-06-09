@@ -304,6 +304,10 @@ export class ConnectionManager {
       }
       case "battle_start":
         this.battleConfig = msg.config;
+        this.battleMode = msg.config.battleMode;
+        break;
+      case "game_starting":
+        if (msg.battleMode !== undefined) this.battleMode = msg.battleMode;
         break;
       case "error":
         if (msg.code === "reconnect_failed") {

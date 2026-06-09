@@ -1,12 +1,13 @@
 import Phaser from "phaser";
 import { t } from "@repo/i18n";
+import { validateLoadout } from "@repo/raid-logic";
 import {
   getAllAbilityCardDefinitions,
   getAllCharacterDefinitions,
   type AbilityCardDefinition,
   type CharacterDefinition,
 } from "@repo/content";
-import type { AbilityCardId, CharacterId, PlayerLoadout } from "@repo/types";
+import type { AbilityCardId, BattleRoomMode, CharacterId, PlayerLoadout } from "@repo/types";
 
 import { type BattleLoadouts } from "../battle/loadout";
 import { type FighterLoadout } from "../battle/loadout";
@@ -39,6 +40,7 @@ const COST_LIMIT = 10;
 
 export class SelectScene extends Phaser.Scene {
   private mode: SelectionData["mode"] = "ai";
+  private battleMode: BattleRoomMode = "versus";
   private selectedMapId: SelectionData["mapId"];
   private cpuLoadoutPresetId: CpuLoadoutPresetId = "marisa_solo";
   private playerId: string | undefined;
@@ -110,6 +112,7 @@ export class SelectScene extends Phaser.Scene {
   create(data: SelectionData): void {
     installMenuAudioUnlock(this);
     this.mode = data.mode;
+    this.battleMode = data.battleMode ?? connectionManager.battleMode ?? "versus";
     this.selectedMapId = data.mapId;
     this.cpuLoadoutPresetId = data.cpuLoadoutPresetId ?? "marisa_solo";
     this.playerId = data.playerId;
@@ -120,12 +123,12 @@ export class SelectScene extends Phaser.Scene {
     this.selectedCards.clear();
 
     const subtitle = this.mode === "online"
-      ? "ONLINE VERSUS"
+      ? this.isCollaborateMode() ? t("select.subtitle.online_collaborate") : t("select.subtitle.online_versus")
       : this.mode === "training"
-        ? "TRAINING"
+        ? t("select.subtitle.training")
         : this.mode === "local"
-          ? "LOCAL LAN"
-          : "CPU VERSUS";
+          ? t("select.subtitle.local")
+          : t("select.subtitle.cpu");
     drawFightingBackdrop(this, "SELECT", subtitle);
 
     // Online mode: custom back button sends leave_room
@@ -266,7 +269,9 @@ export class SelectScene extends Phaser.Scene {
       this.render();
     });
     this.addCharacterRoster();
-    this.addCardRoster();
+    if (!this.isCollaborateMode()) {
+      this.addCardRoster();
+    }
     this.addCostDisplay();
 
     const label = this.mode === "online" || this.mode === "local" ? t("select.confirm_loadout") : t("select.confirm_battle");
@@ -731,6 +736,9 @@ export class SelectScene extends Phaser.Scene {
   }
 
   private toggleCard(card: AbilityCardDefinition): void {
+    if (this.isCollaborateMode()) {
+      return;
+    }
     if (this.selectedCards.has(card.id)) {
       this.selectedCards.delete(card.id);
     } else {
@@ -792,6 +800,9 @@ export class SelectScene extends Phaser.Scene {
     if (!this.primaryId || !this.alternateId || this.primaryId === this.alternateId) {
       return false;
     }
+    if (this.isCollaborateMode()) {
+      return true;
+    }
     return this.mode === "training" || this.totalCost() <= COST_LIMIT;
   }
 
@@ -804,11 +815,12 @@ export class SelectScene extends Phaser.Scene {
     }
 
     if (this.mode === "local") {
-      const activeCardId = [...this.selectedCards].find((id) => getCardById(id).kind === "active");
+      const selectedCards = this.isCollaborateMode() ? [] : [...this.selectedCards];
+      const activeCardId = selectedCards.find((id) => getCardById(id).kind === "active");
       this.localConfirmHandler?.({
         primaryCharacterId: this.primaryId,
         alternateCharacterId: this.alternateId,
-        abilityCardIds: [...this.selectedCards],
+        abilityCardIds: selectedCards,
         activeAbilityCardId: activeCardId,
       });
       this.confirmButton.setEnabled(false);
@@ -818,11 +830,12 @@ export class SelectScene extends Phaser.Scene {
     }
 
     // Local mode (ai / training) — navigate directly
-    const activeCardId = [...this.selectedCards].find((id) => getCardById(id).kind === "active");
+    const selectedCards = this.isCollaborateMode() ? [] : [...this.selectedCards];
+    const activeCardId = selectedCards.find((id) => getCardById(id).kind === "active");
     const player: FighterLoadout = {
       primaryCharacterId: this.primaryId,
       alternateCharacterId: this.alternateId,
-      cardIds: [...this.selectedCards],
+      cardIds: selectedCards,
       activeCardId,
     };
     const loadouts: BattleLoadouts = {
@@ -843,12 +856,21 @@ export class SelectScene extends Phaser.Scene {
   }
 
   private sendOnlineReady(): void {
+    const selectedCards = this.isCollaborateMode() ? [] : [...this.selectedCards];
     const loadout: PlayerLoadout = {
       primaryCharacterId: this.primaryId!,
       alternateCharacterId: this.alternateId!,
-      abilityCardIds: [...this.selectedCards],
-      activeAbilityCardId: [...this.selectedCards].find((id) => getCardById(id).kind === "active") ?? undefined,
+      abilityCardIds: selectedCards,
+      activeAbilityCardId: selectedCards.find((id) => getCardById(id).kind === "active") ?? undefined,
     };
+    const validation = validateLoadout(loadout, { mode: this.battleMode });
+    if (!validation.valid) {
+      this.statusText
+        .setText(t("select.error", { message: validation.errors.join(", ") }))
+        .setColor("#ff5c66")
+        .setVisible(true);
+      return;
+    }
 
     // Send network message first, then update UI
     connectionManager.send({ type: "ready", loadout });
@@ -858,6 +880,10 @@ export class SelectScene extends Phaser.Scene {
     this.confirmButton.setEnabled(false);
     this.confirmButton.setLabel(t("select.wait_opponent"));
     this.statusText.setText(t("select.confirmed_waiting")).setColor("#ffcf6e").setVisible(true);
+  }
+
+  private isCollaborateMode(): boolean {
+    return this.battleMode === "collaborate";
   }
 }
 

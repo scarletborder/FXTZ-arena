@@ -123,6 +123,7 @@
   },
   "select": {
     "confirmed": "对手已确认", "opponent": "对手", "error": "错误: {{message}}", "peer_left": "对方已经退出房间",
+    "subtitle.online_versus": "ONLINE VERSUS", "subtitle.online_collaborate": "ONLINE CO-OP", "subtitle.training": "TRAINING", "subtitle.local": "LOCAL LAN", "subtitle.cpu": "CPU VERSUS",
     "primary_mode": "常驻角色", "alternate_mode": "备选角色", "confirm_battle": "确认出战", "confirm_loadout": "确认配装",
     "unselected": "未选择", "characters": "角色", "cards": "能力卡", "all": "全部", "active": "主动", "passive": "被动",
     "wait_opponent": "等待对手…", "confirmed_waiting": "已确认，等待对手…", "dummy": "靶子", "cpu": "CPU",

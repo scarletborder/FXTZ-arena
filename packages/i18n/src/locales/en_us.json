@@ -123,6 +123,7 @@
   },
   "select": {
     "confirmed": "Opponent confirmed", "opponent": "Opponent", "error": "Error: {{message}}", "peer_left": "Opponent left the room",
+    "subtitle.online_versus": "ONLINE VERSUS", "subtitle.online_collaborate": "ONLINE CO-OP", "subtitle.training": "TRAINING", "subtitle.local": "LOCAL LAN", "subtitle.cpu": "CPU VERSUS",
     "primary_mode": "Primary Character", "alternate_mode": "Backup Character", "confirm_battle": "Confirm Battle", "confirm_loadout": "Confirm Loadout",
     "unselected": "Unselected", "characters": "Characters", "cards": "Ability Cards", "all": "All", "active": "Active", "passive": "Passive",
     "wait_opponent": "Waiting…", "confirmed_waiting": "Confirmed, waiting…", "dummy": "Target", "cpu": "CPU",

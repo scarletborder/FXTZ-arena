@@ -268,10 +268,13 @@ export class RoomLobbyScene extends Phaser.Scene {
         break;
       }
       case "game_starting":
+        connectionManager.battleMode = (m as { battleMode?: import("@repo/types").BattleRoomMode }).battleMode
+          ?? connectionManager.battleMode;
         this.scene.start("select", {
           mode: "online",
           roomId: connectionManager.roomId ?? undefined,
           playerId: connectionManager.playerId ?? undefined,
+          battleMode: connectionManager.battleMode ?? undefined,
         } satisfies SelectionData);
         break;
       case "peer_status": {

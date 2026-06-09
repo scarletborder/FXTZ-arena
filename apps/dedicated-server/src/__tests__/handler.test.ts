@@ -601,6 +601,73 @@ describe("MessageHandler", () => {
       const error = spectator.findSentMessage("error");
       expect(error?.code).toBe("invalid_state");
     });
+
+    it("rejects ready loadouts with ability cards", () => {
+      const { handler } = createHandler();
+      const host = new MockConnection("collab-ready-host");
+      const guest = new MockConnection("collab-ready-guest");
+
+      performHello(handler, host, "Host");
+      performHello(handler, guest, "Guest");
+
+      handler.handle(host, {
+        type: "create_room",
+        name: "Co-op",
+        battleMode: "collaborate",
+        mapId: "collaborate_test_arena",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+      const roomId = host.findSentMessage("room_created")!.roomId;
+
+      handler.handle(guest, { type: "join_room", roomId });
+      handler.handle(guest, { type: "lobby_ready", ready: true });
+      handler.handle(host, { type: "start_game" });
+      host.clearMessages();
+
+      handler.handle(host, {
+        type: "ready",
+        loadout: {
+          primaryCharacterId: "reimu",
+          alternateCharacterId: "marisa",
+          abilityCardIds: ["spirit_strike_card"],
+          activeAbilityCardId: "spirit_strike_card",
+        },
+      });
+
+      const error = host.findSentMessage("error");
+      expect(error?.code).toBe("invalid_loadout");
+      expect(error?.message).toContain("collaborate_ability_cards_forbidden");
+    });
+
+    it("includes battle mode when starting loadout selection", () => {
+      const { handler } = createHandler();
+      const host = new MockConnection("collab-start-host");
+      const guest = new MockConnection("collab-start-guest");
+
+      performHello(handler, host, "Host");
+      performHello(handler, guest, "Guest");
+
+      handler.handle(host, {
+        type: "create_room",
+        name: "Co-op",
+        battleMode: "collaborate",
+        mapId: "collaborate_test_arena",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+      const roomId = host.findSentMessage("room_created")!.roomId;
+
+      handler.handle(guest, { type: "join_room", roomId });
+      handler.handle(guest, { type: "lobby_ready", ready: true });
+      host.clearMessages();
+      guest.clearMessages();
+
+      handler.handle(host, { type: "start_game" });
+
+      expect(host.findSentMessage("game_starting")?.battleMode).toBe("collaborate");
+      expect(guest.findSentMessage("game_starting")?.battleMode).toBe("collaborate");
+    });
   });
 
   describe("leave room", () => {

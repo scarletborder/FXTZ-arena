@@ -221,6 +221,7 @@ export interface RoomStateMessage {
 
 export interface GameStartingMessage {
   type: "game_starting";
+  battleMode?: BattleRoomMode;
 }
 
 export interface OpponentReadyMessage {
