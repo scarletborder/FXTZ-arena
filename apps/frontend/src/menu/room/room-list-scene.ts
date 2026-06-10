@@ -4,10 +4,10 @@ import { getAvailableCombatMaps } from "@repo/content";
 import { t } from "@repo/i18n";
 import type { MapId, PlayerId, RoomSummary, ServerMessage } from "@repo/types";
 
-import { createCheckbox, createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop } from "./ui";
-import { createMapDropdown } from "./map-dialog";
-import { connectionManager, installMenuAudioUnlock, type SceneKey, type SelectionData, type TextFieldControl } from "./shared";
-import { uiSettings } from "../store/settings";
+import { createCheckbox, createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop } from "../ui";
+import { createMapDropdown } from "../map-dialog";
+import { connectionManager, installMenuAudioUnlock, type SceneKey, type SelectionData, type TextFieldControl } from "../shared";
+import { uiSettings } from "../../store/settings";
 
 const PAGE_SIZE = 12;
 

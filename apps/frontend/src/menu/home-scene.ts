@@ -4,7 +4,7 @@ import { IS_DESKTOP_APP } from "@repo/constants";
 
 import { bodyStyle, createFightButton, createRectangleButton, drawBuildLabel, drawFightingBackdrop, drawTitleBlock } from "./ui";
 import { installMenuAudioUnlock, type SceneKey } from "./shared";
-import { showPublicServerConnectivityDialog } from "./public-server-connectivity-dialog";
+import { showPublicServerConnectivityDialog } from "./ui/dialogs/public-server-connectivity-dialog";
 import { setSelfAuthed, uiSettings } from "../store/settings";
 import { showLanguageDialog } from "./language-dialog";
 import { installResourcePackFromCache, queueResourcePack } from "../utils/resource-pack";

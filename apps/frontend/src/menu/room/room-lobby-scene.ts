@@ -5,9 +5,9 @@ import {
   createFightButton,
   drawAngledPanel,
   drawFightingBackdrop,
-} from "./ui";
-import { connectionManager, installMenuAudioUnlock, type SceneKey, type SelectionData } from "./shared";
-import { uiSettings } from "../store/settings";
+} from "../ui";
+import { connectionManager, installMenuAudioUnlock, type SceneKey, type SelectionData } from "../shared";
+import { uiSettings } from "../../store/settings";
 
 export class RoomLobbyScene extends Phaser.Scene {
   private contentContainer!: Phaser.GameObjects.Container;

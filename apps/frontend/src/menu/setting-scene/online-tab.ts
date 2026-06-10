@@ -19,7 +19,7 @@ import {
   setStunServers,
   uiSettings,
 } from "../../store/settings";
-import { showPublicServerConnectivityDialog } from "../public-server-connectivity-dialog";
+import { showPublicServerConnectivityDialog } from "../ui/dialogs/public-server-connectivity-dialog";
 import type { SettingsScene } from "./index";
 import { probeCustomServer, type ProbeResult } from "./probe";
 
