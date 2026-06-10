@@ -14,7 +14,7 @@ import {
 } from "../../store/settings";
 import type { TextFieldControl } from "../shared";
 import type { SettingsScene } from "./index";
-import { showLanguageDialog } from "../language-dialog";
+import { showLanguageDialog } from "../ui/dialogs/language-dialog";
 
 interface SliderControl {
   readonly container: Phaser.GameObjects.Container;

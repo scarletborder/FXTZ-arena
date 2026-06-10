@@ -48,7 +48,6 @@ class BattleAudioBridgeImpl implements BattleAudioBridge {
         this.play(command.key, command.options);
         return;
       case "unlock":
-        this.scene.sound.unlock();
         return;
       case "reset":
         this.resetLoops();

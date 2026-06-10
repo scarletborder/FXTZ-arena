@@ -1,7 +1,6 @@
 import Phaser from "phaser";
 import { t } from "@repo/i18n";
 
-import { installMenuAudioUnlock } from "../menu/shared";
 import {
   bodyStyle,
   createFightButton,
@@ -43,7 +42,6 @@ export class ReplayRecordScene extends Phaser.Scene {
   }
 
   create(): void {
-    installMenuAudioUnlock(this);
     this.dialog = undefined;
     this.titleInputValue = "";
     this.renderPage();

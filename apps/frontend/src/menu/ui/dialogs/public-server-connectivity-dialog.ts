@@ -2,11 +2,11 @@ import Phaser from "phaser";
 import { IS_DESKTOP_APP, PUBLIC_SERVER, type PublicServer } from "@repo/constants";
 import { t } from "@repo/i18n";
 
-import { findServerCertificateFingerprint } from "../network/fingerprint";
-import { isWebTransportAddress, normalizeServerAddress } from "../network/address";
-import { WsNetworkTransport, WtDesktopTransport, WtNetworkTransport } from "../network/transport";
-import type { BaseNetworkTransport } from "../network/transport";
-import { bodyStyle, createFightButton, drawAngledPanel } from "./ui";
+import { findServerCertificateFingerprint } from "../../../network/fingerprint";
+import { isWebTransportAddress, normalizeServerAddress } from "../../../network/address";
+import { WsNetworkTransport, WtDesktopTransport, WtNetworkTransport } from "../../../network/transport";
+import type { BaseNetworkTransport } from "../../../network/transport";
+import { bodyStyle, createFightButton, drawAngledPanel } from "..";
 
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;

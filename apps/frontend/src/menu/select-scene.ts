@@ -24,7 +24,6 @@ import {
 } from "./ui";
 import {
   connectionManager,
-  installMenuAudioUnlock,
   getCardById,
   getCharacterById,
   type CpuLoadoutPresetId,
@@ -109,7 +108,6 @@ export class SelectScene extends Phaser.Scene {
   }
 
   create(data: SelectionData): void {
-    installMenuAudioUnlock(this);
     this.mode = data.mode;
     this.battleMode = data.battleMode ?? connectionManager.battleMode ?? "versus";
     this.selectedMapId = data.mapId;

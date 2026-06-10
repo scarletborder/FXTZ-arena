@@ -1,4 +1,3 @@
-import Phaser from "phaser";
 import { getAbilityCardDefinition, getCharacterDefinition, type AbilityCardDefinition, type CharacterDefinition } from "@repo/content";
 import { t } from "@repo/i18n";
 import type { BattleRoomMode, PlayerId, PlayerLoadout } from "@repo/types";
@@ -8,6 +7,7 @@ import type { ReplayFile } from "../replay/types";
 import { ConnectionManager } from "../network";
 
 export type SceneKey =
+  | "bootstrap"
   | "home"
   | "battle-start"
   | "room-list"
@@ -53,17 +53,6 @@ export interface LoadingData extends BattleSceneData {
 
 /** Global ConnectionManager singleton, shared across scenes. */
 export const connectionManager = new ConnectionManager();
-
-export function installMenuAudioUnlock(scene: Phaser.Scene): void {
-  const unlock = () => {
-    scene.sound.unlock();
-  };
-
-  scene.input.on("pointerdown", unlock);
-  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-    scene.input.off("pointerdown", unlock);
-  });
-}
 
 export interface ResultData {
   readonly winnerName?: string;

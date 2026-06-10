@@ -3,11 +3,11 @@ import { t } from "@repo/i18n";
 import { IS_DESKTOP_APP } from "@repo/constants";
 
 import { bodyStyle, createFightButton, createRectangleButton, drawBuildLabel, drawFightingBackdrop, drawTitleBlock } from "./ui";
-import { installMenuAudioUnlock, type SceneKey } from "./shared";
-import { showPublicServerConnectivityDialog } from "./public-server-connectivity-dialog";
+import { type SceneKey } from "./shared";
+import { showPublicServerConnectivityDialog } from "./ui/dialogs/public-server-connectivity-dialog";
 import { setSelfAuthed, uiSettings } from "../store/settings";
-import { showLanguageDialog } from "./language-dialog";
 import { installResourcePackFromCache, queueResourcePack } from "../utils/resource-pack";
+import { showLanguageDialog } from "./ui/dialogs/language-dialog";
 
 export class HomeScene extends Phaser.Scene {
   private publicServerConnectivityDialog: Phaser.GameObjects.Container | undefined;
@@ -22,7 +22,6 @@ export class HomeScene extends Phaser.Scene {
 
   create(): void {
     installResourcePackFromCache(this);
-    installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "FXTZ ARENA", "LOCAL M5 BUILD");
     drawTitleBlock(this, "FXTZ ARENA", t("menu.subtitle"));
 

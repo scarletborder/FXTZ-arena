@@ -19,9 +19,22 @@ type ResourceManifest = {
 const resourceUrls = new Map<string, string>();
 let preparedResourcePackUrl: string | undefined;
 
-export async function prepareResourcePackSource(): Promise<void> {
+export type ResourcePackPrepareStage = "checking" | "ready" | "downloading" | "fallback" | "error";
+
+export interface ResourcePackPrepareProgress {
+  readonly stage: ResourcePackPrepareStage;
+  readonly downloadedBytes?: number;
+  readonly totalBytes?: number;
+}
+
+export type ResourcePackPrepareProgressHandler = (progress: ResourcePackPrepareProgress) => void;
+
+export async function prepareResourcePackSource(onProgress?: ResourcePackPrepareProgressHandler): Promise<void> {
+  onProgress?.({ stage: "checking" });
+
   if (isDesktopTarget()) {
     preparedResourcePackUrl = assetUrlWithoutPack("resources.dat");
+    onProgress?.({ stage: "ready" });
     return;
   }
 
@@ -29,6 +42,7 @@ export async function prepareResourcePackSource(): Promise<void> {
   const sigUrl = assetUrlWithoutPack("resources.dat.sig");
   if (!("caches" in window)) {
     preparedResourcePackUrl = datUrl;
+    onProgress?.({ stage: "ready" });
     return;
   }
 
@@ -39,6 +53,7 @@ export async function prepareResourcePackSource(): Promise<void> {
 
   if (cachedPack && remoteSignature && cachedSignature?.trim() === remoteSignature.trim()) {
     preparedResourcePackUrl = URL.createObjectURL(await cachedPack.blob());
+    onProgress?.({ stage: "ready" });
     return;
   }
 
@@ -46,17 +61,20 @@ export async function prepareResourcePackSource(): Promise<void> {
   if (!response.ok) {
     if (cachedPack) {
       preparedResourcePackUrl = URL.createObjectURL(await cachedPack.blob());
+      onProgress?.({ stage: "fallback" });
       return;
     }
+    onProgress?.({ stage: "error" });
     throw new Error(`Failed to fetch resources.dat: ${response.status}`);
   }
 
-  const packBlob = await response.blob();
+  const packBlob = await readResponseBlobWithProgress(response, onProgress);
   await cache.put(datUrl, new Response(packBlob, { headers: { "content-type": "application/octet-stream" } }));
   if (remoteSignature) {
     await cache.put(sigUrl, new Response(remoteSignature, { headers: { "content-type": "text/plain" } }));
   }
   preparedResourcePackUrl = URL.createObjectURL(packBlob);
+  onProgress?.({ stage: "ready", downloadedBytes: packBlob.size, totalBytes: packBlob.size });
 }
 
 export function queueResourcePack(scene: Phaser.Scene): void {
@@ -130,6 +148,37 @@ async function fetchText(url: string, cache: RequestCache): Promise<string | und
     return undefined;
   }
   return response.text();
+}
+
+async function readResponseBlobWithProgress(
+  response: Response,
+  onProgress?: ResourcePackPrepareProgressHandler,
+): Promise<Blob> {
+  const totalBytes = Number(response.headers.get("content-length")) || undefined;
+  if (!response.body) {
+    const blob = await response.blob();
+    onProgress?.({ stage: "downloading", downloadedBytes: blob.size, totalBytes: blob.size });
+    return blob;
+  }
+
+  const reader = response.body.getReader();
+  const chunks: ArrayBuffer[] = [];
+  let downloadedBytes = 0;
+  onProgress?.({ stage: "downloading", downloadedBytes, totalBytes });
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    chunks.push(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength));
+    downloadedBytes += value.byteLength;
+    onProgress?.({ stage: "downloading", downloadedBytes, totalBytes });
+  }
+
+  return new Blob(chunks, {
+    type: response.headers.get("content-type") ?? "application/octet-stream",
+  });
 }
 
 function isDesktopTarget(): boolean {

@@ -5,7 +5,7 @@ import type { BattleConfig, ServerMessage } from "@repo/types";
 import { queueBattleAssets } from "../../battle/assets";
 import type { BattleLoadouts } from "../../battle/loadout";
 import BgmCmd from "../../commands/BgmCmd";
-import { connectionManager, installMenuAudioUnlock, type SceneKey } from "../../menu/shared";
+import { connectionManager, type SceneKey } from "../../menu/shared";
 import { bodyStyle, createFightButton, drawAngledPanel, drawFightingBackdrop, headingStyle } from "../../menu/ui";
 import type { UdpDirectSession } from "../../network/udp-direct-session";
 import { SpectatorInputBuffer } from "./spectator-buffer";
@@ -57,7 +57,6 @@ export class SpectatorLoadingScene extends Phaser.Scene {
 
   create(data: SpectatorLoadingData): void {
     this.loadingData = data;
-    installMenuAudioUnlock(this);
     if (data.source === "udp") {
       data.udpSession?.setSpectatorMessageHandler((message) => this.handleServerMessage(message));
       this.headerText.setText(t("spectator.players_waiting"));

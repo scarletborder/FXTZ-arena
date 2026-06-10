@@ -5,9 +5,9 @@ import {
   createFightButton,
   drawAngledPanel,
   drawFightingBackdrop,
-} from "./ui";
-import { connectionManager, installMenuAudioUnlock, type SceneKey, type SelectionData } from "./shared";
-import { uiSettings } from "../store/settings";
+} from "../ui";
+import { connectionManager, type SceneKey, type SelectionData } from "../shared";
+import { uiSettings } from "../../store/settings";
 
 export class RoomLobbyScene extends Phaser.Scene {
   private contentContainer!: Phaser.GameObjects.Container;
@@ -24,7 +24,6 @@ export class RoomLobbyScene extends Phaser.Scene {
   }
 
   create(data?: SelectionData): void {
-    installMenuAudioUnlock(this);
     this.selfReady = false;
     this.leavingOnlineRoom = false;
     if (data?.battleMode) {

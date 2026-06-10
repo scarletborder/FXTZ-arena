@@ -8,7 +8,6 @@ import { createInitialStoryState } from "../../story/state";
 import type { StoryId, StoryProgressData } from "../../story/types";
 import {
   getCharacterById,
-  installMenuAudioUnlock,
   type SceneKey,
 } from "../shared";
 import {
@@ -73,7 +72,6 @@ export class StoryStartLoadoutScene extends Phaser.Scene {
   }
 
   create(): void {
-    installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "STORY", "LOADOUT");
     this.layer = this.add.container(0, 0);
     this.input.keyboard?.on("keydown", this.onKeyDown);

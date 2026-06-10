@@ -1,11 +1,9 @@
 import Phaser from "phaser";
+import { FightButton } from "../../shared";
+import { FONT } from "../constants";
+import { nonEmptyText } from "../helpers";
+import { bodyStyle } from "../styles";
 
-import type { FightButton } from "../shared";
-
-import { bodyStyle } from "./styles";
-import { drawAngledPanel } from "./drawAngledPanel";
-import { nonEmptyText } from "./helpers";
-import { FONT } from "./constants";
 
 interface FightButtonOptions {
   readonly enabled?: boolean;
@@ -13,7 +11,7 @@ interface FightButtonOptions {
   readonly accent?: number;
 }
 
-export function createFightButton(
+export function createRectangleButton(
   scene: Phaser.Scene,
   x: number,
   y: number,
@@ -45,9 +43,10 @@ export function createFightButton(
     background.clear();
     const fill = enabled ? (hovered ? 0x252e3d : 0x151b26) : (hovered ? 0x373d46 : 0x2b2f36);
     const stroke = enabled ? (hovered ? 0xffcf6e : accent) : (hovered ? 0x8a919b : 0x656a72);
-    drawAngledPanel(background, 0, 0, width, height, fill, stroke, enabled ? 0.98 : 0.72);
-    background.lineStyle(3, stroke, enabled ? 1 : 0.45);
-    background.lineBetween(18, height - 7, width - 20, height - 7);
+    background.fillStyle(fill, enabled ? 0.98 : 0.72);
+    background.fillRect(0, 0, width, height);
+    background.lineStyle(2, stroke, enabled ? 1 : 0.45);
+    background.strokeRect(0, 0, width, height);
     labelText.setColor(enabled ? (hovered ? "#ffffff" : "#f6f1e6") : (hovered ? "#a7afb8" : "#7f8994"));
     subText?.setColor(enabled ? "#b7c7d8" : (hovered ? "#87909a" : "#68717b"));
   };
@@ -62,7 +61,6 @@ export function createFightButton(
   });
   hitArea.on("pointerdown", () => {
     if (enabled) {
-      scene.sound.unlock();
       redraw();
     }
   });

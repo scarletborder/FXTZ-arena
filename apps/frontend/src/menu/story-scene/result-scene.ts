@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { t } from "@repo/i18n";
 
 import type { StoryResultData } from "../../story/types";
-import { installMenuAudioUnlock, type SceneKey } from "../shared";
+import { type SceneKey } from "../shared";
 import {
   bodyStyle,
   createFightButton,
@@ -28,7 +28,6 @@ export class StoryResultScene extends Phaser.Scene {
   }
 
   create(): void {
-    installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "STORY", "RESULT");
     if (this.resultData.success === false) {
       this.showStats();
