@@ -5,6 +5,8 @@ export * from "./mobs/example-fairy";
 export * from "./mobs/horizontal-fairy";
 export * from "./mobs/elite-fairy";
 export * from "./mobs/immortal-fairy";
+export * from "./collaborate/wave-types";
+export * from "./collaborate/wave-spawner";
 
 import { DefaultMobSpawnerA } from "./default-a";
 import { ShootingRangeSpawn } from "./shooting-range-spawn";
@@ -14,7 +16,9 @@ import type { NeutralMobSpawner } from "./base";
  * Resolve a NeutralMobSpawner by its ID string.
  * Returns undefined for unknown/unregistered spawner IDs.
  */
-export function resolveMobSpawner(spawnerId: string): NeutralMobSpawner | undefined {
+export function resolveMobSpawner(
+  spawnerId: string,
+): NeutralMobSpawner | undefined {
   switch (spawnerId) {
     case "default-a":
       return new DefaultMobSpawnerA();

@@ -1,6 +1,7 @@
 import type {
   NeutralMob,
   NeutralMobActionContext,
+  CollaborateExtraState,
   NeutralMobState,
 } from "@repo/types";
 import { DEFAULT_ARENA_BOUNDS, type ArenaBounds } from "@repo/types";
@@ -88,6 +89,14 @@ export class NeutralMobManager {
     readonly player: FighterState;
     readonly target: FighterState;
     readonly timeStopped: boolean;
+    readonly collaborateExtra?: CollaborateExtraState;
+    updateCollaborateExtra(
+      updater: (state: CollaborateExtraState) => CollaborateExtraState,
+    ): void;
+    beginCollaborateTransition(
+      target: "elite" | "boss" | "shop",
+      type: "auto" | "manual",
+    ): void;
   }): void {
     if (!this.mobSpawner || params.timeStopped) return;
     const context: Parameters<NeutralMobSpawner["step"]>[0] & {
@@ -98,8 +107,11 @@ export class NeutralMobManager {
       player: params.player,
       target: params.target,
       neutralMobs: this.mobs,
+      collaborateExtra: params.collaborateExtra,
       allocateMobId: (idParams) => this.allocateNeutralMobId(idParams),
       spawnMob: (mob) => this.addNeutralMob(mob),
+      updateCollaborateExtra: params.updateCollaborateExtra,
+      beginCollaborateTransition: params.beginCollaborateTransition,
     };
     this.mobSpawner.step(context);
   }

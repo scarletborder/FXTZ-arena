@@ -94,10 +94,10 @@ export class BattleModel {
     FighterKey,
     { readonly x: number; readonly y: number }
   > = {
-      Player1: { x: TARGET_SPAWN.x, y: TARGET_SPAWN.y },
-      Player2: { x: PLAYER_SPAWN.x, y: PLAYER_SPAWN.y },
-      Neutral: { x: 0, y: 0 },
-    };
+    Player1: { x: TARGET_SPAWN.x, y: TARGET_SPAWN.y },
+    Player2: { x: PLAYER_SPAWN.x, y: PLAYER_SPAWN.y },
+    Neutral: { x: 0, y: 0 },
+  };
   private readonly loadouts: BattleLoadouts;
   private readonly rules: BattleRules;
   readonly neutralMobManager: NeutralMobManager;
@@ -326,6 +326,11 @@ export class BattleModel {
       return;
     }
 
+    if (this.collaborateExtra?.shop.open) {
+      this.stepMobSpawner();
+      return;
+    }
+
     // --- Phase 1: Timer ticking (order-independent) ---
     this.pendingSpawns = [];
     this.playerFighter.tickTimers();
@@ -365,18 +370,18 @@ export class BattleModel {
       rules: this.rules,
       computeRapierHits: physics
         ? (projectiles) =>
-          physics.computeCollisions(
-            projectiles,
-            this.player,
-            this.target,
-            this.currentShields(),
-            this.neutralMobManager.states(),
-            this.points,
-            {
-              Player1: this.playerFighter.getGrazeRadiusMultiplier(),
-              Player2: this.targetFighter.getGrazeRadiusMultiplier(),
-            },
-          )
+            physics.computeCollisions(
+              projectiles,
+              this.player,
+              this.target,
+              this.currentShields(),
+              this.neutralMobManager.states(),
+              this.points,
+              {
+                Player1: this.playerFighter.getGrazeRadiusMultiplier(),
+                Player2: this.targetFighter.getGrazeRadiusMultiplier(),
+              },
+            )
         : undefined,
       onHit: (ctx) => this.onProjectileHit(ctx),
       onGraze: (ctx) => this.onProjectileGraze(ctx),
@@ -602,8 +607,12 @@ export class BattleModel {
 
     const playerInput = firstIsPlayer ? firstInput : secondInput;
     const targetInput = firstIsPlayer ? secondInput : firstInput;
-    const player1Ready = Boolean(playerInput?.transitionReadyPressed || extra.player1TransitionReady);
-    const player2Ready = Boolean(targetInput?.transitionReadyPressed || extra.player2TransitionReady);
+    const player1Ready = Boolean(
+      playerInput?.transitionReadyPressed || extra.player1TransitionReady,
+    );
+    const player2Ready = Boolean(
+      targetInput?.transitionReadyPressed || extra.player2TransitionReady,
+    );
     if (!player1Ready || !player2Ready) {
       this.collaborateExtra = {
         ...extra,
@@ -634,7 +643,7 @@ export class BattleModel {
           }
         : extra.shop,
     };
-    return true;
+    return false;
   }
 
   private stepTargetAi(): void {
@@ -830,9 +839,9 @@ export class BattleModel {
     ];
     fighter.pointCount = clampPointCount(
       fighter.pointCount +
-      (owner === "Neutral"
-        ? NEUTRAL_PROJECTILE_GRAZE_POINT_REWARD
-        : ENEMY_PROJECTILE_GRAZE_POINT_REWARD),
+        (owner === "Neutral"
+          ? NEUTRAL_PROJECTILE_GRAZE_POINT_REWARD
+          : ENEMY_PROJECTILE_GRAZE_POINT_REWARD),
     );
   }
 
@@ -1002,12 +1011,21 @@ export class BattleModel {
       target: this.target,
       arenaBounds: this.arenaBounds,
       timeStopped: this.timeStopped(),
+      collaborateExtra: this.collaborateExtra,
+      updateCollaborateExtra: (updater) => {
+        if (!this.collaborateExtra) return;
+        this.collaborateExtra = updater(this.collaborateExtra);
+      },
+      beginCollaborateTransition: (target, type) => {
+        this.beginCollaborateTransition(target, type);
+      },
     });
   }
 
   private stepNeutralMobs(): void {
     this.neutralMobManager.stepMobs({
-      timeStopped: this.timeStopped(),
+      timeStopped:
+        this.timeStopped() || this.collaborateExtra?.shop.open === true,
       createActionContext: () => this.neutralMobActionContext(),
     });
   }
@@ -1019,7 +1037,8 @@ export class BattleModel {
   private stepPoints(): void {
     this.pointManager.step({
       collectors: [this.playerFighter, this.targetFighter],
-      timeStopped: this.timeStopped(),
+      timeStopped:
+        this.timeStopped() || this.collaborateExtra?.shop.open === true,
     });
   }
 
