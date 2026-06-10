@@ -96,6 +96,7 @@
   },
   "result": {
     "title": "结算", "stats": "战斗统计", "winner": "胜利方：{{name}}", "duration": "对战时间：{{seconds}} 秒",
+    "challenge_victory": "挑战胜利", "challenge_defeat": "挑战失败",
     "back": "退出", "rematch": "再战", "rematch_disabled": "暂不可用", "shots": "射击：{{count}}",
     "bomb_uses": "bomb 使用：{{count}}", "hits_taken": "中弹次数：{{count}}"
   },

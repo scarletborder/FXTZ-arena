@@ -372,7 +372,87 @@ describe("BattleModel hit recovery", () => {
     expect(model.target.deaths).toBe(1);
     expect(model.gameOver).toBe(true);
   });
+
+  it("keeps collaborate battles running after only one player is defeated", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate" }),
+    );
+    model.player.lives = 0;
+
+    hitPlayerWithNeutralProjectile(model);
+
+    expect(model.player.deaths).toBe(1);
+    expect(model.player.deadUntil).toBeGreaterThan(0);
+    expect(model.gameOver).toBe(false);
+    expect(model.result).toBe("running");
+    expect(model.serialize().collaborateExtra?.state).toBe("running");
+  });
+
+  it("fails collaborate battles when both players are defeated before the boss", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate" }),
+    );
+    model.player.lives = 0;
+    model.target.lives = 0;
+
+    hitPlayerWithNeutralProjectile(model);
+    hitTargetWithNeutralProjectile(model);
+
+    expect(model.gameOver).toBe(true);
+    expect(model.result).toBe("collaborate_defeat");
+    expect(model.serialize().collaborateExtra).toMatchObject({
+      state: "defeat",
+      bossDefeated: false,
+    });
+  });
+
+  it("wins collaborate battles as soon as the boss is marked defeated", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate" }),
+    );
+    const snapshot = model.serialize();
+    model.deserialize({
+      ...snapshot,
+      collaborateExtra: snapshot.collaborateExtra
+        ? {
+            ...snapshot.collaborateExtra,
+            bossDefeated: true,
+          }
+        : undefined,
+    });
+
+    model.step(input());
+
+    expect(model.gameOver).toBe(true);
+    expect(model.result).toBe("collaborate_victory");
+    expect(model.serialize().collaborateExtra).toMatchObject({
+      state: "victory",
+      bossDefeated: true,
+    });
+  });
 });
+
+function hitPlayerWithNeutralProjectile(model: BattleModel): void {
+  const hit = model as unknown as {
+    onProjectileHit(ctx: {
+      readonly owner: "Neutral";
+      readonly victim: BattleModel["player"];
+      readonly damage: number;
+    }): boolean;
+  };
+  hit.onProjectileHit({ owner: "Neutral", victim: model.player, damage: 1 });
+}
+
+function hitTargetWithNeutralProjectile(model: BattleModel): void {
+  const hit = model as unknown as {
+    onProjectileHit(ctx: {
+      readonly owner: "Neutral";
+      readonly victim: BattleModel["target"];
+      readonly damage: number;
+    }): boolean;
+  };
+  hit.onProjectileHit({ owner: "Neutral", victim: model.target, damage: 1 });
+}
 
 describe("BattleModel collaborate projectile rules", () => {
   it("lets Player1 projectiles pass through Player2 without damage in collaborate mode", async () => {

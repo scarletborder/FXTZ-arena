@@ -1,5 +1,6 @@
 import { getAbilityCardDefinition, getCharacterDefinition, type AbilityCardDefinition, type CharacterDefinition } from "@repo/content";
 import { t } from "@repo/i18n";
+import type { BattleResult } from "@repo/content";
 import type { BattleRoomMode, PlayerId, PlayerLoadout } from "@repo/types";
 
 import type { BattleSceneData } from "../battle/loadout";
@@ -56,6 +57,7 @@ export const connectionManager = new ConnectionManager();
 
 export interface ResultData {
   readonly winnerName?: string;
+  readonly battleResult?: BattleResult;
   readonly durationSeconds?: number;
   readonly players: readonly [ResultPlayerSummary, ResultPlayerSummary];
   readonly returnScene?: string;

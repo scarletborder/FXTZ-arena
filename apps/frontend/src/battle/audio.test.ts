@@ -51,6 +51,7 @@ function battleState(params: {
   return {
     frame: params.frame,
     gameOver: false,
+    result: "running",
     player: fighter("Player1", character("reimu")),
     target: fighter("Player2", character("marisa")),
     points: [],

@@ -96,6 +96,7 @@
   },
   "result": {
     "title": "Results", "stats": "Battle Stats", "winner": "Winner: {{name}}", "duration": "Match time: {{seconds}} sec",
+    "challenge_victory": "Challenge Victory", "challenge_defeat": "Challenge Failed",
     "back": "Back to Start", "rematch": "Rematch", "rematch_disabled": "Unavailable", "shots": "Shots: {{count}}",
     "bomb_uses": "Bomb uses: {{count}}", "hits_taken": "Hits taken: {{count}}"
   },

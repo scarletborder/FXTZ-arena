@@ -985,6 +985,7 @@ export class BattleScene extends Phaser.Scene {
         playerDeaths: this.currentOutput.state.player.deaths,
         targetDeaths: this.currentOutput.state.target.deaths,
       }),
+      battleResult: this.currentOutput.state.result,
       durationSeconds: this.currentOutput.state.stats.elapsedTicks / 60,
       players: [
         createResultPlayerSummary(localPlayerName, localFighterState),

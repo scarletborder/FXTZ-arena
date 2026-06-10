@@ -389,6 +389,13 @@ export class CombatSyncManager {
   }
 
   private winnerPlayerId(): PlayerId {
+    const result = this.runtime.state.result;
+    if (result === "versus_player1" || result === "collaborate_victory") {
+      return "Player1";
+    }
+    if (result === "versus_player2" || result === "collaborate_defeat") {
+      return "Player2";
+    }
     return this.runtime.state.target.lives <= 0 ? "Player1" : "Player2";
   }
 

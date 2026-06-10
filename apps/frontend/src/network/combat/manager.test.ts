@@ -100,6 +100,7 @@ describe("CombatSyncManager rollback integration", () => {
       },
       gameOver: false,
       state: {
+        result: "running",
         target: { lives: 1 },
       },
       step: () => {
@@ -180,6 +181,7 @@ describe("CombatSyncManager rollback integration", () => {
         frame: 0,
         gameOver: false,
         state: {
+          result: "running",
           target: { lives: 1 },
         },
         step: () => undefined,
@@ -249,6 +251,7 @@ describe("CombatSyncManager rollback integration", () => {
       },
       gameOver: true,
       state: {
+        result: "versus_player1",
         target: { lives: 0 },
       },
       step: () => {
@@ -327,6 +330,70 @@ describe("CombatSyncManager rollback integration", () => {
         serverConfirmedFrame: 12,
       },
     ]);
+  });
+
+  it("uses collaborate results as stable game_over verdict slots", () => {
+    const sent: ClientMessage[] = [];
+    let runtimeFrame = 8;
+    const runtime = {
+      get frame() {
+        return runtimeFrame;
+      },
+      gameOver: true,
+      state: {
+        result: "collaborate_victory",
+        target: { lives: 0 },
+      },
+      step: () => {
+        runtimeFrame += 1;
+      },
+      deserialize: () => undefined,
+    } as unknown as RaidLogicRuntime;
+
+    const manager = new CombatSyncManager(
+      runtime,
+      {
+        send: (msg: ClientMessage) => {
+          sent.push(msg);
+        },
+        setMessageHandler: () => undefined,
+      } as unknown as ConnectionManager,
+      {
+        sceneData: {
+          mode: "local",
+          localPlayerId: "Player1",
+          battleMode: "collaborate",
+        } satisfies BattleSceneData,
+        p2p: {
+          connected: false,
+          close: () => undefined,
+          send: (msg: ClientMessage) => {
+            sent.push(msg);
+            return true;
+          },
+        } as unknown as P2pConnection,
+        callbacks: {
+          recordFrame: () => undefined,
+          getRollbackRecord: () => null,
+          pruneRollbackHistoryAfter: () => undefined,
+          pruneRollbackHistoryBefore: () => undefined,
+          onRollback: () => undefined,
+          setStatusText: () => undefined,
+          hideStatusText: () => undefined,
+          delay: (_ms, callback) => callback(),
+          finishBattle: () => undefined,
+        },
+      },
+    );
+
+    manager.step(testInput());
+
+    expect(sent).toContainEqual({
+      type: "game_over",
+      frame: 8,
+      ackFrame: 0,
+      winnerPlayerId: "Player1",
+    });
   });
 });
 

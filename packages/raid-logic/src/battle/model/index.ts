@@ -20,6 +20,7 @@ import type { BattleLoadouts, FighterLoadout } from "../loadout";
 import type { BattleInputState, BattleRoomMode } from "@repo/types";
 import type {
   BattleOutputState,
+  BattleResult,
   EffectState,
   FighterKey,
   FighterState,
@@ -72,6 +73,7 @@ export class BattleModel {
   };
   frame = 0;
   gameOver = false;
+  result: BattleResult = "running";
   /**
    * Set to true during stepFrame when a system reads aim coordinates in
    * a way that would alter the simulation output (shoot, bomb, active
@@ -247,6 +249,7 @@ export class BattleModel {
     this.frame = 0;
     this.ticker.reset();
     this.gameOver = false;
+    this.result = "running";
     this.collaborateExtra =
       this.battleMode === "collaborate"
         ? createDefaultCollaborateExtraState(0, this.seed)
@@ -417,6 +420,7 @@ export class BattleModel {
     return {
       frame: this.frame,
       gameOver: this.gameOver,
+      result: this.result,
       player: this.player,
       target: this.target,
       points: this.points,
@@ -435,6 +439,7 @@ export class BattleModel {
     return createBattleModelSnapshot({
       frame: this.frame,
       gameOver: this.gameOver,
+      result: this.result,
       player: this.player,
       target: this.target,
       projectiles: this.projectiles,
@@ -470,6 +475,9 @@ export class BattleModel {
     );
     this.ticker.setCurrentFrame(this.frame);
     this.gameOver = snapshot.gameOver;
+    this.result =
+      snapshot.result ??
+      (snapshot.gameOver ? this.legacyResultFromSnapshot(snapshot) : "running");
     this.collaborateExtra =
       this.battleMode === "collaborate"
         ? cloneCollaborateExtra(
@@ -806,10 +814,86 @@ export class BattleModel {
       this.cancelTimeStop(fighterState);
     }
     if (result === "game-over") {
-      this.gameOver = true;
+      this.handleFighterDefeated(fighterState);
       return true;
     }
     return true;
+  }
+
+  private handleFighterDefeated(fighter: FighterState): void {
+    if (this.battleMode !== "collaborate") {
+      this.finishBattle(
+        fighter.key === "Player1" ? "versus_player2" : "versus_player1",
+      );
+      return;
+    }
+
+    fighter.deadUntil = Number.MAX_SAFE_INTEGER;
+    fighter.actionLockedUntil = Number.MAX_SAFE_INTEGER;
+    fighter.nonFireActionLockedUntil = Number.MAX_SAFE_INTEGER;
+    fighter.movementLockedUntil = Number.MAX_SAFE_INTEGER;
+    fighter.switchLockedUntil = Number.MAX_SAFE_INTEGER;
+    fighter.reloadRemaining = 0;
+
+    this.evaluateCollaborateDefeat();
+  }
+
+  private evaluateCollaborateDefeat(): void {
+    if (
+      this.battleMode !== "collaborate" ||
+      this.collaborateExtra?.bossDefeated
+    ) {
+      return;
+    }
+    if (
+      this.isFighterDefeated(this.player) &&
+      this.isFighterDefeated(this.target)
+    ) {
+      this.updateCollaborateResult("defeat");
+      this.finishBattle("collaborate_defeat");
+    }
+  }
+
+  private evaluateCollaborateVictory(): void {
+    if (
+      this.battleMode !== "collaborate" ||
+      !this.collaborateExtra?.bossDefeated
+    ) {
+      return;
+    }
+    this.updateCollaborateResult("victory");
+    this.finishBattle("collaborate_victory");
+  }
+
+  private updateCollaborateResult(state: "victory" | "defeat"): void {
+    if (!this.collaborateExtra) return;
+    if (this.collaborateExtra.state === state) return;
+    this.collaborateExtra = {
+      ...this.collaborateExtra,
+      state,
+    };
+  }
+
+  private finishBattle(result: BattleResult): void {
+    this.gameOver = true;
+    this.result = result;
+  }
+
+  private isFighterDefeated(fighter: FighterState): boolean {
+    return fighter.deaths > 0 || (fighter.lives <= 0 && fighter.deadUntil > 0);
+  }
+
+  private legacyResultFromSnapshot(
+    snapshot: BattleModelSnapshot,
+  ): BattleResult {
+    if (this.battleMode === "collaborate") {
+      return snapshot.collaborateExtra?.state === "victory"
+        ? "collaborate_victory"
+        : "collaborate_defeat";
+    }
+    return snapshot.target.deaths > snapshot.player.deaths
+      ? "versus_player1"
+      : "versus_player2";
   }
 
   private onProjectileGraze(
@@ -1032,6 +1116,7 @@ export class BattleModel {
 
   private removeInactiveNeutralMobs(): void {
     this.neutralMobManager.removeInactive();
+    this.evaluateCollaborateVictory();
   }
 
   private stepPoints(): void {

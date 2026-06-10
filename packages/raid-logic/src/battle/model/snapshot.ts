@@ -4,6 +4,7 @@ import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
 import { getAbilityCard, getCharacter } from "../content";
 import type {
   EffectState,
+  BattleResult,
   FighterState,
   PointState,
   ProjectileState,
@@ -21,6 +22,7 @@ export interface BattleModelSnapshot {
   readonly version: 1;
   readonly frame: number;
   readonly gameOver: boolean;
+  readonly result?: BattleResult;
   readonly nextProjectileId: number;
   readonly nextEffectId: number;
   readonly nextNeutralMobId: number;
@@ -83,6 +85,7 @@ export type PointSnapshot = PointState;
 export function createBattleModelSnapshot(params: {
   readonly frame: number;
   readonly gameOver: boolean;
+  readonly result?: BattleResult;
   readonly player: FighterState;
   readonly target: FighterState;
   readonly projectiles: readonly ProjectileState[];
@@ -106,6 +109,7 @@ export function createBattleModelSnapshot(params: {
     version: 1,
     frame: params.frame,
     gameOver: params.gameOver,
+    result: params.result,
     nextProjectileId: params.nextProjectileId,
     nextEffectId: params.nextEffectId,
     nextNeutralMobId: params.nextNeutralMobId,
