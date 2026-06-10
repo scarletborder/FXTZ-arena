@@ -6,7 +6,7 @@ import type { MapId, PlayerId, RoomSummary, ServerMessage } from "@repo/types";
 
 import { createCheckbox, createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop } from "../ui";
 import { createMapDropdown } from "../map-dialog";
-import { connectionManager, installMenuAudioUnlock, type SceneKey, type SelectionData, type TextFieldControl } from "../shared";
+import { connectionManager, type SceneKey, type SelectionData, type TextFieldControl } from "../shared";
 import { uiSettings } from "../../store/settings";
 
 const PAGE_SIZE = 12;
@@ -33,7 +33,6 @@ export class RoomListScene extends Phaser.Scene {
   }
 
   create(): void {
-    installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "ROOMS", "ONLINE LIST");
     this.add.text(90, 74, t("room_list.title"), {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",

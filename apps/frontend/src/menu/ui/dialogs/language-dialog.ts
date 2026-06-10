@@ -1,8 +1,9 @@
 import Phaser from "phaser";
 
 import { languageDisplayNames, supportedLanguages, type SupportedLanguage, getLanguage, setLanguage, t } from "@repo/i18n";
+import { drawAngledPanel } from "../drawAngledPanel";
+import { bodyStyle } from "../styles";
 
-import { bodyStyle, drawAngledPanel } from "./ui";
 
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;

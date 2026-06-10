@@ -5,7 +5,6 @@ import { getCharacterDefinition, getAbilityCardDefinition } from "@repo/content"
 import type { BattleLoadouts, FighterLoadout } from "@repo/raid-logic";
 import { EnumDifficulty } from "@repo/types";
 
-import { installMenuAudioUnlock } from "../menu/shared";
 import {
   bodyStyle,
   createFightButton,
@@ -43,7 +42,6 @@ export class ReplayPlaybackScene extends Phaser.Scene {
   }
 
   create(): void {
-    installMenuAudioUnlock(this);
     this.dialog = undefined;
     this.renderPage();
   }

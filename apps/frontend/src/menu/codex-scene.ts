@@ -14,7 +14,7 @@ import {
   headingStyle,
 } from "./ui";
 import { queueMenuAssets } from "./assets";
-import { installMenuAudioUnlock, type CodexTab, type SceneKey } from "./shared";
+import { type CodexTab, type SceneKey } from "./shared";
 
 export class CodexScene extends Phaser.Scene {
   private tab: CodexTab = "characters";
@@ -77,7 +77,6 @@ export class CodexScene extends Phaser.Scene {
   }
 
   create(): void {
-    installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "CODEX", "DATA BANK");
     createBackButton(this);
     this.add.text(90, 74, t("codex.title"), headingStyle(42));

@@ -4,6 +4,19 @@
     "start_game": "开始战斗", "practice_range": "靶场", "codex": "图鉴", "manual": "Manual", "settings": "设置", "replay": "回放",
     "subtitle": "肥乡天则 ~ 角斗少女的虚荣", "ai_declaration": "本游戏使用AI绘图，AI编码", "browser_notice": "你正在使用浏览器进行游戏，部分联机功能可能受限", "download_desktop": "下载桌面端", "language": "语言", "back": "返回"
   },
+  "bootstrap": {
+    "title": "检查资源缓存",
+    "checking": "正在检查本地资源签名",
+    "downloading": "资源版本不同，正在同步资源",
+    "ready": "资源已就绪",
+    "fallback": "远端资源暂不可用，使用本地缓存",
+    "error": "资源同步失败",
+    "continue_with_network": "将继续使用网络资源",
+    "size_unknown": "正在读取资源信息",
+    "unknown_total": "未知大小",
+    "download_size": "{{downloaded}} / {{total}}",
+    "tap_to_enter": "点击屏幕进入游戏"
+  },
   "manual": {
     "title": "Manual",
     "toc": "目录书签",

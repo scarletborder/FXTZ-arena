@@ -1,5 +1,6 @@
 export * from "./shared";
 export * from "./ui";
+export * from "./bootstrap-scene";
 export * from "./home-scene";
 export * from "./manual-scene";
 export * from "./battle-start-scene";

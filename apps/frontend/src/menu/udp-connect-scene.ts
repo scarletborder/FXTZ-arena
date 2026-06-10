@@ -7,7 +7,7 @@ import type { PeerConnection } from "../network/p2p";
 import { type UdpDirectSession, UdpDirectSession as UdpSession } from "../network/udp-direct-session";
 import { uiSettings } from "../store/settings";
 import { showMapDialog } from "./map-dialog";
-import { installMenuAudioUnlock, type SceneKey, type TextFieldControl } from "./shared";
+import { type SceneKey, type TextFieldControl } from "./shared";
 import { createBackButton, createCheckbox, createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop, drawPanel } from "./ui";
 
 export class UdpConnectScene extends Phaser.Scene {
@@ -34,7 +34,6 @@ export class UdpConnectScene extends Phaser.Scene {
   }
 
   create(): void {
-    installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "UDP", "DIRECT LINK");
     createBackButton(this, "battle-start");
     this.add.text(90, 74, t("udp_connect.title"), {

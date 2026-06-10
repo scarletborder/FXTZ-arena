@@ -1,11 +1,10 @@
 import Phaser from "phaser";
+import { FightButton } from "../../shared";
+import { FONT } from "../constants";
+import { drawAngledPanel } from "../drawAngledPanel";
+import { nonEmptyText } from "../helpers";
+import { bodyStyle } from "../styles";
 
-import type { FightButton } from "../shared";
-
-import { bodyStyle } from "./styles";
-import { drawAngledPanel } from "./drawAngledPanel";
-import { nonEmptyText } from "./helpers";
-import { FONT } from "./constants";
 
 interface FightButtonOptions {
   readonly enabled?: boolean;
@@ -62,7 +61,6 @@ export function createFightButton(
   });
   hitArea.on("pointerdown", () => {
     if (enabled) {
-      scene.sound.unlock();
       redraw();
     }
   });

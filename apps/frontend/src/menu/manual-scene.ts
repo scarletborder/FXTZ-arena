@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { t } from "@repo/i18n";
 
 import { bodyStyle, createBackButton, drawFightingBackdrop, headingStyle } from "./ui";
-import { installMenuAudioUnlock, type SceneKey } from "./shared";
+import { type SceneKey } from "./shared";
 
 type ManualSection = {
   readonly key: string;
@@ -68,7 +68,6 @@ export class ManualScene extends Phaser.Scene {
   }
 
   create(): void {
-    installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "MANUAL", "BOOK");
     this.add.text(90, 72, t("manual.title"), headingStyle(42));
 

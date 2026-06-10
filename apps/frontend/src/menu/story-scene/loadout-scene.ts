@@ -28,7 +28,6 @@ import {
 import {
   getCardById,
   getCharacterById,
-  installMenuAudioUnlock,
   roleLabel,
   type SceneKey,
 } from "../shared";
@@ -69,7 +68,6 @@ export class StoryLoadoutScene extends Phaser.Scene {
   }
 
   create(): void {
-    installMenuAudioUnlock(this);
     this.render();
   }
 

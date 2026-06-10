@@ -3,7 +3,7 @@ import { t } from "@repo/i18n";
 import { GAME_HEIGHT } from "@repo/constants";
 
 import { createFightButton, drawFightingBackdrop, drawPanel, bodyStyle, headingStyle } from "./ui";
-import { installMenuAudioUnlock, type ResultData, type ResultPlayerSummary, type SceneKey } from "./shared";
+import { type ResultData, type ResultPlayerSummary, type SceneKey } from "./shared";
 import { Depth } from "../utils/depth";
 import { uiSettings } from "../store/settings";
 
@@ -13,7 +13,6 @@ export class ResultScene extends Phaser.Scene {
   }
 
   create(data: ResultData): void {
-    installMenuAudioUnlock(this);
     drawFightingBackdrop(this, "RESULT", "MATCH END");
     this.add.text(438, 112, t("result.title"), headingStyle(46));
     drawPanel(this, 350, 184, 580, 350, t("result.stats"));

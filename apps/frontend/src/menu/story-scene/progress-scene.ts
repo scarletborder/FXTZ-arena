@@ -19,7 +19,7 @@ import type {
   StoryStage,
   StoryStageReward,
 } from "../../story/types";
-import { installMenuAudioUnlock, type SceneKey } from "../shared";
+import { type SceneKey } from "../shared";
 import { bodyStyle, createFightButton, drawFightingBackdrop } from "../ui";
 import { globalReplayRecorder } from "../../replay/recorder";
 import {
@@ -73,7 +73,6 @@ export class StoryProgressScene extends Phaser.Scene {
   }
 
   create(): void {
-    installMenuAudioUnlock(this);
     this.story = getStoryFromCache(this, this.progressData.state.storyId);
     this.story = applyDifficultyToStory(
       this.story,

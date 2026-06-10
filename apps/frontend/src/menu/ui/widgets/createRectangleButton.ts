@@ -1,10 +1,9 @@
 import Phaser from "phaser";
+import { FightButton } from "../../shared";
+import { FONT } from "../constants";
+import { nonEmptyText } from "../helpers";
+import { bodyStyle } from "../styles";
 
-import type { FightButton } from "../shared";
-
-import { bodyStyle } from "./styles";
-import { nonEmptyText } from "./helpers";
-import { FONT } from "./constants";
 
 interface FightButtonOptions {
   readonly enabled?: boolean;

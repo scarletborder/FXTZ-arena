@@ -1,6 +1,6 @@
 import Phaser from "phaser";
+import { FONT } from "../constants";
 
-import { FONT } from "./constants";
 
 export interface CheckboxControl {
   readonly container: Phaser.GameObjects.Container;

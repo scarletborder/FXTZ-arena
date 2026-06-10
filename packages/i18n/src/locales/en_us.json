@@ -4,6 +4,19 @@
     "start_game": "Start Game", "practice_range": "Practice Range", "codex": "Codex", "manual": "manual", "settings": "Settings", "replay": "Replay",
     "subtitle": "FXTZ Arena ~ Vanity of the Arena Girls", "ai_declaration": "This game uses AI for art and coding", "browser_notice": "You are playing in a browser, so some online features may be limited", "download_desktop": "Download desktop client", "language": "Language", "back": "Back"
   },
+  "bootstrap": {
+    "title": "Checking Resource Cache",
+    "checking": "Checking local resource signature",
+    "downloading": "Resource version changed, syncing assets",
+    "ready": "Resources ready",
+    "fallback": "Remote resources unavailable, using local cache",
+    "error": "Resource sync failed",
+    "continue_with_network": "Continuing with network resources",
+    "size_unknown": "Reading resource information",
+    "unknown_total": "unknown size",
+    "download_size": "{{downloaded}} / {{total}}",
+    "tap_to_enter": "Click the screen to enter"
+  },
   "manual": {
     "title": "manual",
     "toc": "Bookmarks",

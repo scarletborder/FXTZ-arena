@@ -13,7 +13,7 @@ import {
   drawPanel,
 } from "./ui";
 import { type LocalPeerState, LocalLanSession } from "../network/local-lan";
-import { installMenuAudioUnlock, type SceneKey } from "./shared";
+import { type SceneKey } from "./shared";
 
 export class LocalLanScene extends Phaser.Scene {
   private session: LocalLanSession | null = null;
@@ -34,7 +34,6 @@ export class LocalLanScene extends Phaser.Scene {
   }
 
   create(): void {
-    installMenuAudioUnlock(this);
     this.starting = false;
     drawFightingBackdrop(this, "LOCAL", "LAN MATCHMAKING");
     createBackButton(this);
