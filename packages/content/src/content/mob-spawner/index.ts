@@ -8,8 +8,12 @@ export * from "./mobs/immortal-fairy";
 export * from "./collaborate/wave-types";
 export * from "./collaborate/wave-spawner";
 export * from "./collaborate/spell-card";
+export * from "./collaborate/example-collaborate-mob-spawner/waves";
+export * from "./collaborate/example-collaborate-mob-spawner/elites/collaborate-elite-fairy";
+export * from "./collaborate/example-collaborate-mob-spawner/boss/collaborate-boss-fairy";
 
 import { DefaultMobSpawnerA } from "./default-a";
+import { ExampleCollaborateMobSpawner } from "./collaborate/example-collaborate-mob-spawner/waves";
 import { ShootingRangeSpawn } from "./shooting-range-spawn";
 import type { NeutralMobSpawner } from "./base";
 
@@ -23,6 +27,8 @@ export function resolveMobSpawner(
   switch (spawnerId) {
     case "default-a":
       return new DefaultMobSpawnerA();
+    case "example-collaborate-mob-spawner":
+      return new ExampleCollaborateMobSpawner();
     case "shoot_range_spawn":
       return new ShootingRangeSpawn();
     default:

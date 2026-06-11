@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { ExampleFairy } from "@repo/content";
+import {
+  ExampleFairy,
+  resolveMobSpawner,
+} from "@repo/content";
 import {
   ARENA_HEIGHT,
   ARENA_WIDTH,
@@ -23,6 +26,7 @@ import { createMoneyState, createPointState } from "./points";
 import { createRaidLogicRuntime } from "../runtime";
 import { stepBulletProjectile } from "./projectile/bullet";
 import { clearProjectilesAround } from "./projectile";
+import type { NeutralMobState } from "@repo/types";
 import {
   createBattleModel,
   createBattleModelWithSpawner,
@@ -1382,6 +1386,72 @@ describe("BattleModel collaborate money and scoring", () => {
   });
 });
 
+describe("Example collaborate mob spawner", () => {
+  it("is registered for the collaborate test arena and restores custom mobs", () => {
+    const spawner = resolveMobSpawner("example-collaborate-mob-spawner");
+    expect(spawner?.id).toBe("example-collaborate-mob-spawner");
+    expect(spawner?.snapshot()).toMatchObject({
+      spawnerId: "example-collaborate-mob-spawner",
+      nodeIndex: 0,
+    });
+    if (!spawner) {
+      throw new Error("example collaborate spawner should be registered");
+    }
+    const elite = spawner.createMobFromSnapshot({
+      id: 1,
+      key: "Neutral",
+      kind: "collaborate_elite_fairy",
+      class: "elite",
+      displayName: "朴实精英",
+      textureKey: "enemy_type_7",
+      x: 0,
+      y: 0,
+      previousX: 0,
+      previousY: 0,
+      hitRadius: 65,
+      waveId: 8,
+      movementVariant: "plain",
+      form: "non_spell",
+      MaxHealth: 1,
+      CurrentHealth: 1,
+      active: true,
+      ageTicks: 0,
+      sfxFlags: 0,
+      variant: "plain",
+      side: "left",
+      nextFireAge: 0,
+      fireSubphase: 0,
+    } as NeutralMobState & Record<string, unknown>);
+    const boss = spawner.createMobFromSnapshot({
+      id: 2,
+      key: "Neutral",
+      kind: "collaborate_boss_fairy",
+      class: "boss",
+      displayName: "疯狂boss",
+      textureKey: "enemy_type_7",
+      x: 0,
+      y: 0,
+      previousX: 0,
+      previousY: 0,
+      hitRadius: 76,
+      waveId: 18,
+      movementVariant: "boss",
+      form: "non_spell",
+      MaxHealth: 1,
+      CurrentHealth: 1,
+      active: true,
+      ageTicks: 0,
+      sfxFlags: 0,
+      nextFireAge: 0,
+      fireSubphase: 0,
+      rngState: 1,
+    } as NeutralMobState & Record<string, unknown>);
+
+    expect(elite?.state.displayName).toBe("朴实精英");
+    expect(boss?.state.class).toBe("boss");
+  });
+});
+
 describe("BattleModel point power shooting tiers", () => {
   it("applies configured initial points to both fighters and restores them on reset", async () => {
     const model = await initializeBattleModel(
@@ -1509,6 +1579,9 @@ describe("BattleModel arena bounds", () => {
     expect(runtime.state.player.y).toBe(720);
     expect(runtime.state.target.x).toBe(1200);
     expect(runtime.state.target.y).toBe(720);
+    expect(runtime.serialize().mobSpawner).toMatchObject({
+      spawnerId: "example-collaborate-mob-spawner",
+    });
   });
 
   it("clamps fighter movement to injected collaborate arena bounds", async () => {

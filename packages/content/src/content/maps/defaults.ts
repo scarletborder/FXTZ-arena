@@ -60,7 +60,7 @@ const COLLABORATE_TEST_ARENA: MapDefinition = {
       facingAngleTicks: 30000,
     },
   ],
-  mobSpawnerId: "default-a",
+  mobSpawnerId: "example-collaborate-mob-spawner",
 };
 
 export const DEFAULT_MAPS: readonly MapDefinition[] = [
