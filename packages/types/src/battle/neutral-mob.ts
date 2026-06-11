@@ -1,5 +1,9 @@
 import type { BattlePlayerId } from "../core";
-import type { ArenaBounds, PointRewardSize } from "@repo/constants";
+import type {
+  ArenaBounds,
+  MoneyRewardSize,
+  PointRewardSize,
+} from "@repo/constants";
 
 export type NeutralMobId = number;
 export type NeutralMobBehavior = "move" | "fire" | "switch_form" | "die";
@@ -48,6 +52,7 @@ export interface NeutralMobState {
   MaxHealth: number;
   CurrentHealth: number;
   pointRewardSize?: PointRewardSize;
+  moneyRewardSize?: MoneyRewardSize;
   damageTaken?: number;
   active: boolean;
   ageTicks: number;

@@ -7,6 +7,10 @@ import {
   NEUTRAL_PROJECTILE_GRAZE_POINT_REWARD,
   PLAYER_SPAWN,
   TARGET_SPAWN,
+  COLLABORATE_GRAZE_SCORE,
+  COLLABORATE_MOB_SCORE_VALUES,
+  COLLABORATE_MONEY_PICKUP_SCORE_VALUES,
+  COLLABORATE_POINT_PICKUP_SCORE_VALUES,
   createDefaultCollaborateExtraState,
   type NeutralMobActionContext,
   type NeutralMobState,
@@ -113,6 +117,8 @@ export class BattleModel {
   );
   private readonly playerInitPoint: number;
   private readonly opponentInitPoint: number;
+  private readonly playerInitMoney: number;
+  private readonly opponentInitMoney: number;
   private readonly seed: number;
   private readonly arenaBounds: ArenaBounds;
   private readonly battleMode: BattleRoomMode;
@@ -142,6 +148,8 @@ export class BattleModel {
       readonly targetSpawn?: { readonly x: number; readonly y: number };
       readonly playerInitPoint?: number;
       readonly opponentInitPoint?: number;
+      readonly playerInitMoney?: number;
+      readonly opponentInitMoney?: number;
       readonly seed?: number;
       readonly ai?: {
         readonly smartDurationSeconds?: number;
@@ -172,10 +180,18 @@ export class BattleModel {
       x: this.playerSpawn.x,
       y: this.playerSpawn.y,
     };
-    this.pointManager = new PointManager(this.arenaBounds);
+    this.pointManager = new PointManager(this.arenaBounds, (award) =>
+      this.handleCollectibleAward(award),
+    );
     this.projectileSystem = new ProjectileSystem(this.sizeManager);
     this.playerInitPoint = clampPointCount(params.playerInitPoint ?? 0);
     this.opponentInitPoint = clampPointCount(params.opponentInitPoint ?? 0);
+    this.playerInitMoney = clampCollaborateCurrency(
+      params.playerInitMoney ?? 0,
+    );
+    this.opponentInitMoney = clampCollaborateCurrency(
+      params.opponentInitMoney ?? 0,
+    );
     this.seed = params.seed ?? 1;
     this.playerFighter = new BattleFighter(
       "Player1",
@@ -204,6 +220,7 @@ export class BattleModel {
       this.arenaBounds,
     );
     this.applyInitialPoints();
+    this.applyInitialCollaborateMoney();
     this.cpuPlayer = params.enableCpuTarget
       ? new CpuPlayer(params.ai)
       : undefined;
@@ -279,11 +296,24 @@ export class BattleModel {
       this.loadouts.target.storyModeOverride,
     );
     this.applyInitialPoints();
+    this.applyInitialCollaborateMoney();
   }
 
   private applyInitialPoints(): void {
     this.pointManager.setPointCount(this.player, this.playerInitPoint);
     this.pointManager.setPointCount(this.target, this.opponentInitPoint);
+  }
+
+  private applyInitialCollaborateMoney(): void {
+    if (!this.collaborateExtra) return;
+    this.collaborateExtra = {
+      ...this.collaborateExtra,
+      moneyByPlayerId: {
+        ...this.collaborateExtra.moneyByPlayerId,
+        Player1: this.playerInitMoney,
+        Player2: this.opponentInitMoney,
+      },
+    };
   }
 
   step(input: BattleInputState): void {
@@ -783,7 +813,7 @@ export class BattleModel {
         target: victim,
         owner,
         damage: ctx.projectile.damage,
-        onKilled: (mob) => this.handleNeutralMobKilled(mob),
+        onKilled: (mob, source) => this.handleNeutralMobKilled(mob, source),
       });
     }
     const damage = ctx.damage;
@@ -927,6 +957,7 @@ export class BattleModel {
           ? NEUTRAL_PROJECTILE_GRAZE_POINT_REWARD
           : ENEMY_PROJECTILE_GRAZE_POINT_REWARD),
     );
+    this.addCollaborateScore(victim.key, COLLABORATE_GRAZE_SCORE);
   }
 
   private cancelTimeStop(caster: FighterState): void {
@@ -1132,8 +1163,17 @@ export class BattleModel {
     this.pointManager.dropPointFromMob(this.frame, mob);
   }
 
-  private handleNeutralMobKilled(mob: NeutralMobState): void {
+  private handleNeutralMobKilled(
+    mob: NeutralMobState,
+    source?: FighterKey | null,
+  ): void {
     this.dropPointFromMob(mob);
+    if (source === "Player1" || source === "Player2") {
+      this.addCollaborateScore(
+        source,
+        COLLABORATE_MOB_SCORE_VALUES[mob.class ?? "minion"],
+      );
+    }
     if (this.battleMode !== "collaborate" || mob.class !== "boss") {
       return;
     }
@@ -1143,6 +1183,53 @@ export class BattleModel {
         : this.collaborateExtra;
     }
     this.evaluateCollaborateVictory();
+  }
+
+  private handleCollectibleAward(award: {
+    readonly collectorKey: FighterKey;
+    readonly point: PointState;
+  }): void {
+    if (
+      this.battleMode !== "collaborate" ||
+      !this.collaborateExtra ||
+      (award.collectorKey !== "Player1" && award.collectorKey !== "Player2")
+    ) {
+      return;
+    }
+    const score =
+      award.point.rewardKind === "money"
+        ? COLLABORATE_MONEY_PICKUP_SCORE_VALUES[award.point.rewardSize]
+        : COLLABORATE_POINT_PICKUP_SCORE_VALUES[award.point.rewardSize];
+    this.addCollaborateScore(award.collectorKey, score);
+    if (award.point.rewardKind === "money") {
+      this.addCollaborateMoney(award.collectorKey, award.point.value);
+    }
+  }
+
+  private addCollaborateMoney(key: "Player1" | "Player2", value: number): void {
+    if (!this.collaborateExtra) return;
+    this.collaborateExtra = {
+      ...this.collaborateExtra,
+      moneyByPlayerId: {
+        ...this.collaborateExtra.moneyByPlayerId,
+        [key]: clampCollaborateCurrency(
+          this.collaborateExtra.moneyByPlayerId[key] + value,
+        ),
+      },
+    };
+  }
+
+  private addCollaborateScore(key: "Player1" | "Player2", value: number): void {
+    if (!this.collaborateExtra || value <= 0) return;
+    this.collaborateExtra = {
+      ...this.collaborateExtra,
+      scoreByPlayerId: {
+        ...this.collaborateExtra.scoreByPlayerId,
+        [key]: clampCollaborateCurrency(
+          this.collaborateExtra.scoreByPlayerId[key] + value,
+        ),
+      },
+    };
   }
 
   private flushDeferredSpawns(): void {
@@ -1310,4 +1397,11 @@ function loadoutCards(loadout: FighterLoadout) {
     ids.add(loadout.activeCardId);
   }
   return Array.from(ids).map((id) => getAbilityCard(id));
+}
+
+function clampCollaborateCurrency(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, Math.floor(value)));
 }

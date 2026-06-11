@@ -452,7 +452,9 @@
     "transition_ready_prompt": "准备挑战 {{target}}\n已就绪: {{ready}}/2",
     "transition_ready_button": "准备",
     "transition_ready_done": "已准备",
-    "spell_seconds": "{{seconds}}秒"
+    "spell_seconds": "{{seconds}}秒",
+    "collaborate_score": "得分 {{value}}",
+    "collaborate_money": "Money {{value}}"
   },
   "replay": {
     "save_title": "保存回放",

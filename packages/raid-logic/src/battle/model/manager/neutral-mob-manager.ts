@@ -150,7 +150,7 @@ export class NeutralMobManager {
     readonly target: ProjectileHitTarget;
     readonly owner: FighterKey;
     readonly damage: number;
-    readonly onKilled: (mob: NeutralMobState) => void;
+    readonly onKilled: (mob: NeutralMobState, source: FighterKey) => void;
   }): boolean {
     const mob = this.mobs.find(
       (candidate) => candidate.id === params.target.mobId,
@@ -165,7 +165,7 @@ export class NeutralMobManager {
     }
     if (wasActive && !mob.state.active) {
       mob.onDeath(params.owner);
-      params.onKilled(mob.state);
+      params.onKilled(mob.state, params.owner);
       mob.onDeathEffect();
     }
     return true;

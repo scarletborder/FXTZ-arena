@@ -6,6 +6,7 @@ import { DEFAULT_ARENA_BOUNDS, type ArenaBounds } from "@repo/types";
 import { fpHypotFp } from "@repo/content";
 import { POINT_COUNT_MAX } from "../../constants";
 import {
+  createMoneyState,
   createPointState,
   POINT_COLLECT_TICKS,
   pointIsOutsideArena,
@@ -17,12 +18,18 @@ export interface PointCollector {
   getPointCollectRadius(): number;
 }
 
+export interface PointCollectionAward {
+  readonly collectorKey: FighterState["key"];
+  readonly point: PointState;
+}
+
 export class PointManager {
   readonly points: PointState[] = [];
   private nextPointId = 1;
 
   constructor(
     private readonly arenaBounds: ArenaBounds = DEFAULT_ARENA_BOUNDS,
+    private readonly onAward?: (award: PointCollectionAward) => void,
   ) {}
 
   reset(): void {
@@ -107,20 +114,33 @@ export class PointManager {
 
   dropPointFromMob(frame: number, mob: NeutralMobState): void {
     const rewardSize = mob.pointRewardSize;
-    if (!rewardSize) {
-      return;
-    }
     const velocity = pointVelocityFromFrame(frame, "low", mob.id);
-    this.addPoint(
-      createPointState({
-        id: this.allocatePointId(),
-        x: mob.x,
-        y: mob.y,
-        rewardSize,
-        vx: velocity.vx,
-        vy: velocity.vy,
-      }),
-    );
+    if (rewardSize) {
+      this.addPoint(
+        createPointState({
+          id: this.allocatePointId(),
+          x: mob.x,
+          y: mob.y,
+          rewardSize,
+          vx: velocity.vx,
+          vy: velocity.vy,
+        }),
+      );
+    }
+    const moneyRewardSize = mob.moneyRewardSize;
+    if (moneyRewardSize) {
+      const moneyVelocity = pointVelocityFromFrame(frame, "low", mob.id + 17);
+      this.addPoint(
+        createMoneyState({
+          id: this.allocatePointId(),
+          x: mob.x,
+          y: mob.y,
+          rewardSize: moneyRewardSize,
+          vx: moneyVelocity.vx,
+          vy: moneyVelocity.vy,
+        }),
+      );
+    }
   }
 
   private sortPoints(): void {
@@ -156,10 +176,13 @@ export class PointManager {
       (collector) => collector.state.key === point.collectingBy,
     )?.state;
     if (fighter) {
-      fighter.pointCount = Math.min(
-        POINT_COUNT_MAX,
-        fighter.pointCount + point.value,
-      );
+      if (point.rewardKind === "point") {
+        fighter.pointCount = Math.min(
+          POINT_COUNT_MAX,
+          fighter.pointCount + point.value,
+        );
+      }
+      this.onAward?.({ collectorKey: fighter.key, point });
     }
   }
 }

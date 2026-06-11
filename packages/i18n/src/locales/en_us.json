@@ -452,7 +452,9 @@
     "transition_ready_prompt": "Ready to challenge {{target}}\nReady: {{ready}}/2",
     "transition_ready_button": "Ready",
     "transition_ready_done": "Ready",
-    "spell_seconds": "{{seconds}}s"
+    "spell_seconds": "{{seconds}}s",
+    "collaborate_score": "Score {{value}}",
+    "collaborate_money": "Money {{value}}"
   },
   "replay": {
     "save_title": "Save Replay",

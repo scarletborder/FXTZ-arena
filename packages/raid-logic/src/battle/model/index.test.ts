@@ -7,6 +7,10 @@ import {
   GRAZE_CIRCLE_DIAMETER,
   HIT_CIRCLE_DIAMETER,
   POINT_REWARD_VALUES,
+  MONEY_REWARD_VALUES,
+  COLLABORATE_GRAZE_SCORE,
+  COLLABORATE_MOB_SCORE_VALUES,
+  COLLABORATE_MONEY_PICKUP_SCORE_VALUES,
   COLLABORATE_ARENA_BOUNDS,
   PLAYER_CORE_RADIUS,
   PLAYER_SPAWN,
@@ -15,7 +19,7 @@ import {
 import { POINT_COUNT_MAX } from "../constants";
 import { BattleModel } from ".";
 import { BattlePhysics } from "./physics-adapter";
-import { createPointState } from "./points";
+import { createMoneyState, createPointState } from "./points";
 import { createRaidLogicRuntime } from "../runtime";
 import { stepBulletProjectile } from "./projectile/bullet";
 import { clearProjectilesAround } from "./projectile";
@@ -1251,6 +1255,130 @@ describe("BattleModel point pickups", () => {
 
     model.step(input());
     expect(model.hashHex()).toBe(originalHash);
+  });
+});
+
+describe("BattleModel collaborate money and scoring", () => {
+  it("applies configured initial money to both collaborate fighters and restores it on reset", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, {
+        battleMode: "collaborate",
+        playerInitMoney: 35,
+        opponentInitMoney: 75,
+      }),
+    );
+
+    expect(model.serialize().collaborateExtra?.moneyByPlayerId.Player1).toBe(
+      35,
+    );
+    expect(model.serialize().collaborateExtra?.moneyByPlayerId.Player2).toBe(
+      75,
+    );
+
+    const snapshot = model.serialize();
+    model.deserialize({
+      ...snapshot,
+      collaborateExtra: snapshot.collaborateExtra
+        ? {
+            ...snapshot.collaborateExtra,
+            moneyByPlayerId: {
+              ...snapshot.collaborateExtra.moneyByPlayerId,
+              Player1: 999,
+            },
+          }
+        : undefined,
+    });
+    model.reset();
+
+    expect(model.serialize().collaborateExtra?.moneyByPlayerId.Player1).toBe(
+      35,
+    );
+    expect(model.serialize().collaborateExtra?.moneyByPlayerId.Player2).toBe(
+      75,
+    );
+  });
+
+  it("awards money pickups and pickup score only to the collecting player", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate" }),
+    );
+    model.pointManager.addPoint(
+      createMoneyState({
+        id: model.pointManager.allocatePointId(),
+        x: model.target.x + 31,
+        y: model.target.y,
+        rewardSize: "medium",
+        vx: 0,
+        vy: 0,
+      }),
+    );
+
+    model.stepVersus(input(), input());
+    expect(model.points[0]?.collectingBy).toBe("Player2");
+
+    for (let index = 0; index < 10; index += 1) {
+      model.stepVersus(input(), input());
+    }
+
+    const extra = model.serialize().collaborateExtra;
+    expect(extra?.moneyByPlayerId.Player1).toBe(0);
+    expect(extra?.moneyByPlayerId.Player2).toBe(MONEY_REWARD_VALUES.medium);
+    expect(extra?.scoreByPlayerId.Player1).toBe(0);
+    expect(extra?.scoreByPlayerId.Player2).toBe(
+      COLLABORATE_MONEY_PICKUP_SCORE_VALUES.medium,
+    );
+  });
+
+  it("adds collaborate score when a player defeats a mob", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate" }),
+    );
+    const mob = new TestNeutralMob(
+      model.neutralMobManager.allocateNeutralMobId(),
+      500,
+      240,
+    );
+    mob.restore({ ...mob.state, class: "elite" });
+    model.neutralMobManager.addNeutralMob(mob);
+    model.projectiles.push(
+      testProjectile({
+        id: 10,
+        owner: "Player1",
+        x: mob.state.x,
+        y: mob.state.y,
+        damage: 10,
+      }),
+    );
+
+    model.stepVersus(input(), input());
+
+    expect(model.serialize().collaborateExtra?.scoreByPlayerId.Player1).toBe(
+      COLLABORATE_MOB_SCORE_VALUES.elite,
+    );
+    expect(model.serialize().collaborateExtra?.scoreByPlayerId.Player2).toBe(0);
+  });
+
+  it("adds collaborate score when a player grazes a projectile", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate" }),
+    );
+    const graze = model as unknown as {
+      onProjectileGraze(ctx: {
+        readonly owner: "Neutral";
+        readonly victim: BattleModel["player"];
+        readonly projectile: { readonly id: number };
+      }): void;
+    };
+
+    graze.onProjectileGraze({
+      owner: "Neutral",
+      victim: model.player,
+      projectile: { id: 123 },
+    });
+
+    expect(model.serialize().collaborateExtra?.scoreByPlayerId.Player1).toBe(
+      COLLABORATE_GRAZE_SCORE,
+    );
   });
 });
 

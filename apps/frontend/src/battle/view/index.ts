@@ -16,6 +16,7 @@ import type {
 } from "@repo/raid-logic";
 import type { MapId } from "@repo/types";
 import { CrosshairView } from "./crosshair";
+import { CollaborateHud } from "./collaborate-hud";
 import { BattleDebugView } from "./debug";
 import { EffectsView } from "./effects";
 import { FighterView } from "./fighter";
@@ -37,6 +38,7 @@ export class BattleView {
   private readonly effects: EffectsView;
   private readonly mobs: MobView;
   private readonly spellCardHud: SpellCardHud;
+  private readonly collaborateHud: CollaborateHud;
   private readonly points: PointView;
   private readonly stage: BattleStage;
   private readonly debug: BattleDebugView;
@@ -64,6 +66,7 @@ export class BattleView {
     this.fighters = new FighterView(scene);
     this.mobs = new MobView(scene);
     this.spellCardHud = new SpellCardHud(scene);
+    this.collaborateHud = new CollaborateHud(scene);
     this.points = new PointView(scene);
     this.crosshair = new CrosshairView(scene);
     this.projectiles = new ProjectileView(scene);
@@ -93,6 +96,7 @@ export class BattleView {
     );
     this.mobs.render(state.neutralMobs, alpha, rollbackBlend);
     this.spellCardHud.render(state.neutralMobs);
+    this.collaborateHud.render(state.collaborateExtra, localFighterKey);
     this.points.render({
       points: state.points,
       player: state.player,

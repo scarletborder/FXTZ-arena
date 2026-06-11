@@ -1,19 +1,30 @@
 import { fp } from "@shaisrc/fixed-point";
 
-import { POINT_REWARD_VALUES, type PointRewardSize } from "@repo/constants";
+import {
+  MONEY_REWARD_VALUES,
+  POINT_REWARD_VALUES,
+  type MoneyRewardSize,
+  type PointRewardSize,
+} from "@repo/constants";
 import {
   DEFAULT_ARENA_BOUNDS,
   speedRankToPixelsPerTick,
   type ArenaBounds,
   type SpeedRank,
 } from "@repo/types";
-import type { PointPrefabId, PointState } from "@repo/content";
+import type {
+  CollectibleRewardSize,
+  PointPrefabId,
+  PointRewardKind,
+  PointState,
+} from "@repo/content";
 
 export const POINT_COLLECT_TICKS = 10;
 
 interface PointPrefab {
   readonly prefabId: PointPrefabId;
-  readonly rewardSize: PointRewardSize;
+  readonly rewardKind: PointRewardKind;
+  readonly rewardSize: CollectibleRewardSize;
   readonly value: number;
   readonly size: number;
 }
@@ -21,20 +32,44 @@ interface PointPrefab {
 const POINT_PREFABS: readonly PointPrefab[] = [
   {
     prefabId: "point_small",
+    rewardKind: "point",
     rewardSize: "small",
     value: POINT_REWARD_VALUES.small,
     size: 15,
   },
   {
     prefabId: "point_medium",
+    rewardKind: "point",
     rewardSize: "medium",
     value: POINT_REWARD_VALUES.medium,
     size: 25,
   },
   {
     prefabId: "point_large",
+    rewardKind: "point",
     rewardSize: "large",
     value: POINT_REWARD_VALUES.large,
+    size: 35,
+  },
+  {
+    prefabId: "money_small",
+    rewardKind: "money",
+    rewardSize: "small",
+    value: MONEY_REWARD_VALUES.small,
+    size: 15,
+  },
+  {
+    prefabId: "money_medium",
+    rewardKind: "money",
+    rewardSize: "medium",
+    value: MONEY_REWARD_VALUES.medium,
+    size: 25,
+  },
+  {
+    prefabId: "money_large",
+    rewardKind: "money",
+    rewardSize: "large",
+    value: MONEY_REWARD_VALUES.large,
     size: 35,
   },
 ];
@@ -59,10 +94,41 @@ export function createPointState(params: {
   readonly vx: number;
   readonly vy: number;
 }): PointState {
-  const prefab = prefabForRewardSize(params.rewardSize);
+  return createCollectibleState({
+    ...params,
+    rewardKind: "point",
+  });
+}
+
+export function createMoneyState(params: {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+  readonly rewardSize: MoneyRewardSize;
+  readonly vx: number;
+  readonly vy: number;
+}): PointState {
+  return createCollectibleState({
+    ...params,
+    rewardKind: "money",
+  });
+}
+
+function createCollectibleState(params: {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+  readonly rewardKind: PointRewardKind;
+  readonly rewardSize: CollectibleRewardSize;
+  readonly vx: number;
+  readonly vy: number;
+}): PointState {
+  const prefab = prefabForReward(params.rewardKind, params.rewardSize);
   return {
     id: params.id,
     prefabId: prefab.prefabId,
+    rewardKind: prefab.rewardKind,
+    rewardSize: prefab.rewardSize,
     x: params.x,
     y: params.y,
     previousX: params.x,
@@ -106,12 +172,17 @@ export function pointIsOutsideArena(
   );
 }
 
-function prefabForRewardSize(rewardSize: PointRewardSize): PointPrefab {
+function prefabForReward(
+  rewardKind: PointRewardKind,
+  rewardSize: CollectibleRewardSize,
+): PointPrefab {
   const prefab = POINT_PREFABS.find(
-    (candidate) => candidate.rewardSize === rewardSize,
+    (candidate) =>
+      candidate.rewardKind === rewardKind &&
+      candidate.rewardSize === rewardSize,
   );
   if (!prefab) {
-    throw new Error(`Unsupported point reward size: ${rewardSize}`);
+    throw new Error(`Unsupported ${rewardKind} reward size: ${rewardSize}`);
   }
   return prefab;
 }

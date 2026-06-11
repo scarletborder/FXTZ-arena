@@ -32,6 +32,7 @@ const NEUTRAL_MOB_HASHED_KEYS = new Set([
   "MaxHealth",
   "CurrentHealth",
   "pointRewardSize",
+  "moneyRewardSize",
   "damageTaken",
   "active",
   "ageTicks",
@@ -166,6 +167,7 @@ function writeNeutralMobs(
     hasher.writeNumber(mob.MaxHealth);
     hasher.writeNumber(mob.CurrentHealth);
     hasher.writeString(mob.pointRewardSize ?? "");
+    hasher.writeString(mob.moneyRewardSize ?? "");
     hasher.writeNumber(mob.damageTaken ?? 0);
     hasher.writeNumber(mob.active ? 1 : 0);
     hasher.writeNumber(mob.ageTicks);
@@ -201,6 +203,8 @@ function writePoints(
   for (const point of [...points].sort((left, right) => left.id - right.id)) {
     hasher.writeNumber(point.id);
     hasher.writeString(point.prefabId);
+    hasher.writeString(point.rewardKind);
+    hasher.writeString(point.rewardSize);
     writeFixed(hasher, point.x);
     writeFixed(hasher, point.y);
     writeFixed(hasher, point.previousX);
