@@ -114,27 +114,31 @@ export class BattleView {
       rollbackBlend,
     );
     this.effects.render(state.effects, state.shields);
-    this.crosshair.render({
-      pointerX: input.aimX,
-      pointerY: input.aimY,
-      danger: localFighter.ammo <= 0 || localFighter.reloadRemaining > 0,
-      highlight: canYoumuDashToPointer(
-        localFighter,
-        input.aimX,
-        input.aimY,
-        this.arenaBounds,
-      ),
-      ammoDisplay: localFighter.ammoDisplay,
-      ammoCount: localFighter.ammo,
-      ammoMax: localFighter.ammoCapacity,
-      pointCount: localFighter.pointCount,
-      bombs: localFighter.bombs,
-      lives: localFighter.lives,
-      activeCardUses: localFighter.activeCardUses,
-      activeCardUseLimit: localFighter.activeCard?.useLimit,
-      activeCardCooldownRemaining: localFighter.activeCardCooldownUntil,
-      activeCardCooldownTotal: localFighter.activeCard?.cooldownTicks ?? 0,
-    });
+    if (state.collaborateExtra?.shop.open) {
+      this.crosshair.setVisible(false);
+    } else {
+      this.crosshair.render({
+        pointerX: input.aimX,
+        pointerY: input.aimY,
+        danger: localFighter.ammo <= 0 || localFighter.reloadRemaining > 0,
+        highlight: canYoumuDashToPointer(
+          localFighter,
+          input.aimX,
+          input.aimY,
+          this.arenaBounds,
+        ),
+        ammoDisplay: localFighter.ammoDisplay,
+        ammoCount: localFighter.ammo,
+        ammoMax: localFighter.ammoCapacity,
+        pointCount: localFighter.pointCount,
+        bombs: localFighter.bombs,
+        lives: localFighter.lives,
+        activeCardUses: localFighter.activeCardUses,
+        activeCardUseLimit: localFighter.activeCard?.useLimit,
+        activeCardCooldownRemaining: localFighter.activeCardCooldownUntil,
+        activeCardCooldownTotal: localFighter.activeCard?.cooldownTicks ?? 0,
+      });
+    }
   }
 
   /** Toggle debug rendering of collision bodies. */

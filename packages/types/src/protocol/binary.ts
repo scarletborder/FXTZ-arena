@@ -238,7 +238,10 @@ function writeInputFields(
   const shopPurchase = encoder.encode(message.shopPurchaseItemId ?? "");
   const shopPurchaseOffset = aimYOffset + INPUT_STRING_LENGTH_SIZE + aimY.byteLength;
   writeLengthPrefixedString(view, bytes, shopPurchaseOffset, shopPurchase);
-  writeUnreliableLinkExtra(view, bytes, shopPurchaseOffset + INPUT_STRING_LENGTH_SIZE + shopPurchase.byteLength, message);
+  const activeCardSwitch = encoder.encode(message.activeCardSwitchId ?? "");
+  const activeCardSwitchOffset = shopPurchaseOffset + INPUT_STRING_LENGTH_SIZE + shopPurchase.byteLength;
+  writeLengthPrefixedString(view, bytes, activeCardSwitchOffset, activeCardSwitch);
+  writeUnreliableLinkExtra(view, bytes, activeCardSwitchOffset + INPUT_STRING_LENGTH_SIZE + activeCardSwitch.byteLength, message);
 }
 
 function readInputFields(view: DataView, offset: number): Omit<Extract<ClientMessage, { type: "input_frame" }>, "type"> {
@@ -247,7 +250,8 @@ function readInputFields(view: DataView, offset: number): Omit<Extract<ClientMes
   const aimX = readLengthPrefixedString(view, offset + 12);
   const aimY = readLengthPrefixedString(view, aimX.nextOffset);
   const maybeShopPurchase = readOptionalLengthPrefixedString(view, aimY.nextOffset);
-  const extraOffset = maybeShopPurchase?.nextOffset ?? aimY.nextOffset;
+  const maybeActiveCardSwitch = readOptionalLengthPrefixedString(view, maybeShopPurchase?.nextOffset ?? aimY.nextOffset);
+  const extraOffset = maybeActiveCardSwitch?.nextOffset ?? maybeShopPurchase?.nextOffset ?? aimY.nextOffset;
   const UnreliableLinkExtra = readUnreliableLinkExtra(view, extraOffset);
   if (!UnreliableLinkExtra && extraOffset !== view.byteLength) {
     throw new Error("Invalid protocol input frame size");
@@ -256,6 +260,9 @@ function readInputFields(view: DataView, offset: number): Omit<Extract<ClientMes
   const shopReadyPressed = (buttons & 128) !== 0;
   const shopPurchaseItemId = maybeShopPurchase
     ? decoder.decode(maybeShopPurchase.value)
+    : "";
+  const activeCardSwitchId = maybeActiveCardSwitch
+    ? decoder.decode(maybeActiveCardSwitch.value)
     : "";
   return {
     frame: view.getUint32(offset, true),
@@ -273,6 +280,7 @@ function readInputFields(view: DataView, offset: number): Omit<Extract<ClientMes
     ...(transitionReadyPressed ? { transitionReadyPressed } : {}),
     ...(shopReadyPressed ? { shopReadyPressed } : {}),
     ...(shopPurchaseItemId ? { shopPurchaseItemId } : {}),
+    ...(activeCardSwitchId ? { activeCardSwitchId } : {}),
     ...(UnreliableLinkExtra ? { UnreliableLinkExtra } : {}),
   };
 }
@@ -285,6 +293,8 @@ function inputPayloadSize(message: Extract<ClientMessage | ServerMessage, { type
     + encodePreciseNumber(message.aimY).byteLength
     + INPUT_STRING_LENGTH_SIZE
     + encoder.encode(message.shopPurchaseItemId ?? "").byteLength
+    + INPUT_STRING_LENGTH_SIZE
+    + encoder.encode(message.activeCardSwitchId ?? "").byteLength
     + unreliableLinkExtraSize(message);
 }
 
@@ -302,7 +312,9 @@ function unreliableLinkExtraSize(message: Extract<ClientMessage | ServerMessage,
       + INPUT_STRING_LENGTH_SIZE
       + encodePreciseNumber(input.aimY).byteLength
       + INPUT_STRING_LENGTH_SIZE
-      + encoder.encode(input.shopPurchaseItemId ?? "").byteLength;
+      + encoder.encode(input.shopPurchaseItemId ?? "").byteLength
+      + INPUT_STRING_LENGTH_SIZE
+      + encoder.encode(input.activeCardSwitchId ?? "").byteLength;
   }
   return size;
 }
@@ -328,6 +340,7 @@ function writeUnreliableLinkExtra(
     const aimX = encodePreciseNumber(input.aimX);
     const aimY = encodePreciseNumber(input.aimY);
     const shopPurchase = encoder.encode(input.shopPurchaseItemId ?? "");
+    const activeCardSwitch = encoder.encode(input.activeCardSwitchId ?? "");
     view.setUint32(cursor, input.frame, true);
     view.setInt8(cursor + 4, input.moveX);
     view.setInt8(cursor + 5, input.moveY);
@@ -339,6 +352,8 @@ function writeUnreliableLinkExtra(
     cursor += INPUT_STRING_LENGTH_SIZE + aimY.byteLength;
     writeLengthPrefixedString(view, target, cursor, shopPurchase);
     cursor += INPUT_STRING_LENGTH_SIZE + shopPurchase.byteLength;
+    writeLengthPrefixedString(view, target, cursor, activeCardSwitch);
+    cursor += INPUT_STRING_LENGTH_SIZE + activeCardSwitch.byteLength;
   }
 }
 
@@ -361,10 +376,14 @@ function readUnreliableLinkExtra(
     const aimX = readLengthPrefixedString(view, cursor + REDUNDANT_INPUT_FIXED_FIELDS_SIZE);
     const aimY = readLengthPrefixedString(view, aimX.nextOffset);
     const maybeShopPurchase = readOptionalLengthPrefixedString(view, aimY.nextOffset);
+    const maybeActiveCardSwitch = readOptionalLengthPrefixedString(view, maybeShopPurchase?.nextOffset ?? aimY.nextOffset);
     const transitionReadyPressed = (buttons & 64) !== 0;
     const shopReadyPressed = (buttons & 128) !== 0;
     const shopPurchaseItemId = maybeShopPurchase
       ? decoder.decode(maybeShopPurchase.value)
+      : "";
+    const activeCardSwitchId = maybeActiveCardSwitch
+      ? decoder.decode(maybeActiveCardSwitch.value)
       : "";
     redundantInputs.push({
       frame: view.getUint32(cursor, true),
@@ -381,8 +400,9 @@ function readUnreliableLinkExtra(
       ...(transitionReadyPressed ? { transitionReadyPressed } : {}),
       ...(shopReadyPressed ? { shopReadyPressed } : {}),
       ...(shopPurchaseItemId ? { shopPurchaseItemId } : {}),
+      ...(activeCardSwitchId ? { activeCardSwitchId } : {}),
     });
-    cursor = maybeShopPurchase?.nextOffset ?? aimY.nextOffset;
+    cursor = maybeActiveCardSwitch?.nextOffset ?? maybeShopPurchase?.nextOffset ?? aimY.nextOffset;
   }
 
   if (cursor !== view.byteLength) {

@@ -464,10 +464,21 @@
     "shop_item_point": "+80 Point",
     "shop_item_card": "能力卡",
     "shop_item_sold_out": "缺货",
+    "shop_item_life_desc": "增加 1 点当前生命。",
+    "shop_item_bomb_desc": "增加 1 个可用 Bomb。",
+    "shop_item_point_desc": "增加 80 Point。",
+    "shop_item_card_desc": "购买一张能力卡。",
+    "shop_item_sold_out_desc": "当前没有可购买的能力卡。",
     "shop_ready": "就绪",
     "shop_ready_done": "已就绪",
     "shop_checked": "☑",
-    "shop_unchecked": "☐"
+    "shop_unchecked": "☐",
+    "shop_checked_player": "{{player}} ☑",
+    "shop_unchecked_player": "{{player}} ☐",
+    "shop_bag": "查看当前能力卡",
+    "shop_bag_title": "能力卡背包",
+    "shop_bag_empty": "暂无主动能力卡",
+    "shop_bag_active": "当前"
   },
   "replay": {
     "save_title": "保存回放",

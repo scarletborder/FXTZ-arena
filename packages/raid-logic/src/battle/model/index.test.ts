@@ -20,6 +20,7 @@ import {
   TARGET_SPAWN,
 } from "@repo/constants";
 import { POINT_COUNT_MAX } from "../constants";
+import { getAbilityCard } from "../content";
 import { BattleModel } from ".";
 import { BattlePhysics } from "./physics-adapter";
 import { createMoneyState, createPointState } from "./points";
@@ -1331,6 +1332,65 @@ describe("BattleModel collaborate money and scoring", () => {
     expect(extra?.scoreByPlayerId.Player2).toBe(
       COLLABORATE_MONEY_PICKUP_SCORE_VALUES.medium,
     );
+  });
+
+  it("replaces the active card when buying an active collaborate shop card", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, {
+        battleMode: "collaborate",
+        playerInitMoney: 100,
+      }),
+    );
+    model.player.activeCard = undefined;
+    model.player.abilityCards = [getAbilityCard("multi_shot"), getAbilityCard("spirit_strike_card")];
+    model.player.activeCardUses = 0;
+    model.player.activeCardCooldownUntil = 99;
+
+    const snapshot = model.serialize();
+    if (!snapshot.collaborateExtra) {
+      throw new Error("collaborate extra state should exist");
+    }
+    model.deserialize({
+      ...snapshot,
+      collaborateExtra: {
+        ...snapshot.collaborateExtra,
+        shop: {
+          ...snapshot.collaborateExtra.shop,
+          open: true,
+          shopIndex: 1,
+          goodsByPlayerId: {
+            ...snapshot.collaborateExtra.shop.goodsByPlayerId,
+            Player1: [
+              {
+                id: "shop-1:Player1:card:spirit_strike_card",
+                kind: "ability_card",
+                price: 46,
+                abilityCardId: "spirit_strike_card",
+              },
+            ],
+          },
+          purchasesByPlayerId: {
+            ...snapshot.collaborateExtra.shop.purchasesByPlayerId,
+            Player1: [],
+          },
+        },
+        moneyByPlayerId: {
+          ...snapshot.collaborateExtra.moneyByPlayerId,
+          Player1: 100,
+        },
+      },
+    });
+
+    model.stepVersus(
+      input({ shopPurchaseItemId: "shop-1:Player1:card:spirit_strike_card" }),
+      input(),
+    );
+
+    const updated = model.serialize().player;
+    expect(updated.activeCardId).toBe("spirit_strike_card");
+    expect(updated.activeCardUses).toBe(3);
+    expect(updated.activeCardCooldownUntil).toBe(0);
+    expect(model.serialize().collaborateExtra?.moneyByPlayerId.Player1).toBe(54);
   });
 
   it("adds collaborate score when a player defeats a mob", async () => {

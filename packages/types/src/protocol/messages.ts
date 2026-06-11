@@ -117,6 +117,7 @@ export interface InputFrameMessage {
   transitionReadyPressed?: boolean;
   shopReadyPressed?: boolean;
   shopPurchaseItemId?: string;
+  activeCardSwitchId?: string;
   UnreliableLinkExtra?: UnreliableLinkExtra;
 }
 
@@ -144,6 +145,7 @@ export interface RedundantInputFrame {
   readonly transitionReadyPressed?: boolean;
   readonly shopReadyPressed?: boolean;
   readonly shopPurchaseItemId?: string;
+  readonly activeCardSwitchId?: string;
 }
 
 export interface GameOverMessage {
@@ -260,6 +262,7 @@ export interface InputFrameRelayMessage {
   transitionReadyPressed?: boolean;
   shopReadyPressed?: boolean;
   shopPurchaseItemId?: string;
+  activeCardSwitchId?: string;
   UnreliableLinkExtra?: UnreliableLinkExtra;
 }
 

@@ -24,6 +24,7 @@ export class CrosshairView {
   }
 
   render(params: CrosshairRenderParams): void {
+    this.setVisible(true);
     const barX = params.pointerX + 44;
     const barY = params.pointerY - 28;
     const statusLeft = params.pointerX - 28;
@@ -47,6 +48,13 @@ export class CrosshairView {
       lives: params.lives,
       bombs: params.bombs,
     });
+  }
+
+  setVisible(visible: boolean): void {
+    this.crosshair.setVisible(visible);
+    this.ammoStatus.setVisible(visible);
+    this.activeCardStatus.setVisible(visible);
+    this.statusMarkers.setVisible(visible);
   }
 }
 

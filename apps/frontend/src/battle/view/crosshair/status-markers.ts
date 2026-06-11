@@ -47,4 +47,13 @@ export class CrosshairStatusMarkers {
       icon.setVisible(index < params.bombs);
     }
   }
+
+  setVisible(visible: boolean): void {
+    for (const marker of this.lifeMarkers) {
+      marker.setVisible(visible);
+    }
+    for (const icon of this.bombIcons) {
+      icon.setVisible(visible);
+    }
+  }
 }

@@ -602,6 +602,8 @@ export class BattleModel {
       return;
     }
 
+    this.processActiveCardSwitch(fighter, input.activeCardSwitchId);
+
     // Deterministic action order within a fighter's turn:
     fighter.selectActiveCharacter(input.alternateHeld);
     this.currentAimByFighter[state.key] = { x: input.aimX, y: input.aimY };
@@ -695,9 +697,17 @@ export class BattleModel {
         : extra.shop,
     };
     if (opensShop) {
+      this.resetCollaborateShopActiveCards();
       this.recoverDeadCollaborateShopPlayers();
     }
     return false;
+  }
+
+  private resetCollaborateShopActiveCards(): void {
+    this.playerFighter.resetActiveCardUsage();
+    this.targetFighter.resetActiveCardUsage();
+    this.activeCardCooldowns.register(this.player, this.frame);
+    this.activeCardCooldowns.register(this.target, this.frame);
   }
 
   private processCollaborateShopInputs(
@@ -722,6 +732,10 @@ export class BattleModel {
     input: BattleInputState | undefined,
   ): CollaborateExtraState {
     let next = extra;
+    this.processActiveCardSwitch(
+      key === "Player1" ? this.playerFighter : this.targetFighter,
+      input?.activeCardSwitchId,
+    );
     if (input?.shopPurchaseItemId) {
       next = this.tryPurchaseCollaborateShopItem(
         next,
@@ -799,10 +813,29 @@ export class BattleModel {
         return;
       case "ability_card":
         if (item.abilityCardId) {
-          fighter.acquireAbilityCard(getAbilityCard(item.abilityCardId as AbilityCardId));
+          const card = getAbilityCard(item.abilityCardId as AbilityCardId);
+          fighter.acquireAbilityCard(card);
+          if (card.kind === "active") {
+            fighter.setActiveAbilityCard(card);
+            this.activeCardCooldowns.register(fighter.state, this.frame);
+          }
         }
         return;
     }
+  }
+
+  private processActiveCardSwitch(
+    fighter: BattleFighter,
+    activeCardSwitchId: string | undefined,
+  ): void {
+    if (!activeCardSwitchId) return;
+    const card = fighter.state.abilityCards.find(
+      (candidate) => candidate.id === activeCardSwitchId,
+    );
+    if (!card || card.kind !== "active") return;
+    if (fighter.state.activeCard?.id === card.id) return;
+    fighter.setActiveAbilityCard(card);
+    this.activeCardCooldowns.register(fighter.state, this.frame);
   }
 
   private recoverDeadCollaborateShopPlayers(): void {

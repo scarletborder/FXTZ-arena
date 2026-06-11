@@ -129,6 +129,7 @@ describe("protocol binary codec", () => {
       infoHeld: false,
       shopReadyPressed: true,
       shopPurchaseItemId: "shop-1:card:multi_shot",
+      activeCardSwitchId: "spirit_strike_card",
       UnreliableLinkExtra: {
         redundantInputs: [
           {
@@ -144,6 +145,7 @@ describe("protocol binary codec", () => {
             alternateHeld: false,
             infoHeld: false,
             shopPurchaseItemId: "shop-1:life",
+            activeCardSwitchId: "spirit_strike_card",
           },
         ],
       },

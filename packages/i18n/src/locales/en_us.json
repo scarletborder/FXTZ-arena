@@ -464,10 +464,21 @@
     "shop_item_point": "+80 Point",
     "shop_item_card": "Card",
     "shop_item_sold_out": "Sold Out",
+    "shop_item_life_desc": "Gain 1 current life.",
+    "shop_item_bomb_desc": "Gain 1 available Bomb.",
+    "shop_item_point_desc": "Gain 80 Point.",
+    "shop_item_card_desc": "Buy an ability card.",
+    "shop_item_sold_out_desc": "No purchasable ability card is available.",
     "shop_ready": "Ready",
     "shop_ready_done": "Ready",
     "shop_checked": "☑",
-    "shop_unchecked": "☐"
+    "shop_unchecked": "☐",
+    "shop_checked_player": "{{player}} ☑",
+    "shop_unchecked_player": "{{player}} ☐",
+    "shop_bag": "Current Cards",
+    "shop_bag_title": "Ability Card Bag",
+    "shop_bag_empty": "No active cards",
+    "shop_bag_active": "Active"
   },
   "replay": {
     "save_title": "Save Replay",

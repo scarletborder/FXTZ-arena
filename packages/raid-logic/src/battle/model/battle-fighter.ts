@@ -141,6 +141,24 @@ export class BattleFighter {
     });
   }
 
+  setActiveAbilityCard(card: AbilityCardDefinition | undefined): void {
+    if (card && card.kind !== "active") {
+      return;
+    }
+    if (card && !this.state.abilityCards.some((existing) => existing.id === card.id)) {
+      this.acquireAbilityCard(card);
+    }
+    this.state.activeCard = card;
+    this.activeBattleCard = card ? createBattleAbilityCard(card) : undefined;
+    this.resetActiveCardUsage();
+  }
+
+  resetActiveCardUsage(): void {
+    const useLimit = this.state.activeCard?.useLimit;
+    this.state.activeCardUses = typeof useLimit === "number" ? useLimit : 0;
+    this.state.activeCardCooldownUntil = 0;
+  }
+
   getPointCollectRadius(): number {
     return (
       this.activeCharacter.pointCollectRadius +

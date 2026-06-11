@@ -70,6 +70,14 @@ export class CrosshairAmmoStatus {
     this.pointText.setPosition(params.x, params.y + 90);
     this.pointText.setText(`P ${formatPointDisplay(params.pointCount)}`);
   }
+
+  setVisible(visible: boolean): void {
+    this.back.setVisible(visible);
+    this.fill.setVisible(visible);
+    this.outline.setVisible(visible);
+    this.ammoText.setVisible(visible);
+    this.pointText.setVisible(visible);
+  }
 }
 
 function formatPointDisplay(pointCount: number): string {

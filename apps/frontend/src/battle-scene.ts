@@ -74,6 +74,7 @@ import { SpectatorBattleOverride } from "./replay/spectator/spectator-battle-ove
 
 const PRESET_SCRIPT_ROLLBACK_FRAME = 30;
 const PRESET_SCRIPT_FRAMES = 420;
+const SHOP_READY_HOLD_MS = 900;
 
 export class BattleScene extends Phaser.Scene {
   private accumulator = 0;
@@ -119,6 +120,10 @@ export class BattleScene extends Phaser.Scene {
   private shopPanel: CollaborateShopPanel | undefined;
   private pendingShopPurchaseItemId: string | undefined;
   private shopReadyRequested = false;
+  private pendingActiveCardSwitchId: string | undefined;
+  private shopInputModeActive = false;
+  private shopReadyHoldMs = 0;
+  private shopReadyHoldTriggered = false;
 
   constructor() {
     super("battle");
@@ -132,6 +137,12 @@ export class BattleScene extends Phaser.Scene {
     this.replayRecorder = undefined;
     this.replayOverride = null;
     this.spectatorOverride = null;
+    this.pendingShopPurchaseItemId = undefined;
+    this.shopReadyRequested = false;
+    this.pendingActiveCardSwitchId = undefined;
+    this.shopInputModeActive = false;
+    this.shopReadyHoldMs = 0;
+    this.shopReadyHoldTriggered = false;
     this.rollbackManager.reset({
       sceneData: data,
       debug: this.shouldRecordDebugLog(),
@@ -249,6 +260,9 @@ export class BattleScene extends Phaser.Scene {
       onReady: () => {
         this.shopReadyRequested = true;
       },
+      onSwitchActiveCard: (cardId) => {
+        this.pendingActiveCardSwitchId = cardId;
+      },
     });
     this.lastInput = createBattleInput(
       this,
@@ -326,6 +340,8 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    this.updateCollaborateShopKeyboard(delta);
+
     // --- Normal battle mode ---
     this.accumulator += delta;
     while (this.accumulator >= FIXED_STEP_MS) {
@@ -401,6 +417,7 @@ export class BattleScene extends Phaser.Scene {
         Player2: this.currentOutput.state.target,
       },
     );
+    this.updateBattleCursor();
     if (this.rollbackVisualFrames > 0) {
       this.rollbackVisualFrames -= 1;
     }
@@ -618,25 +635,107 @@ export class BattleScene extends Phaser.Scene {
     if (!extra?.shop.open) {
       this.pendingShopPurchaseItemId = undefined;
       this.shopReadyRequested = false;
+      this.pendingActiveCardSwitchId = undefined;
+      this.resetShopReadyHold();
       return {
         ...input,
         shopReadyPressed: false,
         shopPurchaseItemId: undefined,
+        activeCardSwitchId: undefined,
       };
     }
     const localKey = this.combatSync?.localFighterKey() ?? "Player1";
     const localReady = extra.shop.readyByPlayerId[localKey];
+    if (localReady) {
+      this.resetShopReadyHold();
+    }
     const purchase = localReady ? undefined : this.pendingShopPurchaseItemId;
     const ready = !localReady && this.shopReadyRequested;
+    const activeCardSwitch = localReady ? undefined : this.pendingActiveCardSwitchId;
     this.pendingShopPurchaseItemId = undefined;
+    this.pendingActiveCardSwitchId = undefined;
     if (ready) {
       this.shopReadyRequested = false;
     }
     return {
       ...input,
+      moveX: 0,
+      moveY: 0,
+      shootPressed: false,
+      bombPressed: false,
+      activeCardPressed: false,
+      reloadPressed: false,
+      alternateHeld: false,
       shopReadyPressed: ready,
       shopPurchaseItemId: purchase,
+      activeCardSwitchId: activeCardSwitch,
     };
+  }
+
+  private updateBattleCursor(): void {
+    if (this.sceneData.replayData || this.sceneData.spectatorData) {
+      this.input.setDefaultCursor("auto");
+      return;
+    }
+    const shopOpen = this.currentOutput?.state.collaborateExtra?.shop.open === true;
+    if (shopOpen !== this.shopInputModeActive) {
+      this.shopInputModeActive = shopOpen;
+      this.input.resetPointers();
+      if (!shopOpen) {
+        this.resetShopReadyHold();
+      }
+    }
+    this.input.setDefaultCursor(shopOpen ? "auto" : "none");
+  }
+
+  private updateCollaborateShopKeyboard(delta: number): void {
+    const extra = this.currentOutput?.state.collaborateExtra;
+    if (!extra?.shop.open || !this.shopPanel) {
+      this.resetShopReadyHold();
+      return;
+    }
+
+    const localKey = this.combatSync?.localFighterKey() ?? "Player1";
+    const localReady = extra.shop.readyByPlayerId[localKey];
+    const localDead = this.localFighterState().deadUntil > 0;
+    if (localReady || localDead) {
+      this.resetShopReadyHold();
+      this.shopPanel.setReadyHoldProgress(0);
+      return;
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.keys.shift)) {
+      this.shopPanel.toggleKeyboardSurface();
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.keys.a)) {
+      this.shopPanel.moveSelection(-1, 0);
+    } else if (Phaser.Input.Keyboard.JustDown(this.keys.d)) {
+      this.shopPanel.moveSelection(1, 0);
+    } else if (Phaser.Input.Keyboard.JustDown(this.keys.w)) {
+      this.shopPanel.moveSelection(0, -1);
+    } else if (Phaser.Input.Keyboard.JustDown(this.keys.s)) {
+      this.shopPanel.moveSelection(0, 1);
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.keys.e)) {
+      this.shopPanel.activateSelection();
+    }
+
+    if (this.keys.r.isDown) {
+      this.shopReadyHoldMs = Math.min(SHOP_READY_HOLD_MS, this.shopReadyHoldMs + delta);
+      if (this.shopReadyHoldMs >= SHOP_READY_HOLD_MS && !this.shopReadyHoldTriggered) {
+        this.shopReadyHoldTriggered = true;
+        this.shopReadyRequested = true;
+      }
+    } else {
+      this.resetShopReadyHold();
+    }
+    this.shopPanel.setReadyHoldProgress(this.shopReadyHoldMs / SHOP_READY_HOLD_MS);
+  }
+
+  private resetShopReadyHold(): void {
+    this.shopReadyHoldMs = 0;
+    this.shopReadyHoldTriggered = false;
+    this.shopPanel?.setReadyHoldProgress(0);
   }
 
   private destroyTransitionDialog(): void {
@@ -816,6 +915,9 @@ export class BattleScene extends Phaser.Scene {
     this.destroyTransitionDialog();
     this.shopPanel?.destroy();
     this.shopPanel = undefined;
+    this.shopInputModeActive = false;
+    this.shopReadyHoldMs = 0;
+    this.shopReadyHoldTriggered = false;
     this.arenaBounds = DEFAULT_ARENA_BOUNDS;
     this.scale.setGameSize(GAME_WIDTH, GAME_HEIGHT);
     this.cameras.main?.setSize(GAME_WIDTH, GAME_HEIGHT);
