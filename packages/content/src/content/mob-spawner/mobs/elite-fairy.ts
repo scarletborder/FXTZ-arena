@@ -15,6 +15,12 @@ import {
   type BattleBulletSpawnParams,
   type BattleLaserSpawnParams,
 } from "../../characters/base";
+import {
+  applySpellCardDamage,
+  createSpellCardState,
+  tickSpellCardState,
+  type SpellCardPlan,
+} from "../collaborate/spell-card";
 
 export type EliteFairySide = "left" | "right";
 export type EliteFairyPhase = "entering" | "aiming" | "firing" | "retreating";
@@ -35,6 +41,24 @@ type BoundedMobActionContext = NeutralMobActionContext<
 };
 
 const MAX_HEALTH = 300;
+const SPELL_CARD_PLAN: SpellCardPlan = {
+  nonSpellMaxHealth: MAX_HEALTH,
+  nonSpellThresholdHealth: 180,
+  spellCards: [
+    {
+      id: "ice-crystal-joke",
+      displayName: "冰晶玩笑",
+      maxHealth: 260,
+      durationTicks: secondsToTicks(20),
+    },
+    {
+      id: "frozen-stardust",
+      displayName: "冻结星屑",
+      maxHealth: 320,
+      durationTicks: secondsToTicks(24),
+    },
+  ],
+};
 const HIT_RADIUS = Math.round(36 * 1.8); // 65
 const ENTER_TICKS = secondsToTicks(1.2);
 const AIM_TICKS = secondsToTicks(0.5);
@@ -85,6 +109,8 @@ export class EliteFairy extends NeutralMob<
       id: params.id,
       key: "Neutral",
       kind: "elite_fairy",
+      class: "elite",
+      displayName: "笨蛋小精英",
       textureKey: "enemy_type_7",
       x,
       y: -HIT_RADIUS,
@@ -100,6 +126,7 @@ export class EliteFairy extends NeutralMob<
       pointRewardSize: params.pointRewardSize,
       MaxHealth: MAX_HEALTH,
       CurrentHealth: MAX_HEALTH,
+      spellCard: createSpellCardState(SPELL_CARD_PLAN),
       active: true,
       ageTicks: 0,
       sfxFlags: 0,
@@ -127,6 +154,23 @@ export class EliteFairy extends NeutralMob<
 
   move(ctx: BoundedMobActionContext): void {
     this.state.form = this.state.phase;
+
+    if (this.state.spellCard) {
+      if (this.state.ageTicks <= ENTER_TICKS) {
+        const t = ratio(this.state.ageTicks, ENTER_TICKS);
+        this.state.phase = "entering";
+        this.state.form = "entering";
+        this.state.x = sideX(this.state.side, ctx.arenaBounds);
+        this.state.y = lerp(-HIT_RADIUS, centerY(ctx.arenaBounds), t);
+        return;
+      }
+      this.state.phase = "firing";
+      this.state.form = this.state.spellCard.phase;
+      this.state.x = sideX(this.state.side, ctx.arenaBounds);
+      this.state.y = centerY(ctx.arenaBounds);
+      this.syncHealthFromSpellCard();
+      return;
+    }
 
     switch (this.state.phase) {
       case "entering": {
@@ -222,10 +266,24 @@ export class EliteFairy extends NeutralMob<
   }
 
   switchForm(): void {
-    // EliteFairy has no form transitions; phase serves as form.
+    if (!this.state.spellCard) {
+      return;
+    }
+    const result = tickSpellCardState(this.state.spellCard);
+    this.state.spellCard = result.state;
+    this.syncHealthFromSpellCard();
+    if (result.defeated) {
+      this.state.active = false;
+    }
   }
 
   die(): void {
+    if (this.state.spellCard) {
+      if (this.state.CurrentHealth <= 0) {
+        this.state.active = false;
+      }
+      return;
+    }
     if (
       this.state.CurrentHealth <= 0 ||
       (this.state.phase === "retreating" &&
@@ -239,11 +297,28 @@ export class EliteFairy extends NeutralMob<
     if (!this.state.active || damage <= 0) {
       return "ignored";
     }
+    if (this.state.spellCard) {
+      const result = applySpellCardDamage(this.state.spellCard, damage);
+      this.state.spellCard = result.state;
+      this.syncHealthFromSpellCard();
+      if (result.defeated) {
+        this.state.active = false;
+      }
+      return "accepted";
+    }
     this.state.CurrentHealth = Math.max(0, this.state.CurrentHealth - damage);
     if (this.state.CurrentHealth <= 0) {
       this.state.active = false;
     }
     return "accepted";
+  }
+
+  private syncHealthFromSpellCard(): void {
+    if (!this.state.spellCard) {
+      return;
+    }
+    this.state.MaxHealth = this.state.spellCard.maxHealth;
+    this.state.CurrentHealth = this.state.spellCard.currentHealth;
   }
 }
 

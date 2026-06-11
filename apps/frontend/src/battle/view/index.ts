@@ -22,6 +22,7 @@ import { FighterView } from "./fighter";
 import { MobView } from "./mobs";
 import { PointView } from "./points";
 import { ProjectileView } from "./projectile";
+import { SpellCardHud } from "./spell-card-hud";
 import {
   createBattleStage,
   type BattleStage,
@@ -35,6 +36,7 @@ export class BattleView {
   private readonly projectiles: ProjectileView;
   private readonly effects: EffectsView;
   private readonly mobs: MobView;
+  private readonly spellCardHud: SpellCardHud;
   private readonly points: PointView;
   private readonly stage: BattleStage;
   private readonly debug: BattleDebugView;
@@ -61,6 +63,7 @@ export class BattleView {
     this.battleMode = battleMode;
     this.fighters = new FighterView(scene);
     this.mobs = new MobView(scene);
+    this.spellCardHud = new SpellCardHud(scene);
     this.points = new PointView(scene);
     this.crosshair = new CrosshairView(scene);
     this.projectiles = new ProjectileView(scene);
@@ -89,6 +92,7 @@ export class BattleView {
       rollbackBlend,
     );
     this.mobs.render(state.neutralMobs, alpha, rollbackBlend);
+    this.spellCardHud.render(state.neutralMobs);
     this.points.render({
       points: state.points,
       player: state.player,

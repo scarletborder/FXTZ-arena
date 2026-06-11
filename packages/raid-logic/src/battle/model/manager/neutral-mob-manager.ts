@@ -122,6 +122,7 @@ export class NeutralMobManager {
       BulletProjectileParams,
       LaserProjectileParams
     >;
+    readonly onSpecialMobDefeated?: (mob: NeutralMobState) => void;
   }): void {
     this.sortNeutralMobs();
     if (params.timeStopped) {
@@ -136,6 +137,9 @@ export class NeutralMobManager {
       mob.step(params.createActionContext());
       if (wasActive && !mob.state.active) {
         mob.onDeath(null);
+        if (isSpecialSpellMob(mob.state)) {
+          params.onSpecialMobDefeated?.(mob.state);
+        }
         mob.onDeathEffect();
       }
     }
@@ -227,4 +231,10 @@ function stableNeutralMobId(waveId: number, waveMemberIndex: number): number {
   const normalizedWaveId = Math.max(0, Math.floor(waveId));
   const normalizedMemberIndex = Math.max(0, Math.floor(waveMemberIndex));
   return normalizedWaveId * 1000 + normalizedMemberIndex + 1;
+}
+
+function isSpecialSpellMob(state: NeutralMobState): boolean {
+  return (
+    !!state.spellCard && (state.class === "elite" || state.class === "boss")
+  );
 }

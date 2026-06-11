@@ -783,7 +783,7 @@ export class BattleModel {
         target: victim,
         owner,
         damage: ctx.projectile.damage,
-        onKilled: (mob) => this.dropPointFromMob(mob),
+        onKilled: (mob) => this.handleNeutralMobKilled(mob),
       });
     }
     const damage = ctx.damage;
@@ -1111,6 +1111,7 @@ export class BattleModel {
       timeStopped:
         this.timeStopped() || this.collaborateExtra?.shop.open === true,
       createActionContext: () => this.neutralMobActionContext(),
+      onSpecialMobDefeated: (mob) => this.handleNeutralMobKilled(mob),
     });
   }
 
@@ -1129,6 +1130,19 @@ export class BattleModel {
 
   private dropPointFromMob(mob: NeutralMobState): void {
     this.pointManager.dropPointFromMob(this.frame, mob);
+  }
+
+  private handleNeutralMobKilled(mob: NeutralMobState): void {
+    this.dropPointFromMob(mob);
+    if (this.battleMode !== "collaborate" || mob.class !== "boss") {
+      return;
+    }
+    if (!this.collaborateExtra?.bossDefeated) {
+      this.collaborateExtra = this.collaborateExtra
+        ? { ...this.collaborateExtra, bossDefeated: true }
+        : this.collaborateExtra;
+    }
+    this.evaluateCollaborateVictory();
   }
 
   private flushDeferredSpawns(): void {

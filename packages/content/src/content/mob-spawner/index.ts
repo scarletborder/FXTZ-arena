@@ -7,6 +7,7 @@ export * from "./mobs/elite-fairy";
 export * from "./mobs/immortal-fairy";
 export * from "./collaborate/wave-types";
 export * from "./collaborate/wave-spawner";
+export * from "./collaborate/spell-card";
 
 import { DefaultMobSpawnerA } from "./default-a";
 import { ShootingRangeSpawn } from "./shooting-range-spawn";

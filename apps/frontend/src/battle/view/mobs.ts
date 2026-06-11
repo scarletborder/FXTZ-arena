@@ -98,6 +98,7 @@ function mobMotionConfig(mob: NeutralMobState): {
 export class MobView {
   private readonly sprites = new Map<number, Phaser.GameObjects.Sprite>();
   private readonly damageTags = new Map<number, Phaser.GameObjects.Text>();
+  private readonly healthRings = new Map<number, Phaser.GameObjects.Graphics>();
   private readonly animationStates = new Map<number, MobAnimationState>();
   private readonly enemyConfigs: ReadonlyMap<string, EnemyVisualConfig>;
   private readonly breakAnimConfig?: BulletBreakVisualConfig;
@@ -109,7 +110,11 @@ export class MobView {
     this.breakAnimConfig = createBulletBreakAnimation(scene);
   }
 
-  render(neutralMobs: readonly NeutralMobState[], alpha = 1, rollbackBlend = 1): void {
+  render(
+    neutralMobs: readonly NeutralMobState[],
+    alpha = 1,
+    rollbackBlend = 1,
+  ): void {
     const active = new Set<number>();
 
     for (const mob of neutralMobs) {
@@ -131,48 +136,82 @@ export class MobView {
       const y = lerp(mob.previousY, mob.y, alpha);
       let sprite = this.sprites.get(mob.id);
       if (!sprite) {
-        sprite = this.scene.add.sprite(x, y, config.source, `${textureKey}_default_0`)
+        sprite = this.scene.add
+          .sprite(x, y, config.source, `${textureKey}_default_0`)
           .setOrigin(0.5)
           .setDepth(Depth.Character)
-          .setDisplaySize(config.width * config.scaleX, config.height * config.scaleY);
+          .setDisplaySize(
+            config.width * config.scaleX,
+            config.height * config.scaleY,
+          );
         this.sprites.set(mob.id, sprite);
       }
-      sprite.setPosition(smoothValue(sprite.x, x, rollbackBlend), smoothValue(sprite.y, y, rollbackBlend));
+      sprite.setPosition(
+        smoothValue(sprite.x, x, rollbackBlend),
+        smoothValue(sprite.y, y, rollbackBlend),
+      );
       sprite.setAlpha(smoothValue(sprite.alpha, 1, rollbackBlend));
-      sprite.setDisplaySize(config.width * config.scaleX, config.height * config.scaleY);
+      sprite.setDisplaySize(
+        config.width * config.scaleX,
+        config.height * config.scaleY,
+      );
       sprite.setFlipX(motion.direction < 0);
       sprite.setVisible(true);
       this.playMobAnimation(mob.id, sprite, config, motion);
+      this.renderHealthRing(
+        mob,
+        x,
+        y,
+        sprite.displayWidth,
+        sprite.displayHeight,
+        rollbackBlend,
+      );
 
       let damageTag = this.damageTags.get(mob.id);
       if (mob.kind === "immortal_fairy") {
         if (!damageTag) {
-          damageTag = this.scene.add.text(x, y - 28, "", {
-            fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
-            fontSize: "13px",
-            color: "#f6f1e6",
-            stroke: "#15203a",
-            strokeThickness: 3,
-          }).setOrigin(0.5).setDepth(Depth.FloatingText);
+          damageTag = this.scene.add
+            .text(x, y - 28, "", {
+              fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+              fontSize: "13px",
+              color: "#f6f1e6",
+              stroke: "#15203a",
+              strokeThickness: 3,
+            })
+            .setOrigin(0.5)
+            .setDepth(Depth.FloatingText);
           this.damageTags.set(mob.id, damageTag);
         }
-        damageTag.setPosition(smoothValue(damageTag.x, x, rollbackBlend), smoothValue(damageTag.y, y - 28, rollbackBlend));
+        damageTag.setPosition(
+          smoothValue(damageTag.x, x, rollbackBlend),
+          smoothValue(damageTag.y, y - 28, rollbackBlend),
+        );
         damageTag.setAlpha(smoothValue(damageTag.alpha, 1, rollbackBlend));
         damageTag.setText(`[${Math.max(0, Math.floor(mob.damageTaken ?? 0))}]`);
         damageTag.setVisible(true);
       } else if (damageTag) {
         damageTag.setVisible(false);
       }
-
     }
 
     // Cleanup destroyed mobs
     for (const [id, sprite] of this.sprites) {
       if (!active.has(id)) {
-        this.spawnBreakEffect(sprite.x, sprite.y, sprite.displayWidth, sprite.displayHeight);
+        this.spawnBreakEffect(
+          sprite.x,
+          sprite.y,
+          sprite.displayWidth,
+          sprite.displayHeight,
+        );
         sprite.destroy();
         this.sprites.delete(id);
         this.animationStates.delete(id);
+      }
+    }
+    for (const [id, ring] of this.healthRings) {
+      if (!active.has(id)) {
+        ring.destroy();
+        this.healthRings.delete(id);
       }
     }
     for (const [id, damageTag] of this.damageTags) {
@@ -184,7 +223,73 @@ export class MobView {
     this.renderBreakEffects();
   }
 
-  private spawnBreakEffect(x: number, y: number, mobWidth: number, mobHeight: number): void {
+  private renderHealthRing(
+    mob: NeutralMobState,
+    x: number,
+    y: number,
+    mobWidth: number,
+    mobHeight: number,
+    rollbackBlend: number,
+  ): void {
+    const shouldRender =
+      (mob.class === "elite" || mob.class === "boss") && mob.spellCard;
+    let ring = this.healthRings.get(mob.id);
+    if (!shouldRender || !mob.spellCard) {
+      if (ring) {
+        ring.setVisible(false);
+      }
+      return;
+    }
+    if (!ring) {
+      ring = this.scene.add
+        .graphics()
+        .setDepth(Depth.GrazeCircle)
+        .setVisible(true);
+      this.healthRings.set(mob.id, ring);
+    }
+
+    const radius = Math.max(mobWidth, mobHeight, mob.hitRadius * 2) * 0.56;
+    const ratio = clampRatio(
+      mob.spellCard.currentHealth / mob.spellCard.maxHealth,
+    );
+    const start = -Math.PI / 2;
+    const end = start + Math.PI * 2 * ratio;
+    const ringX = smoothValue(ring.x, x, rollbackBlend);
+    const ringY = smoothValue(ring.y, y, rollbackBlend);
+    ring.setPosition(ringX, ringY);
+    ring.clear();
+    ring.lineStyle(5, 0x25151b, 0.72);
+    ring.strokeCircle(0, 0, radius);
+    ring.lineStyle(4, 0xf04444, 0.95);
+    ring.beginPath();
+    ring.arc(0, 0, radius, start, end, false);
+    ring.strokePath();
+
+    if (mob.spellCard.phase === "non_spell" && mob.spellCard.maxHealth > 0) {
+      const markerRatio = clampRatio(
+        mob.spellCard.nonSpellThresholdHealth / mob.spellCard.maxHealth,
+      );
+      const markerAngle = start + Math.PI * 2 * markerRatio;
+      const inner = radius - 8;
+      const outer = radius + 8;
+      ring.lineStyle(3, 0x5dc8ff, 1);
+      ring.lineBetween(
+        Math.cos(markerAngle) * inner,
+        Math.sin(markerAngle) * inner,
+        Math.cos(markerAngle) * outer,
+        Math.sin(markerAngle) * outer,
+      );
+    }
+    ring.setAlpha(1);
+    ring.setVisible(true);
+  }
+
+  private spawnBreakEffect(
+    x: number,
+    y: number,
+    mobWidth: number,
+    mobHeight: number,
+  ): void {
     const config = this.breakAnimConfig;
     const firstFrame = config?.frames[0];
     if (!config || !firstFrame) {
@@ -193,8 +298,14 @@ export class MobView {
 
     const id = this.nextBreakEffectId;
     this.nextBreakEffectId += 1;
-    const displaySize = breakEffectDisplaySize(config, firstFrame, mobWidth, mobHeight);
-    const image = this.scene.add.image(x, y, config.source, firstFrame.frame)
+    const displaySize = breakEffectDisplaySize(
+      config,
+      firstFrame,
+      mobWidth,
+      mobHeight,
+    );
+    const image = this.scene.add
+      .image(x, y, config.source, firstFrame.frame)
       .setOrigin(0.5)
       .setDepth(Depth.Effect)
       .setDisplaySize(displaySize.width, displaySize.height);
@@ -221,8 +332,9 @@ export class MobView {
         continue;
       }
 
-      const frame = config.frames.find((candidate) => elapsedMs < candidate.endTimeMs)
-        ?? config.frames[config.frames.length - 1];
+      const frame =
+        config.frames.find((candidate) => elapsedMs < candidate.endTimeMs) ??
+        config.frames[config.frames.length - 1];
       effect.image.setFrame(frame.frame);
       effect.image.setDisplaySize(effect.displayWidth, effect.displayHeight);
       effect.image.setVisible(true);
@@ -281,6 +393,13 @@ export class MobView {
 
 function lerp(from: number, to: number, alpha: number): number {
   return from + (to - from) * alpha;
+}
+
+function clampRatio(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(1, value));
 }
 
 function createEnemyAnimations(
