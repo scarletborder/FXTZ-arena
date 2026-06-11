@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   ExampleFairy,
+  NeutralMobSpawner,
   resolveMobSpawner,
+  type BattleNeutralMob,
+  type NeutralMobSpawnerContext,
+  type NeutralMobSpawnerState,
 } from "@repo/content";
 import {
   ARENA_HEIGHT,
@@ -1510,7 +1514,107 @@ describe("Example collaborate mob spawner", () => {
     expect(elite?.state.displayName).toBe("朴实精英");
     expect(boss?.state.class).toBe("boss");
   });
+
+  it("closes the shop and advances the spawner when both players are ready", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, {
+        battleMode: "collaborate",
+        neutralMobSpawner: new ReadyShopSpawner(),
+      }),
+    );
+
+    model.stepVersus(input(), input());
+    model.stepVersus(
+      input({ transitionReadyPressed: true }),
+      input({ transitionReadyPressed: true }),
+    );
+    expect(model.serialize().collaborateExtra?.shop.open).toBe(true);
+
+    model.stepVersus(
+      input({ shopReadyPressed: true }),
+      input({ shopReadyPressed: true }),
+    );
+
+    expect(model.serialize().collaborateExtra?.shop.open).toBe(false);
+    expect(model.neutralMobManager.states()).toHaveLength(1);
+    expect(model.neutralMobManager.states()[0]?.kind).toBe("test_mob");
+  });
 });
+
+interface ReadyShopSpawnerState extends NeutralMobSpawnerState {
+  readonly spawnerId: "ready-shop";
+  readonly stage: number;
+}
+
+class ReadyShopSpawner extends NeutralMobSpawner<ReadyShopSpawnerState> {
+  readonly id = "ready-shop";
+  private stage = 0;
+
+  step(ctx: NeutralMobSpawnerContext): void {
+    if (this.stage === 0) {
+      if (!ctx.collaborateExtra?.shop.open) {
+        ctx.updateCollaborateExtra((extra) => ({
+          ...extra,
+          shop: {
+            ...extra.shop,
+            rarityPulls: {},
+          },
+        }));
+        ctx.beginCollaborateTransition("shop", "auto");
+        return;
+      }
+
+      const ready = ctx.collaborateExtra.shop.readyByPlayerId;
+      if (ready.Player1 && ready.Player2) {
+        this.stage = 1;
+        ctx.updateCollaborateExtra((extra) => ({
+          ...extra,
+          shop: {
+            ...extra.shop,
+            open: false,
+            readyByPlayerId: {
+              Player1: false,
+              Player2: false,
+              Neutral: false,
+            },
+          },
+        }));
+      }
+      return;
+    }
+
+    if (this.stage === 1) {
+      ctx.spawnMob(new TestNeutralMob(ctx.allocateMobId(), 320, 240));
+      this.stage = 2;
+    }
+  }
+
+  snapshot(): ReadyShopSpawnerState {
+    return {
+      spawnerId: this.id,
+      stage: this.stage,
+    };
+  }
+
+  restore(snapshot: ReadyShopSpawnerState): void {
+    this.stage = snapshot.stage;
+  }
+
+  reset(): void {
+    this.stage = 0;
+  }
+
+  createMobFromSnapshot(
+    snapshot: NeutralMobState,
+  ): BattleNeutralMob | undefined {
+    if (snapshot.kind !== "test_mob") {
+      return undefined;
+    }
+    const mob = new TestNeutralMob(snapshot.id, snapshot.x, snapshot.y);
+    mob.restore(snapshot);
+    return mob;
+  }
+}
 
 describe("BattleModel point power shooting tiers", () => {
   it("applies configured initial points to both fighters and restores them on reset", async () => {

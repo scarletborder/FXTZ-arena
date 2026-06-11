@@ -368,9 +368,20 @@ export class BattleModel {
         firstIsPlayer,
       );
       this.stepMobSpawner();
+      if (!this.collaborateExtra?.shop.open) {
+        this.stepRunningFrame(firstInput, secondInput, firstIsPlayer);
+      }
       return;
     }
 
+    this.stepRunningFrame(firstInput, secondInput, firstIsPlayer);
+  }
+
+  private stepRunningFrame(
+    firstInput: BattleInputState,
+    secondInput: BattleInputState | undefined,
+    firstIsPlayer: boolean,
+  ): void {
     // --- Phase 1: Timer ticking (order-independent) ---
     this.pendingSpawns = [];
     this.playerFighter.tickTimers();

@@ -1141,6 +1141,9 @@ export class MessageHandler {
       alternateHeld: msg.alternateHeld,
       infoHeld: msg.infoHeld,
       transitionReadyPressed: msg.transitionReadyPressed === true,
+      shopReadyPressed: msg.shopReadyPressed === true,
+      shopPurchaseItemId: msg.shopPurchaseItemId,
+      activeCardSwitchId: msg.activeCardSwitchId,
       UnreliableLinkExtra: msg.UnreliableLinkExtra,
     });
 
@@ -1362,6 +1365,9 @@ export class MessageHandler {
       alternateHeld: msg.alternateHeld,
       infoHeld: msg.infoHeld,
       transitionReadyPressed: msg.transitionReadyPressed === true,
+      shopReadyPressed: msg.shopReadyPressed === true,
+      shopPurchaseItemId: msg.shopPurchaseItemId,
+      activeCardSwitchId: msg.activeCardSwitchId,
       UnreliableLinkExtra: msg.UnreliableLinkExtra,
     };
     this.rememberSpectatorInput(room, relay);

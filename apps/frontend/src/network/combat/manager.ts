@@ -525,6 +525,7 @@ function neutralInput(): BattleInputState {
     transitionReadyPressed: false,
     shopReadyPressed: false,
     shopPurchaseItemId: undefined,
+    activeCardSwitchId: undefined,
   };
 }
 
@@ -543,6 +544,7 @@ function cloneInput(input: BattleInputState): BattleInputState {
     transitionReadyPressed: input.transitionReadyPressed === true,
     shopReadyPressed: input.shopReadyPressed === true,
     shopPurchaseItemId: input.shopPurchaseItemId,
+    activeCardSwitchId: input.activeCardSwitchId,
   };
 }
 
@@ -572,6 +574,11 @@ function canonicalizeInput(input: BattleInputState): BattleInputState {
       input.shopPurchaseItemId.length > 0
         ? input.shopPurchaseItemId
         : undefined,
+    activeCardSwitchId:
+      typeof input.activeCardSwitchId === "string" &&
+      input.activeCardSwitchId.length > 0
+        ? input.activeCardSwitchId
+        : undefined,
   };
 }
 
@@ -580,7 +587,8 @@ function canonicalizeInput(input: BattleInputState): BattleInputState {
  *
  * Always-compared fields (discrete / boolean):
  *   moveX, moveY, shootPressed, bombPressed, activeCardPressed,
- *   reloadPressed, alternateHeld, infoHeld, transitionReadyPressed
+ *   reloadPressed, alternateHeld, infoHeld, transitionReadyPressed,
+ *   shopReadyPressed, shopPurchaseItemId, activeCardSwitchId
  *
  * Conditionally-compared field (aimX, aimY):
  *   The player moves the mouse every single frame, so aim coordinates
@@ -614,6 +622,7 @@ function sameIntentWithAim(left: BattleInputState, right: BattleInputState): boo
   if ((left.transitionReadyPressed === true) !== (right.transitionReadyPressed === true)) return false;
   if ((left.shopReadyPressed === true) !== (right.shopReadyPressed === true)) return false;
   if ((left.shopPurchaseItemId ?? "") !== (right.shopPurchaseItemId ?? "")) return false;
+  if ((left.activeCardSwitchId ?? "") !== (right.activeCardSwitchId ?? "")) return false;
 
   return left.aimX === right.aimX && left.aimY === right.aimY;
 }
@@ -631,6 +640,7 @@ function sameIntent(left: BattleInputState, right: BattleInputState): boolean {
   if ((left.transitionReadyPressed === true) !== (right.transitionReadyPressed === true)) return false;
   if ((left.shopReadyPressed === true) !== (right.shopReadyPressed === true)) return false;
   if ((left.shopPurchaseItemId ?? "") !== (right.shopPurchaseItemId ?? "")) return false;
+  if ((left.activeCardSwitchId ?? "") !== (right.activeCardSwitchId ?? "")) return false;
 
   // Aim only matters when something consumes it.
   if (!hasAimConsumingAction(left) && !hasAimConsumingAction(right)) {

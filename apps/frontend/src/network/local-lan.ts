@@ -267,6 +267,13 @@ export class LocalLanSession {
           type: "peer_loading_done",
           playerId,
         };
+      case "input_frame": {
+        const inputFrame = message as Extract<ClientMessage, { type: "input_frame" }>;
+        return {
+          ...inputFrame,
+          playerId,
+        };
+      }
       case "game_over":
         return {
           type: "peer_game_over",
