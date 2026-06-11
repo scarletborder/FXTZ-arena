@@ -523,6 +523,8 @@ function neutralInput(): BattleInputState {
     alternateHeld: false,
     infoHeld: false,
     transitionReadyPressed: false,
+    shopReadyPressed: false,
+    shopPurchaseItemId: undefined,
   };
 }
 
@@ -539,6 +541,8 @@ function cloneInput(input: BattleInputState): BattleInputState {
     alternateHeld: input.alternateHeld,
     infoHeld: input.infoHeld,
     transitionReadyPressed: input.transitionReadyPressed === true,
+    shopReadyPressed: input.shopReadyPressed === true,
+    shopPurchaseItemId: input.shopPurchaseItemId,
   };
 }
 
@@ -562,6 +566,12 @@ function canonicalizeInput(input: BattleInputState): BattleInputState {
     alternateHeld: input.alternateHeld,
     infoHeld: input.infoHeld,
     transitionReadyPressed: input.transitionReadyPressed === true,
+    shopReadyPressed: input.shopReadyPressed === true,
+    shopPurchaseItemId:
+      typeof input.shopPurchaseItemId === "string" &&
+      input.shopPurchaseItemId.length > 0
+        ? input.shopPurchaseItemId
+        : undefined,
   };
 }
 
@@ -602,6 +612,8 @@ function sameIntentWithAim(left: BattleInputState, right: BattleInputState): boo
   if (left.alternateHeld !== right.alternateHeld) return false;
   if (left.infoHeld !== right.infoHeld) return false;
   if ((left.transitionReadyPressed === true) !== (right.transitionReadyPressed === true)) return false;
+  if ((left.shopReadyPressed === true) !== (right.shopReadyPressed === true)) return false;
+  if ((left.shopPurchaseItemId ?? "") !== (right.shopPurchaseItemId ?? "")) return false;
 
   return left.aimX === right.aimX && left.aimY === right.aimY;
 }
@@ -617,6 +629,8 @@ function sameIntent(left: BattleInputState, right: BattleInputState): boolean {
   if (left.alternateHeld !== right.alternateHeld) return false;
   if (left.infoHeld !== right.infoHeld) return false;
   if ((left.transitionReadyPressed === true) !== (right.transitionReadyPressed === true)) return false;
+  if ((left.shopReadyPressed === true) !== (right.shopReadyPressed === true)) return false;
+  if ((left.shopPurchaseItemId ?? "") !== (right.shopPurchaseItemId ?? "")) return false;
 
   // Aim only matters when something consumes it.
   if (!hasAimConsumingAction(left) && !hasAimConsumingAction(right)) {

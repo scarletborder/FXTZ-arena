@@ -36,6 +36,13 @@ export interface AbilityCardGalleryAssets {
   readonly iconAsset: string;
 }
 
+export type CollaborateShopRarity = "common" | "rare" | "disabled";
+
+export interface CollaborateShopAbilityCardConfig {
+  readonly rarity: CollaborateShopRarity;
+  readonly overrideEffect?: string;
+}
+
 export interface AbilityCardDefinition {
   readonly id: AbilityCardId;
   readonly name: string;
@@ -45,4 +52,5 @@ export interface AbilityCardDefinition {
   readonly cooldownTicks: number;
   readonly description: string;
   readonly gallery: AbilityCardGalleryAssets;
+  readonly collaborateShop?: CollaborateShopAbilityCardConfig;
 }

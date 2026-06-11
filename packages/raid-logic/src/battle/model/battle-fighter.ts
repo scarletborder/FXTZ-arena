@@ -128,6 +128,19 @@ export class BattleFighter {
     return this.battleCards.map((card) => card.definition);
   }
 
+  acquireAbilityCard(card: AbilityCardDefinition): void {
+    if (this.state.abilityCards.some((existing) => existing.id === card.id)) {
+      return;
+    }
+    const battleCard = createBattleAbilityCard(card);
+    this.battleCards = [...this.battleCards, battleCard];
+    this.state.abilityCards = [...this.state.abilityCards, card];
+    battleCard.onInitialize({
+      self: this.state,
+      resolution: { defaultBombs: this.reviveBombs },
+    });
+  }
+
   getPointCollectRadius(): number {
     return (
       this.activeCharacter.pointCollectRadius +

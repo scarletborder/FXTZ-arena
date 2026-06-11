@@ -145,6 +145,11 @@ export abstract class WaveMobSpawner<
       shop: {
         ...extra.shop,
         open: false,
+        rarityPulls:
+          nextNode?.kind === "shop" ? nextNode.rarityPulls : {},
+        goods: [],
+        goodsByPlayerId: { Player1: [], Player2: [], Neutral: [] },
+        purchasesByPlayerId: { Player1: [], Player2: [], Neutral: [] },
         readyByPlayerId: { Player1: false, Player2: false, Neutral: false },
       },
     }));
@@ -214,12 +219,17 @@ export abstract class WaveMobSpawner<
   }
 
   private syncCollaborateShop(ctx: NeutralMobSpawnerContext): void {
+    const node = this.nodes[this.nodeIndex];
     ctx.updateCollaborateExtra((extra) => ({
       ...extra,
       wave: {
         ...extra.wave,
         waveIndex: this.nodeIndex,
-        currentWaveId: this.nodes[this.nodeIndex]?.id ?? null,
+        currentWaveId: node?.id ?? null,
+      },
+      shop: {
+        ...extra.shop,
+        rarityPulls: node?.kind === "shop" ? node.rarityPulls : {},
       },
     }));
   }

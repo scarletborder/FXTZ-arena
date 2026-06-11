@@ -233,8 +233,12 @@ function writeInputFields(
   view.setInt8(offset + 9, message.moveY);
   view.setUint16(offset + 10, encodeButtons(message), true);
   writeLengthPrefixedString(view, bytes, offset + 12, aimX);
-  writeLengthPrefixedString(view, bytes, offset + 12 + INPUT_STRING_LENGTH_SIZE + aimX.byteLength, aimY);
-  writeUnreliableLinkExtra(view, bytes, offset + 12 + INPUT_STRING_LENGTH_SIZE + aimX.byteLength + INPUT_STRING_LENGTH_SIZE + aimY.byteLength, message);
+  const aimYOffset = offset + 12 + INPUT_STRING_LENGTH_SIZE + aimX.byteLength;
+  writeLengthPrefixedString(view, bytes, aimYOffset, aimY);
+  const shopPurchase = encoder.encode(message.shopPurchaseItemId ?? "");
+  const shopPurchaseOffset = aimYOffset + INPUT_STRING_LENGTH_SIZE + aimY.byteLength;
+  writeLengthPrefixedString(view, bytes, shopPurchaseOffset, shopPurchase);
+  writeUnreliableLinkExtra(view, bytes, shopPurchaseOffset + INPUT_STRING_LENGTH_SIZE + shopPurchase.byteLength, message);
 }
 
 function readInputFields(view: DataView, offset: number): Omit<Extract<ClientMessage, { type: "input_frame" }>, "type"> {
@@ -242,11 +246,17 @@ function readInputFields(view: DataView, offset: number): Omit<Extract<ClientMes
   const buttons = view.getUint16(offset + 10, true);
   const aimX = readLengthPrefixedString(view, offset + 12);
   const aimY = readLengthPrefixedString(view, aimX.nextOffset);
-  const UnreliableLinkExtra = readUnreliableLinkExtra(view, aimY.nextOffset);
-  if (!UnreliableLinkExtra && aimY.nextOffset !== view.byteLength) {
+  const maybeShopPurchase = readOptionalLengthPrefixedString(view, aimY.nextOffset);
+  const extraOffset = maybeShopPurchase?.nextOffset ?? aimY.nextOffset;
+  const UnreliableLinkExtra = readUnreliableLinkExtra(view, extraOffset);
+  if (!UnreliableLinkExtra && extraOffset !== view.byteLength) {
     throw new Error("Invalid protocol input frame size");
   }
   const transitionReadyPressed = (buttons & 64) !== 0;
+  const shopReadyPressed = (buttons & 128) !== 0;
+  const shopPurchaseItemId = maybeShopPurchase
+    ? decoder.decode(maybeShopPurchase.value)
+    : "";
   return {
     frame: view.getUint32(offset, true),
     ackFrame: view.getUint32(offset + 4, true),
@@ -261,6 +271,8 @@ function readInputFields(view: DataView, offset: number): Omit<Extract<ClientMes
     alternateHeld: (buttons & 16) !== 0,
     infoHeld: (buttons & 32) !== 0,
     ...(transitionReadyPressed ? { transitionReadyPressed } : {}),
+    ...(shopReadyPressed ? { shopReadyPressed } : {}),
+    ...(shopPurchaseItemId ? { shopPurchaseItemId } : {}),
     ...(UnreliableLinkExtra ? { UnreliableLinkExtra } : {}),
   };
 }
@@ -271,6 +283,8 @@ function inputPayloadSize(message: Extract<ClientMessage | ServerMessage, { type
     + encodePreciseNumber(message.aimX).byteLength
     + INPUT_STRING_LENGTH_SIZE
     + encodePreciseNumber(message.aimY).byteLength
+    + INPUT_STRING_LENGTH_SIZE
+    + encoder.encode(message.shopPurchaseItemId ?? "").byteLength
     + unreliableLinkExtraSize(message);
 }
 
@@ -286,7 +300,9 @@ function unreliableLinkExtraSize(message: Extract<ClientMessage | ServerMessage,
       + INPUT_STRING_LENGTH_SIZE
       + encodePreciseNumber(input.aimX).byteLength
       + INPUT_STRING_LENGTH_SIZE
-      + encodePreciseNumber(input.aimY).byteLength;
+      + encodePreciseNumber(input.aimY).byteLength
+      + INPUT_STRING_LENGTH_SIZE
+      + encoder.encode(input.shopPurchaseItemId ?? "").byteLength;
   }
   return size;
 }
@@ -311,6 +327,7 @@ function writeUnreliableLinkExtra(
   for (const input of redundantInputs) {
     const aimX = encodePreciseNumber(input.aimX);
     const aimY = encodePreciseNumber(input.aimY);
+    const shopPurchase = encoder.encode(input.shopPurchaseItemId ?? "");
     view.setUint32(cursor, input.frame, true);
     view.setInt8(cursor + 4, input.moveX);
     view.setInt8(cursor + 5, input.moveY);
@@ -320,6 +337,8 @@ function writeUnreliableLinkExtra(
     cursor += INPUT_STRING_LENGTH_SIZE + aimX.byteLength;
     writeLengthPrefixedString(view, target, cursor, aimY);
     cursor += INPUT_STRING_LENGTH_SIZE + aimY.byteLength;
+    writeLengthPrefixedString(view, target, cursor, shopPurchase);
+    cursor += INPUT_STRING_LENGTH_SIZE + shopPurchase.byteLength;
   }
 }
 
@@ -341,7 +360,12 @@ function readUnreliableLinkExtra(
     const buttons = view.getUint16(cursor + 6, true);
     const aimX = readLengthPrefixedString(view, cursor + REDUNDANT_INPUT_FIXED_FIELDS_SIZE);
     const aimY = readLengthPrefixedString(view, aimX.nextOffset);
+    const maybeShopPurchase = readOptionalLengthPrefixedString(view, aimY.nextOffset);
     const transitionReadyPressed = (buttons & 64) !== 0;
+    const shopReadyPressed = (buttons & 128) !== 0;
+    const shopPurchaseItemId = maybeShopPurchase
+      ? decoder.decode(maybeShopPurchase.value)
+      : "";
     redundantInputs.push({
       frame: view.getUint32(cursor, true),
       moveX: view.getInt8(cursor + 4) as -1 | 0 | 1,
@@ -355,8 +379,10 @@ function readUnreliableLinkExtra(
       alternateHeld: (buttons & 16) !== 0,
       infoHeld: (buttons & 32) !== 0,
       ...(transitionReadyPressed ? { transitionReadyPressed } : {}),
+      ...(shopReadyPressed ? { shopReadyPressed } : {}),
+      ...(shopPurchaseItemId ? { shopPurchaseItemId } : {}),
     });
-    cursor = aimY.nextOffset;
+    cursor = maybeShopPurchase?.nextOffset ?? aimY.nextOffset;
   }
 
   if (cursor !== view.byteLength) {
@@ -403,6 +429,16 @@ function readLengthPrefixedString(view: DataView, offset: number): { readonly va
   };
 }
 
+function readOptionalLengthPrefixedString(
+  view: DataView,
+  offset: number,
+): { readonly value: Uint8Array; readonly nextOffset: number } | undefined {
+  if (offset === view.byteLength) {
+    return undefined;
+  }
+  return readLengthPrefixedString(view, offset);
+}
+
 function encodeButtons(message: {
   readonly shootPressed: boolean;
   readonly bombPressed: boolean;
@@ -411,6 +447,8 @@ function encodeButtons(message: {
   readonly alternateHeld: boolean;
   readonly infoHeld: boolean;
   readonly transitionReadyPressed?: boolean;
+  readonly shopReadyPressed?: boolean;
+  readonly shopPurchaseItemId?: string;
 }): number {
   return (message.shootPressed ? 1 : 0)
     | (message.bombPressed ? 2 : 0)
@@ -418,7 +456,8 @@ function encodeButtons(message: {
     | (message.reloadPressed ? 8 : 0)
     | (message.alternateHeld ? 16 : 0)
     | (message.infoHeld ? 32 : 0)
-    | (message.transitionReadyPressed ? 64 : 0);
+    | (message.transitionReadyPressed ? 64 : 0)
+    | (message.shopReadyPressed ? 128 : 0);
 }
 
 function encodePlayerId(playerId: "Player1" | "Player2" | "Neutral"): number {

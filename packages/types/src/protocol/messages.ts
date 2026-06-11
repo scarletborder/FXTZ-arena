@@ -115,6 +115,8 @@ export interface InputFrameMessage {
   alternateHeld: boolean;
   infoHeld: boolean;
   transitionReadyPressed?: boolean;
+  shopReadyPressed?: boolean;
+  shopPurchaseItemId?: string;
   UnreliableLinkExtra?: UnreliableLinkExtra;
 }
 
@@ -140,6 +142,8 @@ export interface RedundantInputFrame {
   readonly alternateHeld: boolean;
   readonly infoHeld: boolean;
   readonly transitionReadyPressed?: boolean;
+  readonly shopReadyPressed?: boolean;
+  readonly shopPurchaseItemId?: string;
 }
 
 export interface GameOverMessage {
@@ -254,6 +258,8 @@ export interface InputFrameRelayMessage {
   alternateHeld: boolean;
   infoHeld: boolean;
   transitionReadyPressed?: boolean;
+  shopReadyPressed?: boolean;
+  shopPurchaseItemId?: string;
   UnreliableLinkExtra?: UnreliableLinkExtra;
 }
 

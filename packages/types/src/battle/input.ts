@@ -12,6 +12,8 @@ export interface BattleInputState {
   readonly alternateHeld: boolean;
   readonly infoHeld: boolean;
   readonly transitionReadyPressed?: boolean;
+  readonly shopReadyPressed?: boolean;
+  readonly shopPurchaseItemId?: string;
 }
 
 export interface PlayerFrameInput {
@@ -27,6 +29,8 @@ export interface PlayerFrameInput {
   readonly alternateHeld: boolean;
   readonly infoHeld: boolean;
   readonly transitionReadyPressed?: boolean;
+  readonly shopReadyPressed?: boolean;
+  readonly shopPurchaseItemId?: string;
 }
 
 export interface FrameInput {

@@ -17,11 +17,13 @@ import {
   type ProjectileCollisionContext,
   type ArenaBounds,
   type CollaborateExtraState,
+  type CollaborateShopItemState,
 } from "@repo/types";
 
 import { getAbilityCard, getCharacter } from "../content";
 import type { BattleLoadouts, FighterLoadout } from "../loadout";
 import type { BattleInputState, BattleRoomMode } from "@repo/types";
+import type { AbilityCardId } from "@repo/types";
 import type {
   BattleOutputState,
   BattleResult,
@@ -34,7 +36,7 @@ import type {
   TrainingStats,
 } from "@repo/content";
 import type { NeutralMobSpawner } from "@repo/content";
-import { resolveMobSpawner } from "@repo/content";
+import { getAllAbilityCardDefinitions, resolveMobSpawner } from "@repo/content";
 import { BattleFighter } from "./battle-fighter";
 import { createBattleRules, type BattleRules } from "./battle-rules";
 import { CpuPlayer } from "../aicpu";
@@ -360,6 +362,11 @@ export class BattleModel {
     }
 
     if (this.collaborateExtra?.shop.open) {
+      this.processCollaborateShopInputs(
+        firstInput,
+        secondInput,
+        firstIsPlayer,
+      );
       this.stepMobSpawner();
       return;
     }
@@ -661,6 +668,10 @@ export class BattleModel {
     }
 
     const opensShop = extra.pendingTransitionTarget === "shop";
+    const shopIndex = extra.shop.shopIndex + 1;
+    const goodsByPlayerId = opensShop
+      ? this.createCollaborateShopGoodsByPlayer(shopIndex, extra.shop.rarityPulls)
+      : extra.shop.goodsByPlayerId;
     this.collaborateExtra = {
       ...extra,
       state: "running",
@@ -672,7 +683,9 @@ export class BattleModel {
         ? {
             ...extra.shop,
             open: true,
-            shopIndex: extra.shop.shopIndex + 1,
+            shopIndex,
+            goods: goodsByPlayerId.Player1,
+            goodsByPlayerId,
             readyByPlayerId: {
               Player1: false,
               Player2: false,
@@ -681,7 +694,193 @@ export class BattleModel {
           }
         : extra.shop,
     };
+    if (opensShop) {
+      this.recoverDeadCollaborateShopPlayers();
+    }
     return false;
+  }
+
+  private processCollaborateShopInputs(
+    firstInput: BattleInputState,
+    secondInput: BattleInputState | undefined,
+    firstIsPlayer: boolean,
+  ): void {
+    const extra = this.collaborateExtra;
+    if (!extra?.shop.open) return;
+
+    const playerInput = firstIsPlayer ? firstInput : secondInput;
+    const targetInput = firstIsPlayer ? secondInput : firstInput;
+    let next = extra;
+    next = this.applyCollaborateShopInput(next, "Player1", playerInput);
+    next = this.applyCollaborateShopInput(next, "Player2", targetInput);
+    this.collaborateExtra = next;
+  }
+
+  private applyCollaborateShopInput(
+    extra: CollaborateExtraState,
+    key: "Player1" | "Player2",
+    input: BattleInputState | undefined,
+  ): CollaborateExtraState {
+    let next = extra;
+    if (input?.shopPurchaseItemId) {
+      next = this.tryPurchaseCollaborateShopItem(
+        next,
+        key,
+        input.shopPurchaseItemId,
+      );
+    }
+    if (!input?.shopReadyPressed) {
+      return next;
+    }
+    return {
+      ...next,
+      shop: {
+        ...next.shop,
+        readyByPlayerId: {
+          ...next.shop.readyByPlayerId,
+          [key]: true,
+        },
+      },
+    };
+  }
+
+  private tryPurchaseCollaborateShopItem(
+    extra: CollaborateExtraState,
+    key: "Player1" | "Player2",
+    itemId: string,
+  ): CollaborateExtraState {
+    if (extra.shop.readyByPlayerId[key]) return extra;
+    const fighter = key === "Player1" ? this.playerFighter : this.targetFighter;
+    if (this.isFighterDefeated(fighter.state)) return extra;
+
+    const item = extra.shop.goodsByPlayerId[key].find(
+      (candidate) => candidate.id === itemId,
+    );
+    if (!item) return extra;
+    if (item.kind === "sold_out") return extra;
+    if (extra.shop.purchasesByPlayerId[key].includes(item.id)) return extra;
+
+    const money = extra.moneyByPlayerId[key];
+    if (money < item.price) return extra;
+
+    this.applyCollaborateShopItem(fighter, item);
+    return {
+      ...extra,
+      moneyByPlayerId: {
+        ...extra.moneyByPlayerId,
+        [key]: clampCollaborateCurrency(money - item.price),
+      },
+      shop: {
+        ...extra.shop,
+        purchasesByPlayerId: {
+          ...extra.shop.purchasesByPlayerId,
+          [key]: [...extra.shop.purchasesByPlayerId[key], item.id],
+        },
+      },
+    };
+  }
+
+  private applyCollaborateShopItem(
+    fighter: BattleFighter,
+    item: CollaborateShopItemState,
+  ): void {
+    switch (item.kind) {
+      case "life":
+        fighter.state.lives += 1;
+        return;
+      case "bomb":
+        fighter.state.bombs += 1;
+        return;
+      case "point":
+        this.pointManager.setPointCount(
+          fighter.state,
+          fighter.state.pointCount + 80,
+        );
+        return;
+      case "ability_card":
+        if (item.abilityCardId) {
+          fighter.acquireAbilityCard(getAbilityCard(item.abilityCardId as AbilityCardId));
+        }
+        return;
+    }
+  }
+
+  private recoverDeadCollaborateShopPlayers(): void {
+    if (!this.collaborateExtra) return;
+    let extra = this.collaborateExtra;
+    for (const [key, fighter] of [
+      ["Player1", this.playerFighter],
+      ["Player2", this.targetFighter],
+    ] as const) {
+      if (!this.isFighterDefeated(fighter.state)) continue;
+      fighter.state.lives = Math.max(1, fighter.state.lives);
+      fighter.state.deadUntil = 0;
+      fighter.state.actionLockedUntil = 0;
+      fighter.state.nonFireActionLockedUntil = 0;
+      fighter.state.movementLockedUntil = 0;
+      fighter.state.switchLockedUntil = 0;
+      extra = {
+        ...extra,
+        shop: {
+          ...extra.shop,
+          readyByPlayerId: {
+            ...extra.shop.readyByPlayerId,
+            [key]: true,
+          },
+        },
+      };
+    }
+    this.collaborateExtra = extra;
+  }
+
+  private createCollaborateShopGoodsByPlayer(
+    shopIndex: number,
+    rarityPulls: Readonly<Partial<Record<"common" | "rare", number>>> | undefined,
+  ): Readonly<Record<"Player1" | "Player2" | "Neutral", readonly CollaborateShopItemState[]>> {
+    return {
+      Player1: this.createCollaborateShopGoods(
+        shopIndex,
+        rarityPulls,
+        this.player.abilityCards.map((card) => card.id),
+        "Player1",
+      ),
+      Player2: this.createCollaborateShopGoods(
+        shopIndex,
+        rarityPulls,
+        this.target.abilityCards.map((card) => card.id),
+        "Player2",
+      ),
+      Neutral: [],
+    };
+  }
+
+  private createCollaborateShopGoods(
+    shopIndex: number,
+    rarityPulls: Readonly<Partial<Record<"common" | "rare", number>>> | undefined,
+    ownedAbilityCardIds: readonly string[],
+    ownerKey: "Player1" | "Player2",
+  ): readonly CollaborateShopItemState[] {
+    const baseGoods: CollaborateShopItemState[] = [
+      { id: `shop-${shopIndex}:life`, kind: "life", price: 46 },
+      { id: `shop-${shopIndex}:bomb`, kind: "bomb", price: 46 },
+      { id: `shop-${shopIndex}:point`, kind: "point", price: 46 },
+    ];
+    const cardGoods = drawCollaborateShopCards(
+      this.seed,
+      shopIndex,
+      rarityPulls ?? { common: 4 },
+      ownedAbilityCardIds,
+      getAllAbilityCardDefinitions(),
+    ).map((card) => ({
+      id:
+        card.kind === "sold_out"
+          ? `shop-${shopIndex}:${ownerKey}:sold-out:${card.slot}`
+          : `shop-${shopIndex}:${ownerKey}:card:${card.id}`,
+      kind: card.kind,
+      price: 46,
+      abilityCardId: card.kind === "ability_card" ? card.id : undefined,
+    }));
+    return [...baseGoods, ...cardGoods];
   }
 
   private stepTargetAi(): void {
@@ -1404,4 +1603,73 @@ function clampCollaborateCurrency(value: number): number {
     return 0;
   }
   return Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, Math.floor(value)));
+}
+
+function drawCollaborateShopCards(
+  seed: number,
+  shopIndex: number,
+  rarityPulls: Readonly<Partial<Record<"common" | "rare", number>>>,
+  ownedAbilityCardIds: readonly string[],
+  cards: readonly { readonly id: string; readonly collaborateShop?: { readonly rarity: "common" | "rare" | "disabled" } }[],
+): readonly (
+  | { readonly kind: "ability_card"; readonly id: string }
+  | { readonly kind: "sold_out"; readonly slot: number }
+)[] {
+  const owned = new Set(ownedAbilityCardIds);
+  const available = cards.filter(
+    (card) =>
+      (card.collaborateShop?.rarity ?? "common") !== "disabled" &&
+      !owned.has(card.id),
+  );
+  const common = available.filter(
+    (card) => (card.collaborateShop?.rarity ?? "common") === "common",
+  );
+  const rare = available.filter(
+    (card) => card.collaborateShop?.rarity === "rare",
+  );
+  const rng = mulberry32((seed ^ (shopIndex * 0x9e3779b9)) >>> 0);
+  const picked: Array<
+    | { readonly kind: "ability_card"; readonly id: string }
+    | { readonly kind: "sold_out"; readonly slot: number }
+  > = [];
+  for (const card of drawWithoutReplacement(common, rarityPulls.common ?? 0, rng)) {
+    picked.push({ kind: "ability_card", id: card.id });
+  }
+  while (picked.length < (rarityPulls.common ?? 0)) {
+    picked.push({ kind: "sold_out", slot: picked.length });
+  }
+  const rareStart = picked.length;
+  for (const card of drawWithoutReplacement(rare, rarityPulls.rare ?? 0, rng)) {
+    picked.push({ kind: "ability_card", id: card.id });
+  }
+  while (picked.length < rareStart + (rarityPulls.rare ?? 0)) {
+    picked.push({ kind: "sold_out", slot: picked.length });
+  }
+  return picked.slice(0, 4);
+}
+
+function drawWithoutReplacement<T>(
+  source: readonly T[],
+  count: number,
+  rng: () => number,
+): readonly T[] {
+  const pool = [...source];
+  const picked: T[] = [];
+  while (picked.length < count && pool.length > 0) {
+    const index = Math.floor(rng() * pool.length);
+    const [item] = pool.splice(index, 1);
+    if (item !== undefined) picked.push(item);
+  }
+  return picked;
+}
+
+function mulberry32(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
 }

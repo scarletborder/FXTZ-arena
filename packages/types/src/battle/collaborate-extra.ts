@@ -11,7 +11,7 @@ export type CollaborateTransitionType = "auto" | "manual";
 
 export interface CollaborateShopItemState {
   readonly id: string;
-  readonly kind: "basic" | "ability_card";
+  readonly kind: "life" | "bomb" | "point" | "ability_card" | "sold_out";
   readonly price: number;
   readonly abilityCardId?: string;
 }
@@ -19,7 +19,9 @@ export interface CollaborateShopItemState {
 export interface CollaborateShopState {
   readonly open: boolean;
   readonly shopIndex: number;
+  readonly rarityPulls: Readonly<Partial<Record<"common" | "rare", number>>>;
   readonly goods: readonly CollaborateShopItemState[];
+  readonly goodsByPlayerId: Readonly<Record<PlayerId, readonly CollaborateShopItemState[]>>;
   readonly purchasesByPlayerId: Readonly<Record<PlayerId, readonly string[]>>;
   readonly readyByPlayerId: Readonly<Record<PlayerId, boolean>>;
 }
@@ -76,7 +78,9 @@ export function createDefaultCollaborateExtraState(
     shop: {
       open: false,
       shopIndex: 0,
+      rarityPulls: {},
       goods: [],
+      goodsByPlayerId: { Player1: [], Player2: [], Neutral: [] },
       purchasesByPlayerId: { Player1: [], Player2: [], Neutral: [] },
       readyByPlayerId: { Player1: false, Player2: false, Neutral: false },
     },

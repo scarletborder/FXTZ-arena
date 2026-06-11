@@ -145,7 +145,19 @@ export function cloneCollaborateExtra(
     wave: { ...state.wave },
     shop: {
       ...state.shop,
+      rarityPulls: { ...state.shop.rarityPulls },
       goods: state.shop.goods.map((item) => ({ ...item })),
+      goodsByPlayerId: {
+        Player1: state.shop.goodsByPlayerId.Player1.map((item) => ({
+          ...item,
+        })),
+        Player2: state.shop.goodsByPlayerId.Player2.map((item) => ({
+          ...item,
+        })),
+        Neutral: state.shop.goodsByPlayerId.Neutral.map((item) => ({
+          ...item,
+        })),
+      },
       purchasesByPlayerId: {
         Player1: [...state.shop.purchasesByPlayerId.Player1],
         Player2: [...state.shop.purchasesByPlayerId.Player2],

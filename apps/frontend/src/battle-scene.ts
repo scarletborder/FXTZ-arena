@@ -45,6 +45,7 @@ import {
 } from "./battle/keybind";
 import { BattleView } from "./battle/view";
 import { CollaborateTransitionDialog } from "./battle/view/ui/CollaborateTransitionDialog";
+import { CollaborateShopPanel } from "./battle/view/ui/CollaborateShopPanel";
 import { BattlePauseMenuController } from "./battle/view/pause";
 import { Depth } from "./utils/depth";
 import ConsoleCmd, { type DebugHashRow } from "./commands/ConsoleCmd";
@@ -115,6 +116,9 @@ export class BattleScene extends Phaser.Scene {
   private spectatorOverride: SpectatorBattleOverride | null = null;
   private transitionReadyRequested = false;
   private transitionDialog: CollaborateTransitionDialog | undefined;
+  private shopPanel: CollaborateShopPanel | undefined;
+  private pendingShopPurchaseItemId: string | undefined;
+  private shopReadyRequested = false;
 
   constructor() {
     super("battle");
@@ -238,6 +242,14 @@ export class BattleScene extends Phaser.Scene {
     this.transitionDialog = new CollaborateTransitionDialog(this, () =>
       this.requestCollaborateTransitionReady(),
     );
+    this.shopPanel = new CollaborateShopPanel(this, {
+      onPurchase: (itemId) => {
+        this.pendingShopPurchaseItemId = itemId;
+      },
+      onReady: () => {
+        this.shopReadyRequested = true;
+      },
+    });
     this.lastInput = createBattleInput(
       this,
       this.keys,
@@ -332,6 +344,7 @@ export class BattleScene extends Phaser.Scene {
           readonly pointerY: number;
         };
         this.lastInput = this.applyCollaborateTransitionReady(this.lastInput);
+        this.lastInput = this.applyCollaborateShopInput(this.lastInput);
         if (
           (this.sceneData.mode === "online" ||
             this.sceneData.mode === "local") &&
@@ -379,6 +392,14 @@ export class BattleScene extends Phaser.Scene {
     this.transitionDialog?.update(
       this.currentOutput.state.collaborateExtra,
       this.combatSync?.localFighterKey() ?? "Player1",
+    );
+    this.shopPanel?.update(
+      this.currentOutput.state.collaborateExtra,
+      this.combatSync?.localFighterKey() ?? "Player1",
+      {
+        Player1: this.currentOutput.state.player,
+        Player2: this.currentOutput.state.target,
+      },
     );
     if (this.rollbackVisualFrames > 0) {
       this.rollbackVisualFrames -= 1;
@@ -592,6 +613,32 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
+  private applyCollaborateShopInput<T extends BattleInputState>(input: T): T {
+    const extra = this.currentOutput?.state.collaborateExtra;
+    if (!extra?.shop.open) {
+      this.pendingShopPurchaseItemId = undefined;
+      this.shopReadyRequested = false;
+      return {
+        ...input,
+        shopReadyPressed: false,
+        shopPurchaseItemId: undefined,
+      };
+    }
+    const localKey = this.combatSync?.localFighterKey() ?? "Player1";
+    const localReady = extra.shop.readyByPlayerId[localKey];
+    const purchase = localReady ? undefined : this.pendingShopPurchaseItemId;
+    const ready = !localReady && this.shopReadyRequested;
+    this.pendingShopPurchaseItemId = undefined;
+    if (ready) {
+      this.shopReadyRequested = false;
+    }
+    return {
+      ...input,
+      shopReadyPressed: ready,
+      shopPurchaseItemId: purchase,
+    };
+  }
+
   private destroyTransitionDialog(): void {
     this.transitionDialog?.destroy();
     this.transitionDialog = undefined;
@@ -767,6 +814,8 @@ export class BattleScene extends Phaser.Scene {
     this.mobileControls?.destroy();
     this.mobileControls = undefined;
     this.destroyTransitionDialog();
+    this.shopPanel?.destroy();
+    this.shopPanel = undefined;
     this.arenaBounds = DEFAULT_ARENA_BOUNDS;
     this.scale.setGameSize(GAME_WIDTH, GAME_HEIGHT);
     this.cameras.main?.setSize(GAME_WIDTH, GAME_HEIGHT);
