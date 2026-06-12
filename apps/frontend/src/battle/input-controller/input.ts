@@ -6,11 +6,11 @@ import {
   ARENA_WIDTH_PX,
   type ArenaBounds,
 } from "@repo/constants";
-import type { FighterState } from "./types";
-import type { BattleKeyMap } from "./keybind";
-import type { BattleMobileControls } from "./keybind";
+import type { FighterState } from "../types";
+import type { BattleKeyMap } from ".";
+import type { BattleMobileControls } from ".";
 
-export type { BattleKeyMap } from "./keybind";
+export type { BattleKeyMap } from ".";
 
 export interface BattleInputBundle extends BattleInputState {
   readonly pointerX: number;

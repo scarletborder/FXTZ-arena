@@ -1,9 +1,9 @@
 import Phaser from "phaser";
 import { DEFAULT_MAPS, getAllAbilityCardDefinitions, getAllCharacterDefinitions } from "@repo/content";
 
-import { assetUrl } from "../utils/assets";
-import { hasResourceAsset } from "../utils/resource-pack";
-import { abilityCardIconTextureKey } from "../ability-card-assets";
+import { assetUrl } from "../../utils/assets";
+import { hasResourceAsset } from "../../utils/resource-pack";
+import { abilityCardIconTextureKey } from "../../ability-card-assets";
 
 export function loadPortraitAssets(scene: Phaser.Scene, onComplete?: () => void): void {
   const pendingPortraitKeys = new Set<string>();

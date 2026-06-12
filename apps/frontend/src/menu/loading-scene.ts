@@ -3,7 +3,7 @@ import { createRaidLogicRuntime } from "@repo/raid-logic";
 import { t } from "@repo/i18n";
 import type { AbilityCardId, CharacterId, ServerMessage } from "@repo/types";
 
-import { loadPortraitAssets, queueBattleAssets } from "../battle/assets";
+import { loadPortraitAssets, queueBattleAssets } from "../battle/utils/assets";
 import type { FighterLoadout } from "../battle/loadout";
 import { P2pConnection, type PeerConnection, type P2pStatus } from "../network/p2p";
 import { connectionManager, getCardById, getCharacterById, type LoadingData, type SceneKey } from "./shared";

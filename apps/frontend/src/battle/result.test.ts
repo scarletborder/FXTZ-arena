@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveResultWinnerName, resolveWinnerPlayerId } from "./result";
+import { resolveResultWinnerName, resolveWinnerPlayerId } from "./utils/result";
 
 describe("resolveResultWinnerName", () => {
   it("uses deaths rather than lives for offline battle results", () => {

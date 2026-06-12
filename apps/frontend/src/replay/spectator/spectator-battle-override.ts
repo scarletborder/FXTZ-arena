@@ -3,13 +3,13 @@ import { createRaidLogicRuntime, type BattleOutputFrame, type RaidLogicRuntime }
 import { FIXED_STEP_MS } from "@repo/constants";
 import type { BattleConfig, PlayerId, ServerMessage } from "@repo/types";
 
-import { createBattleInput } from "../../battle/input";
-import type { BattleKeyMap } from "../../battle/keybind";
+import { createBattleInput } from "../../battle/input-controller/input";
+import type { BattleKeyMap } from "../../battle/input-controller";
 import { BattleView } from "../../battle/view";
 import { BattlePauseMenuController } from "../../battle/view/pause";
-import { BattleAudioDirector } from "../../battle/audio";
+import { BattleAudioDirector } from "../../battle/sfx/audio";
 import type { BattleLoadouts, BattleSceneData } from "../../battle/loadout";
-import { resolveResultWinnerName } from "../../battle/result";
+import { resolveResultWinnerName } from "../../battle/utils/result";
 import type { BattleBgmBridge } from "../../sound";
 import type { UdpDirectSession } from "../../network/udp-direct-session";
 import { connectionManager, type ResultData } from "../../menu/shared";

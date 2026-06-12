@@ -31,7 +31,7 @@ import { RoomLifecycle } from "../../../../dedicated-server/src/room/lifecycle";
 import { RoomManager } from "../../../../dedicated-server/src/room/manager";
 import { SessionStore } from "../../../../dedicated-server/src/session/store";
 import type { TransportConnection } from "../../../../dedicated-server/src/transport/interface";
-import { createBattleInput, type BattleKeyMap } from "../../battle/input";
+import { createBattleInput, type BattleKeyMap } from "../../battle/input-controller/input";
 import type { BattleSceneData } from "../../battle/loadout";
 import type { ConnectionManager } from "../client";
 import type { P2pConnection } from "../p2p";

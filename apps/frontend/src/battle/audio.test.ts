@@ -4,7 +4,7 @@ import type { BattleOutputState } from "@repo/raid-logic";
 import type { CharacterDefinition, FighterKey, FighterState, ProjectileState } from "@repo/content";
 
 import AudioCmd, { type AudioCommand } from "../commands/AudioCmd";
-import { BattleAudioDirector } from "./audio";
+import { BattleAudioDirector } from "./sfx/audio";
 
 describe("BattleAudioDirector", () => {
   it("does not classify Neutral projectiles as Player2 character shots", () => {

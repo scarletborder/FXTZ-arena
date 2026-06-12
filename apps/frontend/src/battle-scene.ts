@@ -28,21 +28,21 @@ import {
   type DebugPointSize,
   pointRewardSizeForDebugSize,
 } from "./battle/manager/debug-manager";
-import { createBattleInput, getBattlePointerWorld } from "./battle/input";
+import { createBattleInput, getBattlePointerWorld } from "./battle/input-controller/input";
 import {
   createBattleKeybinds,
   type BattleKeybinds,
   type BattleKeyMap,
-} from "./battle/keybind";
+} from "./battle/input-controller";
 import {
   BattleRollbackManager,
   type BattleHashBundle,
-} from "./battle/rollback-manager";
+} from "./battle/manager/rollback-manager";
 import type { BattleSceneData, BattleLoadouts } from "./battle/loadout";
 import {
   BattleMobileControls,
   shouldEnableMobileBattleControls,
-} from "./battle/keybind";
+} from "./battle/input-controller";
 import { BattleView } from "./battle/view";
 import { CollaborateTransitionDialog } from "./battle/view/ui/CollaborateTransitionDialog";
 import { CollaborateShopPanel } from "./battle/view/ui/CollaborateShopPanel";
@@ -60,11 +60,11 @@ import {
 import { CombatSyncManager } from "./network/combat";
 import { P2pConnection } from "./network/p2p";
 import { uiSettings } from "./store/settings";
-import { BattleAudioDirector } from "./battle/audio";
+import { BattleAudioDirector } from "./battle/sfx/audio";
 import {
   resolveResultWinnerName,
   resolveWinnerPlayerId,
-} from "./battle/result";
+} from "./battle/utils/result";
 import { advanceStoryAfterBattle } from "./story/state";
 import type { StoryProgressData, StoryResultData } from "./story/types";
 import type { ReplayFile } from "./replay/types";
@@ -129,7 +129,7 @@ export class BattleScene extends Phaser.Scene {
     super("battle");
   }
 
-  preload(): void {}
+  preload(): void { }
 
   create(data: BattleSceneData = {}): void {
     this.sceneData = data;
@@ -200,16 +200,16 @@ export class BattleScene extends Phaser.Scene {
     // --- Normal battle mode ---
     this.pauseMenu = this.isPausableLocalMode()
       ? new BattlePauseMenuController(this, {
-          restartEnabled: data.mode !== "training",
-          canOpen: () => !this.resultScheduled,
-          onPauseOpened: () => {
-            this.accumulator = 0;
-            this.battleBgmBridge?.pause();
-          },
-          onResumed: () => this.battleBgmBridge?.resume(),
-          onRestart: () => this.restartLocalBattle(),
-          onMainMenu: () => this.returnToMainMenu(),
-        })
+        restartEnabled: data.mode !== "training",
+        canOpen: () => !this.resultScheduled,
+        onPauseOpened: () => {
+          this.accumulator = 0;
+          this.battleBgmBridge?.pause();
+        },
+        onResumed: () => this.battleBgmBridge?.resume(),
+        onRestart: () => this.restartLocalBattle(),
+        onMainMenu: () => this.returnToMainMenu(),
+      })
       : undefined;
     this.runtime =
       data.runtime ??
@@ -1231,9 +1231,8 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const label = `FXTZ Debug Hash Bundle (mode=${
-      this.sceneData.mode ?? "offline"
-    }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${bundle.localConfirmedFrame}, serverConfirmedFrame=${bundle.serverConfirmedFrame}, authoritativeFrame=${bundle.authoritativeFrame}, sampledUpTo=${bundle.sampledUpTo}, cachedRows=${bundle.rows.length})`;
+    const label = `FXTZ Debug Hash Bundle (mode=${this.sceneData.mode ?? "offline"
+      }, winner=${winnerPlayerId ?? "local"}, runtimeFrame=${this.runtime.frame}, localConfirmedFrame=${bundle.localConfirmedFrame}, serverConfirmedFrame=${bundle.serverConfirmedFrame}, authoritativeFrame=${bundle.authoritativeFrame}, sampledUpTo=${bundle.sampledUpTo}, cachedRows=${bundle.rows.length})`;
 
     console.group(label);
     console.log(
@@ -1281,9 +1280,9 @@ export class BattleScene extends Phaser.Scene {
     const bundle = this.getDebugHashBundle(serverConfirmedFrame);
     return bundle
       ? {
-          finalGlobalHash: bundle.finalGlobalHash,
-          finalGlobalInputHash: bundle.finalGlobalInputHash,
-        }
+        finalGlobalHash: bundle.finalGlobalHash,
+        finalGlobalInputHash: bundle.finalGlobalInputHash,
+      }
       : undefined;
   }
 
