@@ -1,5 +1,9 @@
 import type { BattleInputState } from "@repo/raid-logic";
-import type { PointRewardSize } from "@repo/constants";
+import { BattleEvents, type PointRewardSize } from "@repo/constants";
+import Phaser from "phaser";
+import { DebugHashRow } from "../../commands/ConsoleCmd";
+import { getBattlePointerWorld } from "../input-controller/input";
+import { BattleSceneData } from "../loadout";
 
 export type DebugPointSize = "small" | "medium" | "large";
 
@@ -89,4 +93,139 @@ function isPresetAlternateHeld(offset: number): boolean {
     (offset >= 255 && offset < 305) ||
     (offset >= 350 && offset < 382)
   );
+}
+
+
+export class BattleDebugController {
+  private debugLiveHashEnabled = false;
+  private debugPhysicsEnabled = false;
+  private debugInputLocked = false;
+
+  constructor(
+    private scene: Phaser.Scene,
+    private sceneData: BattleSceneData,
+    private runtime: any,
+    private rollbackManager: any,
+    private view: any,
+    private mobileControls: any,
+    private arenaBounds: any,
+    private setLastInput: (input: any) => void,
+    private stepRuntime: (input: any) => void,
+    private recordDebugFrame: () => void
+  ) {
+    if (sceneData.debug) {
+      this.setDebugPhysicsEnabled(true);
+    }
+  }
+
+  getFrame(): number {
+    return this.runtime.frame;
+  }
+
+  getRecentHashes(count = 50): DebugHashRow[] {
+    return this.rollbackManager.getRecentDebugHashes(count);
+  }
+
+  getHash(frame: number): DebugHashRow | null {
+    return this.rollbackManager.getDebugHash(frame);
+  }
+
+  getLiveHashEnabled(): boolean {
+    return this.debugLiveHashEnabled;
+  }
+
+  setLiveHashEnabled(enabled: boolean): void {
+    this.debugLiveHashEnabled = enabled;
+    this.scene.events.emit(BattleEvents.SYNC_ROLLBACK_MANAGER_STATE);
+  }
+
+  rollbackToFrame(frame: number): boolean {
+    const snapshot = this.rollbackManager.getSnapshot(frame);
+    if (!snapshot) {
+      return false;
+    }
+    this.runtime.deserialize(snapshot);
+    this.scene.events.emit(BattleEvents.RESET_ACCUMULATOR);
+    this.rollbackManager.pruneAfter(frame);
+    this.recordDebugFrame();
+    return true;
+  }
+
+  runPresetScript(): DebugHashRow[] | null {
+    const PRESET_SCRIPT_ROLLBACK_FRAME = 30;
+    const PRESET_SCRIPT_FRAMES = 420;
+
+    if (!this.rollbackToFrame(PRESET_SCRIPT_ROLLBACK_FRAME)) {
+      return null;
+    }
+
+    const rows: DebugHashRow[] = [];
+    this.debugInputLocked = true;
+    try {
+      for (let offset = 0; offset < PRESET_SCRIPT_FRAMES; offset += 1) {
+        const input = createPresetScriptInput(offset);
+        const lastInput = {
+          ...input,
+          pointerX: input.aimX,
+          pointerY: input.aimY,
+        };
+        this.setLastInput(lastInput);
+        this.stepRuntime(input);
+        const row = this.getHash(this.runtime.frame);
+        if (row) {
+          rows.push({ ...row, action: describePresetScriptAction(offset) });
+        }
+      }
+    } finally {
+      this.debugInputLocked = false;
+    }
+    return rows;
+  }
+
+  spawnPoint(size: DebugPointSize): boolean {
+    if (this.sceneData.mode === "online" || this.sceneData.mode === "local") {
+      return false;
+    }
+    const pointer = getBattlePointerWorld(this.scene, this.mobileControls, this.arenaBounds);
+    this.runtime.debugSpawnPoint({
+      rewardSize: pointRewardSizeForDebugSize(size),
+      x: pointer.x,
+      y: pointer.y,
+    });
+    this.recordDebugFrame();
+    return true;
+  }
+
+  setPoint(pointCount: number): boolean {
+    if (this.sceneData.mode === "online" || this.sceneData.mode === "local") {
+      return false;
+    }
+    this.runtime.debugSetPoint(pointCount);
+    this.recordDebugFrame();
+    return true;
+  }
+
+  passStoryStage(): boolean {
+    if (!this.sceneData.story) {
+      return false;
+    }
+    this.scene.events.emit(BattleEvents.GO_TO_STORY_RESULT, true);
+    return true;
+  }
+
+  setDebugPhysicsEnabled(enabled: boolean): void {
+    this.debugPhysicsEnabled = enabled;
+    this.view.setDebugPhysics(enabled);
+    if (enabled && this.runtime.physicsReady) {
+      this.view.renderDebugBodies(this.runtime.readDebugBodies());
+    }
+  }
+
+  isDebugPhysicsEnabled(): boolean {
+    return this.debugPhysicsEnabled;
+  }
+
+  isInputLocked(): boolean {
+    return this.debugInputLocked;
+  }
 }

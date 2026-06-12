@@ -6,6 +6,7 @@ export * from "./point";
 export * from "./collaborate-scoring";
 export * from "./ability-card";
 export * from "./difficulties";
+export * from "./events";
 
 export const DEFAULT_LIVES = 2;
 export const DEFAULT_BOMBS = 3;
