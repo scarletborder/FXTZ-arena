@@ -1,4 +1,5 @@
 import { MAX_PLAYER_NAME_LENGTH, PUBLIC_SERVER } from "@repo/constants";
+import { DEFAULT_KEYBINDS, KeybindSettings } from "../battle/input-controller/pc";
 
 export interface UiSettings {
   username: string;
@@ -11,6 +12,7 @@ export interface UiSettings {
   music: number;
   sound: number;
   selfAuthed: boolean;
+  keybinds: KeybindSettings; // 键位设定
 }
 
 const STORAGE_KEYS = {
@@ -80,6 +82,22 @@ function readStringArray(key: string, fallback: string[]): string[] {
   }
 }
 
+function readKeybinds(): KeybindSettings {
+  if (!canUseLocalStorage()) {
+    return { ...DEFAULT_KEYBINDS };
+  }
+  const raw = localStorage.getItem("fxtz_keybinds");
+  if (!raw) {
+    return { ...DEFAULT_KEYBINDS };
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_KEYBINDS, ...parsed };
+  } catch {
+    return { ...DEFAULT_KEYBINDS };
+  }
+}
+
 function writeString(key: string, value: string): void {
   if (canUseLocalStorage()) {
     localStorage.setItem(key, value);
@@ -104,6 +122,12 @@ function writeStringArray(key: string, value: readonly string[]): void {
   }
 }
 
+function writeKeybinds(value: KeybindSettings): void {
+  if (canUseLocalStorage()) {
+    localStorage.setItem("fxtz_keybinds", JSON.stringify(value));
+  }
+}
+
 function normalizeVolume(value: number, fallback = 100): number {
   if (!Number.isFinite(value)) {
     return fallback;
@@ -122,7 +146,9 @@ export const uiSettings: UiSettings = {
   music: readVolume(STORAGE_KEYS.music, 60),
   sound: readVolume(STORAGE_KEYS.sound, 60),
   selfAuthed: readBoolean(STORAGE_KEYS.selfAuthed, false),
+  keybinds: readKeybinds(),
 };
+
 uiSettings.stunServers = normalizeStunServers(readStringArray(STORAGE_KEYS.stunServers, [DEFAULT_STUN_SERVER]));
 uiSettings.stunServer = normalizeStunServer(readString(STORAGE_KEYS.stunServer, uiSettings.stunServers[0] ?? DEFAULT_STUN_SERVER));
 if (!uiSettings.stunServers.includes(uiSettings.stunServer)) {
@@ -188,6 +214,16 @@ export function setSoundVolume(volume: number): void {
 export function setSelfAuthed(selfAuthed: boolean): void {
   uiSettings.selfAuthed = selfAuthed;
   writeBoolean(STORAGE_KEYS.selfAuthed, selfAuthed);
+}
+
+export function updateSingleKeybind(action: keyof KeybindSettings, key: string | number): void {
+  uiSettings.keybinds[action] = key;
+  writeKeybinds(uiSettings.keybinds);
+}
+
+export function resetKeybindsToDefault(): void {
+  uiSettings.keybinds = { ...DEFAULT_KEYBINDS };
+  writeKeybinds(uiSettings.keybinds);
 }
 
 function normalizeUsername(username: string): string {

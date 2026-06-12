@@ -5,7 +5,6 @@ import { CombatSyncManager } from "../../network/combat";
 import { PeerConnection } from "../../network/p2p";
 import { createLocalBattleConnectionManager } from "../utils/battle-helpers";
 import { connectionManager } from "../../menu/shared";
-import { uiSettings } from "../../store/settings";
 import { t } from "@repo/i18n";
 import { Depth } from "../../utils/depth";
 import { BattleEvents } from "@repo/constants";

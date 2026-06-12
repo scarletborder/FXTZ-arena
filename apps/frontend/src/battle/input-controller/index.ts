@@ -3,12 +3,13 @@ export * from "./mobile";
 import Phaser from "phaser";
 
 
-import {  type BattleInputState } from "@repo/raid-logic";
+import { type BattleInputState } from "@repo/raid-logic";
 import { type ArenaBounds, BattleEvents } from "@repo/constants";
 import { BattleKeyMap, createBattleInput, getBattlePointerWorld } from "./input";
 import { BattleSceneData } from "../loadout";
 import { BattleMobileControls, shouldEnableMobileBattleControls } from "./mobile";
 import { BattleKeybinds, createBattleKeybinds } from "./pc";
+import { uiSettings } from "../../store/settings";
 
 export class BattleInputController {
   private keybinds!: BattleKeybinds;
@@ -36,7 +37,8 @@ export class BattleInputController {
       scene.scale.autoCenter = Phaser.Scale.CENTER_HORIZONTALLY;
     }
 
-    this.keybinds = createBattleKeybinds(scene);
+    const keybinds = uiSettings.keybinds;
+    this.keybinds = createBattleKeybinds(scene, keybinds);
     this.keys = this.keybinds.keys;
 
     this.scene.events.on(BattleEvents.TRANSITION_READY, () => {

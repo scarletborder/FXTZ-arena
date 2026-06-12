@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { BattleEvents } from "@repo/constants";
 import { CollaborateShopPanel } from "../ui/CollaborateShopPanel";
+import { BattleKeyMap } from "../../input-controller";
 
 const SHOP_READY_HOLD_MS = 900;
 
@@ -12,7 +13,7 @@ export class CollaborateShopController {
   private shopReadyHoldMs = 0;
   private shopReadyHoldTriggered = false;
 
-  constructor(private scene: Phaser.Scene, private getKeys: () => any) {
+  constructor(private scene: Phaser.Scene, private getKeys: () => BattleKeyMap) {
     this.panel = new CollaborateShopPanel(scene, {
       onPurchase: (itemId) => {
         this.pendingShopPurchaseItemId = itemId;
@@ -69,23 +70,25 @@ export class CollaborateShopController {
     }
 
     const keys = this.getKeys();
-    if (Phaser.Input.Keyboard.JustDown(keys.shift)) {
+    if (Phaser.Input.Keyboard.JustDown(keys.info)) {
       this.panel.toggleKeyboardSurface();
     }
-    if (Phaser.Input.Keyboard.JustDown(keys.a)) {
+
+    if (Phaser.Input.Keyboard.JustDown(keys.moveLeft)) {
       this.panel.moveSelection(-1, 0);
-    } else if (Phaser.Input.Keyboard.JustDown(keys.d)) {
+    } else if (Phaser.Input.Keyboard.JustDown(keys.moveRight)) {
       this.panel.moveSelection(1, 0);
-    } else if (Phaser.Input.Keyboard.JustDown(keys.w)) {
+    } else if (Phaser.Input.Keyboard.JustDown(keys.moveUp)) {
       this.panel.moveSelection(0, -1);
-    } else if (Phaser.Input.Keyboard.JustDown(keys.s)) {
+    } else if (Phaser.Input.Keyboard.JustDown(keys.moveDown)) {
       this.panel.moveSelection(0, 1);
     }
-    if (Phaser.Input.Keyboard.JustDown(keys.e)) {
+
+    if (Phaser.Input.Keyboard.JustDown(keys.activeCard)) {
       this.panel.activateSelection();
     }
 
-    if (keys.r.isDown) {
+    if (keys.reload.isDown) {
       this.shopReadyHoldMs = Math.min(SHOP_READY_HOLD_MS, this.shopReadyHoldMs + delta);
       if (this.shopReadyHoldMs >= SHOP_READY_HOLD_MS && !this.shopReadyHoldTriggered) {
         this.shopReadyHoldTriggered = true;

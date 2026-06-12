@@ -1,15 +1,27 @@
 import Phaser from "phaser";
 
 export interface BattleKeyMap {
-  readonly w: Phaser.Input.Keyboard.Key;
-  readonly a: Phaser.Input.Keyboard.Key;
-  readonly s: Phaser.Input.Keyboard.Key;
-  readonly d: Phaser.Input.Keyboard.Key;
-  readonly shift: Phaser.Input.Keyboard.Key;
-  readonly r: Phaser.Input.Keyboard.Key;
-  readonly tab: Phaser.Input.Keyboard.Key;
+  readonly moveUp: Phaser.Input.Keyboard.Key;
+  readonly moveLeft: Phaser.Input.Keyboard.Key;
+  readonly moveDown: Phaser.Input.Keyboard.Key;
+  readonly moveRight: Phaser.Input.Keyboard.Key;
+  readonly alternate: Phaser.Input.Keyboard.Key;
+  readonly reload: Phaser.Input.Keyboard.Key;
+  readonly info: Phaser.Input.Keyboard.Key;
   readonly enter: Phaser.Input.Keyboard.Key;
-  readonly e: Phaser.Input.Keyboard.Key;
+  readonly activeCard: Phaser.Input.Keyboard.Key;
+}
+
+export interface KeybindSettings {
+  moveUp: string | number;
+  moveLeft: string | number;
+  moveDown: string | number;
+  moveRight: string | number;
+  alternate: string | number;
+  reload: string | number;
+  info: string | number;
+  enter: string | number;
+  activeCard: string | number;
 }
 
 export interface BattleKeybinds {
@@ -17,23 +29,40 @@ export interface BattleKeybinds {
   destroy(): void;
 }
 
-export function createBattleKeybinds(scene: Phaser.Scene): BattleKeybinds {
+// 默认的 WASD 经典配置
+export const DEFAULT_KEYBINDS: KeybindSettings = {
+  moveUp: Phaser.Input.Keyboard.KeyCodes.W,         // 87
+  moveLeft: Phaser.Input.Keyboard.KeyCodes.A,       // 65
+  moveDown: Phaser.Input.Keyboard.KeyCodes.S,       // 83
+  moveRight: Phaser.Input.Keyboard.KeyCodes.D,      // 68
+  alternate: Phaser.Input.Keyboard.KeyCodes.SHIFT,  // 16
+  reload: Phaser.Input.Keyboard.KeyCodes.R,         // 82
+  info: Phaser.Input.Keyboard.KeyCodes.TAB,         // 9
+  enter: Phaser.Input.Keyboard.KeyCodes.ENTER,      // 13
+  activeCard: Phaser.Input.Keyboard.KeyCodes.E,     // 69
+};
+
+export function createBattleKeybinds(
+  scene: Phaser.Scene,
+  customSettings?: Partial<KeybindSettings>
+): BattleKeybinds {
   const keyboard = scene.input.keyboard;
   if (!keyboard) {
     throw new Error("Battle scene requires keyboard input.");
   }
-
+  // 合并外部配置与默认配置
+  const settings = { ...DEFAULT_KEYBINDS, ...customSettings };
   const keys = keyboard.addKeys(
     {
-      w: "W",
-      a: "A",
-      s: "S",
-      d: "D",
-      shift: Phaser.Input.Keyboard.KeyCodes.SHIFT,
-      r: "R",
-      tab: Phaser.Input.Keyboard.KeyCodes.TAB,
-      enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
-      e: "E",
+      moveUp: settings.moveUp,
+      moveLeft: settings.moveLeft,
+      moveDown: settings.moveDown,
+      moveRight: settings.moveRight,
+      alternate: settings.alternate,
+      reload: settings.reload,
+      info: settings.info,
+      enter: settings.enter,
+      activeCard: settings.activeCard,
     },
     true,
     false,

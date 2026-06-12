@@ -36,18 +36,18 @@ export function createBattleInput(
     arenaBounds,
   );
   const pointer = scene.input.activePointer;
-  const keyboardMoveX = ((keys.d.isDown ? 1 : 0) - (keys.a.isDown ? 1 : 0)) as
+  const keyboardMoveX = ((keys.moveRight.isDown ? 1 : 0) - (keys.moveLeft.isDown ? 1 : 0)) as
     | -1
     | 0
     | 1;
-  const keyboardMoveY = ((keys.s.isDown ? 1 : 0) - (keys.w.isDown ? 1 : 0)) as
+  const keyboardMoveY = ((keys.moveDown.isDown ? 1 : 0) - (keys.moveUp.isDown ? 1 : 0)) as
     | -1
     | 0
     | 1;
   const moveX = mobileState?.moveX || keyboardMoveX;
   const moveY = mobileState?.moveY || keyboardMoveY;
   const manualReloadPressed =
-    (mobileState?.reloadPressed ?? false) || keys.r.isDown;
+    (mobileState?.reloadPressed ?? false) || keys.reload.isDown;
   const shootPressed =
     mobileState?.shootPressed ??
     (pointer.leftButtonDown() && !pointer.rightButtonDown());
@@ -64,13 +64,13 @@ export function createBattleInput(
     bombPressed: mobileState?.bombPressed ?? pointer.rightButtonDown(),
     activeCardPressed:
       (mobileState?.activeCardPressed ?? false) ||
-      Phaser.Input.Keyboard.JustDown(keys.e),
+      Phaser.Input.Keyboard.JustDown(keys.activeCard),
     reloadPressed:
       manualReloadPressed ||
       emptyShotReloadPressed ||
       shouldAutoReloadAfterLastShot(autoReloadContext),
-    alternateHeld: (mobileState?.alternateHeld ?? false) || keys.shift.isDown,
-    infoHeld: keys.tab.isDown,
+    alternateHeld: (mobileState?.alternateHeld ?? false) || keys.alternate.isDown,
+    infoHeld: keys.info.isDown,
     transitionReadyPressed: false,
     pointerX: pointerWorld.x,
     pointerY: pointerWorld.y,
