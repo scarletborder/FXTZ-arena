@@ -163,7 +163,10 @@ export class BattleScene extends Phaser.Scene {
       this.battleBgmBridge
     );
 
-    this.transitionCtrl = new CollaborateTransitionController(this);
+    this.transitionCtrl = new CollaborateTransitionController(
+      this,
+      () => this.inputCtrl.getKeys()
+    );
     this.shopCtrl = new CollaborateShopController(this, () => this.inputCtrl.getKeys());
 
     // 【核心修复 3】安全保护结果处理器依赖
@@ -273,7 +276,7 @@ export class BattleScene extends Phaser.Scene {
     );
 
     // 5. 更新 UI
-    this.transitionCtrl.update(collaborateExtra, localFighterKey);
+    this.transitionCtrl.update(collaborateExtra, localFighterKey, delta);
 
     if (this.rollbackVisualFrames > 0) {
       this.rollbackVisualFrames -= 1;

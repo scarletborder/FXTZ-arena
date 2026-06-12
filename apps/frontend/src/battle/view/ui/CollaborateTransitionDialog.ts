@@ -10,7 +10,11 @@ export class CollaborateTransitionDialog {
   private container: Phaser.GameObjects.Container | undefined;
   private label: Phaser.GameObjects.Text | undefined;
   private button: Phaser.GameObjects.Container | undefined;
+  private buttonBg: Phaser.GameObjects.Rectangle | undefined;
   private buttonText: Phaser.GameObjects.Text | undefined;
+  private readyProgressBg: Phaser.GameObjects.Rectangle | undefined;
+  private readyProgressFill: Phaser.GameObjects.Rectangle | undefined;
+  private readyHoldProgress = 0;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -54,8 +58,14 @@ export class CollaborateTransitionDialog {
         ? t("battle.transition_ready_done")
         : t("battle.transition_ready_button"),
     );
+    this.buttonBg?.setFillStyle(localReady ? 0x50606a : 0xe33d44, 1);
     this.button?.setAlpha(localReady ? 0.55 : 1);
+    this.renderReadyProgress(localReady);
     this.container?.setVisible(true);
+  }
+
+  setReadyHoldProgress(progress: number): void {
+    this.readyHoldProgress = Phaser.Math.Clamp(progress, 0, 1);
   }
 
   destroy(): void {
@@ -63,7 +73,11 @@ export class CollaborateTransitionDialog {
     this.container = undefined;
     this.label = undefined;
     this.button = undefined;
+    this.buttonBg = undefined;
     this.buttonText = undefined;
+    this.readyProgressBg = undefined;
+    this.readyProgressFill = undefined;
+    this.readyHoldProgress = 0;
   }
 
   private ensure(): void {
@@ -98,6 +112,13 @@ export class CollaborateTransitionDialog {
         color: "#ffffff",
       })
       .setOrigin(0.5);
+    const readyProgressBg = this.scene.add
+      .rectangle(0, 69, 132, 5, 0x071018, 0.95)
+      .setOrigin(0.5)
+      .setStrokeStyle(1, 0xffffff, 0.18);
+    const readyProgressFill = this.scene.add
+      .rectangle(-66, 69, 0, 5, 0xffcf6e, 1)
+      .setOrigin(0, 0.5);
     button.add([buttonBg, buttonText]);
     button.setSize(132, 44);
     button.setInteractive(
@@ -105,11 +126,21 @@ export class CollaborateTransitionDialog {
       Phaser.Geom.Rectangle.Contains,
     );
     button.on("pointerdown", () => this.onReady());
-    container.add([bg, label, button]);
+    container.add([bg, label, button, readyProgressBg, readyProgressFill]);
 
     this.container = container;
     this.label = label;
     this.button = button;
+    this.buttonBg = buttonBg;
     this.buttonText = buttonText;
+    this.readyProgressBg = readyProgressBg;
+    this.readyProgressFill = readyProgressFill;
+  }
+
+  private renderReadyProgress(ready: boolean): void {
+    const visible = !ready && this.readyHoldProgress > 0;
+    this.readyProgressBg?.setVisible(visible);
+    this.readyProgressFill?.setVisible(visible);
+    this.readyProgressFill?.setSize(132 * this.readyHoldProgress, 5);
   }
 }
