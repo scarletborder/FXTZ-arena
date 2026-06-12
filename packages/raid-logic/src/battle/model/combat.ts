@@ -18,8 +18,6 @@ export function applyHit(params: {
     return "ignored";
   }
 
-  const isFatal = params.victim.lives <= 0;
-
   params.victim.damageTaken += params.damage;
   params.victim.hitsTaken += 1;
   params.victim.flashUntil = params.frame + secondsToTicks(3);
@@ -33,12 +31,13 @@ export function applyHit(params: {
     params.target.hits += 1;
   }
 
-  if (isFatal) {
+  params.victim.lives = Math.max(0, params.victim.lives - 1);
+
+  if (params.victim.lives <= 0) {
     params.victim.deaths += 1;
     return "game-over";
   }
 
-  params.victim.lives -= 1;
   params.victim.bombs = params.defaultBombs;
   params.victim.invulnerableUntil = secondsToTicks(3);
   return "accepted";

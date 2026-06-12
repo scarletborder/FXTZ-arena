@@ -349,17 +349,10 @@ describe("BattleModel hit recovery", () => {
     expect(model.player.bombs).toBe(4);
   });
 
-  it("does not end the battle when Player1 drops from 1 life to 0", async () => {
+  it("ends the battle when Player1 drops from 1 life to 0", async () => {
     const model = await createBattleModel("reimu", "marisa");
     model.player.lives = 1;
 
-    hitPlayer(model);
-
-    expect(model.player.lives).toBe(0);
-    expect(model.player.deaths).toBe(0);
-    expect(model.gameOver).toBe(false);
-
-    model.player.invulnerableUntil = 0;
     hitPlayer(model);
 
     expect(model.player.lives).toBe(0);
@@ -367,18 +360,10 @@ describe("BattleModel hit recovery", () => {
     expect(model.gameOver).toBe(true);
   });
 
-  it("uses the same 0-life defeat timing for Player2", async () => {
+  it("uses the same life defeat timing for Player2", async () => {
     const model = await createBattleModel("reimu", "marisa");
     model.target.lives = 1;
 
-    hitTarget(model);
-
-    expect(model.target.lives).toBe(0);
-    expect(model.target.deaths).toBe(0);
-    expect(model.target.deadUntil).toBe(0);
-    expect(model.gameOver).toBe(false);
-
-    model.target.invulnerableUntil = 0;
     hitTarget(model);
 
     expect(model.target.lives).toBe(0);
@@ -399,6 +384,50 @@ describe("BattleModel hit recovery", () => {
     expect(model.gameOver).toBe(false);
     expect(model.result).toBe("running");
     expect(model.serialize().collaborateExtra?.state).toBe("running");
+  });
+
+  it("revives defeated collaborate players at the partner position with 1 life", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate" }),
+    );
+    model.player.lives = 1;
+    model.target.x = 321;
+    model.target.y = 222;
+
+    hitPlayerWithNeutralProjectile(model);
+    model.beginCollaborateTransition("shop", "manual");
+    model.stepVersus(
+      { ...input(), transitionReadyPressed: true },
+      { ...input(), transitionReadyPressed: true },
+    );
+
+    expect(model.player.lives).toBe(1);
+    expect(model.player.deadUntil).toBe(0);
+    expect(model.player.x).toBe(321);
+    expect(model.player.y).toBe(222);
+    expect(model.serialize().collaborateExtra?.shop.revivedByPlayerId.Player1).toBe(true);
+    expect(model.serialize().collaborateExtra?.shop.readyByPlayerId.Player1).toBe(true);
+  });
+
+  it("does not fail collaborate when a revived player dies again while the partner is alive", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate" }),
+    );
+    model.player.lives = 1;
+
+    hitPlayerWithNeutralProjectile(model);
+    model.beginCollaborateTransition("shop", "manual");
+    model.stepVersus(
+      { ...input(), transitionReadyPressed: true },
+      { ...input(), transitionReadyPressed: true },
+    );
+    hitPlayerWithNeutralProjectile(model);
+
+    expect(model.player.lives).toBe(0);
+    expect(model.player.deadUntil).toBeGreaterThan(0);
+    expect(model.target.deadUntil).toBe(0);
+    expect(model.gameOver).toBe(false);
+    expect(model.result).toBe("running");
   });
 
   it("fails collaborate battles when both players are defeated before the boss", async () => {

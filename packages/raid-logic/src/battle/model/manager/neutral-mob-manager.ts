@@ -179,6 +179,10 @@ export class NeutralMobManager {
     );
   }
 
+  clearActiveMobs(): void {
+    this.mobs.length = 0;
+  }
+
   restoreSnapshots(snapshots: readonly NeutralMobState[]): void {
     const ids = new Set(snapshots.map((snapshot) => snapshot.id));
     this.mobs.splice(

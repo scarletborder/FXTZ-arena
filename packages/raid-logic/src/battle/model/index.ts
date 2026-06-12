@@ -576,6 +576,7 @@ export class BattleModel {
     type: "auto" | "manual",
   ): void {
     if (!this.collaborateExtra) return;
+    this.clearCollaborateTransitionHazards();
     this.collaborateExtra = {
       ...this.collaborateExtra,
       state: "transition_sync",
@@ -584,6 +585,18 @@ export class BattleModel {
       player1TransitionReady: false,
       player2TransitionReady: false,
     };
+  }
+
+  private clearCollaborateTransitionHazards(): void {
+    this.projectiles.splice(
+      0,
+      this.projectiles.length,
+      ...this.projectiles.filter(
+        (projectile) => projectile.owner !== "Neutral",
+      ),
+    );
+    this.neutralMobManager.clearActiveMobs();
+    this.physics?.reset();
   }
 
   setPhysics(physics: BattlePhysics): void {
@@ -704,6 +717,11 @@ export class BattleModel {
               Player2: false,
               Neutral: false,
             },
+            revivedByPlayerId: {
+              Player1: false,
+              Player2: false,
+              Neutral: false,
+            },
           }
         : extra.shop,
     };
@@ -775,6 +793,7 @@ export class BattleModel {
     itemId: string,
   ): CollaborateExtraState {
     if (extra.shop.readyByPlayerId[key]) return extra;
+    if (extra.shop.revivedByPlayerId[key]) return extra;
     const fighter = key === "Player1" ? this.playerFighter : this.targetFighter;
     if (this.isFighterDefeated(fighter.state)) return extra;
 
@@ -857,7 +876,12 @@ export class BattleModel {
       ["Player2", this.targetFighter],
     ] as const) {
       if (!this.isFighterDefeated(fighter.state)) continue;
-      fighter.state.lives = Math.max(1, fighter.state.lives);
+      const partner = key === "Player1" ? this.target : this.player;
+      fighter.state.lives = 1;
+      fighter.state.x = partner.x;
+      fighter.state.y = partner.y;
+      fighter.state.previousX = partner.x;
+      fighter.state.previousY = partner.y;
       fighter.state.deadUntil = 0;
       fighter.state.actionLockedUntil = 0;
       fighter.state.nonFireActionLockedUntil = 0;
@@ -869,6 +893,10 @@ export class BattleModel {
           ...extra.shop,
           readyByPlayerId: {
             ...extra.shop.readyByPlayerId,
+            [key]: true,
+          },
+          revivedByPlayerId: {
+            ...extra.shop.revivedByPlayerId,
             [key]: true,
           },
         },
@@ -1153,7 +1181,7 @@ export class BattleModel {
   }
 
   private isFighterDefeated(fighter: FighterState): boolean {
-    return fighter.deaths > 0 || (fighter.lives <= 0 && fighter.deadUntil > 0);
+    return fighter.lives <= 0 && fighter.deadUntil > 0;
   }
 
   private legacyResultFromSnapshot(

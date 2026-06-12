@@ -496,7 +496,22 @@
     "shop_bag": "查看当前能力卡",
     "shop_bag_title": "能力卡背包",
     "shop_bag_empty": "暂无主动能力卡",
-    "shop_bag_active": "当前"
+    "shop_bag_active": "当前",
+    "shop_revived_no_purchase": "你已重生无法购物",
+    "shop_preview_empty": "选择一个商品查看预览",
+    "shop_preview_name_rarity": "{{name}} + {{rarity}}",
+    "shop_price": "价格：{{price}}",
+    "shop_price_sold_out": "价格：--",
+    "shop_preview_category": "分类：{{category}}",
+    "shop_category_active_card": "主动能力卡",
+    "shop_category_passive_card": "被动能力卡",
+    "shop_category_item": "道具",
+    "shop_preview_cooldown": "冷却时间：{{cooldown}}",
+    "shop_preview_uses": "使用次数：{{uses}}",
+    "shop_uses_infinite": "无限",
+    "shop_cooldown_none": "无",
+    "shop_cooldown_seconds": "{{seconds}}秒",
+    "shop_buy_hint": "点击{{key}}购买"
   },
   "replay": {
     "save_title": "保存回放",

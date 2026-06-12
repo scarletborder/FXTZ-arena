@@ -24,6 +24,7 @@ export interface CollaborateShopState {
   readonly goodsByPlayerId: Readonly<Record<PlayerId, readonly CollaborateShopItemState[]>>;
   readonly purchasesByPlayerId: Readonly<Record<PlayerId, readonly string[]>>;
   readonly readyByPlayerId: Readonly<Record<PlayerId, boolean>>;
+  readonly revivedByPlayerId: Readonly<Record<PlayerId, boolean>>;
 }
 
 export interface CollaborateWaveState {
@@ -83,6 +84,7 @@ export function createDefaultCollaborateExtraState(
       goodsByPlayerId: { Player1: [], Player2: [], Neutral: [] },
       purchasesByPlayerId: { Player1: [], Player2: [], Neutral: [] },
       readyByPlayerId: { Player1: false, Player2: false, Neutral: false },
+      revivedByPlayerId: { Player1: false, Player2: false, Neutral: false },
     },
     moneyByPlayerId: { Player1: 0, Player2: 0, Neutral: 0 },
     scoreByPlayerId: { Player1: 0, Player2: 0, Neutral: 0 },

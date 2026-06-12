@@ -478,7 +478,22 @@
     "shop_bag": "Current Cards",
     "shop_bag_title": "Ability Card Bag",
     "shop_bag_empty": "No active cards",
-    "shop_bag_active": "Active"
+    "shop_bag_active": "Active",
+    "shop_revived_no_purchase": "You revived and cannot shop",
+    "shop_preview_empty": "Select an item to preview",
+    "shop_preview_name_rarity": "{{name}} + {{rarity}}",
+    "shop_price": "Price: {{price}}",
+    "shop_price_sold_out": "Price: --",
+    "shop_preview_category": "Category: {{category}}",
+    "shop_category_active_card": "Active ability card",
+    "shop_category_passive_card": "Passive ability card",
+    "shop_category_item": "Item",
+    "shop_preview_cooldown": "Cooldown: {{cooldown}}",
+    "shop_preview_uses": "Uses: {{uses}}",
+    "shop_uses_infinite": "Infinite",
+    "shop_cooldown_none": "None",
+    "shop_cooldown_seconds": "{{seconds}}s",
+    "shop_buy_hint": "Press {{key}} to buy"
   },
   "replay": {
     "save_title": "Save Replay",

@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { BattleEvents } from "@repo/constants";
 import { CollaborateTransitionDialog } from "../ui/CollaborateTransitionDialog";
+import { BattleKeyMap } from "../../input-controller/input";
 
 const TRANSITION_READY_HOLD_MS = 900;
 
@@ -9,7 +10,7 @@ export class CollaborateTransitionController {
   private readyHoldMs = 0;
   private readyHoldTriggered = false;
 
-  constructor(private scene: Phaser.Scene, private getKeys: () => any) {
+  constructor(private scene: Phaser.Scene, private getKeys: () => BattleKeyMap) {
     this.dialog = new CollaborateTransitionDialog(scene, () => {
       this.scene.events.emit(BattleEvents.TRANSITION_READY);
     });
@@ -49,7 +50,7 @@ export class CollaborateTransitionController {
     }
 
     const keys = this.getKeys();
-    if (keys.r.isDown) {
+    if (keys.reload.isDown) {
       this.readyHoldMs = Math.min(TRANSITION_READY_HOLD_MS, this.readyHoldMs + delta);
       if (this.readyHoldMs >= TRANSITION_READY_HOLD_MS && !this.readyHoldTriggered) {
         this.readyHoldTriggered = true;

@@ -164,6 +164,7 @@ export function cloneCollaborateExtra(
         Neutral: [...state.shop.purchasesByPlayerId.Neutral],
       },
       readyByPlayerId: { ...state.shop.readyByPlayerId },
+      revivedByPlayerId: { ...state.shop.revivedByPlayerId },
     },
     moneyByPlayerId: { ...state.moneyByPlayerId },
     scoreByPlayerId: { ...state.scoreByPlayerId },

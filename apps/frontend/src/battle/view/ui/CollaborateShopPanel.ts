@@ -11,6 +11,7 @@ import type { AbilityCardDefinition, FighterState } from "@repo/content";
 
 import { abilityCardIconTextureKey } from "../../../ability-card-assets";
 import { Depth } from "../../../utils/depth";
+import { uiSettings } from "../../../store/settings";
 import type { CanonicalFighterKey } from "../../../network/combat/types";
 
 interface ShopPanelCallbacks {
@@ -55,9 +56,9 @@ export class CollaborateShopPanel {
   private bagButtonBg: Phaser.GameObjects.Rectangle | undefined;
   private readonly itemVisuals: ShopItemVisual[] = [];
   private hoverItemId: string | undefined;
-  private tooltip: Phaser.GameObjects.Container | undefined;
-  private tooltipBg: Phaser.GameObjects.Rectangle | undefined;
-  private tooltipText: Phaser.GameObjects.Text | undefined;
+  private preview: Phaser.GameObjects.Container | undefined;
+  private previewBg: Phaser.GameObjects.Rectangle | undefined;
+  private previewText: Phaser.GameObjects.Text | undefined;
   private bagDialog: Phaser.GameObjects.Container | undefined;
   private bagTitle: Phaser.GameObjects.Text | undefined;
   private readonly bagCardVisuals: CardVisual[] = [];
@@ -91,6 +92,7 @@ export class CollaborateShopPanel {
     const localMoney = extra.moneyByPlayerId[localKey];
     const localReady = shop.readyByPlayerId[localKey];
     const localDead = fighters[localKey].deadUntil > 0;
+    const localRevived = shop.revivedByPlayerId[localKey];
 
     this.syncGoods(localGoods);
     this.syncActiveCards(fighters[localKey]);
@@ -108,16 +110,16 @@ export class CollaborateShopPanel {
     this.p1Check?.setText(checkText("Player1", shop.readyByPlayerId.Player1));
     this.p2Check?.setText(checkText("Player2", shop.readyByPlayerId.Player2));
 
-    this.renderGoods(extra, localKey, localReady || localDead);
-    this.renderTooltip(hoverItem);
+    this.renderGoods(extra, localKey, localReady || localDead || localRevived);
+    this.renderPreview(hoverItem, localRevived);
     this.renderBagDialog(fighters[localKey]);
     this.readyButtonText?.setText(
-      localReady || localDead ? t("battle.shop_ready_done") : t("battle.shop_ready"),
+      localReady || localDead || localRevived ? t("battle.shop_ready_done") : t("battle.shop_ready"),
     );
-    this.readyButtonBg?.setFillStyle(localReady || localDead ? 0x50606a : 0xd94b4b, 1);
-    this.readyButton?.setAlpha(localReady || localDead ? 0.65 : 1);
+    this.readyButtonBg?.setFillStyle(localReady || localDead || localRevived ? 0x50606a : 0xd94b4b, 1);
+    this.readyButton?.setAlpha(localReady || localDead || localRevived ? 0.65 : 1);
     this.bagButtonBg?.setFillStyle(this.bagDialog?.visible ? 0x31424c : 0x182834, 1);
-    this.renderReadyProgress(localReady || localDead);
+    this.renderReadyProgress(localReady || localDead || localRevived);
     this.container?.setVisible(true);
   }
 
@@ -171,9 +173,9 @@ export class CollaborateShopPanel {
     this.bagButtonBg = undefined;
     this.hoverItemId = undefined;
     this.itemVisuals.length = 0;
-    this.tooltip = undefined;
-    this.tooltipBg = undefined;
-    this.tooltipText = undefined;
+    this.preview = undefined;
+    this.previewBg = undefined;
+    this.previewText = undefined;
     this.bagDialog = undefined;
     this.bagTitle = undefined;
     this.readyProgressBg = undefined;
@@ -195,7 +197,7 @@ export class CollaborateShopPanel {
       .setScrollFactor(0)
       .setDepth(Depth.OnlineStatus + 2);
     const bg = this.scene.add
-      .rectangle(0, 0, 760, 500, 0x101820, 0.95)
+      .rectangle(0, 0, 920, 500, 0x101820, 0.95)
       .setStrokeStyle(2, 0xffcf6e, 0.95);
     const title = this.scene.add
       .text(0, -212, "", {
@@ -206,7 +208,7 @@ export class CollaborateShopPanel {
       })
       .setOrigin(0.5);
     const money = this.scene.add
-      .text(340, -212, "", {
+      .text(420, -212, "", {
         fontFamily: "Arial",
         fontSize: "16px",
         color: "#f7e5aa",
@@ -416,39 +418,46 @@ export class CollaborateShopPanel {
     }
   }
 
-  private renderTooltip(item: CollaborateShopItemState | undefined): void {
-    this.ensureTooltip();
-    if (!item) {
-      this.tooltip?.setVisible(false);
+  private renderPreview(item: CollaborateShopItemState | undefined, revived: boolean): void {
+    this.ensurePreview();
+    if (revived) {
+      this.previewText?.setText(t("battle.shop_revived_no_purchase"));
+      this.previewBg?.setSize(250, 324);
+      this.preview?.setVisible(true);
       return;
     }
-    const text = itemDescription(item);
-    this.tooltipText?.setText(text);
-    this.tooltipBg?.setSize(300, Math.max(58, (this.tooltipText?.height ?? 32) + 24));
-    this.tooltip?.setVisible(true);
+    if (!item) {
+      this.previewText?.setText(t("battle.shop_preview_empty"));
+      this.preview?.setVisible(true);
+      return;
+    }
+    const text = itemPreview(item, getKeyDisplayName(uiSettings.keybinds.activeCard));
+    this.previewText?.setText(text);
+    this.previewBg?.setSize(250, 324);
+    this.preview?.setVisible(true);
   }
 
-  private ensureTooltip(): void {
-    if (this.tooltip || !this.container) return;
-    const tooltip = this.scene.add.container(0, -5);
+  private ensurePreview(): void {
+    if (this.preview || !this.container) return;
+    const preview = this.scene.add.container(324, -6);
     const bg = this.scene.add
-      .rectangle(0, 0, 300, 58, 0x071018, 0.96)
+      .rectangle(0, 0, 250, 324, 0x071018, 0.96)
       .setStrokeStyle(1, 0xffcf6e, 0.75);
     const text = this.scene.add
-      .text(0, 0, "", {
+      .text(-108, -142, "", {
         fontFamily: "Arial",
         fontSize: "14px",
         color: "#f6f1e6",
-        align: "center",
-        wordWrap: { width: 270 },
+        align: "left",
+        lineSpacing: 5,
+        wordWrap: { width: 216 },
       })
-      .setOrigin(0.5);
-    tooltip.add([bg, text]);
-    tooltip.setVisible(false);
-    this.container.add(tooltip);
-    this.tooltip = tooltip;
-    this.tooltipBg = bg;
-    this.tooltipText = text;
+      .setOrigin(0, 0);
+    preview.add([bg, text]);
+    this.container.add(preview);
+    this.preview = preview;
+    this.previewBg = bg;
+    this.previewText = text;
   }
 
   private renderReadyProgress(ready: boolean): void {
@@ -688,12 +697,69 @@ function itemDescription(item: CollaborateShopItemState): string {
   }
 }
 
+function itemPreview(item: CollaborateShopItemState, activeKeyName: string): string {
+  const card = abilityCard(item);
+  const rarity =
+    card?.collaborateShop?.rarity === "rare" ? "rare" : "common";
+  const category =
+    item.kind === "ability_card" && card?.kind === "active"
+      ? t("battle.shop_category_active_card")
+      : item.kind === "ability_card"
+        ? t("battle.shop_category_passive_card")
+        : t("battle.shop_category_item");
+  const lines = [
+    t("battle.shop_preview_name_rarity", {
+      name: itemName(item),
+      rarity,
+    }),
+    item.kind === "sold_out"
+      ? t("battle.shop_price_sold_out")
+      : t("battle.shop_price", { price: item.price }),
+    t("battle.shop_preview_category", { category }),
+  ];
+
+  if (card?.kind === "active") {
+    lines.push(
+      t("battle.shop_preview_cooldown", {
+        cooldown: formatCooldown(card.cooldownTicks),
+      }),
+      t("battle.shop_preview_uses", {
+        uses: card.useLimit === "infinite" ? t("battle.shop_uses_infinite") : card.useLimit,
+      }),
+    );
+  }
+
+  lines.push("", itemDescription(item), "", t("battle.shop_buy_hint", { key: activeKeyName }));
+  return lines.join("\n");
+}
+
 function abilityCard(
   item: CollaborateShopItemState,
 ): AbilityCardDefinition | undefined {
   return item.abilityCardId
     ? getAbilityCardDefinition(item.abilityCardId as AbilityCardId)
     : undefined;
+}
+
+function formatCooldown(ticks: number): string {
+  if (ticks <= 0) {
+    return t("battle.shop_cooldown_none");
+  }
+  return t("battle.shop_cooldown_seconds", {
+    seconds: Math.round((ticks / 60) * 10) / 10,
+  });
+}
+
+function getKeyDisplayName(value: string | number): string {
+  if (typeof value === "string") {
+    return value.toUpperCase();
+  }
+  for (const [name, code] of Object.entries(Phaser.Input.Keyboard.KeyCodes)) {
+    if (code === value) {
+      return name.toUpperCase();
+    }
+  }
+  return String(value);
 }
 
 function formatMoneyDisplay(params: {
