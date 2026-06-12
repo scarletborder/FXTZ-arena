@@ -9,71 +9,95 @@ import {
 } from "../ui";
 import {
   uiSettings,
-  updateSingleKeybind,
-  resetKeybindsToDefault,
+  setKeybinds,
 } from "../../store/settings";
 import type { SettingsScene } from "./index";
-import { KeybindSettings } from "../../battle/input-controller/pc";
+import { KeybindSettings, DEFAULT_KEYBINDS } from "../../battle/input-controller";
 
 interface KeyRowConfig {
   action: keyof KeybindSettings;
-  label: string;
+  labelKey: string;
 }
 
 const LEFT_COLUMN_KEYS: KeyRowConfig[] = [
-  { action: "moveUp", label: "向上移动 (Move Up)" },
-  { action: "moveLeft", label: "向左移动 (Move Left)" },
-  { action: "moveDown", label: "向下移动 (Move Down)" },
-  { action: "moveRight", label: "向右移动 (Move Right)" },
-  { action: "reload", label: "手动装弹/商店准备 (Reload)" },
+  { action: "moveUp", labelKey: "settings.keyboard.moveUp" },
+  { action: "moveLeft", labelKey: "settings.keyboard.moveLeft" },
+  { action: "moveDown", labelKey: "settings.keyboard.moveDown" },
+  { action: "moveRight", labelKey: "settings.keyboard.moveRight" },
+  { action: "reload", labelKey: "settings.keyboard.reload" },
 ];
 
 const RIGHT_COLUMN_KEYS: KeyRowConfig[] = [
-  { action: "activeCard", label: "激活卡牌/激活道具 (Active)" },
-  { action: "alternate", label: "次要按键/切换商店 (Alt)" },
-  { action: "info", label: "战局看板信息 (Info)" },
-  { action: "enter", label: "确定按键 (Enter)" },
+  { action: "activeCard", labelKey: "settings.keyboard.active" },
+  { action: "alternate", labelKey: "settings.keyboard.alt" },
+  { action: "info", labelKey: "settings.keyboard.info" },
+  { action: "enter", labelKey: "settings.keyboard.enter" },
 ];
 
-/**
- * 转换器 1：反向解析器
- * 将存储中的 string 或 number 转换为人类可读的键位名（例如 16 转换为 "SHIFT"）
- */
 function getKeyDisplayName(value: string | number): string {
   if (typeof value === "string") {
     return value.toUpperCase();
   }
-
-  // 遍历 Phaser 内置的 KeyCodes 进行反向匹配
   const KeyCodes = Phaser.Input.Keyboard.KeyCodes;
   for (const [name, code] of Object.entries(KeyCodes)) {
     if (code === value) {
       return name.toUpperCase();
     }
   }
-
   return String(value);
 }
 
-/**
- * 转换器 2：输入捕获器
- * 拦截键盘事件并转换为 Phaser 兼容的按键码（通常返回 number）
- */
 function getPhaserKey(event: KeyboardEvent): string | number {
-  // 原生 keyCode (如 16, 9) 在数值上与 Phaser.Input.Keyboard.KeyCodes 完全一致
   if (event.keyCode) {
     return event.keyCode;
   }
-  // 回退机制：如果部分浏览器不支持 keyCode 则使用大写字符
   return event.key.toUpperCase();
 }
 
+// 冲突检测函数
+function findDuplicates(keybinds: KeybindSettings) {
+  const seen = new Map<string | number, Array<keyof KeybindSettings>>();
+
+  for (const [action, key] of Object.entries(keybinds)) {
+    const act = action as keyof KeybindSettings;
+    if (!seen.has(key)) {
+      seen.set(key, []);
+    }
+    seen.get(key)!.push(act);
+  }
+
+  const duplicates = new Set<string | number>();
+  const duplicatedActions = new Set<keyof KeybindSettings>();
+
+  for (const [key, actions] of seen.entries()) {
+    if (actions.length > 1) {
+      duplicates.add(key);
+      actions.forEach(act => duplicatedActions.add(act));
+    }
+  }
+
+  return {
+    duplicated: duplicates.size > 0,
+    duplicates,
+    duplicatedActions
+  };
+}
+
 export function renderKeyboardTab(scene: SettingsScene, layer: Phaser.GameObjects.Container): void {
+  // 1. 声明编辑时的临时键位对象
+  let tempKeybinds: KeybindSettings = { ...uiSettings.keybinds };
+
   let listeningAction: keyof KeybindSettings | null = null;
   let activeCaptureCleanup: (() => void) | undefined = undefined;
 
+  // 2. 将频繁擦写重绘的 tabContent 与用于长驻展示的 statusText 做物理层级的拆分
   const tabContent = scene.add.container(0, 0);
+
+  // 状态反馈文本直接作为 layer 的子元素（避开 tabContent.removeAll(true) 的批量销毁）
+  const statusText = scene.add.text(36, 376, "", bodyStyle("#ffcf6e", 16));
+
   layer.add(tabContent);
+  layer.add(statusText);
 
   const cleanupKeyCapture = () => {
     if (activeCaptureCleanup) {
@@ -84,14 +108,19 @@ export function renderKeyboardTab(scene: SettingsScene, layer: Phaser.GameObject
   };
 
   const drawTabContent = () => {
+    // 核心修复：传入 true，彻底销毁内部旧组件，阻止它们退回到 Scene 全局显示列表
     tabContent.removeAll(true);
 
-    // 1. 绘制栏目标题
-    tabContent.add(sectionTitle(scene, 36, 34, "键盘移动绑定 (Movement)"));
-    tabContent.add(sectionTitle(scene, 580, 34, "行动与交互绑定 (Actions)"));
+    // 重新绘制标题
+    tabContent.add(sectionTitle(scene, 36, 34, t("settings.keyboard.sectionMovement") ?? "键盘移动绑定 (Movement)"));
+    tabContent.add(sectionTitle(scene, 580, 34, t("settings.keyboard.sectionActions") ?? "行动与交互绑定 (Actions)"));
 
-    // 2. 绘制左半列
+    // 执行冲突检测
+    const dupCheck = findDuplicates(tempKeybinds);
+
+    // 绘制左半列
     LEFT_COLUMN_KEYS.forEach((config, idx) => {
+      const isDuplicated = dupCheck.duplicatedActions.has(config.action);
       tabContent.add(
         createKeybindRow(
           scene,
@@ -100,15 +129,18 @@ export function renderKeyboardTab(scene: SettingsScene, layer: Phaser.GameObject
           510,
           48,
           config.action,
-          config.label,
+          t(config.labelKey) ?? config.labelKey,
+          tempKeybinds[config.action],
           () => startListening(config.action),
-          listeningAction === config.action
+          listeningAction === config.action,
+          isDuplicated
         )
       );
     });
 
-    // 3. 绘制右半列
+    // 绘制右半列
     RIGHT_COLUMN_KEYS.forEach((config, idx) => {
+      const isDuplicated = dupCheck.duplicatedActions.has(config.action);
       tabContent.add(
         createKeybindRow(
           scene,
@@ -117,27 +149,55 @@ export function renderKeyboardTab(scene: SettingsScene, layer: Phaser.GameObject
           510,
           48,
           config.action,
-          config.label,
+          t(config.labelKey) ?? config.labelKey,
+          tempKeybinds[config.action],
           () => startListening(config.action),
-          listeningAction === config.action
+          listeningAction === config.action,
+          isDuplicated
         )
       );
     });
 
-    // 4. 重置按钮
+    // 确认变动按钮
+    const confirmButton = createFightButton(
+      scene,
+      750,
+      366,
+      160,
+      42,
+      t("settings.keyboard.confirm") ?? "确认变动",
+      () => {
+        cleanupKeyCapture();
+        const checkResult = findDuplicates(tempKeybinds);
+
+        if (checkResult.duplicated) {
+          statusText.setText(t("settings.keyboard.conflictError") ?? "检测到按键冲突 (标红项)！无法保存。").setColor("#ff5c66");
+          drawTabContent(); // 刷新以重绘红色冲突边框
+        } else {
+          setKeybinds(tempKeybinds); // 持久化到全局 store 与 LocalStorage
+          statusText.setText(t("settings.keyboard.saveSuccess") ?? "键位保存成功！").setColor("#34d399");
+          drawTabContent();
+        }
+      },
+      { accent: 0x34d399 }
+    );
+    tabContent.add(confirmButton.container);
+
+    // 恢复默认按钮
     const resetButton = createFightButton(
       scene,
       930,
       366,
       160,
       42,
-      "恢复默认",
+      t("settings.keyboard.reset") ?? "恢复默认",
       () => {
         cleanupKeyCapture();
-        resetKeybindsToDefault();
+        tempKeybinds = { ...DEFAULT_KEYBINDS };
+        statusText.setText(t("settings.keyboard.resetSuccess") ?? "已载入默认，请点击 [确认变动] 进行保存").setColor("#ffcf6e");
         drawTabContent();
       },
-      { accent: 0xff5c66 }
+      { accent: 0x5c7185 }
     );
     tabContent.add(resetButton.container);
   };
@@ -145,17 +205,18 @@ export function renderKeyboardTab(scene: SettingsScene, layer: Phaser.GameObject
   const startListening = (action: keyof KeybindSettings) => {
     cleanupKeyCapture();
     listeningAction = action;
-    drawTabContent(); // 变成高亮的监听态
+    statusText.setText(""); // 开启捕获时重置文本
+    drawTabContent();
 
     const captureHandler = (event: KeyboardEvent) => {
       event.preventDefault();
       event.stopPropagation();
 
       const keyVal = getPhaserKey(event);
-      updateSingleKeybind(action, keyVal); // 保存 string 或 number
+      tempKeybinds[action] = keyVal; // 只写入本地临时缓存，点击确认变动前不修改全局设置
 
       cleanupKeyCapture();
-      drawTabContent(); // 刷新渲染
+      drawTabContent();
     };
 
     window.addEventListener("keydown", captureHandler, true);
@@ -179,31 +240,34 @@ function createKeybindRow(
   height: number,
   action: keyof KeybindSettings,
   actionLabel: string,
+  currentValue: string | number,
   onStartBinding: () => void,
-  isBinding: boolean
+  isBinding: boolean,
+  isDuplicated: boolean
 ): Phaser.GameObjects.Container {
   const container = scene.add.container(x, y);
   const background = scene.add.graphics();
 
   const fill = isBinding ? 0x221c25 : 0x151b26;
-  const stroke = isBinding ? 0xffcf6e : 0x34475c;
+  const stroke = isDuplicated ? 0xff5c66 : isBinding ? 0xffcf6e : 0x34475c;
+
   drawAngledPanel(background, 0, 0, width, height, fill, stroke, 1);
 
-  const labelText = scene.add.text(18, Math.round(height / 2 - 10), actionLabel, bodyStyle("#f6f1e6", 16));
+  const textColor = isDuplicated ? "#ff8890" : "#f6f1e6";
+  const labelText = scene.add.text(18, Math.round(height / 2 - 10), actionLabel, bodyStyle(textColor, 16));
 
-  const rawKey = uiSettings.keybinds[action];
-  // 核心更改：通过 getKeyDisplayName 转换，如 16 会被展示为 "SHIFT"
-  const btnLabel = isBinding ? "请按下按键..." : `[ ${getKeyDisplayName(rawKey)} ]`;
+  const btnLabel = isBinding ? (t("settings.keyboard.pressKey") ?? "请按下按键...") : `[ ${getKeyDisplayName(currentValue)} ]`;
 
+  // 键位按钮的 Y 坐标由 6 下移至 9，整体重心下移且维持与单元格下框的边界填充
   const keyBtn = createRectangleButton(
     scene,
     width - 158,
-    6,
+    24, // Y 坐标偏移下移
     140,
-    height - 12,
+    height - 15, // 按钮高度自适应（48 - 15 = 33）
     btnLabel,
     onStartBinding,
-    { accent: isBinding ? 0xffcf6e : 0x5c7185 }
+    { accent: isDuplicated ? 0xff5c66 : isBinding ? 0xffcf6e : 0x5c7185 }
   );
 
   container.add([background, labelText, keyBtn.container]);

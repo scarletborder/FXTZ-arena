@@ -216,8 +216,9 @@ export function setSelfAuthed(selfAuthed: boolean): void {
   writeBoolean(STORAGE_KEYS.selfAuthed, selfAuthed);
 }
 
-export function updateSingleKeybind(action: keyof KeybindSettings, key: string | number): void {
-  uiSettings.keybinds[action] = key;
+// 批量设置并保存自定义按键
+export function setKeybinds(keybinds: KeybindSettings): void {
+  uiSettings.keybinds = { ...keybinds };
   writeKeybinds(uiSettings.keybinds);
 }
 
