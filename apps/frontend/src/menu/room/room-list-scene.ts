@@ -195,7 +195,7 @@ export class RoomListScene extends Phaser.Scene {
     });
     c.add(mapDropdown.container);
     c.add(this.add.text(cx + 20, py + 160, t("battle_start.lives"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
-    const lifeLabel = this.add.text(cx + 140, py + 160, "2", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#34d399" });
+    const lifeLabel = this.add.text(cx + 140, py + 160, "3", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#34d399" });
     c.add(lifeLabel);
     c.add(this.add.text(cx + 100, py + 160, "<", { fontFamily: "Arial", fontSize: "16px", color: "#b7c7d8" }).setInteractive({ useHandCursor: true }).on("pointerdown", () => lifeLabel.setText(String(Math.max(1, parseInt(lifeLabel.text, 10) - 1)))));
     c.add(this.add.text(cx + 164, py + 160, ">", { fontFamily: "Arial", fontSize: "16px", color: "#b7c7d8" }).setInteractive({ useHandCursor: true }).on("pointerdown", () => lifeLabel.setText(String(Math.min(9, parseInt(lifeLabel.text, 10) + 1)))));

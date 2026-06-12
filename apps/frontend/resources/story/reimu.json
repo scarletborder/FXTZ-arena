@@ -2,7 +2,7 @@
   "id": "reimu",
   "title": "博丽灵梦的故事",
   "playableCharacterId": "reimu",
-  "initialLives": 2,
+  "initialLives": 3,
   "initialBombs": 3,
   "stages": [
     {
