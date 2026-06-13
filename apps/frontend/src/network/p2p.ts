@@ -2,6 +2,12 @@ import { decodeProtocolMessage, encodeProtocolMessage } from "@repo/types";
 import type { ClientMessage, PlayerId, ServerMessage } from "@repo/types";
 
 import type { ConnectionManager } from "./client";
+import {
+  createNetworkServiceContext,
+  dataChannelMessageToPeerServerMessage,
+  proxyP2pServerMessage,
+  type NetworkServiceContext,
+} from "./handler";
 
 export type P2pStatus = "disabled" | "idle" | "connecting" | "connected" | "failed";
 
@@ -41,6 +47,7 @@ export class P2pConnection implements PeerConnection {
   private pendingCandidates: RTCIceCandidateInit[] = [];
   private onStatus: ((status: P2pStatus) => void) | undefined;
   private onMessage: (message: ServerMessage) => void;
+  private readonly serviceContext: NetworkServiceContext;
 
   constructor(
     private readonly connectionManager: ConnectionManager,
@@ -48,6 +55,10 @@ export class P2pConnection implements PeerConnection {
   ) {
     this.onStatus = options.onStatus;
     this.onMessage = options.onMessage;
+    this.serviceContext = createNetworkServiceContext(options.localPlayerId, {
+      transport: "webrtc",
+      stunServer: options.stunServer,
+    });
     if (!options.enabled) {
       this.setStatus("disabled");
     }
@@ -98,38 +109,24 @@ export class P2pConnection implements PeerConnection {
   }
 
   handleServerMessage(message: ServerMessage): boolean {
-    if (this.terminalFailed) {
-      return message.type === "peer_p2p_intent" || message.type === "peer_p2p_signal" || message.type === "peer_p2p_ready" || message.type === "peer_loading_done" || message.type === "peer_game_over";
-    }
-
-    switch (message.type) {
-      case "peer_p2p_intent":
-        if (message.playerId === this.options.localPlayerId) return true;
-        this.remoteIntent = message.enabled;
-        if (!message.enabled) {
+    return proxyP2pServerMessage(this.serviceContext, message, {
+      terminalFailed: this.terminalFailed,
+      onRemoteIntent: (enabled) => {
+        this.remoteIntent = enabled;
+        if (!enabled) {
           this.fail("peer_disabled");
-          return true;
+          return;
         }
         this.tryBeginHandshake();
-        return true;
-      case "peer_p2p_signal":
-        if (message.playerId === this.options.localPlayerId) return true;
-        void this.handleSignal(message.signal);
-        return true;
-      case "peer_p2p_ready":
-        return message.playerId !== this.options.localPlayerId;
-      case "peer_loading_done":
-        if (message.playerId === this.options.localPlayerId) return true;
+      },
+      onSignal: (signal) => {
+        void this.handleSignal(signal);
+      },
+      onPeerLoadingDone: () => {
         this.peerLoadingDone = true;
-        this.onMessage(message);
-        return true;
-      case "peer_game_over":
-        if (message.playerId === this.options.localPlayerId) return true;
-        this.onMessage(message);
-        return true;
-      default:
-        return false;
-    }
+      },
+      onMessage: (nextMessage) => this.onMessage(nextMessage),
+    });
   }
 
   send(message: ClientMessage): boolean {
@@ -228,7 +225,7 @@ export class P2pConnection implements PeerConnection {
       const decoded = decodeProtocolMessage(event.data);
       if (decoded && typeof decoded === "object" && "type" in decoded) {
         const message = decoded as ClientMessage | ServerMessage;
-        const serverMessage = peerMessageToServerMessage(message, this.remotePlayerId());
+        const serverMessage = dataChannelMessageToPeerServerMessage(this.serviceContext, message);
         if (serverMessage.type === "peer_loading_done" && serverMessage.playerId !== this.options.localPlayerId) {
           this.peerLoadingDone = true;
         }
@@ -345,56 +342,9 @@ export class P2pConnection implements PeerConnection {
     }
     this.onStatus?.(status);
   }
-
-  private remotePlayerId(): PlayerId {
-    return this.options.localPlayerId === "Player1" ? "Player2" : "Player1";
-  }
 }
 
 function canUseWebRtc(): boolean {
   return typeof RTCPeerConnection !== "undefined";
 }
 
-function peerMessageToServerMessage(message: ClientMessage | ServerMessage, remotePlayerId: PlayerId): ServerMessage {
-  if (message.type === "input_frame" && !("playerId" in message)) {
-    return {
-      ...message,
-      playerId: remotePlayerId,
-    };
-  }
-  if ("frame" in message && "ackFrame" in message && "winnerPlayerId" in message && !("playerId" in message)) {
-    const gameOver = message as {
-      readonly frame: number;
-      readonly ackFrame: number;
-      readonly winnerPlayerId: PlayerId;
-    };
-    return {
-      type: "peer_game_over",
-      playerId: remotePlayerId,
-      frame: gameOver.frame,
-      ackFrame: gameOver.ackFrame,
-      winnerPlayerId: gameOver.winnerPlayerId,
-    };
-  }
-  if (message.type === "loading_done") {
-    return {
-      type: "peer_loading_done",
-      playerId: remotePlayerId,
-    };
-  }
-  if ("frame" in message && "ackFrame" in message && "winnerPlayerId" in message && !("playerId" in message)) {
-    const gameOver = message as {
-      readonly frame: number;
-      readonly ackFrame: number;
-      readonly winnerPlayerId: PlayerId;
-    };
-    return {
-      type: "peer_game_over",
-      playerId: remotePlayerId,
-      frame: gameOver.frame,
-      ackFrame: gameOver.ackFrame,
-      winnerPlayerId: gameOver.winnerPlayerId,
-    };
-  }
-  return message as ServerMessage;
-}

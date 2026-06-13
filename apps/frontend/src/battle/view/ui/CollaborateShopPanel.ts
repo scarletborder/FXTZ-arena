@@ -91,7 +91,6 @@ export class CollaborateShopPanel {
     const localGoods = shop.goodsByPlayerId[localKey] ?? shop.goods;
     const localMoney = extra.moneyByPlayerId[localKey];
     const localReady = shop.readyByPlayerId[localKey];
-    const localDead = fighters[localKey].deadUntil > 0;
     const localRevived = shop.revivedByPlayerId[localKey];
 
     this.syncGoods(localGoods);
@@ -110,16 +109,16 @@ export class CollaborateShopPanel {
     this.p1Check?.setText(checkText("Player1", shop.readyByPlayerId.Player1));
     this.p2Check?.setText(checkText("Player2", shop.readyByPlayerId.Player2));
 
-    this.renderGoods(extra, localKey, localReady || localDead || localRevived);
+    this.renderGoods(extra, localKey, localReady || localRevived);
     this.renderPreview(hoverItem, localRevived);
     this.renderBagDialog(fighters[localKey]);
     this.readyButtonText?.setText(
-      localReady || localDead || localRevived ? t("battle.shop_ready_done") : t("battle.shop_ready"),
+      localReady || localRevived ? t("battle.shop_ready_done") : t("battle.shop_ready"),
     );
-    this.readyButtonBg?.setFillStyle(localReady || localDead || localRevived ? 0x50606a : 0xd94b4b, 1);
-    this.readyButton?.setAlpha(localReady || localDead || localRevived ? 0.65 : 1);
+    this.readyButtonBg?.setFillStyle(localReady || localRevived ? 0x50606a : 0xd94b4b, 1);
+    this.readyButton?.setAlpha(localReady || localRevived ? 0.65 : 1);
     this.bagButtonBg?.setFillStyle(this.bagDialog?.visible ? 0x31424c : 0x182834, 1);
-    this.renderReadyProgress(localReady || localDead || localRevived);
+    this.renderReadyProgress(localReady || localRevived);
     this.container?.setVisible(true);
   }
 

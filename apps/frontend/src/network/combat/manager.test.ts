@@ -395,6 +395,146 @@ describe("CombatSyncManager rollback integration", () => {
       winnerPlayerId: "Player1",
     });
   });
+
+  it("replays a late forced shop ready message on its scheduled frame", () => {
+    let handler: ((msg: ServerMessage) => void) | null = null;
+    let runtimeFrame = 3;
+    const stepped: Array<{ frame: number; player: BattleInputState; target: BattleInputState }> = [];
+    const runtime = {
+      get frame() {
+        return runtimeFrame;
+      },
+      gameOver: false,
+      state: {
+        result: "running",
+        target: { lives: 1 },
+      },
+      step: () => {
+        runtimeFrame += 1;
+      },
+      deserialize: () => {
+        runtimeFrame = 1;
+      },
+      aimConsumedThisFrame: false,
+    } as unknown as RaidLogicRuntime;
+
+    new CombatSyncManager(
+      runtime,
+      {
+        send: () => undefined,
+        setMessageHandler: (nextHandler: ((msg: ServerMessage) => void) | null) => {
+          handler = nextHandler;
+        },
+      } as unknown as ConnectionManager,
+      {
+        sceneData: {
+          mode: "online",
+          localPlayerId: "Player1",
+          battleMode: "collaborate",
+        } satisfies BattleSceneData,
+        callbacks: {
+          recordFrame: () => undefined,
+          recordStepInputs: (record) => stepped.push(record),
+          getRollbackRecord: (frame) => frame === 1
+            ? ({ frame, snapshot: {} as BattleModelSnapshot } satisfies CombatRollbackRecord)
+            : null,
+          pruneRollbackHistoryAfter: () => undefined,
+          pruneRollbackHistoryBefore: () => undefined,
+          onRollback: () => undefined,
+          setStatusText: () => undefined,
+          hideStatusText: () => undefined,
+          delay: (_ms, callback) => callback(),
+          finishBattle: () => undefined,
+        },
+      },
+    );
+
+    if (!handler) {
+      throw new Error("CombatSyncManager did not install a message handler");
+    }
+    const currentHandler: (msg: ServerMessage) => void = handler;
+    currentHandler({
+      type: "peer_collaborate_shop_forced_ready",
+      playerId: "Player2",
+      frame: 2,
+      shopIndex: 1,
+    });
+
+    expect(stepped).toContainEqual(expect.objectContaining({
+      frame: 2,
+      target: expect.objectContaining({
+        shopReadyPressed: true,
+        shopPurchaseItemId: undefined,
+        activeCardSwitchId: undefined,
+      }),
+    }));
+  });
+
+  it("sends auto collaborate transition ready on the next input frame", () => {
+    const sent: ClientMessage[] = [];
+    let handler: ((msg: ServerMessage) => void) | null = null;
+    let runtimeFrame = 10;
+    const runtime = {
+      get frame() {
+        return runtimeFrame;
+      },
+      gameOver: false,
+      state: {
+        result: "running",
+        target: { lives: 1 },
+        collaborateExtra: {
+          state: "transition_sync",
+          transitionType: "auto",
+          player1TransitionReady: false,
+          player2TransitionReady: false,
+        },
+      },
+      step: () => {
+        runtimeFrame += 1;
+      },
+      aimConsumedThisFrame: false,
+    } as unknown as RaidLogicRuntime;
+
+    const manager = new CombatSyncManager(
+      runtime,
+      {
+        send: (msg: ClientMessage) => {
+          sent.push(msg);
+        },
+        setMessageHandler: (nextHandler: ((msg: ServerMessage) => void) | null) => {
+          handler = nextHandler;
+        },
+      } as unknown as ConnectionManager,
+      {
+        sceneData: {
+          mode: "online",
+          localPlayerId: "Player1",
+          battleMode: "collaborate",
+        } satisfies BattleSceneData,
+        callbacks: {
+          recordFrame: () => undefined,
+          getRollbackRecord: () => null,
+          pruneRollbackHistoryAfter: () => undefined,
+          pruneRollbackHistoryBefore: () => undefined,
+          onRollback: () => undefined,
+          setStatusText: () => undefined,
+          hideStatusText: () => undefined,
+          delay: (_ms, callback) => callback(),
+          finishBattle: () => undefined,
+        },
+      },
+    );
+
+    expect(handler).not.toBeNull();
+    manager.step(testInput());
+    manager.step(testInput());
+
+    expect(sent).toContainEqual(expect.objectContaining({
+      type: "input_frame",
+      frame: 12,
+      transitionReadyPressed: true,
+    }));
+  });
 });
 
 async function createClient(
@@ -753,15 +893,15 @@ function inputFromFrontend(playerId: PlayerId, tick: number): BattleInputState {
       cameras: { main: {} },
     } as never,
     createKeys({
-      d: sign > 0 && tick % 80 < 24,
-      a: sign < 0 && tick % 80 < 24,
-      s: tick % 90 < 30,
-      w: tick % 90 >= 30 && tick % 90 < 60,
-      r: tick % 71 === 20,
-      shift: tick % 130 >= 70,
-      tab: false,
+      moveRight: sign > 0 && tick % 80 < 24,
+      moveLeft: sign < 0 && tick % 80 < 24,
+      moveDown: tick % 90 < 30,
+      moveUp: tick % 90 >= 30 && tick % 90 < 60,
+      reload: tick % 71 === 20,
+      alternate: tick % 130 >= 70,
+      info: false,
       enter: false,
-      e: tick === 260,
+      activeCard: tick === 260,
     }),
   );
   return input;
@@ -785,14 +925,14 @@ function testInput(): BattleInputState {
 function createKeys(state: Record<keyof BattleKeyMap, boolean>): BattleKeyMap {
   const key = (isDown: boolean) => ({ isDown, _justDown: isDown });
   return {
-    w: key(state.w),
-    a: key(state.a),
-    s: key(state.s),
-    d: key(state.d),
-    shift: key(state.shift),
-    r: key(state.r),
-    tab: key(state.tab),
+    moveUp: key(state.moveUp),
+    moveLeft: key(state.moveLeft),
+    moveDown: key(state.moveDown),
+    moveRight: key(state.moveRight),
+    alternate: key(state.alternate),
+    reload: key(state.reload),
+    info: key(state.info),
     enter: key(state.enter),
-    e: key(state.e),
+    activeCard: key(state.activeCard),
   } as unknown as BattleKeyMap;
 }

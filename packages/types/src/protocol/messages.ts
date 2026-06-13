@@ -155,6 +155,20 @@ export interface GameOverMessage {
   winnerPlayerId: PlayerId;
 }
 
+export interface CollaborateShopForcedReadyMessage {
+  type: "collaborate_shop_forced_ready";
+  frame: number;
+  shopIndex: number;
+}
+
+export interface CollaborateShopActionMessage {
+  type: "collaborate_shop_action";
+  shopIndex: number;
+  ready?: boolean;
+  purchaseItemId?: string;
+  activeCardSwitchId?: string;
+}
+
 export interface PingMessage {
   type: "ping";
   seq: number;
@@ -177,6 +191,8 @@ export type ClientMessage =
   | InputFrameMessage
   | SpectatorInputFrameMessage
   | GameOverMessage
+  | CollaborateShopForcedReadyMessage
+  | CollaborateShopActionMessage
   | PingMessage;
 
 // ──────────────────────────────────────────
@@ -311,6 +327,22 @@ export interface PeerGameOverMessage {
   winnerPlayerId: PlayerId;
 }
 
+export interface PeerCollaborateShopForcedReadyMessage {
+  type: "peer_collaborate_shop_forced_ready";
+  playerId: PlayerId;
+  frame: number;
+  shopIndex: number;
+}
+
+export interface PeerCollaborateShopActionMessage {
+  type: "peer_collaborate_shop_action";
+  playerId: PlayerId;
+  shopIndex: number;
+  ready?: boolean;
+  purchaseItemId?: string;
+  activeCardSwitchId?: string;
+}
+
 export interface ErrorMessage {
   type: "error";
   code: string;
@@ -338,6 +370,8 @@ export type ServerMessage =
   | InputFrameRelayMessage
   | PeerStatusMessage
   | PeerGameOverMessage
+  | PeerCollaborateShopForcedReadyMessage
+  | PeerCollaborateShopActionMessage
   | BattleFinishedMessage
   | ErrorMessage
   | PongMessage;

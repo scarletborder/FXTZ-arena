@@ -18,6 +18,14 @@ export class CombatSyncManager {
     ["Player1", neutralInput()],
     ["Player2", neutralInput()],
   ]);
+  private readonly forcedShopReadyFrames = new Map<PlayerId, Map<number, number>>([
+    ["Player1", new Map()],
+    ["Player2", new Map()],
+  ]);
+  private readonly forcedTransitionReadyFrames = new Map<PlayerId, Set<number>>([
+    ["Player1", new Set()],
+    ["Player2", new Set()],
+  ]);
   private lastReceivedRemoteFrame = 0;
   private lastPeerAckFrame = 0;
   private lastReportedConfirmedInputFrame = 0;
@@ -95,6 +103,8 @@ export class CombatSyncManager {
 
     this.stepRuntimeFrame(frame);
     this.options.callbacks.recordFrame(this.runtime.aimConsumedThisFrame);
+    this.maybeScheduleLocalForcedTransitionReady(frame + 1);
+    this.maybeScheduleLocalForcedShopReady(frame + 1);
     this.pruneOnlineHistory();
     this.trySendGameOverVerdict();
   }
@@ -139,6 +149,11 @@ export class CombatSyncManager {
 
     if (msg.type === "peer_game_over" && msg.playerId === this.remotePlayerId) {
       this.receivePeerGameOver(msg);
+      return;
+    }
+
+    if (msg.type === "peer_collaborate_shop_forced_ready" && msg.playerId === this.remotePlayerId) {
+      this.receiveForcedShopReady(msg.playerId, msg.frame, msg.shopIndex);
       return;
     }
 
@@ -190,6 +205,29 @@ export class CombatSyncManager {
 
     if (msg.type === "peer_game_over" && msg.playerId === this.remotePlayerId) {
       this.receivePeerGameOver(msg);
+      return;
+    }
+
+    if (msg.type === "peer_collaborate_shop_forced_ready" && msg.playerId === this.remotePlayerId) {
+      this.receiveForcedShopReady(msg.playerId, msg.frame, msg.shopIndex);
+    }
+  }
+
+  private receiveForcedShopReady(playerId: PlayerId, frame: number, shopIndex: number): void {
+    if (playerId === this.localPlayerId) return;
+    if (!Number.isInteger(frame) || frame <= 0 || !Number.isInteger(shopIndex) || shopIndex <= 0) return;
+
+    const frames = this.forcedShopReadyFrames.get(playerId);
+    if (!frames || frames.get(frame) === shopIndex) {
+      return;
+    }
+    frames.set(frame, shopIndex);
+
+    if (frame <= this.runtime.frame) {
+      this.rollbackTo(frame);
+      if (!this.runtime.gameOver && !this.paused) {
+        this.options.callbacks.hideStatusText();
+      }
     }
   }
 
@@ -234,9 +272,10 @@ export class CombatSyncManager {
 
   private consumeSendSceneQueue(): void {
     this.queues.drainPending((item) => {
-      this.storeInput(this.localPlayerId, item.frame, item.input);
-      this.lastKnownInputs.set(this.localPlayerId, item.input);
-      this.sendInput(item.frame, item.input);
+      const input = this.applyForcedInputs(this.localPlayerId, item.frame, item.input);
+      this.storeInput(this.localPlayerId, item.frame, input);
+      this.lastKnownInputs.set(this.localPlayerId, input);
+      this.sendInput(item.frame, input);
     });
   }
 
@@ -432,7 +471,7 @@ export class CombatSyncManager {
       }
       redundant.push({
         frame,
-        ...cloneInput(input),
+        ...this.applyForcedInputs(this.localPlayerId, frame, cloneInput(input)),
       });
     }
     return redundant;
@@ -440,10 +479,66 @@ export class CombatSyncManager {
 
   private getInputForFrame(playerId: PlayerId, frame: number): BattleInputState {
     const actual = this.inputs.get(playerId)?.get(frame);
-    if (actual) return actual;
+    if (actual) return this.applyForcedInputs(playerId, frame, actual);
     const predicted = cloneInput(this.lastKnownInputs.get(playerId) ?? neutralInput());
     this.predictedInputs.set(inputKey(playerId, frame), predicted);
-    return predicted;
+    return this.applyForcedInputs(playerId, frame, predicted);
+  }
+
+  private applyForcedInputs(playerId: PlayerId, frame: number, input: BattleInputState): BattleInputState {
+    let next = input;
+    if (this.forcedTransitionReadyFrames.get(playerId)?.has(frame)) {
+      next = {
+        ...next,
+        transitionReadyPressed: true,
+      };
+    }
+    const shopIndex = this.forcedShopReadyFrames.get(playerId)?.get(frame);
+    if (!shopIndex) {
+      return next;
+    }
+    return {
+      ...next,
+      shopReadyPressed: true,
+      shopPurchaseItemId: undefined,
+      activeCardSwitchId: undefined,
+    };
+  }
+
+  private maybeScheduleLocalForcedTransitionReady(frame: number): void {
+    const extra = this.runtime.state.collaborateExtra;
+    if (!extra || extra.state !== "transition_sync" || extra.transitionType !== "auto") {
+      return;
+    }
+    const localKey = this.localFighterKey();
+    const localReady = localKey === "Player1"
+      ? extra.player1TransitionReady
+      : extra.player2TransitionReady;
+    if (localReady) {
+      return;
+    }
+    this.forcedTransitionReadyFrames.get(this.localPlayerId)?.add(frame);
+  }
+
+  private maybeScheduleLocalForcedShopReady(frame: number): void {
+    const extra = this.runtime.state.collaborateExtra;
+    const localKey = this.localFighterKey();
+    const shop = extra?.shop;
+    if (!shop?.open || !shop.revivedByPlayerId[localKey] || shop.readyByPlayerId[localKey]) {
+      return;
+    }
+
+    const shopIndex = shop.shopIndex;
+    this.forcedShopReadyFrames.get(this.localPlayerId)?.set(frame, shopIndex);
+
+    const message: ClientMessage = {
+      type: "collaborate_shop_forced_ready",
+      frame,
+      shopIndex,
+    };
+    if (!this.options.p2p?.send(message)) {
+      this.connectionManager.send(message);
+    }
   }
 
   private pruneOnlineHistory(): void {
@@ -486,6 +581,20 @@ export class CombatSyncManager {
     for (const frame of this.aimConsumingFrames) {
       if (frame < safelyConfirmedInputFrame) {
         this.aimConsumingFrames.delete(frame);
+      }
+    }
+    for (const frames of this.forcedShopReadyFrames.values()) {
+      for (const [frame] of frames) {
+        if (frame < safelyConfirmedInputFrame) {
+          frames.delete(frame);
+        }
+      }
+    }
+    for (const frames of this.forcedTransitionReadyFrames.values()) {
+      for (const frame of frames) {
+        if (frame < safelyConfirmedInputFrame) {
+          frames.delete(frame);
+        }
       }
     }
   }

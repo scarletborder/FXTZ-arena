@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import { HIT_CIRCLE_DIAMETER } from "@repo/constants";
 import { bulletSpeedRankToPixelsPerTick } from "@repo/types";
 import {
+  StaticRectNeutralMob,
   createBattleModel,
+  initializeBattleModel,
   input,
   shootOnceAtPoint,
   testProjectile,
 } from "./helpers";
+import { BattleModel } from "..";
 
 describe("BattleModel Sakuya", () => {
   it("sakuya keeps current ammo and only restores at the end", async () => {
@@ -342,5 +345,52 @@ describe("BattleModel Sakuya", () => {
           projectile.visibleFrom === tier4.frame + 24,
       ),
     ).toHaveLength(1);
+  });
+
+  it("targets the neutral enemy nearest the crosshair with snipe knives in collaborate mode", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(
+        {
+          player: {
+            primaryCharacterId: "sakuya",
+            alternateCharacterId: "reimu",
+          },
+          target: {
+            primaryCharacterId: "reimu",
+            alternateCharacterId: "marisa",
+          },
+        },
+        { battleMode: "collaborate" },
+      ),
+    );
+    model.pointManager.setPointCount(model.player, 300);
+    model.neutralMobManager.addNeutralMob(
+      new StaticRectNeutralMob(model.neutralMobManager.allocateNeutralMobId(), 520, 180),
+    );
+    model.neutralMobManager.addNeutralMob(
+      new StaticRectNeutralMob(model.neutralMobManager.allocateNeutralMobId(), 920, 460),
+    );
+
+    model.stepVersus(
+      input({
+        shootPressed: true,
+        aimX: 930,
+        aimY: 470,
+      }),
+      input(),
+    );
+
+    const snipeKnife = model.projectiles.find(
+      (projectile) =>
+        projectile.owner === "Player1" &&
+        projectile.textureKey === "bullet_type_20_offset_2",
+    );
+    expect(snipeKnife).toBeDefined();
+    expect(snipeKnife?.angle).toBeCloseTo(
+      Math.atan2(460 - model.player.y, 920 - model.player.x),
+    );
+    expect(snipeKnife?.angle).not.toBeCloseTo(
+      Math.atan2(model.target.y - model.player.y, model.target.x - model.player.x),
+    );
   });
 });

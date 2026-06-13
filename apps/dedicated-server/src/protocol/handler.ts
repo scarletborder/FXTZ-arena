@@ -11,6 +11,8 @@ import type { TransportConnection } from "../transport/interface";
 
 import type {
   ClientMessage,
+  CollaborateShopActionMessage,
+  CollaborateShopForcedReadyMessage,
   CreateRoomMessage,
   HelloMessage,
   GameOverMessage,
@@ -132,6 +134,10 @@ export class MessageHandler {
         return this.handleSpectatorInputFrame(connection, raw as SpectatorInputFrameMessage);
       case "game_over":
         return this.handleGameOver(connection, raw as GameOverMessage);
+      case "collaborate_shop_forced_ready":
+        return this.handleCollaborateShopForcedReady(connection, raw as CollaborateShopForcedReadyMessage);
+      case "collaborate_shop_action":
+        return this.handleCollaborateShopAction(connection, raw as CollaborateShopActionMessage);
       case "ping":
         return this.handlePing(connection, raw as PingMessage);
       default:
@@ -1240,6 +1246,53 @@ export class MessageHandler {
       this.sessionStore.setRoomId(connId, null);
     }
     this.roomManager.delete(room.id);
+  }
+
+  private handleCollaborateShopForcedReady(
+    connection: TransportConnection,
+    msg: CollaborateShopForcedReadyMessage,
+  ): void {
+    const session = this.sessionStore.get(connection.id);
+    if (!session || !session.roomId || !session.playerId) return;
+
+    const room = this.roomManager.get(session.roomId);
+    if (!room || room.status !== "fighting") return;
+    if (!Number.isInteger(msg.frame) || msg.frame <= 0) return;
+    if (!Number.isInteger(msg.shopIndex) || msg.shopIndex <= 0) return;
+
+    this.relayToPeer(connection, {
+      type: "peer_collaborate_shop_forced_ready",
+      playerId: session.playerId,
+      frame: msg.frame,
+      shopIndex: msg.shopIndex,
+    });
+  }
+
+  private handleCollaborateShopAction(
+    connection: TransportConnection,
+    msg: CollaborateShopActionMessage,
+  ): void {
+    const session = this.sessionStore.get(connection.id);
+    if (!session || !session.roomId || !session.playerId) return;
+
+    const room = this.roomManager.get(session.roomId);
+    if (!room || room.status !== "fighting") return;
+    if (!Number.isInteger(msg.shopIndex) || msg.shopIndex <= 0) return;
+
+    this.relayToPeer(connection, {
+      type: "peer_collaborate_shop_action",
+      playerId: session.playerId,
+      shopIndex: msg.shopIndex,
+      ready: msg.ready === true ? true : undefined,
+      purchaseItemId:
+        typeof msg.purchaseItemId === "string" && msg.purchaseItemId.length > 0
+          ? msg.purchaseItemId
+          : undefined,
+      activeCardSwitchId:
+        typeof msg.activeCardSwitchId === "string" && msg.activeCardSwitchId.length > 0
+          ? msg.activeCardSwitchId
+          : undefined,
+    });
   }
 
   // ─── Ping / Pong ──────────────────────────────────

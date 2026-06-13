@@ -89,17 +89,17 @@ export class SakuyaBattleCharacter extends BattleCharacter {
 
     const tier = this.pointPowerTier(fighter);
     if (tier >= 1) {
-      this.spawnSnipeKnife(ctx, fighter, 0);
+      this.spawnSnipeKnife(ctx, fighter, aimX, aimY, 0);
     }
     if (tier >= 2) {
-      this.spawnSnipeKnife(ctx, fighter, 8);
+      this.spawnSnipeKnife(ctx, fighter, aimX, aimY, 8);
       this.spawnSideKnives(ctx, fighter, 0, 2, NORMALSHOOT_DAMAGE, "high");
     }
     if (tier >= 3) {
-      this.spawnSnipeKnife(ctx, fighter, 16);
+      this.spawnSnipeKnife(ctx, fighter, aimX, aimY, 16);
     }
     if (tier >= 4) {
-      this.spawnSnipeKnife(ctx, fighter, 24);
+      this.spawnSnipeKnife(ctx, fighter, aimX, aimY, 24);
       this.spawnSideKnives(ctx, fighter, 8, 2, NORMALSHOOT_DAMAGE, "high");
     }
   }
@@ -293,14 +293,17 @@ export class SakuyaBattleCharacter extends BattleCharacter {
   private spawnSnipeKnife(
     ctx: CharacterActionContext,
     fighter: FighterState,
+    aimX: number,
+    aimY: number,
     frameDelay: number,
   ): void {
+    const angle = this.angleToNearestEnemyTarget(ctx, fighter, aimX, aimY);
     this.spawnKnife(
       ctx,
       fighter,
       fighter.x,
       fighter.y,
-      this.angleToOpponent(ctx, fighter),
+      angle,
       "high",
       undefined,
       {
@@ -310,6 +313,35 @@ export class SakuyaBattleCharacter extends BattleCharacter {
       ctx.frame + frameDelay,
       NORMALSHOOT_DAMAGE,
       SAKUYA_SNIPE_KNIFE_TEXTURE,
+    );
+  }
+
+  private angleToNearestEnemyTarget(
+    ctx: CharacterActionContext,
+    fighter: FighterState,
+    aimX: number,
+    aimY: number,
+  ): number {
+    ctx.consumeAim?.();
+    let best: { readonly x: number; readonly y: number; readonly mobId?: number } | undefined;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (const target of ctx.enemyTargets ?? []) {
+      const distance = (target.x - aimX) ** 2 + (target.y - aimY) ** 2;
+      if (
+        distance < bestDistance ||
+        (distance === bestDistance && (target.mobId ?? 0) < (best?.mobId ?? 0))
+      ) {
+        best = target;
+        bestDistance = distance;
+      }
+    }
+
+    if (!best) {
+      return this.angleToOpponent(ctx, fighter);
+    }
+    return fpAtan2(
+      fp.fromFloat(best.y - fighter.y),
+      fp.fromFloat(best.x - fighter.x),
     );
   }
 }

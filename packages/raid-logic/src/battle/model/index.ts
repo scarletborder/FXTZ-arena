@@ -576,7 +576,6 @@ export class BattleModel {
     type: "auto" | "manual",
   ): void {
     if (!this.collaborateExtra) return;
-    this.clearCollaborateTransitionHazards();
     this.collaborateExtra = {
       ...this.collaborateExtra,
       state: "transition_sync",
@@ -693,6 +692,7 @@ export class BattleModel {
       return true;
     }
 
+    this.clearCollaborateTransitionHazards();
     const opensShop = extra.pendingTransitionTarget === "shop";
     const shopIndex = extra.shop.shopIndex + 1;
     const goodsByPlayerId = opensShop
@@ -891,10 +891,6 @@ export class BattleModel {
         ...extra,
         shop: {
           ...extra.shop,
-          readyByPlayerId: {
-            ...extra.shop.readyByPlayerId,
-            [key]: true,
-          },
           revivedByPlayerId: {
             ...extra.shop.revivedByPlayerId,
             [key]: true,
@@ -1254,6 +1250,13 @@ export class BattleModel {
       frame,
       self,
       opponent: self.key === "Player1" ? this.target : this.player,
+      enemyTargets:
+        this.battleMode === "collaborate"
+          ? this.currentEnemyTargetsFor(self.key)
+          : undefined,
+      consumeAim: () => {
+        this.aimConsumedThisFrame = true;
+      },
       projectiles: this.projectiles,
       effects: this.effects,
       stats: this.stats,
@@ -1614,6 +1617,12 @@ export class BattleModel {
       },
       ...this.neutralMobManager.hitTargets(),
     ];
+  }
+
+  private currentEnemyTargetsFor(owner: FighterKey): readonly ProjectileHitTarget[] {
+    return this.currentHitTargets().filter((target) =>
+      this.rules.canProjectileDamageTarget(owner, target.key),
+    );
   }
 }
 

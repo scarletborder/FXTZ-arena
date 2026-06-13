@@ -406,7 +406,31 @@ describe("BattleModel hit recovery", () => {
     expect(model.player.x).toBe(321);
     expect(model.player.y).toBe(222);
     expect(model.serialize().collaborateExtra?.shop.revivedByPlayerId.Player1).toBe(true);
-    expect(model.serialize().collaborateExtra?.shop.readyByPlayerId.Player1).toBe(true);
+    expect(model.serialize().collaborateExtra?.shop.readyByPlayerId.Player1).toBe(false);
+  });
+
+  it("clears neutral hazards only on the reconciled transition completion frame", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate" }),
+    );
+    model.projectiles.push(
+      testProjectile({ id: 1, owner: "Neutral", x: 120, y: 120 }),
+      testProjectile({ id: 2, owner: "Player1", x: 140, y: 120 }),
+    );
+    model.neutralMobManager.addNeutralMob(
+      new TestNeutralMob(model.neutralMobManager.allocateNeutralMobId(), 320, 240),
+    );
+
+    model.beginCollaborateTransition("shop", "manual");
+    model.stepVersus(input({ transitionReadyPressed: true }), input());
+
+    expect(model.projectiles.map((projectile) => projectile.id).sort()).toEqual([1, 2]);
+    expect(model.neutralMobManager.states()).toHaveLength(1);
+
+    model.stepVersus(input(), input({ transitionReadyPressed: true }));
+
+    expect(model.projectiles.map((projectile) => projectile.id)).toEqual([2]);
+    expect(model.neutralMobManager.states()).toHaveLength(0);
   });
 
   it("does not fail collaborate when a revived player dies again while the partner is alive", async () => {

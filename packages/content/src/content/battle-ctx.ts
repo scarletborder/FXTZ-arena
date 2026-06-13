@@ -30,6 +30,16 @@ export interface SpawnClearRingEntityParams {
   readonly followsOwner?: boolean;
 }
 
+export interface BattleTargetState<TFighterKey extends string = string> {
+  readonly key: TFighterKey;
+  readonly x: number;
+  readonly y: number;
+  readonly hitRadius?: number;
+  readonly hitWidth?: number;
+  readonly hitHeight?: number;
+  readonly mobId?: number;
+}
+
 export interface BattleActionContext<
   TFighter,
   TProjectile,
@@ -44,6 +54,8 @@ export interface BattleActionContext<
   readonly effects: TEffect[];
   readonly self: TFighter;
   readonly opponent: TFighter;
+  readonly enemyTargets?: readonly BattleTargetState[];
+  consumeAim?(): void;
   spawnBullet(params: TBulletParams): void;
   spawnLaser(params: TLaserParams): void;
   clearProjectilesAround(params: ClearProjectilesAroundParams): number;
