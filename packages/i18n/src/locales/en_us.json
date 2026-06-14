@@ -463,7 +463,7 @@
     "shop_item_bomb": "+1 Bomb",
     "shop_item_point": "+80 Point",
     "shop_item_card": "Card",
-    "shop_item_sold_out": "Sold Out",
+    "shop_item_sold_out": "sold\nout",
     "shop_item_life_desc": "Gain 1 current life.",
     "shop_item_bomb_desc": "Gain 1 available Bomb.",
     "shop_item_point_desc": "Gain 80 Point.",

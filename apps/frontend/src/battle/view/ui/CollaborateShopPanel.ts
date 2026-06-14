@@ -28,6 +28,8 @@ interface ShopItemVisual {
   readonly iconImage: Phaser.GameObjects.Image;
   readonly name: Phaser.GameObjects.Text;
   readonly price: Phaser.GameObjects.Text;
+  readonly soldOutOverlay: Phaser.GameObjects.Rectangle;
+  readonly soldOutText: Phaser.GameObjects.Text;
   itemId: string;
 }
 
@@ -41,6 +43,9 @@ interface CardVisual {
 }
 
 const BASE_ITEM_KINDS = new Set(["life", "bomb", "point"]);
+const SHOP_ITEM_WIDTH = 96;
+const SHOP_ITEM_STEP = 108;
+const SHOP_GOODS_CENTER_X = -156;
 
 type ShopKeyboardSurface = "goods" | "bag";
 
@@ -347,16 +352,16 @@ export class CollaborateShopPanel {
       const row = index < baseCount ? 0 : 1;
       const rowIndex = row === 0 ? index : index - baseCount;
       const rowCount = row === 0 ? baseCount : cardCount;
-      const startX = -((rowCount - 1) * 116) / 2;
+      const startX = SHOP_GOODS_CENTER_X - ((rowCount - 1) * SHOP_ITEM_STEP) / 2;
       const bought = extra.shop.purchasesByPlayerId[localKey].includes(item.id);
       const soldOut = item.kind === "sold_out";
       const selected = this.keyboardSurface === "goods" && index === this.selectedItemIndex;
 
       visual.itemId = item.id;
-      visual.container.setPosition(startX + rowIndex * 116, row === 0 ? -96 : 54);
+      visual.container.setPosition(startX + rowIndex * SHOP_ITEM_STEP, row === 0 ? -96 : 54);
       visual.container.setVisible(true);
       visual.bg.setFillStyle(
-        selected ? 0x2f3f24 : bought || soldOut ? 0x31424c : 0x182834,
+        selected ? 0x2f3f24 : bought ? 0x000000 : soldOut ? 0x31424c : 0x182834,
         1,
       );
       visual.bg.setStrokeStyle(
@@ -367,6 +372,8 @@ export class CollaborateShopPanel {
       setItemIcon(visual, item);
       visual.name.setText(itemName(item));
       visual.price.setText(soldOut ? "--" : String(item.price));
+      visual.soldOutOverlay.setVisible(bought);
+      visual.soldOutText.setText(t("battle.shop_item_sold_out")).setVisible(bought);
       visual.container.setAlpha((disabled && !bought) || soldOut ? 0.55 : 1);
     }
   }
@@ -376,7 +383,7 @@ export class CollaborateShopPanel {
     while (this.itemVisuals.length < count) {
       const container = this.scene.add.container(0, 0);
       const bg = this.scene.add
-        .rectangle(0, 0, 96, 124, 0x182834, 1)
+        .rectangle(0, 0, SHOP_ITEM_WIDTH, 124, 0x182834, 1)
         .setStrokeStyle(2, 0xffcf6e, 0.95);
       const iconBg = this.scene.add
         .rectangle(0, -30, 42, 42, 0x263845, 1)
@@ -408,10 +415,24 @@ export class CollaborateShopPanel {
           color: "#ffcf6e",
         })
         .setOrigin(0.5);
-      container.add([bg, iconBg, iconText, iconImage, name, price]);
-      container.setSize(96, 124);
+      const soldOutOverlay = this.scene.add
+        .rectangle(0, 0, SHOP_ITEM_WIDTH, 124, 0x000000, 0.92)
+        .setVisible(false);
+      const soldOutText = this.scene.add
+        .text(0, 0, "", {
+          fontFamily: "Arial",
+          fontSize: "18px",
+          fontStyle: "700",
+          color: "#f6f1e6",
+          align: "center",
+          lineSpacing: 2,
+        })
+        .setOrigin(0.5)
+        .setVisible(false);
+      container.add([bg, iconBg, iconText, iconImage, name, price, soldOutOverlay, soldOutText]);
+      container.setSize(SHOP_ITEM_WIDTH, 124);
       container.setInteractive(
-        new Phaser.Geom.Rectangle(-48, -62, 96, 124),
+        new Phaser.Geom.Rectangle(-SHOP_ITEM_WIDTH / 2, -62, SHOP_ITEM_WIDTH, 124),
         Phaser.Geom.Rectangle.Contains,
       );
       container.on("pointerover", () => {
@@ -429,7 +450,18 @@ export class CollaborateShopPanel {
         if (visual?.itemId && !this.interactionDisabled) this.callbacks.onPurchase(visual.itemId);
       });
       this.container.add(container);
-      this.itemVisuals.push({ container, bg, iconBg, iconText, iconImage, name, price, itemId: "" });
+      this.itemVisuals.push({
+        container,
+        bg,
+        iconBg,
+        iconText,
+        iconImage,
+        name,
+        price,
+        soldOutOverlay,
+        soldOutText,
+        itemId: "",
+      });
     }
   }
 

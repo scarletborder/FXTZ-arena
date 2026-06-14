@@ -93,9 +93,15 @@ interface BossDirectionIndicatorTriangle {
   readonly rightY: number;
 }
 
+interface BossDirectionIndicatorPose {
+  readonly centerX: number;
+  readonly centerY: number;
+  readonly angle: number;
+}
+
 interface BossDirectionIndicatorState {
-  current: BossDirectionIndicatorTriangle;
-  target: BossDirectionIndicatorTriangle | null;
+  current: BossDirectionIndicatorPose;
+  target: BossDirectionIndicatorPose | null;
 }
 
 const BOSS_DIRECTION_INDICATOR_DISTANCE = 180;
@@ -287,18 +293,19 @@ export class MobView {
       if (!state.target) {
         continue;
       }
-      state.current = smoothTriangle(
+      state.current = smoothIndicatorPose(
         state.current,
         state.target,
         BOSS_DIRECTION_INDICATOR_SMOOTH_BLEND,
       );
+      const triangle = bossDirectionIndicatorTriangleFromPose(state.current);
       this.bossDirectionIndicators.fillTriangle(
-        state.current.tipX,
-        state.current.tipY,
-        state.current.leftX,
-        state.current.leftY,
-        state.current.rightX,
-        state.current.rightY,
+        triangle.tipX,
+        triangle.tipY,
+        triangle.leftX,
+        triangle.leftY,
+        triangle.rightX,
+        triangle.rightY,
       );
     }
     this.bossDirectionIndicators.setVisible(true);
@@ -319,7 +326,7 @@ export class MobView {
         continue;
       }
       activeIndicatorIds.add(mob.id);
-      const target = bossDirectionIndicatorTriangle(
+      const target = bossDirectionIndicatorPose(
         mob,
         playerX,
         playerY,
@@ -337,7 +344,12 @@ export class MobView {
         state.target = target;
       } else {
         this.bossDirectionIndicatorStates.set(mob.id, {
-          current: target,
+          current: bossDirectionIndicatorInitialPose(
+            target,
+            playerX,
+            playerY,
+            arenaBounds,
+          ),
           target,
         });
       }
@@ -537,13 +549,13 @@ function isPointInsideArena(
   return x >= 0 && x <= arenaBounds.width && y >= 0 && y <= arenaBounds.height;
 }
 
-function bossDirectionIndicatorTriangle(
+function bossDirectionIndicatorPose(
   mob: NeutralMobState,
   playerX: number,
   playerY: number,
   arenaBounds: ArenaBounds,
   alpha: number,
-): BossDirectionIndicatorTriangle | null {
+): BossDirectionIndicatorPose | null {
   const mobX = lerp(mob.previousX, mob.x, alpha);
   const mobY = lerp(mob.previousY, mob.y, alpha);
   const dx = mobX - playerX;
@@ -560,26 +572,45 @@ function bossDirectionIndicatorTriangle(
   const uy = dy / distance;
   const centerX = playerX + ux * BOSS_DIRECTION_INDICATOR_DISTANCE;
   const centerY = playerY + uy * BOSS_DIRECTION_INDICATOR_DISTANCE;
+  const angle = Math.atan2(uy, ux);
+  const triangle = bossDirectionIndicatorTriangleFromPose({
+    centerX,
+    centerY,
+    angle,
+  });
+
+  if (
+    !isPointInsideArena(triangle.tipX, triangle.tipY, arenaBounds) ||
+    !isPointInsideArena(triangle.leftX, triangle.leftY, arenaBounds) ||
+    !isPointInsideArena(triangle.rightX, triangle.rightY, arenaBounds)
+  ) {
+    return null;
+  }
+
+  return {
+    centerX,
+    centerY,
+    angle,
+  };
+}
+
+function bossDirectionIndicatorTriangleFromPose(
+  pose: BossDirectionIndicatorPose,
+): BossDirectionIndicatorTriangle {
+  const ux = Math.cos(pose.angle);
+  const uy = Math.sin(pose.angle);
   const halfLength = BOSS_DIRECTION_INDICATOR_LENGTH / 2;
   const halfWidth = BOSS_DIRECTION_INDICATOR_WIDTH / 2;
-  const tipX = centerX + ux * halfLength;
-  const tipY = centerY + uy * halfLength;
-  const baseX = centerX - ux * halfLength;
-  const baseY = centerY - uy * halfLength;
+  const tipX = pose.centerX + ux * halfLength;
+  const tipY = pose.centerY + uy * halfLength;
+  const baseX = pose.centerX - ux * halfLength;
+  const baseY = pose.centerY - uy * halfLength;
   const px = -uy;
   const py = ux;
   const leftX = baseX + px * halfWidth;
   const leftY = baseY + py * halfWidth;
   const rightX = baseX - px * halfWidth;
   const rightY = baseY - py * halfWidth;
-
-  if (
-    !isPointInsideArena(tipX, tipY, arenaBounds) ||
-    !isPointInsideArena(leftX, leftY, arenaBounds) ||
-    !isPointInsideArena(rightX, rightY, arenaBounds)
-  ) {
-    return null;
-  }
 
   return {
     tipX,
@@ -591,19 +622,54 @@ function bossDirectionIndicatorTriangle(
   };
 }
 
-function smoothTriangle(
-  current: BossDirectionIndicatorTriangle,
-  target: BossDirectionIndicatorTriangle,
-  blend: number,
-): BossDirectionIndicatorTriangle {
+function bossDirectionIndicatorInitialPose(
+  target: BossDirectionIndicatorPose,
+  playerX: number,
+  playerY: number,
+  arenaBounds: ArenaBounds,
+): BossDirectionIndicatorPose {
+  const startDistance = Math.min(
+    BOSS_DIRECTION_INDICATOR_DISTANCE,
+    Math.max(0, BOSS_DIRECTION_INDICATOR_MIN_DISTANCE * 0.45),
+  );
+  const centerX = Phaser.Math.Clamp(
+    playerX + Math.cos(target.angle) * startDistance,
+    BOSS_DIRECTION_INDICATOR_LENGTH,
+    Math.max(
+      BOSS_DIRECTION_INDICATOR_LENGTH,
+      arenaBounds.width - BOSS_DIRECTION_INDICATOR_LENGTH,
+    ),
+  );
+  const centerY = Phaser.Math.Clamp(
+    playerY + Math.sin(target.angle) * startDistance,
+    BOSS_DIRECTION_INDICATOR_LENGTH,
+    Math.max(
+      BOSS_DIRECTION_INDICATOR_LENGTH,
+      arenaBounds.height - BOSS_DIRECTION_INDICATOR_LENGTH,
+    ),
+  );
   return {
-    tipX: smoothValue(current.tipX, target.tipX, blend),
-    tipY: smoothValue(current.tipY, target.tipY, blend),
-    leftX: smoothValue(current.leftX, target.leftX, blend),
-    leftY: smoothValue(current.leftY, target.leftY, blend),
-    rightX: smoothValue(current.rightX, target.rightX, blend),
-    rightY: smoothValue(current.rightY, target.rightY, blend),
+    centerX,
+    centerY,
+    angle: target.angle,
   };
+}
+
+function smoothIndicatorPose(
+  current: BossDirectionIndicatorPose,
+  target: BossDirectionIndicatorPose,
+  blend: number,
+): BossDirectionIndicatorPose {
+  return {
+    centerX: smoothValue(current.centerX, target.centerX, blend),
+    centerY: smoothValue(current.centerY, target.centerY, blend),
+    angle: smoothAngle(current.angle, target.angle, blend),
+  };
+}
+
+function smoothAngle(current: number, target: number, blend: number): number {
+  const delta = Math.atan2(Math.sin(target - current), Math.cos(target - current));
+  return current + delta * Math.max(0, Math.min(1, blend));
 }
 
 function createEnemyAnimations(

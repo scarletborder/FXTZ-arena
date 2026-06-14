@@ -481,7 +481,7 @@
     "shop_item_bomb": "+1bomb",
     "shop_item_point": "+80 Point",
     "shop_item_card": "能力卡",
-    "shop_item_sold_out": "缺货",
+    "shop_item_sold_out": "sold\nout",
     "shop_item_life_desc": "增加 1 点当前生命。",
     "shop_item_bomb_desc": "增加 1 个可用 Bomb。",
     "shop_item_point_desc": "增加 80 Point。",
