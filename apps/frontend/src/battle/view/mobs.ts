@@ -1,6 +1,8 @@
 import Phaser from "phaser";
 
 import type { NeutralMobState } from "@repo/types";
+import type { ArenaBounds } from "@repo/constants";
+import type { FighterState } from "@repo/raid-logic";
 import { Depth } from "../../utils/depth";
 import { smoothValue } from "./smooth";
 
@@ -82,6 +84,27 @@ interface MobBreakEffect {
   readonly displayHeight: number;
 }
 
+interface BossDirectionIndicatorTriangle {
+  readonly tipX: number;
+  readonly tipY: number;
+  readonly leftX: number;
+  readonly leftY: number;
+  readonly rightX: number;
+  readonly rightY: number;
+}
+
+interface BossDirectionIndicatorState {
+  current: BossDirectionIndicatorTriangle;
+  target: BossDirectionIndicatorTriangle | null;
+}
+
+const BOSS_DIRECTION_INDICATOR_DISTANCE = 180;
+const BOSS_DIRECTION_INDICATOR_MIN_DISTANCE = 180;
+const BOSS_DIRECTION_INDICATOR_LENGTH = 32;
+const BOSS_DIRECTION_INDICATOR_WIDTH = 24;
+const BOSS_DIRECTION_INDICATOR_UPDATE_INTERVAL = 10;
+const BOSS_DIRECTION_INDICATOR_SMOOTH_BLEND = 0.28;
+
 function mobMotionConfig(mob: NeutralMobState): {
   readonly animation: EnemyAnimationName;
   readonly direction: -1 | 1;
@@ -99,6 +122,11 @@ export class MobView {
   private readonly sprites = new Map<number, Phaser.GameObjects.Sprite>();
   private readonly damageTags = new Map<number, Phaser.GameObjects.Text>();
   private readonly healthRings = new Map<number, Phaser.GameObjects.Graphics>();
+  private readonly bossDirectionIndicators: Phaser.GameObjects.Graphics;
+  private readonly bossDirectionIndicatorStates = new Map<
+    number,
+    BossDirectionIndicatorState
+  >();
   private readonly animationStates = new Map<number, MobAnimationState>();
   private readonly enemyConfigs: ReadonlyMap<string, EnemyVisualConfig>;
   private readonly breakAnimConfig?: BulletBreakVisualConfig;
@@ -108,10 +136,16 @@ export class MobView {
   constructor(private readonly scene: Phaser.Scene) {
     this.enemyConfigs = createEnemyAnimations(scene);
     this.breakAnimConfig = createBulletBreakAnimation(scene);
+    this.bossDirectionIndicators = scene.add
+      .graphics()
+      .setDepth(Depth.GrazeCircle + 1);
   }
 
   render(
     neutralMobs: readonly NeutralMobState[],
+    localFighter: FighterState,
+    frame: number,
+    arenaBounds: ArenaBounds,
     alpha = 1,
     rollbackBlend = 1,
   ): void {
@@ -206,6 +240,7 @@ export class MobView {
         sprite.destroy();
         this.sprites.delete(id);
         this.animationStates.delete(id);
+        this.bossDirectionIndicatorStates.delete(id);
       }
     }
     for (const [id, ring] of this.healthRings) {
@@ -220,7 +255,99 @@ export class MobView {
         this.damageTags.delete(id);
       }
     }
+    this.renderBossDirectionIndicators(
+      neutralMobs,
+      localFighter,
+      frame,
+      arenaBounds,
+      alpha,
+    );
     this.renderBreakEffects();
+  }
+
+  private renderBossDirectionIndicators(
+    neutralMobs: readonly NeutralMobState[],
+    localFighter: FighterState,
+    frame: number,
+    arenaBounds: ArenaBounds,
+    alpha: number,
+  ): void {
+    if (frame % BOSS_DIRECTION_INDICATOR_UPDATE_INTERVAL === 0) {
+      this.updateBossDirectionIndicatorTargets(
+        neutralMobs,
+        localFighter,
+        arenaBounds,
+        alpha,
+      );
+    }
+    this.bossDirectionIndicators.clear();
+    this.bossDirectionIndicators.fillStyle(0x8f1020, 0.92);
+
+    for (const state of this.bossDirectionIndicatorStates.values()) {
+      if (!state.target) {
+        continue;
+      }
+      state.current = smoothTriangle(
+        state.current,
+        state.target,
+        BOSS_DIRECTION_INDICATOR_SMOOTH_BLEND,
+      );
+      this.bossDirectionIndicators.fillTriangle(
+        state.current.tipX,
+        state.current.tipY,
+        state.current.leftX,
+        state.current.leftY,
+        state.current.rightX,
+        state.current.rightY,
+      );
+    }
+    this.bossDirectionIndicators.setVisible(true);
+  }
+
+  private updateBossDirectionIndicatorTargets(
+    neutralMobs: readonly NeutralMobState[],
+    localFighter: FighterState,
+    arenaBounds: ArenaBounds,
+    alpha: number,
+  ): void {
+    const activeIndicatorIds = new Set<number>();
+    const playerX = lerp(localFighter.previousX, localFighter.x, alpha);
+    const playerY = lerp(localFighter.previousY, localFighter.y, alpha);
+
+    for (const mob of neutralMobs) {
+      if (!mob.active || (mob.class !== "elite" && mob.class !== "boss")) {
+        continue;
+      }
+      activeIndicatorIds.add(mob.id);
+      const target = bossDirectionIndicatorTriangle(
+        mob,
+        playerX,
+        playerY,
+        arenaBounds,
+        alpha,
+      );
+      const state = this.bossDirectionIndicatorStates.get(mob.id);
+      if (!target) {
+        if (state) {
+          state.target = null;
+        }
+        continue;
+      }
+      if (state) {
+        state.target = target;
+      } else {
+        this.bossDirectionIndicatorStates.set(mob.id, {
+          current: target,
+          target,
+        });
+      }
+    }
+
+    for (const id of this.bossDirectionIndicatorStates.keys()) {
+      if (!activeIndicatorIds.has(id)) {
+        this.bossDirectionIndicatorStates.delete(id);
+      }
+    }
   }
 
   private renderHealthRing(
@@ -253,7 +380,7 @@ export class MobView {
       mob.spellCard.currentHealth / mob.spellCard.maxHealth,
     );
     const start = -Math.PI / 2;
-    const end = start + Math.PI * 2 * ratio;
+    const end = start - Math.PI * 2 * ratio;
     const ringX = smoothValue(ring.x, x, rollbackBlend);
     const ringY = smoothValue(ring.y, y, rollbackBlend);
     ring.setPosition(ringX, ringY);
@@ -262,7 +389,7 @@ export class MobView {
     ring.strokeCircle(0, 0, radius);
     ring.lineStyle(4, 0xf04444, 0.95);
     ring.beginPath();
-    ring.arc(0, 0, radius, start, end, false);
+    ring.arc(0, 0, radius, start, end, true);
     ring.strokePath();
 
     if (mob.spellCard.phase === "non_spell" && mob.spellCard.maxHealth > 0) {
@@ -400,6 +527,83 @@ function clampRatio(value: number): number {
     return 0;
   }
   return Math.max(0, Math.min(1, value));
+}
+
+function isPointInsideArena(
+  x: number,
+  y: number,
+  arenaBounds: ArenaBounds,
+): boolean {
+  return x >= 0 && x <= arenaBounds.width && y >= 0 && y <= arenaBounds.height;
+}
+
+function bossDirectionIndicatorTriangle(
+  mob: NeutralMobState,
+  playerX: number,
+  playerY: number,
+  arenaBounds: ArenaBounds,
+  alpha: number,
+): BossDirectionIndicatorTriangle | null {
+  const mobX = lerp(mob.previousX, mob.x, alpha);
+  const mobY = lerp(mob.previousY, mob.y, alpha);
+  const dx = mobX - playerX;
+  const dy = mobY - playerY;
+  const distance = Math.hypot(dx, dy);
+  if (
+    distance <= BOSS_DIRECTION_INDICATOR_MIN_DISTANCE ||
+    !Number.isFinite(distance)
+  ) {
+    return null;
+  }
+
+  const ux = dx / distance;
+  const uy = dy / distance;
+  const centerX = playerX + ux * BOSS_DIRECTION_INDICATOR_DISTANCE;
+  const centerY = playerY + uy * BOSS_DIRECTION_INDICATOR_DISTANCE;
+  const halfLength = BOSS_DIRECTION_INDICATOR_LENGTH / 2;
+  const halfWidth = BOSS_DIRECTION_INDICATOR_WIDTH / 2;
+  const tipX = centerX + ux * halfLength;
+  const tipY = centerY + uy * halfLength;
+  const baseX = centerX - ux * halfLength;
+  const baseY = centerY - uy * halfLength;
+  const px = -uy;
+  const py = ux;
+  const leftX = baseX + px * halfWidth;
+  const leftY = baseY + py * halfWidth;
+  const rightX = baseX - px * halfWidth;
+  const rightY = baseY - py * halfWidth;
+
+  if (
+    !isPointInsideArena(tipX, tipY, arenaBounds) ||
+    !isPointInsideArena(leftX, leftY, arenaBounds) ||
+    !isPointInsideArena(rightX, rightY, arenaBounds)
+  ) {
+    return null;
+  }
+
+  return {
+    tipX,
+    tipY,
+    leftX,
+    leftY,
+    rightX,
+    rightY,
+  };
+}
+
+function smoothTriangle(
+  current: BossDirectionIndicatorTriangle,
+  target: BossDirectionIndicatorTriangle,
+  blend: number,
+): BossDirectionIndicatorTriangle {
+  return {
+    tipX: smoothValue(current.tipX, target.tipX, blend),
+    tipY: smoothValue(current.tipY, target.tipY, blend),
+    leftX: smoothValue(current.leftX, target.leftX, blend),
+    leftY: smoothValue(current.leftY, target.leftY, blend),
+    rightX: smoothValue(current.rightX, target.rightX, blend),
+    rightY: smoothValue(current.rightY, target.rightY, blend),
+  };
 }
 
 function createEnemyAnimations(

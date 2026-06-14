@@ -94,7 +94,14 @@ export class BattleView {
       alpha,
       rollbackBlend,
     );
-    this.mobs.render(state.neutralMobs, alpha, rollbackBlend);
+    this.mobs.render(
+      state.neutralMobs,
+      localFighter,
+      state.frame,
+      this.arenaBounds,
+      alpha,
+      rollbackBlend,
+    );
     this.spellCardHud.render(state.neutralMobs);
     this.collaborateHud.render(state.collaborateExtra, localFighterKey);
     this.points.render({
