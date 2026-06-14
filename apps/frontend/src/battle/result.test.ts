@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveResultWinnerName, resolveWinnerPlayerId } from "./utils/result";
+import {
+  resolveDisplayedBattleResult,
+  resolveResultWinnerName,
+  resolveWinnerPlayerId,
+} from "./utils/result";
 
 describe("resolveResultWinnerName", () => {
   it("uses deaths rather than lives for offline battle results", () => {
@@ -49,5 +53,35 @@ describe("resolveWinnerPlayerId", () => {
         targetDeaths: 0,
       }),
     ).toBe("Player2");
+  });
+});
+
+describe("resolveDisplayedBattleResult", () => {
+  it("restores collaborate verdict slots to challenge results", () => {
+    expect(
+      resolveDisplayedBattleResult({
+        battleResult: "running",
+        battleMode: "collaborate",
+        winnerPlayerId: "Player1",
+      }),
+    ).toBe("collaborate_victory");
+
+    expect(
+      resolveDisplayedBattleResult({
+        battleResult: "running",
+        battleMode: "collaborate",
+        winnerPlayerId: "Player2",
+      }),
+    ).toBe("collaborate_defeat");
+  });
+
+  it("does not reinterpret versus winner slots as collaborate results", () => {
+    expect(
+      resolveDisplayedBattleResult({
+        battleResult: "versus_player1",
+        battleMode: "versus",
+        winnerPlayerId: "Player1",
+      }),
+    ).toBe("versus_player1");
   });
 });
