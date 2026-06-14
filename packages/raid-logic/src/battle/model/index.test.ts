@@ -244,6 +244,7 @@ describe("BattleModel rollback snapshots", () => {
       state: "transition_sync",
       pendingTransitionTarget: "boss",
       transitionType: "manual",
+      transitionReadyFrame: 60,
       player1TransitionReady: true,
       player2TransitionReady: false,
       spawnerRngState: "2468",
@@ -251,6 +252,14 @@ describe("BattleModel rollback snapshots", () => {
     });
 
     model.stepVersus(input(), input({ transitionReadyPressed: true }));
+    expect(model.serialize().collaborateExtra).toMatchObject({
+      state: "transition_sync",
+      player1TransitionReady: true,
+      player2TransitionReady: true,
+    });
+    for (let frame = model.frame; frame < 60; frame += 1) {
+      model.stepVersus(input(), input());
+    }
     expect(model.serialize().collaborateExtra?.state).toBe("running");
 
     model.deserialize(snapshot);
@@ -262,6 +271,44 @@ describe("BattleModel rollback snapshots", () => {
       player1TransitionReady: true,
       player2TransitionReady: false,
     });
+  });
+
+  it("clears neutral hazards only when the collaborate transition wait has elapsed", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate", seed: 1357 }),
+    );
+    model.projectiles.push(
+      testProjectile({ id: 1, owner: "Neutral" }),
+      testProjectile({ id: 2, owner: "Player1" }),
+    );
+    model.neutralMobManager.addNeutralMob(new TestNeutralMob(100, 120, 140));
+
+    model.beginCollaborateTransition("elite", "manual");
+    model.stepVersus(
+      input({ transitionReadyPressed: true }),
+      input({ transitionReadyPressed: true }),
+    );
+
+    expect(model.serialize().collaborateExtra).toMatchObject({
+      state: "transition_sync",
+      player1TransitionReady: true,
+      player2TransitionReady: true,
+    });
+    expect(model.projectiles.map((projectile) => projectile.owner)).toEqual([
+      "Neutral",
+      "Player1",
+    ]);
+    expect(model.neutralMobManager.states()).toHaveLength(1);
+
+    for (let frame = model.frame; frame < 60; frame += 1) {
+      model.stepVersus(input(), input());
+    }
+
+    expect(model.serialize().collaborateExtra?.state).toBe("running");
+    expect(model.projectiles.map((projectile) => projectile.owner)).toEqual([
+      "Player1",
+    ]);
+    expect(model.neutralMobManager.states()).toHaveLength(0);
   });
 });
 
@@ -428,6 +475,12 @@ describe("BattleModel hit recovery", () => {
     expect(model.neutralMobManager.states()).toHaveLength(1);
 
     model.stepVersus(input(), input({ transitionReadyPressed: true }));
+    expect(model.projectiles.map((projectile) => projectile.id).sort()).toEqual([1, 2]);
+    expect(model.neutralMobManager.states()).toHaveLength(1);
+
+    for (let frame = model.frame; frame < 60; frame += 1) {
+      model.stepVersus(input(), input());
+    }
 
     expect(model.projectiles.map((projectile) => projectile.id)).toEqual([2]);
     expect(model.neutralMobManager.states()).toHaveLength(0);
@@ -1581,6 +1634,9 @@ describe("Example collaborate mob spawner", () => {
       input({ transitionReadyPressed: true }),
       input({ transitionReadyPressed: true }),
     );
+    for (let frame = model.frame; frame < 60; frame += 1) {
+      model.stepVersus(input(), input());
+    }
     expect(model.serialize().collaborateExtra?.shop.open).toBe(true);
 
     model.stepVersus(

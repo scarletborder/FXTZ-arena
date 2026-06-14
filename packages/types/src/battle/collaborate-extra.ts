@@ -47,6 +47,7 @@ export interface CollaborateExtraState {
   readonly state: CollaborateRunState;
   readonly pendingTransitionTarget: CollaborateTransitionTarget | null;
   readonly transitionType: CollaborateTransitionType | null;
+  readonly transitionReadyFrame: number;
   readonly player1TransitionReady: boolean;
   readonly player2TransitionReady: boolean;
   readonly wave: CollaborateWaveState;
@@ -67,6 +68,7 @@ export function createDefaultCollaborateExtraState(
     state: "running",
     pendingTransitionTarget: null,
     transitionType: null,
+    transitionReadyFrame: frame,
     player1TransitionReady: false,
     player2TransitionReady: false,
     wave: {

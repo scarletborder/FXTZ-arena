@@ -67,6 +67,8 @@ import { clampPointCount, PointManager } from "./manager/point-manager";
 import { ActiveCardCooldownManager } from "./manager/active-card-cooldown-manager";
 import { BattleSizeManager } from "./size-manager";
 
+const COLLABORATE_TRANSITION_MIN_WAIT_FRAMES = 60;
+
 export class BattleModel {
   readonly projectiles: ProjectileState[] = [];
   readonly effects: EffectState[] = [];
@@ -581,6 +583,8 @@ export class BattleModel {
       state: "transition_sync",
       pendingTransitionTarget: target,
       transitionType: type,
+      transitionReadyFrame:
+        this.frame + COLLABORATE_TRANSITION_MIN_WAIT_FRAMES,
       player1TransitionReady: false,
       player2TransitionReady: false,
     };
@@ -683,7 +687,11 @@ export class BattleModel {
     const player2Ready = Boolean(
       targetInput?.transitionReadyPressed || extra.player2TransitionReady,
     );
-    if (!player1Ready || !player2Ready) {
+    if (
+      !player1Ready ||
+      !player2Ready ||
+      this.frame < extra.transitionReadyFrame
+    ) {
       this.collaborateExtra = {
         ...extra,
         player1TransitionReady: player1Ready,
@@ -703,6 +711,7 @@ export class BattleModel {
       state: "running",
       pendingTransitionTarget: null,
       transitionType: null,
+      transitionReadyFrame: this.frame,
       player1TransitionReady: false,
       player2TransitionReady: false,
       shop: opensShop
