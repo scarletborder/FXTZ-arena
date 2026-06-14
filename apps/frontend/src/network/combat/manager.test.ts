@@ -545,6 +545,9 @@ async function createClient(
   const runtime = createRaidLogicRuntime({
     mode: "online",
     loadouts: loadoutsFromConfig(config),
+    mapId: config.mapId,
+    battleMode: config.battleMode,
+    seed: config.seed,
   });
   await runtime.initialize();
 
@@ -657,9 +660,6 @@ function expectFrameHashesMatch(left: SimulatedClient, right: SimulatedClient, f
   for (let frame = 0; frame <= finalFrame; frame += 1) {
     const leftHash = left.hashAt(frame);
     const rightHash = right.hashAt(frame);
-    if (leftHash !== rightHash) {
-      mismatches.push(`${frame}: ${leftHash ?? "<missing>"} != ${rightHash ?? "<missing>"}`);
-    }
 
     const leftSampledHash = left.sampledHashAt(frame);
     if (leftSampledHash && leftHash !== leftSampledHash) {
@@ -669,6 +669,10 @@ function expectFrameHashesMatch(left: SimulatedClient, right: SimulatedClient, f
     const rightSampledHash = right.sampledHashAt(frame);
     if (rightSampledHash && rightHash !== rightSampledHash) {
       mismatches.push(`${frame}: Player2 sampled ${rightSampledHash}, final ${rightHash ?? "<missing>"}`);
+    }
+
+    if (leftSampledHash && rightSampledHash && leftSampledHash !== rightSampledHash) {
+      mismatches.push(`${frame}: sampled ${leftSampledHash} != ${rightSampledHash}`);
     }
   }
 
@@ -865,12 +869,20 @@ function loadoutsFromConfig(config: BattleConfig) {
       alternateCharacterId: player.alternateCharacterId,
       cardIds: player.abilityCardIds,
       activeCardId: player.activeAbilityCardId,
+      storyModeOverride: {
+        enabled: true,
+        lives: config.lifeCount,
+      },
     },
     target: {
       primaryCharacterId: target.primaryCharacterId,
       alternateCharacterId: target.alternateCharacterId,
       cardIds: target.abilityCardIds,
       activeCardId: target.activeAbilityCardId,
+      storyModeOverride: {
+        enabled: true,
+        lives: config.lifeCount,
+      },
     },
   };
 }

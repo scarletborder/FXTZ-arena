@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("phaser", () => ({
+  default: {},
+}));
 
 import type { BattleOutputState } from "@repo/raid-logic";
 import type { CharacterDefinition, FighterKey, FighterState, ProjectileState } from "@repo/content";

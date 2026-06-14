@@ -33,7 +33,7 @@ describe("@repo/types default battle rules", () => {
       abilityCardIds: ["extra_life", "ember"],
     };
 
-    expect(getInitialLives(loadout)).toBe(3);
+    expect(getInitialLives(loadout)).toBe(4); // 3渲染为2心，4渲染为3心
     expect(getDefaultBombs(loadout)).toBe(4);
   });
 });

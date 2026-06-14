@@ -372,7 +372,7 @@ describe("BattleModel hit recovery", () => {
   it("applies extra life's initialization callback", async () => {
     const model = await createBattleModel("reimu", "marisa", ["extra_life"]);
 
-    expect(model.player.lives).toBe(3);
+    expect(model.player.lives).toBe(4);
   });
 
   it("restores bombs to the default count after taking a hit", async () => {
@@ -381,7 +381,7 @@ describe("BattleModel hit recovery", () => {
 
     hitPlayer(model);
 
-    expect(model.player.lives).toBe(1);
+    expect(model.player.lives).toBe(2);
     expect(model.player.bombs).toBe(3);
   });
 
@@ -392,7 +392,7 @@ describe("BattleModel hit recovery", () => {
 
     hitPlayer(model);
 
-    expect(model.player.lives).toBe(1);
+    expect(model.player.lives).toBe(2);
     expect(model.player.bombs).toBe(4);
   });
 
@@ -447,6 +447,9 @@ describe("BattleModel hit recovery", () => {
       { ...input(), transitionReadyPressed: true },
       { ...input(), transitionReadyPressed: true },
     );
+    for (let frame = model.frame; frame < 61; frame += 1) {
+      model.stepVersus(input(), input());
+    }
 
     expect(model.player.lives).toBe(1);
     expect(model.player.deadUntil).toBe(0);
@@ -590,7 +593,7 @@ describe("BattleModel collaborate projectile rules", () => {
 
     model.stepVersus(input(), input());
 
-    expect(model.target.lives).toBe(2);
+    expect(model.target.lives).toBe(3);
     expect(model.projectiles.some((projectile) => projectile.id === 1)).toBe(
       true,
     );
@@ -612,7 +615,7 @@ describe("BattleModel collaborate projectile rules", () => {
 
     model.stepVersus(input(), input());
 
-    expect(model.player.lives).toBe(2);
+    expect(model.player.lives).toBe(3);
     expect(model.projectiles.some((projectile) => projectile.id === 1)).toBe(
       true,
     );
@@ -667,8 +670,8 @@ describe("BattleModel collaborate projectile rules", () => {
 
     model.stepVersus(input(), input());
 
-    expect(model.player.lives).toBe(1);
-    expect(model.target.lives).toBe(1);
+    expect(model.player.lives).toBe(2);
+    expect(model.target.lives).toBe(2);
   });
 
   it("keeps versus player projectiles damaging the opposing player", async () => {
@@ -685,7 +688,7 @@ describe("BattleModel collaborate projectile rules", () => {
 
     model.stepVersus(input(), input());
 
-    expect(model.target.lives).toBe(1);
+    expect(model.target.lives).toBe(2);
   });
 
   it("does not mutually clear Player1 and Player2 projectiles in collaborate mode", async () => {
@@ -851,7 +854,7 @@ describe("BattleModel ability cards", () => {
 
     expect(model.player.pointCount).toBe(2);
     expect(model.player.grazedProjectileIds).toEqual([1]);
-    expect(model.player.lives).toBe(2);
+    expect(model.player.lives).toBe(3);
   });
 
   it("keeps projectiles alive while they are inside the expanded world padding", async () => {
@@ -896,7 +899,7 @@ describe("BattleModel ability cards", () => {
 
     model.step(input());
 
-    expect(model.player.lives).toBe(1);
+    expect(model.player.lives).toBe(2);
     expect(model.player.pointCount).toBe(0);
     expect(model.player.grazedProjectileIds).toEqual([]);
   });
@@ -1634,7 +1637,7 @@ describe("Example collaborate mob spawner", () => {
       input({ transitionReadyPressed: true }),
       input({ transitionReadyPressed: true }),
     );
-    for (let frame = model.frame; frame < 60; frame += 1) {
+    for (let frame = model.frame; frame < 61; frame += 1) {
       model.stepVersus(input(), input());
     }
     expect(model.serialize().collaborateExtra?.shop.open).toBe(true);

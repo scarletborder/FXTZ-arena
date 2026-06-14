@@ -64,6 +64,14 @@ function createSceneStub() {
 function createKeys(): BattleKeyMap {
   const key = { isDown: false };
   return {
+    moveUp: key,
+    moveLeft: key,
+    moveDown: key,
+    moveRight: key,
+    alternate: key,
+    reload: key,
+    info: key,
+    activeCard: key,
     w: key,
     a: key,
     s: key,

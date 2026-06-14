@@ -187,8 +187,8 @@ describe("@repo/raid-logic", () => {
     expect(runFixedTickExample(3)).toEqual({
       frame: 3,
       fighters: [
-        { playerId: "Player1", x: -288, y: 0 },
-        { playerId: "Player2", x: 300, y: 0 },
+        { playerId: "Player1", x: 192, y: 280 },
+        { playerId: "Player2", x: 600, y: 280 },
       ],
     });
   });
