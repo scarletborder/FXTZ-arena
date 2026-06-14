@@ -28,7 +28,8 @@ export type SceneKey =
   | "replay-record"
   | "replay-playback"
   | "spectator-loading";
-export type SelectionMode = "ai" | "training" | "online" | "local";
+export type SelectionMode = "ai" | "training" | "online" | "local" | "debug_cooperate";
+export type DebugCooperateJumpTarget = "start" | "elite" | "boss";
 export type CodexTab = "characters" | "cards";
 export type CpuLoadoutPresetId = "marisa_solo" | "sakuya_cirno" | "kaguya_reisen";
 
@@ -42,6 +43,11 @@ export interface SelectionData {
   readonly playerId?: PlayerId;
   /** Battle room mode for online selection rules. */
   readonly battleMode?: BattleRoomMode;
+  /** Debug co-op entry point. */
+  readonly debugCooperate?: {
+    readonly target: DebugCooperateJumpTarget;
+    readonly eliteWaveIndex?: number;
+  };
   /** Optional callback used by local LAN to hand the chosen loadout back to the orchestrator. */
   readonly onLocalConfirm?: (loadout: PlayerLoadout) => void;
   /** Optional scene key to return to when leaving the selection screen. */

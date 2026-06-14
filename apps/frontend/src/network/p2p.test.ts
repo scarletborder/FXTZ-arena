@@ -92,7 +92,7 @@ describe("P2pConnection", () => {
 
     // Simulate the same packet arriving through the RTC channel mapping.
     const mapped = dataChannelMessageToPeerServerMessage(
-      { localPlayerId: "Player1", remotePlayerId: "Player2" },
+      { localPlayerId: "Player1", extra: {} },
       {
         type: "game_over",
         frame: 42,

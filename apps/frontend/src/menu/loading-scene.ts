@@ -170,6 +170,7 @@ export class LoadingScene extends Phaser.Scene {
       playerInitPoint: this.loadingData.playerInitPoint,
       opponentInitPoint: this.loadingData.opponentInitPoint,
       ai: this.loadingData.ai,
+      debugCooperate: this.loadingData.debugCooperate,
     });
 
     await runtime.initialize();

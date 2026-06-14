@@ -238,7 +238,7 @@ function createKeybindRow(
   y: number,
   width: number,
   height: number,
-  action: keyof KeybindSettings,
+  _action: keyof KeybindSettings,
   actionLabel: string,
   currentValue: string | number,
   onStartBinding: () => void,

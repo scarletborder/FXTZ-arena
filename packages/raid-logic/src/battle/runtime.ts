@@ -50,6 +50,13 @@ export interface RaidLogicRuntimeOptions {
   readonly playerInitPoint?: number;
   readonly opponentInitPoint?: number;
   readonly seed?: number;
+  readonly debugCooperate?: {
+    readonly jump?: {
+      readonly nodeIndex: number;
+      readonly currentWaveId: string;
+      readonly transitionTarget?: "elite" | "boss";
+    };
+  };
   readonly ai?: {
     readonly smartDurationSeconds?: number;
     readonly dumbRampSeconds?: number;
@@ -107,6 +114,7 @@ class BattleRuntime implements RaidLogicRuntime {
     opponentInitPoint: number | undefined,
     seed: number | undefined,
     ai: RaidLogicRuntimeOptions["ai"] | undefined,
+    debugCooperate: RaidLogicRuntimeOptions["debugCooperate"] | undefined,
   ) {
     const map = resolveMap(mapId);
     const bounds = arenaBoundsForMap(map);
@@ -124,6 +132,7 @@ class BattleRuntime implements RaidLogicRuntime {
       opponentInitPoint,
       seed,
       ai,
+      debugCooperate,
     });
     this.enqueueOutput([
       { type: "snapshot_restored", frame: this.model.frame },
@@ -349,5 +358,6 @@ export function createRaidLogicRuntime(
     options.opponentInitPoint,
     options.seed,
     options.ai,
+    options.debugCooperate,
   );
 }

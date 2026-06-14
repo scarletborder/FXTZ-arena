@@ -164,6 +164,13 @@ export class BattleModel {
       readonly playerInitMoney?: number;
       readonly opponentInitMoney?: number;
       readonly seed?: number;
+      readonly debugCooperate?: {
+        readonly jump?: {
+          readonly nodeIndex: number;
+          readonly currentWaveId: string;
+          readonly transitionTarget?: "elite" | "boss";
+        };
+      };
       readonly ai?: {
         readonly smartDurationSeconds?: number;
         readonly dumbRampSeconds?: number;
@@ -245,6 +252,7 @@ export class BattleModel {
       mobSpawner,
       this.arenaBounds,
     );
+    this.applyDebugCooperateJump(params.debugCooperate?.jump);
   }
 
   get player(): FighterState {
@@ -310,6 +318,7 @@ export class BattleModel {
     );
     this.applyInitialPoints();
     this.applyInitialCollaborateMoney();
+    this.applyDebugCooperateJump(undefined);
   }
 
   private applyInitialPoints(): void {
@@ -325,6 +334,47 @@ export class BattleModel {
         ...this.collaborateExtra.moneyByPlayerId,
         Player1: this.playerInitMoney,
         Player2: this.opponentInitMoney,
+      },
+    };
+  }
+
+  private applyDebugCooperateJump(
+    jump:
+      | {
+          readonly nodeIndex: number;
+          readonly currentWaveId: string;
+          readonly transitionTarget?: "elite" | "boss";
+        }
+      | undefined,
+  ): void {
+    if (!jump || this.battleMode !== "collaborate" || !this.collaborateExtra) {
+      return;
+    }
+    const nodeIndex = Math.max(0, Math.trunc(jump.nodeIndex));
+    this.neutralMobManager.restoreSpawner({
+      spawnerId: "example-collaborate-mob-spawner",
+      nodeIndex,
+      phase: jump.transitionTarget ? "transition_sync" : "running",
+      shopIndex: 0,
+      waveStartFrame: 0,
+      nextWaveAllowedFrame: 0,
+      forceNextWaveFrame: 0,
+      spawnedMemberKeys: [],
+    });
+    this.collaborateExtra = {
+      ...this.collaborateExtra,
+      state: jump.transitionTarget ? "transition_sync" : "running",
+      pendingTransitionTarget: jump.transitionTarget ?? null,
+      transitionType: jump.transitionTarget ? "manual" : null,
+      transitionReadyFrame: this.frame,
+      player1TransitionReady: false,
+      player2TransitionReady: false,
+      wave: {
+        waveIndex: nodeIndex,
+        currentWaveId: jump.currentWaveId,
+        waveStartFrame: this.frame,
+        nextWaveAllowedFrame: this.frame,
+        forceNextWaveFrame: this.frame,
       },
     };
   }

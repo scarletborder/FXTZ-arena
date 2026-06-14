@@ -16,5 +16,5 @@ export interface BattleLoadouts {
 export interface StoryModeOverride {
   readonly enabled: true;
   readonly lives: number;
-  readonly bombs: number;
+  readonly bombs?: number;
 }

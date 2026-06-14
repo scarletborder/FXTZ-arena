@@ -33,6 +33,13 @@ import {
 import { uiSettings } from "../store/settings";
 import { Depth } from "../utils/depth";
 import { queueMenuAssets } from "./assets";
+import {
+  createDebugCooperateBattleConfig,
+  createDebugCooperateBotPeer,
+  debugCooperateBotLoadout,
+  resolveDebugCooperateRuntimeJump,
+  withDebugCooperateResources,
+} from "./debug-cooperate";
 
 const COST_LIMIT = 10;
 
@@ -40,6 +47,7 @@ export class SelectScene extends Phaser.Scene {
   private mode: SelectionData["mode"] = "ai";
   private battleMode: BattleRoomMode = "versus";
   private selectedMapId: SelectionData["mapId"];
+  private debugCooperate: SelectionData["debugCooperate"];
   private cpuLoadoutPresetId: CpuLoadoutPresetId = "marisa_solo";
   private playerId: string | undefined;
   private localConfirmHandler: SelectionData["onLocalConfirm"] | undefined;
@@ -111,6 +119,7 @@ export class SelectScene extends Phaser.Scene {
     this.mode = data.mode;
     this.battleMode = data.battleMode ?? connectionManager.battleMode ?? "versus";
     this.selectedMapId = data.mapId;
+    this.debugCooperate = data.debugCooperate;
     this.cpuLoadoutPresetId = data.cpuLoadoutPresetId ?? "marisa_solo";
     this.playerId = data.playerId;
     this.localConfirmHandler = data.onLocalConfirm;
@@ -123,7 +132,9 @@ export class SelectScene extends Phaser.Scene {
       ? this.isCollaborateMode() ? t("select.subtitle.online_collaborate") : t("select.subtitle.online_versus")
       : this.mode === "training"
         ? t("select.subtitle.training")
-        : this.mode === "local"
+        : this.mode === "debug_cooperate"
+          ? t("select.subtitle.debug_cooperate")
+          : this.mode === "local"
           ? t("select.subtitle.local")
           : t("select.subtitle.cpu");
     drawFightingBackdrop(this, "SELECT", subtitle);
@@ -271,7 +282,9 @@ export class SelectScene extends Phaser.Scene {
     }
     this.addCostDisplay();
 
-    const label = this.mode === "online" || this.mode === "local" ? t("select.confirm_loadout") : t("select.confirm_battle");
+    const label = this.mode === "online" || this.mode === "local" || this.mode === "debug_cooperate"
+      ? t("select.confirm_loadout")
+      : t("select.confirm_battle");
     const confirmButton = createFightButton(this, 1036, 680, 250, 58, label, () => this.confirm(), {
       enabled: this.isValid(),
       accent: 0xe33d44,
@@ -838,6 +851,39 @@ export class SelectScene extends Phaser.Scene {
       return;
     }
 
+    if (this.mode === "debug_cooperate") {
+      const player = withDebugCooperateResources({
+        primaryCharacterId: this.primaryId,
+        alternateCharacterId: this.alternateId,
+        cardIds: [],
+        activeCardId: undefined,
+      });
+      const target = debugCooperateBotLoadout();
+      const mapId = this.selectedMapId ?? "collaborate_test_arena";
+      const battleConfig = createDebugCooperateBattleConfig({
+        mapId,
+        playerLoadout: player,
+        botLoadout: target,
+      });
+      this.scene.start("loading", {
+        mode: "local",
+        playerName: uiSettings.username,
+        opponentName: t("settings.debug.cooperate.bot_name"),
+        returnScene: "settings",
+        loadouts: { player, target },
+        mapId,
+        battleMode: "collaborate",
+        debug: true,
+        battleConfig,
+        localPlayerId: "Player1",
+        p2p: createDebugCooperateBotPeer(),
+        debugCooperate: {
+          jump: resolveDebugCooperateRuntimeJump(mapId, this.debugCooperate),
+        },
+      });
+      return;
+    }
+
     // Local mode (ai / training) — navigate directly
     const selectedCards = this.isCollaborateMode() ? [] : [...this.selectedCards];
     const activeCardId = selectedCards.find((id) => getCardById(id).kind === "active");
@@ -892,7 +938,7 @@ export class SelectScene extends Phaser.Scene {
   }
 
   private isCollaborateMode(): boolean {
-    return this.battleMode === "collaborate";
+    return this.battleMode === "collaborate" || this.mode === "debug_cooperate";
   }
 }
 

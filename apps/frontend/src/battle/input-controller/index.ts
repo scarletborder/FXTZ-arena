@@ -24,7 +24,7 @@ export class BattleInputController {
 
   constructor(
     private scene: Phaser.Scene,
-    private sceneData: BattleSceneData,
+    sceneData: BattleSceneData,
     private arenaBounds: ArenaBounds
   ) {
     this.mobileControlsEnabled =

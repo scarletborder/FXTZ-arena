@@ -485,6 +485,7 @@ describe("CombatSyncManager rollback integration", () => {
         collaborateExtra: {
           state: "transition_sync",
           transitionType: "auto",
+          transitionReadyFrame: 11,
           player1TransitionReady: false,
           player2TransitionReady: false,
         },
@@ -870,7 +871,7 @@ function loadoutsFromConfig(config: BattleConfig) {
       cardIds: player.abilityCardIds,
       activeCardId: player.activeAbilityCardId,
       storyModeOverride: {
-        enabled: true,
+        enabled: true as const,
         lives: config.lifeCount,
       },
     },
@@ -880,7 +881,7 @@ function loadoutsFromConfig(config: BattleConfig) {
       cardIds: target.abilityCardIds,
       activeCardId: target.activeAbilityCardId,
       storyModeOverride: {
-        enabled: true,
+        enabled: true as const,
         lives: config.lifeCount,
       },
     },
