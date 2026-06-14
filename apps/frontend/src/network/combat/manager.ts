@@ -517,7 +517,9 @@ export class CombatSyncManager {
     if (localReady) {
       return;
     }
-    this.forcedTransitionReadyFrames.get(this.localPlayerId)?.add(frame);
+    this.forcedTransitionReadyFrames
+      .get(this.localPlayerId)
+      ?.add(Math.max(frame, extra.transitionReadyFrame));
   }
 
   private maybeScheduleLocalForcedShopReady(frame: number): void {

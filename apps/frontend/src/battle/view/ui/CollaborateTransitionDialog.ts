@@ -89,6 +89,14 @@ export class CollaborateTransitionDialog {
       .container(GAME_WIDTH / 2, GAME_HEIGHT / 2)
       .setScrollFactor(0)
       .setDepth(Depth.OnlineStatus + 1);
+    container.setAlpha(0).setScale(0.96);
+    this.scene.tweens.add({
+      targets: container,
+      alpha: 1,
+      scale: 1,
+      duration: 360,
+      ease: "Cubic.easeOut",
+    });
     const bg = this.scene.add
       .rectangle(0, 0, 420, 170, 0x101820, 0.92)
       .setStrokeStyle(2, 0xffcf6e, 0.95);

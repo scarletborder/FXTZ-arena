@@ -70,6 +70,7 @@ export class CollaborateShopPanel {
   private readonly orderedGoods: CollaborateShopItemState[] = [];
   private readonly activeCards: AbilityCardDefinition[] = [];
   private readyHoldProgress = 0;
+  private interactionDisabled = false;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -81,13 +82,17 @@ export class CollaborateShopPanel {
     localKey: CanonicalFighterKey,
     fighters: Readonly<Record<CanonicalFighterKey, FighterState>>,
   ): void {
-    if (!extra?.shop.open) {
+    const previewOpening =
+      extra?.state === "transition_sync" &&
+      extra.pendingTransitionTarget === "shop";
+    if (!extra?.shop.open && !previewOpening) {
       this.destroy();
       return;
     }
 
     this.ensure();
     const shop = extra.shop;
+    this.interactionDisabled = !shop.open;
     const localGoods = shop.goodsByPlayerId[localKey] ?? shop.goods;
     const localMoney = extra.moneyByPlayerId[localKey];
     const localReady = shop.readyByPlayerId[localKey];
@@ -97,7 +102,7 @@ export class CollaborateShopPanel {
     this.syncActiveCards(fighters[localKey]);
     const hoverItem = this.orderedGoods.find((item) => item.id === this.hoverItemId);
 
-    this.title?.setText(t("battle.shop_title", { index: shop.shopIndex }));
+    this.title?.setText(t("battle.shop_title", { index: shop.open ? shop.shopIndex : shop.shopIndex + 1 }));
     this.money?.setText(formatMoneyDisplay({ extra, localKey, hoverItem }));
     this.money?.setColor(
       !hoverItem || hoverItem.kind === "sold_out"
@@ -109,7 +114,7 @@ export class CollaborateShopPanel {
     this.p1Check?.setText(checkText("Player1", shop.readyByPlayerId.Player1));
     this.p2Check?.setText(checkText("Player2", shop.readyByPlayerId.Player2));
 
-    this.renderGoods(extra, localKey, localReady || localRevived);
+    this.renderGoods(extra, localKey, this.interactionDisabled || localReady || localRevived);
     this.renderPreview(hoverItem, localRevived);
     this.renderBagDialog(fighters[localKey]);
     this.readyButtonText?.setText(
@@ -139,7 +144,7 @@ export class CollaborateShopPanel {
       return;
     }
     const item = this.orderedGoods[this.selectedItemIndex];
-    if (item?.id) {
+    if (item?.id && !this.interactionDisabled) {
       this.callbacks.onPurchase(item.id);
     }
   }
@@ -195,6 +200,15 @@ export class CollaborateShopPanel {
       .container(GAME_WIDTH / 2, GAME_HEIGHT / 2)
       .setScrollFactor(0)
       .setDepth(Depth.OnlineStatus + 2);
+    container.setAlpha(0).setY(GAME_HEIGHT / 2 + 28).setScale(0.97);
+    this.scene.tweens.add({
+      targets: container,
+      alpha: 1,
+      y: GAME_HEIGHT / 2,
+      scale: 1,
+      duration: 420,
+      ease: "Cubic.easeOut",
+    });
     const bg = this.scene.add
       .rectangle(0, 0, 920, 500, 0x101820, 0.95)
       .setStrokeStyle(2, 0xffcf6e, 0.95);
@@ -278,7 +292,9 @@ export class CollaborateShopPanel {
       new Phaser.Geom.Rectangle(-60, -20, 120, 40),
       Phaser.Geom.Rectangle.Contains,
     );
-    readyButton.on("pointerdown", () => this.callbacks.onReady());
+    readyButton.on("pointerdown", () => {
+      if (!this.interactionDisabled) this.callbacks.onReady();
+    });
     readyGroup.add([p1Check, p2Check, readyButton, readyProgressBg, readyProgressFill]);
 
     container.add([bg, title, money, bagButton, readyGroup]);
@@ -410,7 +426,7 @@ export class CollaborateShopPanel {
       });
       container.on("pointerdown", () => {
         const visual = this.itemVisuals.find((item) => item.container === container);
-        if (visual?.itemId) this.callbacks.onPurchase(visual.itemId);
+        if (visual?.itemId && !this.interactionDisabled) this.callbacks.onPurchase(visual.itemId);
       });
       this.container.add(container);
       this.itemVisuals.push({ container, bg, iconBg, iconText, iconImage, name, price, itemId: "" });

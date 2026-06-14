@@ -13,7 +13,7 @@ import type { PointManager } from "./manager/point-manager";
 import { clampCollaborateCurrency } from "./utils/currency";
 import { drawWithoutReplacement, mulberry32 } from "./utils/random";
 
-export const COLLABORATE_TRANSITION_MIN_WAIT_FRAMES = 60;
+export const COLLABORATE_TRANSITION_MIN_WAIT_FRAMES = 30;
 
 export function beginCollaborateTransitionState(params: {
   readonly extra: CollaborateExtraState | undefined;

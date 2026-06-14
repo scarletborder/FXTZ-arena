@@ -244,7 +244,7 @@ describe("BattleModel rollback snapshots", () => {
       state: "transition_sync",
       pendingTransitionTarget: "boss",
       transitionType: "manual",
-      transitionReadyFrame: 60,
+      transitionReadyFrame: 30,
       player1TransitionReady: true,
       player2TransitionReady: false,
       spawnerRngState: "2468",
@@ -257,7 +257,7 @@ describe("BattleModel rollback snapshots", () => {
       player1TransitionReady: true,
       player2TransitionReady: true,
     });
-    for (let frame = model.frame; frame < 60; frame += 1) {
+    for (let frame = model.frame; frame < 30; frame += 1) {
       model.stepVersus(input(), input());
     }
     expect(model.serialize().collaborateExtra?.state).toBe("running");
@@ -300,7 +300,7 @@ describe("BattleModel rollback snapshots", () => {
     ]);
     expect(model.neutralMobManager.states()).toHaveLength(1);
 
-    for (let frame = model.frame; frame < 60; frame += 1) {
+    for (let frame = model.frame; frame < 30; frame += 1) {
       model.stepVersus(input(), input());
     }
 
@@ -481,7 +481,7 @@ describe("BattleModel hit recovery", () => {
     expect(model.projectiles.map((projectile) => projectile.id).sort()).toEqual([1, 2]);
     expect(model.neutralMobManager.states()).toHaveLength(1);
 
-    for (let frame = model.frame; frame < 60; frame += 1) {
+    for (let frame = model.frame; frame < 30; frame += 1) {
       model.stepVersus(input(), input());
     }
 
