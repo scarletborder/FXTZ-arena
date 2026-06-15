@@ -63,6 +63,13 @@ const COLLABORATE_TEST_ARENA: MapDefinition = {
   mobSpawnerId: "example-collaborate-mob-spawner",
 };
 
+const COLLABORATE_TEST_ARENA_2: MapDefinition = {
+  ...COLLABORATE_TEST_ARENA,
+  id: "collaborate_test_arena_2",
+  name: "合作测试竞技场2",
+  mobSpawnerId: "collaborate-test-arena-2-mob-spawner",
+};
+
 export const DEFAULT_MAPS: readonly MapDefinition[] = [
   HAKUREI_SHRINE,
   {
@@ -114,6 +121,7 @@ export const DEFAULT_MAPS: readonly MapDefinition[] = [
     mobSpawnerId: "shoot_range_spawn",
   },
   COLLABORATE_TEST_ARENA,
+  COLLABORATE_TEST_ARENA_2,
 ];
 
 export function getCombatMapDefinition(
@@ -128,12 +136,15 @@ export function getAvailableCombatMaps(): readonly MapDefinition[] {
 
 export function getAvailableVersusMaps(): readonly MapDefinition[] {
   return DEFAULT_MAPS.filter(
-    (map) => map.id !== "shoot_range" && map.id !== "collaborate_test_arena",
+    (map) =>
+      map.id !== "shoot_range" &&
+      map.id !== "collaborate_test_arena" &&
+      map.id !== "collaborate_test_arena_2",
   );
 }
 
 export function getAvailableCollaborateMaps(): readonly MapDefinition[] {
-  return [COLLABORATE_TEST_ARENA];
+  return [COLLABORATE_TEST_ARENA, COLLABORATE_TEST_ARENA_2];
 }
 
 export const get_available_combat_maps = getAvailableCombatMaps;

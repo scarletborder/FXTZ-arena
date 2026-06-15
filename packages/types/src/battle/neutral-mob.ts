@@ -33,6 +33,11 @@ export interface NeutralMobSpellCardState {
   readonly spellCards: readonly NeutralMobSpellCardDefinitionState[];
 }
 
+export interface NeutralMobRewardDropState {
+  readonly size: PointRewardSize | MoneyRewardSize | PowerRewardSize;
+  readonly count?: number;
+}
+
 export interface NeutralMobState {
   readonly id: NeutralMobId;
   readonly key: "Neutral";
@@ -56,6 +61,9 @@ export interface NeutralMobState {
   pointRewardSize?: PointRewardSize;
   moneyRewardSize?: MoneyRewardSize;
   powerRewardSize?: PowerRewardSize;
+  pointRewardDrops?: readonly NeutralMobRewardDropState[];
+  moneyRewardDrops?: readonly NeutralMobRewardDropState[];
+  powerRewardDrops?: readonly NeutralMobRewardDropState[];
   damageTaken?: number;
   active: boolean;
   ageTicks: number;

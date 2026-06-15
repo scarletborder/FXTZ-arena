@@ -97,18 +97,6 @@ const POINT_PREFABS: readonly PointPrefab[] = [
   },
 ];
 
-const SQRT_HALF = 0.7071067811865476;
-const FRAME_DIRECTIONS: readonly (readonly [number, number])[] = [
-  [0, -1],
-  [SQRT_HALF, -SQRT_HALF],
-  [1, 0],
-  [SQRT_HALF, SQRT_HALF],
-  [0, 1],
-  [-SQRT_HALF, SQRT_HALF],
-  [-1, 0],
-  [-SQRT_HALF, -SQRT_HALF],
-];
-
 export function createPointState(params: {
   readonly id: number;
   readonly x: number;
@@ -185,12 +173,12 @@ export function pointVelocityFromFrame(
   speedRank: SpeedRank = "low",
   seed = 0,
 ): { readonly vx: number; readonly vy: number } {
-  const direction =
-    FRAME_DIRECTIONS[positiveModulo(frame + seed, FRAME_DIRECTIONS.length)]!;
+  const state = lcg((Math.imul(frame + 1, 0x9e3779b1) ^ seed) >>> 0);
+  const angle = ((state & 0xffff) / 0x10000) * Math.PI * 2;
   const fpSpeed = fp.fromFloat(speedRankToPixelsPerTick(speedRank));
   return {
-    vx: fp.toFloat(fp.mul(fp.fromFloat(direction[0]), fpSpeed)),
-    vy: fp.toFloat(fp.mul(fp.fromFloat(direction[1]), fpSpeed)),
+    vx: fp.toFloat(fp.mul(fp.fromFloat(Math.cos(angle)), fpSpeed)),
+    vy: fp.toFloat(fp.mul(fp.fromFloat(Math.sin(angle)), fpSpeed)),
   };
 }
 
@@ -224,6 +212,6 @@ function prefabForReward(
   return prefab;
 }
 
-function positiveModulo(value: number, divisor: number): number {
-  return ((value % divisor) + divisor) % divisor;
+function lcg(seed: number): number {
+  return (Math.imul(seed, 1664525) + 1013904223) >>> 0;
 }

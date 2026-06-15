@@ -11,9 +11,14 @@ export * from "./collaborate/spell-card";
 export * from "./collaborate/example-collaborate-mob-spawner/waves";
 export * from "./collaborate/example-collaborate-mob-spawner/elites/collaborate-elite-fairy";
 export * from "./collaborate/example-collaborate-mob-spawner/boss/collaborate-boss-fairy";
+export * from "./collaborate/collaborate-test-arena-2/waves";
+export * from "./collaborate/collaborate-test-arena-2/mobs/test-arena-2-fairy";
+export * from "./collaborate/collaborate-test-arena-2/elites/test-arena-2-cirno-elite";
+export * from "./collaborate/collaborate-test-arena-2/boss/test-arena-2-ellen-boss";
 
 import { DefaultMobSpawnerA } from "./default-a";
 import { ExampleCollaborateMobSpawner } from "./collaborate/example-collaborate-mob-spawner/waves";
+import { CollaborateTestArena2MobSpawner } from "./collaborate/collaborate-test-arena-2/waves";
 import { ShootingRangeSpawn } from "./shooting-range-spawn";
 import type { NeutralMobSpawner } from "./base";
 
@@ -29,6 +34,8 @@ export function resolveMobSpawner(
       return new DefaultMobSpawnerA();
     case "example-collaborate-mob-spawner":
       return new ExampleCollaborateMobSpawner();
+    case "collaborate-test-arena-2-mob-spawner":
+      return new CollaborateTestArena2MobSpawner();
     case "shoot_range_spawn":
       return new ShootingRangeSpawn();
     default:

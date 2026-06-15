@@ -24,6 +24,17 @@ export interface PointCollectionAward {
   readonly point: PointState;
 }
 
+interface RewardDropState {
+  readonly size: "small" | "medium" | "large";
+  readonly count?: number;
+}
+
+type NeutralMobStateWithRewardDrops = NeutralMobState & {
+  readonly pointRewardDrops?: readonly RewardDropState[];
+  readonly moneyRewardDrops?: readonly RewardDropState[];
+  readonly powerRewardDrops?: readonly RewardDropState[];
+};
+
 export class PointManager {
   readonly points: PointState[] = [];
   private nextPointId = 1;
@@ -114,43 +125,54 @@ export class PointManager {
   }
 
   dropPointFromMob(frame: number, mob: NeutralMobState): void {
-    const rewardSize = mob.pointRewardSize;
-    const velocity = pointVelocityFromFrame(frame, "low", mob.id);
-    if (rewardSize) {
+    const rewardMob = mob as NeutralMobStateWithRewardDrops;
+    let dropIndex = 0;
+    for (const drop of rewardDrops(rewardMob.pointRewardDrops, mob.pointRewardSize)) {
+      const velocity = pointVelocityFromFrame(
+        frame,
+        "low",
+        dropSeed(mob.id, dropIndex++),
+      );
       this.addPoint(
         createPointState({
           id: this.allocatePointId(),
           x: mob.x,
           y: mob.y,
-          rewardSize,
+          rewardSize: drop.size,
           vx: velocity.vx,
           vy: velocity.vy,
         }),
       );
     }
-    const moneyRewardSize = mob.moneyRewardSize;
-    if (moneyRewardSize) {
-      const moneyVelocity = pointVelocityFromFrame(frame, "low", mob.id + 17);
+    for (const drop of rewardDrops(rewardMob.moneyRewardDrops, mob.moneyRewardSize)) {
+      const moneyVelocity = pointVelocityFromFrame(
+        frame,
+        "low",
+        dropSeed(mob.id, dropIndex++),
+      );
       this.addPoint(
         createMoneyState({
           id: this.allocatePointId(),
           x: mob.x,
           y: mob.y,
-          rewardSize: moneyRewardSize,
+          rewardSize: drop.size,
           vx: moneyVelocity.vx,
           vy: moneyVelocity.vy,
         }),
       );
     }
-    const powerRewardSize = mob.powerRewardSize;
-    if (powerRewardSize) {
-      const powerVelocity = pointVelocityFromFrame(frame, "low", mob.id + 31);
+    for (const drop of rewardDrops(rewardMob.powerRewardDrops, mob.powerRewardSize)) {
+      const powerVelocity = pointVelocityFromFrame(
+        frame,
+        "low",
+        dropSeed(mob.id, dropIndex++),
+      );
       this.addPoint(
         createPowerState({
           id: this.allocatePointId(),
           x: mob.x,
           y: mob.y,
-          rewardSize: powerRewardSize,
+          rewardSize: drop.size,
           vx: powerVelocity.vx,
           vy: powerVelocity.vy,
         }),
@@ -200,6 +222,24 @@ export class PointManager {
       this.onAward?.({ collectorKey: fighter.key, point });
     }
   }
+}
+
+function rewardDrops<TSize extends string>(
+  drops: readonly RewardDropState[] | undefined,
+  fallbackSize: TSize | undefined,
+): readonly { readonly size: TSize }[] {
+  if (drops && drops.length > 0) {
+    return drops.flatMap((drop) =>
+      Array.from({ length: Math.max(1, drop.count ?? 1) }, () => ({
+        size: drop.size as TSize,
+      })),
+    );
+  }
+  return fallbackSize ? [{ size: fallbackSize }] : [];
+}
+
+function dropSeed(mobId: number, dropIndex: number): number {
+  return (Math.imul(mobId, 0x45d9f3b) + Math.imul(dropIndex + 1, 0x119de1f3)) >>> 0;
 }
 
 export function clampPointCount(pointCount: number): number {

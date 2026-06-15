@@ -34,11 +34,20 @@ const NEUTRAL_MOB_HASHED_KEYS = new Set([
   "pointRewardSize",
   "moneyRewardSize",
   "powerRewardSize",
+  "pointRewardDrops",
+  "moneyRewardDrops",
+  "powerRewardDrops",
   "damageTaken",
   "active",
   "ageTicks",
   "sfxFlags",
 ]);
+
+type NeutralMobStateWithRewardDrops = NeutralMobState & {
+  readonly pointRewardDrops?: readonly NeutralMobSpawnerStateValue[];
+  readonly moneyRewardDrops?: readonly NeutralMobSpawnerStateValue[];
+  readonly powerRewardDrops?: readonly NeutralMobSpawnerStateValue[];
+};
 
 class DeterministicHasher {
   private value = 0x811c9dc5;
@@ -151,6 +160,7 @@ function writeNeutralMobs(
   for (const mob of [...neutralMobs].sort(
     (left, right) => left.id - right.id,
   )) {
+    const rewardMob = mob as NeutralMobStateWithRewardDrops;
     hasher.writeNumber(mob.id);
     hasher.writeString(mob.key);
     hasher.writeString(mob.kind);
@@ -170,6 +180,18 @@ function writeNeutralMobs(
     hasher.writeString(mob.pointRewardSize ?? "");
     hasher.writeString(mob.moneyRewardSize ?? "");
     hasher.writeString(mob.powerRewardSize ?? "");
+    writeStateValue(
+      hasher,
+      (rewardMob.pointRewardDrops ?? []) as unknown as NeutralMobSpawnerStateValue,
+    );
+    writeStateValue(
+      hasher,
+      (rewardMob.moneyRewardDrops ?? []) as unknown as NeutralMobSpawnerStateValue,
+    );
+    writeStateValue(
+      hasher,
+      (rewardMob.powerRewardDrops ?? []) as unknown as NeutralMobSpawnerStateValue,
+    );
     hasher.writeNumber(mob.damageTaken ?? 0);
     hasher.writeNumber(mob.active ? 1 : 0);
     hasher.writeNumber(mob.ageTicks);
