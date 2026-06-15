@@ -3,6 +3,7 @@ import type {
   ArenaBounds,
   MoneyRewardSize,
   PointRewardSize,
+  PowerRewardSize,
 } from "@repo/constants";
 
 export type NeutralMobId = number;
@@ -53,6 +54,7 @@ export interface NeutralMobState {
   CurrentHealth: number;
   pointRewardSize?: PointRewardSize;
   moneyRewardSize?: MoneyRewardSize;
+  powerRewardSize?: PowerRewardSize;
   damageTaken?: number;
   active: boolean;
   ageTicks: number;

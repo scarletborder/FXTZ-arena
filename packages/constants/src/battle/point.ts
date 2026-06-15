@@ -13,3 +13,11 @@ export const MONEY_REWARD_VALUES = {
 } as const;
 
 export type MoneyRewardSize = keyof typeof MONEY_REWARD_VALUES;
+
+export const POWER_REWARD_VALUES = {
+  small: 1,
+  medium: 5,
+  large: 10,
+} as const;
+
+export type PowerRewardSize = keyof typeof POWER_REWARD_VALUES;

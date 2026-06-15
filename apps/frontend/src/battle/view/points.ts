@@ -44,10 +44,11 @@ export class PointView {
       visual.container.setAlpha(smoothValue(visual.container.alpha, point.collectingBy ? collectRatio : 1, rollbackBlend));
       visual.container.setVisible(true);
       visual.box.setDisplaySize(point.size, point.size);
-      visual.box.setFillStyle(point.rewardKind === "money" ? 0xffd45c : 0xffffff, 1);
-      visual.box.setStrokeStyle(2, point.rewardKind === "money" ? 0xb87a00 : 0x2f7fff, 1);
-      visual.label.setText(point.rewardKind === "money" ? "M" : "P");
-      visual.label.setColor(point.rewardKind === "money" ? "#7a4a00" : "#2f7fff");
+      const style = pointVisualStyle(point.rewardKind);
+      visual.box.setFillStyle(style.fill, 1);
+      visual.box.setStrokeStyle(2, style.stroke, 1);
+      visual.label.setText(style.label);
+      visual.label.setColor(style.text);
       visual.label.setFontSize(Math.max(8, point.size - 1));
     }
 
@@ -60,18 +61,37 @@ export class PointView {
   }
 
   private createVisual(point: PointState): PointVisual {
-    const isMoney = point.rewardKind === "money";
-    const box = this.scene.add.rectangle(0, 0, point.size, point.size, isMoney ? 0xffd45c : 0xffffff, 1)
+    const style = pointVisualStyle(point.rewardKind);
+    const box = this.scene.add.rectangle(0, 0, point.size, point.size, style.fill, 1)
       .setOrigin(0.5)
-      .setStrokeStyle(2, isMoney ? 0xb87a00 : 0x2f7fff, 1);
-    const label = this.scene.add.text(0, 0, isMoney ? "M" : "P", {
+      .setStrokeStyle(2, style.stroke, 1);
+    const label = this.scene.add.text(0, 0, style.label, {
       fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
       fontSize: `${Math.max(8, point.size - 1)}px`,
       fontStyle: "700",
-      color: isMoney ? "#7a4a00" : "#2f7fff",
+      color: style.text,
     }).setOrigin(0.5);
     const container = this.scene.add.container(point.x, point.y, [box, label]).setDepth(Depth.Point);
     return { box, label, container };
+  }
+}
+
+function pointVisualStyle(
+  rewardKind: PointState["rewardKind"],
+): {
+  readonly fill: number;
+  readonly stroke: number;
+  readonly text: string;
+  readonly label: string;
+} {
+  switch (rewardKind) {
+    case "money":
+      return { fill: 0xffd45c, stroke: 0xb87a00, text: "#7a4a00", label: "M" };
+    case "power":
+      return { fill: 0xff5c6a, stroke: 0xb4142a, text: "#ffffff", label: "P" };
+    case "point":
+    default:
+      return { fill: 0xffffff, stroke: 0x2f7fff, text: "#2f7fff", label: "P" };
   }
 }
 

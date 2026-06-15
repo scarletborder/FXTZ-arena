@@ -33,6 +33,7 @@ const NEUTRAL_MOB_HASHED_KEYS = new Set([
   "CurrentHealth",
   "pointRewardSize",
   "moneyRewardSize",
+  "powerRewardSize",
   "damageTaken",
   "active",
   "ageTicks",
@@ -168,6 +169,7 @@ function writeNeutralMobs(
     hasher.writeNumber(mob.CurrentHealth);
     hasher.writeString(mob.pointRewardSize ?? "");
     hasher.writeString(mob.moneyRewardSize ?? "");
+    hasher.writeString(mob.powerRewardSize ?? "");
     hasher.writeNumber(mob.damageTaken ?? 0);
     hasher.writeNumber(mob.active ? 1 : 0);
     hasher.writeNumber(mob.ageTicks);

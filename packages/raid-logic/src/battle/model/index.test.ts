@@ -15,6 +15,7 @@ import {
   HIT_CIRCLE_DIAMETER,
   POINT_REWARD_VALUES,
   MONEY_REWARD_VALUES,
+  POWER_REWARD_VALUES,
   COLLABORATE_GRAZE_SCORE,
   COLLABORATE_MOB_SCORE_VALUES,
   COLLABORATE_MONEY_PICKUP_SCORE_VALUES,
@@ -27,7 +28,7 @@ import { POINT_COUNT_MAX } from "../constants";
 import { getAbilityCard } from "../content";
 import { BattleModel } from ".";
 import { BattlePhysics } from "./physics-adapter";
-import { createMoneyState, createPointState } from "./points";
+import { createMoneyState, createPointState, createPowerState } from "./points";
 import { createRaidLogicRuntime } from "../runtime";
 import { stepBulletProjectile } from "./projectile/bullet";
 import { clearProjectilesAround } from "./projectile";
@@ -1282,6 +1283,32 @@ describe("BattleModel point pickups", () => {
     model.step(input());
 
     expect(model.player.pointCount).toBe(POINT_REWARD_VALUES.small);
+    expect(model.points).toHaveLength(0);
+  });
+
+  it("collects collaborate power as a small point-count boost", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate" }),
+    );
+    model.pointManager.addPoint(
+      createPowerState({
+        id: model.pointManager.allocatePointId(),
+        x: model.player.x + 31,
+        y: model.player.y,
+        rewardSize: "medium",
+        vx: 0,
+        vy: 0,
+      }),
+    );
+
+    model.stepVersus(input(), input());
+    expect(model.points[0]?.collectingBy).toBe("Player1");
+
+    for (let index = 0; index < 10; index += 1) {
+      model.stepVersus(input(), input());
+    }
+
+    expect(model.player.pointCount).toBe(POWER_REWARD_VALUES.medium);
     expect(model.points).toHaveLength(0);
   });
 

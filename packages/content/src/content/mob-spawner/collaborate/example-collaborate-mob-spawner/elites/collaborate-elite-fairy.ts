@@ -1,6 +1,10 @@
 import { fp } from "@shaisrc/fixed-point";
 import { DEFAULT_ARENA_BOUNDS, type ArenaBounds } from "@repo/constants";
-import type { MoneyRewardSize, PointRewardSize } from "@repo/constants";
+import type {
+  MoneyRewardSize,
+  PointRewardSize,
+  PowerRewardSize,
+} from "@repo/constants";
 import {
   NeutralMob,
   type NeutralMobActionContext,
@@ -102,6 +106,7 @@ export class CollaborateEliteFairy extends NeutralMob<
     readonly side: CollaborateEliteSide;
     readonly pointRewardSize?: PointRewardSize;
     readonly moneyRewardSize?: MoneyRewardSize;
+    readonly powerRewardSize?: PowerRewardSize;
     readonly arenaBounds?: ArenaBounds;
   }) {
     super();
@@ -129,6 +134,7 @@ export class CollaborateEliteFairy extends NeutralMob<
       CurrentHealth: plan.nonSpellMaxHealth,
       pointRewardSize: params.pointRewardSize,
       moneyRewardSize: params.moneyRewardSize,
+      powerRewardSize: params.powerRewardSize,
       spellCard: createSpellCardState(plan),
       active: true,
       ageTicks: 0,

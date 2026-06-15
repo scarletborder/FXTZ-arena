@@ -105,6 +105,7 @@ function minionWave(waveNumber: number, patternIndex: number): CollaborateSpawne
             pointRewardSize: finalDrop ? "medium" : "small",
           });
           mob.state.moneyRewardSize = finalDrop ? "medium" : "small";
+          (mob.state as NeutralMobState).powerRewardSize = finalDrop ? "medium" : "small";
           ctx.spawnMob(mob);
         },
       };
@@ -127,6 +128,7 @@ function minionWave(waveNumber: number, patternIndex: number): CollaborateSpawne
           pointRewardSize: finalDrop ? "medium" : "small",
         });
         mob.state.moneyRewardSize = finalDrop ? "medium" : "small";
+        (mob.state as NeutralMobState).powerRewardSize = finalDrop ? "medium" : "small";
         ctx.spawnMob(mob);
       },
     };
@@ -186,6 +188,7 @@ function eliteMember(
           side,
           pointRewardSize: "large",
           moneyRewardSize: "large",
+          powerRewardSize: "large",
         }),
       );
     },
@@ -208,6 +211,7 @@ function bossMember(spawnAtSeconds: number): WaveMemberDefinition {
           waveId: params.waveId,
           pointRewardSize: "large",
           moneyRewardSize: "large",
+          powerRewardSize: "large",
           rngSeed: 0x5eed0000 + params.waveId,
         }),
       );

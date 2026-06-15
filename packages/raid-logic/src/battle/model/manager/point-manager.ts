@@ -8,6 +8,7 @@ import { POINT_COUNT_MAX } from "../../constants";
 import {
   createMoneyState,
   createPointState,
+  createPowerState,
   POINT_COLLECT_TICKS,
   pointIsOutsideArena,
   pointVelocityFromFrame,
@@ -141,6 +142,20 @@ export class PointManager {
         }),
       );
     }
+    const powerRewardSize = mob.powerRewardSize;
+    if (powerRewardSize) {
+      const powerVelocity = pointVelocityFromFrame(frame, "low", mob.id + 31);
+      this.addPoint(
+        createPowerState({
+          id: this.allocatePointId(),
+          x: mob.x,
+          y: mob.y,
+          rewardSize: powerRewardSize,
+          vx: powerVelocity.vx,
+          vy: powerVelocity.vy,
+        }),
+      );
+    }
   }
 
   private sortPoints(): void {
@@ -176,7 +191,7 @@ export class PointManager {
       (collector) => collector.state.key === point.collectingBy,
     )?.state;
     if (fighter) {
-      if (point.rewardKind === "point") {
+      if (point.rewardKind === "point" || point.rewardKind === "power") {
         fighter.pointCount = Math.min(
           POINT_COUNT_MAX,
           fighter.pointCount + point.value,

@@ -3,8 +3,10 @@ import { fp } from "@shaisrc/fixed-point";
 import {
   MONEY_REWARD_VALUES,
   POINT_REWARD_VALUES,
+  POWER_REWARD_VALUES,
   type MoneyRewardSize,
   type PointRewardSize,
+  type PowerRewardSize,
 } from "@repo/constants";
 import {
   DEFAULT_ARENA_BOUNDS,
@@ -72,6 +74,27 @@ const POINT_PREFABS: readonly PointPrefab[] = [
     value: MONEY_REWARD_VALUES.large,
     size: 35,
   },
+  {
+    prefabId: "power_small",
+    rewardKind: "power",
+    rewardSize: "small",
+    value: POWER_REWARD_VALUES.small,
+    size: 15,
+  },
+  {
+    prefabId: "power_medium",
+    rewardKind: "power",
+    rewardSize: "medium",
+    value: POWER_REWARD_VALUES.medium,
+    size: 25,
+  },
+  {
+    prefabId: "power_large",
+    rewardKind: "power",
+    rewardSize: "large",
+    value: POWER_REWARD_VALUES.large,
+    size: 35,
+  },
 ];
 
 const SQRT_HALF = 0.7071067811865476;
@@ -111,6 +134,20 @@ export function createMoneyState(params: {
   return createCollectibleState({
     ...params,
     rewardKind: "money",
+  });
+}
+
+export function createPowerState(params: {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+  readonly rewardSize: PowerRewardSize;
+  readonly vx: number;
+  readonly vy: number;
+}): PointState {
+  return createCollectibleState({
+    ...params,
+    rewardKind: "power",
   });
 }
 
