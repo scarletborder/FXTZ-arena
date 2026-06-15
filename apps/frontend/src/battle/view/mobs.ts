@@ -70,11 +70,19 @@ interface EnemyVisualConfig {
 }
 
 type EnemyAnimationName = "default" | "turn" | "move";
+type MobVisualKind = "enemy" | "character";
 
 interface MobAnimationState {
   readonly textureKey: string;
+  readonly visualKind: MobVisualKind;
   readonly animation: EnemyAnimationName;
+  readonly characterFrame?: number;
   readonly direction: -1 | 1;
+}
+
+interface CharacterMobMotionConfig {
+  readonly frame: number;
+  readonly flipX: boolean;
 }
 
 interface MobBreakEffect {
@@ -124,6 +132,22 @@ function mobMotionConfig(mob: NeutralMobState): {
   return { animation: "move", direction: dx < 0 ? -1 : 1 };
 }
 
+function characterMobMotionConfig(
+  mob: NeutralMobState,
+  frame: number,
+): CharacterMobMotionConfig {
+  const dx = mob.x - mob.previousX;
+  const dy = mob.y - mob.previousY;
+  const moving = Math.hypot(dx, dy) > 0.5;
+  const horizontal = Math.abs(dx) > Math.abs(dy);
+  const column = horizontal ? 2 : dy < 0 ? 1 : 0;
+  const step = moving ? Math.floor(frame / 10) % 2 : 0;
+  return {
+    frame: column + step * 3,
+    flipX: horizontal && dx >= 0,
+  };
+}
+
 export class MobView {
   private readonly sprites = new Map<number, Phaser.GameObjects.Sprite>();
   private readonly damageTags = new Map<number, Phaser.GameObjects.Text>();
@@ -163,49 +187,9 @@ export class MobView {
       }
       active.add(mob.id);
 
-      const textureKey = mob.textureKey;
-      if (!textureKey) {
-        continue;
-      }
-      const config = this.enemyConfigs.get(textureKey);
-      if (!config) {
-        continue;
-      }
-      const motion = mobMotionConfig(mob);
       const x = lerp(mob.previousX, mob.x, alpha);
       const y = lerp(mob.previousY, mob.y, alpha);
-      let sprite = this.sprites.get(mob.id);
-      if (!sprite) {
-        sprite = this.scene.add
-          .sprite(x, y, config.source, `${textureKey}_default_0`)
-          .setOrigin(0.5)
-          .setDepth(Depth.Character)
-          .setDisplaySize(
-            config.width * config.scaleX,
-            config.height * config.scaleY,
-          );
-        this.sprites.set(mob.id, sprite);
-      }
-      sprite.setPosition(
-        smoothValue(sprite.x, x, rollbackBlend),
-        smoothValue(sprite.y, y, rollbackBlend),
-      );
-      sprite.setAlpha(smoothValue(sprite.alpha, 1, rollbackBlend));
-      sprite.setDisplaySize(
-        config.width * config.scaleX,
-        config.height * config.scaleY,
-      );
-      sprite.setFlipX(motion.direction < 0);
-      sprite.setVisible(true);
-      this.playMobAnimation(mob.id, sprite, config, motion);
-      this.renderHealthRing(
-        mob,
-        x,
-        y,
-        sprite.displayWidth,
-        sprite.displayHeight,
-        rollbackBlend,
-      );
+      this.renderMobSprite(mob, x, y, frame, rollbackBlend);
 
       let damageTag = this.damageTags.get(mob.id);
       if (mob.kind === "immortal_fairy") {
@@ -362,6 +346,120 @@ export class MobView {
     }
   }
 
+  private renderMobSprite(
+    mob: NeutralMobState,
+    x: number,
+    y: number,
+    frame: number,
+    rollbackBlend: number,
+  ): void {
+    const characterTextureKey = mob.characterId
+      ? `character-combat-${mob.characterId}`
+      : undefined;
+    if (
+      characterTextureKey !== undefined &&
+      this.scene.textures.exists(characterTextureKey)
+    ) {
+      this.renderCharacterMobSprite(mob, characterTextureKey, x, y, frame, rollbackBlend);
+      return;
+    }
+
+    this.renderEnemyMobSprite(mob, x, y, rollbackBlend);
+  }
+
+  private renderEnemyMobSprite(
+    mob: NeutralMobState,
+    x: number,
+    y: number,
+    rollbackBlend: number,
+  ): void {
+    const textureKey = mob.textureKey;
+    if (!textureKey) {
+      return;
+    }
+    const config = this.enemyConfigs.get(textureKey);
+    if (!config) {
+      return;
+    }
+    const motion = mobMotionConfig(mob);
+    let sprite = this.sprites.get(mob.id);
+    if (!sprite) {
+      sprite = this.scene.add
+        .sprite(x, y, config.source, `${textureKey}_default_0`)
+        .setOrigin(0.5)
+        .setDepth(Depth.Character)
+        .setDisplaySize(
+          config.width * config.scaleX,
+          config.height * config.scaleY,
+        );
+      this.sprites.set(mob.id, sprite);
+    }
+    if (sprite.texture.key !== config.source) {
+      sprite.setTexture(config.source, `${textureKey}_default_0`);
+    }
+    sprite.setPosition(
+      smoothValue(sprite.x, x, rollbackBlend),
+      smoothValue(sprite.y, y, rollbackBlend),
+    );
+    sprite.setAlpha(smoothValue(sprite.alpha, 1, rollbackBlend));
+    sprite.setDisplaySize(
+      config.width * config.scaleX,
+      config.height * config.scaleY,
+    );
+    sprite.setFlipX(motion.direction < 0);
+    sprite.setVisible(true);
+    this.playMobAnimation(mob.id, sprite, config, motion);
+    this.renderHealthRing(
+      mob,
+      x,
+      y,
+      sprite.displayWidth,
+      sprite.displayHeight,
+      rollbackBlend,
+    );
+  }
+
+  private renderCharacterMobSprite(
+    mob: NeutralMobState,
+    textureKey: string,
+    x: number,
+    y: number,
+    frame: number,
+    rollbackBlend: number,
+  ): void {
+    const motion = characterMobMotionConfig(mob, frame);
+    const displaySize = characterMobDisplaySize(mob);
+    let sprite = this.sprites.get(mob.id);
+    if (!sprite) {
+      sprite = this.scene.add
+        .sprite(x, y, textureKey, motion.frame)
+        .setOrigin(0.5)
+        .setDepth(Depth.Character)
+        .setDisplaySize(displaySize, displaySize);
+      this.sprites.set(mob.id, sprite);
+    }
+    if (sprite.texture.key !== textureKey) {
+      sprite.setTexture(textureKey, motion.frame);
+    }
+    sprite.setPosition(
+      smoothValue(sprite.x, x, rollbackBlend),
+      smoothValue(sprite.y, y, rollbackBlend),
+    );
+    sprite.setAlpha(smoothValue(sprite.alpha, 1, rollbackBlend));
+    sprite.setDisplaySize(displaySize, displaySize);
+    sprite.setFlipX(motion.flipX);
+    sprite.setVisible(true);
+    this.playCharacterMobFrame(mob.id, sprite, textureKey, motion);
+    this.renderHealthRing(
+      mob,
+      x,
+      y,
+      sprite.displayWidth,
+      sprite.displayHeight,
+      rollbackBlend,
+    );
+  }
+
   private renderHealthRing(
     mob: NeutralMobState,
     x: number,
@@ -480,6 +578,32 @@ export class MobView {
     }
   }
 
+  private playCharacterMobFrame(
+    mobId: number,
+    sprite: Phaser.GameObjects.Sprite,
+    textureKey: string,
+    motion: CharacterMobMotionConfig,
+  ): void {
+    const previous = this.animationStates.get(mobId);
+    if (
+      previous?.visualKind === "character" &&
+      previous.textureKey === textureKey &&
+      previous.characterFrame === motion.frame
+    ) {
+      return;
+    }
+
+    sprite.anims.stop();
+    sprite.setFrame(motion.frame);
+    this.animationStates.set(mobId, {
+      textureKey,
+      visualKind: "character",
+      animation: "default",
+      characterFrame: motion.frame,
+      direction: motion.flipX ? 1 : -1,
+    });
+  }
+
   private playMobAnimation(
     mobId: number,
     sprite: Phaser.GameObjects.Sprite,
@@ -491,6 +615,7 @@ export class MobView {
   ): void {
     const previous = this.animationStates.get(mobId);
     if (
+      previous?.visualKind === "enemy" &&
       previous?.textureKey === config.id &&
       previous.animation === motion.animation &&
       previous.direction === motion.direction
@@ -505,6 +630,7 @@ export class MobView {
 
     if (
       motion.animation === "move" &&
+      previous?.visualKind === "enemy" &&
       previous?.textureKey === config.id &&
       previous.animation === "default"
     ) {
@@ -524,6 +650,7 @@ export class MobView {
 
     this.animationStates.set(mobId, {
       textureKey: config.id,
+      visualKind: "enemy",
       animation: motion.animation,
       direction: motion.direction,
     });
@@ -539,6 +666,12 @@ function clampRatio(value: number): number {
     return 0;
   }
   return Math.max(0, Math.min(1, value));
+}
+
+function characterMobDisplaySize(mob: NeutralMobState): number {
+  const hitboxWidth = mob.hitWidth ?? mob.hitRadius * 2;
+  const hitboxHeight = mob.hitHeight ?? mob.hitRadius * 2;
+  return Math.max(hitboxWidth, hitboxHeight) * 1.2;
 }
 
 function isPointInsideArena(

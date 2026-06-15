@@ -120,6 +120,7 @@ export class CollaborateEliteFairy extends NeutralMob<
       class: "elite",
       displayName: displayNameForVariant(params.variant),
       textureKey: "enemy_type_7",
+      characterId: characterIdForVariant(params.variant),
       x,
       y: -HIT_RADIUS,
       previousX: x,
@@ -449,6 +450,19 @@ function displayNameForVariant(variant: CollaborateEliteVariant): string {
       return "朴实精英";
     case "happy":
       return "开心精英";
+  }
+}
+
+function characterIdForVariant(
+  variant: CollaborateEliteVariant,
+): CollaborateEliteFairyState["characterId"] {
+  switch (variant) {
+    case "silly":
+      return "cirno";
+    case "plain":
+      return "sakuya";
+    case "happy":
+      return "reimu";
   }
 }
 

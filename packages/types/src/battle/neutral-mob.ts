@@ -1,4 +1,4 @@
-import type { BattlePlayerId } from "../core";
+import type { BattlePlayerId, CharacterId } from "../core";
 import type {
   ArenaBounds,
   MoneyRewardSize,
@@ -40,6 +40,7 @@ export interface NeutralMobState {
   readonly class?: NeutralMobClass;
   readonly displayName?: string;
   readonly textureKey?: string;
+  readonly characterId?: CharacterId;
   x: number;
   y: number;
   previousX: number;

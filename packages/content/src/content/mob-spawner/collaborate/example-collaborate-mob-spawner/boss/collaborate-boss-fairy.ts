@@ -95,6 +95,7 @@ export class CollaborateBossFairy extends NeutralMob<
       class: "boss",
       displayName: "疯狂boss",
       textureKey: "enemy_type_7",
+      characterId: "marisa",
       x,
       y: -HIT_RADIUS,
       previousX: x,
