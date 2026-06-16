@@ -297,6 +297,7 @@
     "spectator_mode": "Spectator Mode",
     "versus_mode": "Versus",
     "collaborate_mode": "Co-op",
+    "collaborate_unsupported": "This server does not support this test mode yet",
     "password_cancel": "Cancel",
     "password_confirm": "Confirm",
     "enter_room_id": "Enter a room ID",

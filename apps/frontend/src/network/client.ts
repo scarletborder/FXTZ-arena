@@ -27,6 +27,8 @@ export class ConnectionManager {
 
   /** Latest known server protocol version. */
   serverVersion: string | null = null;
+  /** Whether the connected server advertises collaborate rooms. */
+  collaborateRoomsEnabled: boolean | null = null;
   /** ID of the room this client is currently in, if any. */
   roomId: string | null = null;
   /** This client's assigned player slot in the room. */
@@ -126,6 +128,7 @@ export class ConnectionManager {
       console.log("[FXTZ] Connection opened", { address: normalizedAddress, useWebTransport });
       this.setStatus("connected");
       this.startPing();
+      void this.refreshServerVersion(normalizedAddress);
 
       const reconnect = this.roomId && this.playerId
         ? {
@@ -222,6 +225,31 @@ export class ConnectionManager {
       this.transport.open();
     } catch (error) {
       console.warn("[FXTZ] Fingerprint retry failed", { error: this.asErrorMessage(error) });
+    }
+  }
+
+  private async refreshServerVersion(normalizedAddress: string): Promise<void> {
+    try {
+      const response = await fetch(buildVersionUrl(normalizedAddress), { cache: "no-store" });
+      if (!response.ok) {
+        this.collaborateRoomsEnabled = false;
+        this.notifyStatusListeners();
+        return;
+      }
+      const payload = await response.json() as Partial<{
+        version: unknown;
+        collaborate: unknown;
+        enableCollaborate: unknown;
+        webTransport: unknown;
+      }>;
+      if (typeof payload.version === "string" && payload.version.length > 0) {
+        this.serverVersion = payload.version;
+      }
+      this.collaborateRoomsEnabled = payload.collaborate === true || payload.enableCollaborate === true;
+      this.notifyStatusListeners();
+    } catch {
+      this.collaborateRoomsEnabled = false;
+      this.notifyStatusListeners();
     }
   }
 
@@ -388,6 +416,15 @@ export class ConnectionManager {
 function buildFingerprintUrl(normalizedAddress: string): string {
   const url = new URL(normalizedAddress);
   url.pathname = "/fingerprint";
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
+function buildVersionUrl(normalizedAddress: string): string {
+  const url = new URL(normalizedAddress);
+  url.protocol = url.protocol === "wss:" ? "https:" : url.protocol === "ws:" ? "http:" : url.protocol;
+  url.pathname = "/version";
   url.search = "";
   url.hash = "";
   return url.toString();

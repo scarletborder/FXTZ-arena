@@ -8,6 +8,7 @@ export interface ServerConfig {
   readonly keyPath?: string;
   readonly pemDir?: string;
   readonly webTransport: boolean;
+  readonly enableCollaborate: boolean;
   readonly maxPlayersPerRoom: 2;
   readonly maxRooms: number;
   readonly serverVersion: string;
@@ -18,6 +19,7 @@ export const DEFAULT_SERVER_CONFIG: ServerConfig = {
   ipv4Host: process.env.IPV4_HOST ?? process.env.HOST ?? "0.0.0.0",
   ipv6Host: process.env.IPV6_HOST ?? "::",
   webTransport: false,
+  enableCollaborate: false,
   maxPlayersPerRoom: 2,
   maxRooms: 100,
   serverVersion: APP_BUILD_LABEL,
@@ -36,11 +38,17 @@ export function createServerConfig(
   let keyPath: string | undefined;
   let pemDir: string | undefined;
   let webTransport = false;
+  let enableCollaborate = false;
   let maxRooms = DEFAULT_SERVER_CONFIG.maxRooms;
 
   for (const arg of argv) {
     if (arg === "--wt") {
       webTransport = true;
+      continue;
+    }
+
+    if (arg === "--enable-collaborate") {
+      enableCollaborate = true;
       continue;
     }
 
@@ -95,6 +103,7 @@ export function createServerConfig(
     keyPath,
     pemDir,
     webTransport,
+    enableCollaborate,
     maxRooms,
   };
 }

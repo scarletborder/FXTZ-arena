@@ -399,14 +399,19 @@ export class MessageHandler {
       return;
     }
 
+    const battleMode = normalizeBattleMode(msg.battleMode);
+    if (!this.ensureBattleModeEnabled(connection, battleMode)) {
+      return;
+    }
+
     const room = this.roomManager.create({
       name: normalizeDisplayName(msg.name, MAX_ROOM_NAME_LENGTH, `${session.username}'s room`),
       password: msg.password,
-      battleMode: normalizeBattleMode(msg.battleMode),
+      battleMode,
       mapId: msg.mapId,
       lifeCount: msg.lifeCount,
       costLimit: msg.costLimit,
-      allowSpectators: normalizeBattleMode(msg.battleMode) === "collaborate" ? false : msg.allowSpectators !== false,
+      allowSpectators: battleMode === "collaborate" ? false : msg.allowSpectators !== false,
     });
 
     const assignment = this.roomManager.assignSlot(room, connection.id);
@@ -481,6 +486,10 @@ export class MessageHandler {
         code: ErrorCodes.ROOM_NOT_FOUND,
         message: `Room ${msg.roomId} not found`,
       });
+      return;
+    }
+
+    if (!this.ensureBattleModeEnabled(connection, room.battleMode)) {
       return;
     }
 
@@ -637,6 +646,9 @@ export class MessageHandler {
     }
 
     const battleMode = normalizeBattleMode(msg.battleMode);
+    if (!this.ensureBattleModeEnabled(connection, battleMode)) {
+      return;
+    }
     const rooms = this.roomManager.getAllRooms();
     const match = findQuickMatchRoom(rooms, battleMode);
 
@@ -715,6 +727,17 @@ export class MessageHandler {
     const pageSize = Math.max(1, Math.min(24, Math.floor(Number(msg.pageSize) || 12)));
     const page = Math.max(1, Math.floor(Number(msg.page) || 1));
     const battleMode = normalizeBattleMode(msg.battleMode);
+    if (!this.ensureBattleModeEnabled(connection, battleMode, false)) {
+      this.send(connection, {
+        type: "room_list",
+        rooms: [],
+        page: 1,
+        pageSize,
+        total: 0,
+        totalPages: 1,
+      });
+      return;
+    }
     const rooms = this.roomManager
       [msg.spectatorsOnly === true ? "getSpectatableRooms" : "getListableRooms"](battleMode)
       .sort((a, b) => b.createdAt - a.createdAt);
@@ -1308,6 +1331,24 @@ export class MessageHandler {
 
   private send(connection: TransportConnection, message: ServerMessage): void {
     connection.send(message);
+  }
+
+  private ensureBattleModeEnabled(
+    connection: TransportConnection,
+    battleMode: BattleRoomMode,
+    sendError = true,
+  ): boolean {
+    if (battleMode !== "collaborate" || this.config.enableCollaborate) {
+      return true;
+    }
+    if (sendError) {
+      this.send(connection, {
+        type: "error",
+        code: ErrorCodes.INVALID_STATE,
+        message: "Collaborate mode rooms are not enabled on this server",
+      });
+    }
+    return false;
   }
 
   private refreshSessionUsername(connectionId: string, username: string | undefined): void {

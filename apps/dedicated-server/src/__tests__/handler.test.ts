@@ -22,6 +22,10 @@ function createHandler(config: ServerConfig = DEFAULT_SERVER_CONFIG) {
   return { sessionStore, roomManager, handler };
 }
 
+function createCollaborateHandler() {
+  return createHandler({ ...DEFAULT_SERVER_CONFIG, enableCollaborate: true });
+}
+
 function performHello(handler: MessageHandler, conn: MockConnection, username = "Player1") {
   handler.registerConnection(conn);
   handler.handle(conn, { type: "hello", username, clientVersion: "1.0.0", debug: false });
@@ -480,7 +484,7 @@ describe("MessageHandler", () => {
     });
 
     it("filters room list by battle mode", () => {
-      const { handler } = createHandler();
+      const { handler } = createCollaborateHandler();
       const versusHost = new MockConnection("versus-host");
       const collaborateHost = new MockConnection("collaborate-host");
       const viewer = new MockConnection("mode-viewer");
@@ -584,8 +588,27 @@ describe("MessageHandler", () => {
   });
 
   describe("collaborate rooms", () => {
-    it("rejects spectator joins", () => {
+    it("rejects collaborate room creation unless enabled", () => {
       const { handler } = createHandler();
+      const host = new MockConnection("collab-disabled-host");
+
+      performHello(handler, host, "Host");
+      handler.handle(host, {
+        type: "create_room",
+        name: "Co-op",
+        battleMode: "collaborate",
+        mapId: "collaborate_test_arena",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+
+      const error = host.findSentMessage("error");
+      expect(error?.code).toBe("invalid_state");
+      expect(host.findSentMessage("room_created")).toBeUndefined();
+    });
+
+    it("rejects spectator joins", () => {
+      const { handler } = createCollaborateHandler();
       const host = new MockConnection("collab-host");
       const spectator = new MockConnection("collab-spectator");
 
@@ -610,7 +633,7 @@ describe("MessageHandler", () => {
     });
 
     it("rejects ready loadouts with ability cards", () => {
-      const { handler } = createHandler();
+      const { handler } = createCollaborateHandler();
       const host = new MockConnection("collab-ready-host");
       const guest = new MockConnection("collab-ready-guest");
 
@@ -650,7 +673,7 @@ describe("MessageHandler", () => {
     });
 
     it("returns the deterministic seed to host and guest for collaborate rooms", () => {
-      const { handler } = createHandler();
+      const { handler } = createCollaborateHandler();
       const host = new MockConnection("collab-seed-host");
       const guest = new MockConnection("collab-seed-guest");
 
@@ -678,7 +701,7 @@ describe("MessageHandler", () => {
     });
 
     it("includes battle mode when starting loadout selection", () => {
-      const { handler } = createHandler();
+      const { handler } = createCollaborateHandler();
       const host = new MockConnection("collab-start-host");
       const guest = new MockConnection("collab-start-guest");
 

@@ -72,6 +72,12 @@ describe("createServerConfig", () => {
     expect(config.webTransport).toBe(true);
   });
 
+  it("accepts the collaborate room flag from CLI", () => {
+    const config = createServerConfig(["--enable-collaborate"], {});
+
+    expect(config.enableCollaborate).toBe(true);
+  });
+
   it("accepts a maximum room count from CLI", () => {
     const config = createServerConfig(["--max-room=12"], {});
 

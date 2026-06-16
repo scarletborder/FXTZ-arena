@@ -692,6 +692,7 @@ class DedicatedServerHarness {
       ipv4Host: "127.0.0.1",
       ipv6Host: "::1",
       webTransport: false,
+      enableCollaborate: true,
       maxPlayersPerRoom: 2,
       maxRooms: 8,
       serverVersion: "test",

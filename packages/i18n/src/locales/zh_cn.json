@@ -315,6 +315,7 @@
     "spectator_mode": "观战模式",
     "versus_mode": "对战模式",
     "collaborate_mode": "合作模式",
+    "collaborate_unsupported": "服务器暂不支持该测试模式",
     "password_cancel": "取消",
     "password_confirm": "确认",
     "enter_room_id": "请输入房间号",

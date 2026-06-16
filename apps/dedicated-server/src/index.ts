@@ -65,6 +65,8 @@ const transports: TransportServer[] = [
   new WsTransportServer(config.port, listenHosts, tls, {
     fingerprint,
     webTransportEnabled: config.webTransport,
+    version: config.serverVersion,
+    collaborateEnabled: config.enableCollaborate,
   }),
 ];
 if (config.webTransport && tls) {
@@ -100,6 +102,7 @@ const protocol = tls ? "wss" : "ws";
 const addrs = listenHosts.map((host) => `${protocol}://${formatHostForUrl(host)}:${config.port}`);
 console.log(`Dedicated server listening on ${addrs.join(" and ")}`);
 console.log(`HTTP echo endpoint: ${tls ? "https" : "http"}://${formatHostForUrl(listenHosts[0] ?? "localhost")}:${config.port}/echo`);
+console.log(`Collaborate mode rooms: ${config.enableCollaborate ? "enabled" : "disabled"}`);
 if (config.webTransport) {
   console.log(`WebTransport endpoint: https://${formatHostForUrl(listenHosts[0] ?? "localhost")}:${config.port}/wt`);
 }

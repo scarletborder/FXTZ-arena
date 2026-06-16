@@ -27,6 +27,8 @@ export class RoomListScene extends Phaser.Scene {
   private battleMode: BattleRoomMode = "versus";
   private spectatorToggleContainer: Phaser.GameObjects.Container | null = null;
   private modeButtonLayer!: Phaser.GameObjects.Container;
+  private statusUnsubscribe: (() => void) | null = null;
+  private collaborateUnsupportedPopup: Phaser.GameObjects.Container | null = null;
 
   private readonly onKeyDown = (event: KeyboardEvent) => this.activeField?.handleKey(event);
   private readonly onPaste = (event: ClipboardEvent) => this.activeField?.handlePaste(event.clipboardData?.getData("text") ?? "");
@@ -45,6 +47,15 @@ export class RoomListScene extends Phaser.Scene {
     });
     createFightButton(this, 1138, 62, 160, 44, t("room_list.back"), () => this.scene.start("battle-start"), { accent: 0x5c7185 });
     this.modeButtonLayer = this.add.container(0, 0);
+    this.statusUnsubscribe = connectionManager.addStatusListener(() => {
+      this.createModeButtons();
+      if (this.battleMode === "collaborate" && connectionManager.collaborateRoomsEnabled === false) {
+        this.battleMode = "versus";
+        this.page = 1;
+        this.updateSpectatorToggle();
+        this.requestRooms();
+      }
+    });
     this.createModeButtons();
     this.spectatorToggleContainer = createCheckbox(this, 930, 104, this.spectatorMode, {
       label: t("room_list.spectator_mode"),
@@ -91,6 +102,9 @@ export class RoomListScene extends Phaser.Scene {
       connectionManager.setMessageHandler(null);
       window.removeEventListener("keydown", this.onKeyDown);
       window.removeEventListener("paste", this.onPaste);
+      this.statusUnsubscribe?.();
+      this.statusUnsubscribe = null;
+      this.hideCollaborateUnsupportedPopup();
       this.createRoomDialog?.destroy();
       this.createRoomDialog = null;
     });
@@ -114,6 +128,10 @@ export class RoomListScene extends Phaser.Scene {
     this.modeButtonLayer.destroy();
     this.modeButtonLayer = this.add.container(0, 0);
     const selectMode = (mode: BattleRoomMode) => {
+      if (mode === "collaborate" && connectionManager.collaborateRoomsEnabled === false) {
+        this.showCollaborateUnsupportedPopup(this.input.activePointer.x, this.input.activePointer.y);
+        return;
+      }
       if (this.battleMode === mode) return;
       this.battleMode = mode;
       this.spectatorMode = false;
@@ -126,6 +144,7 @@ export class RoomListScene extends Phaser.Scene {
     };
     const addModeButton = (x: number, mode: BattleRoomMode, label: string, accent: number) => {
       const selected = this.battleMode === mode;
+      const enabled = mode !== "collaborate" || connectionManager.collaborateRoomsEnabled !== false;
       if (selected) {
         const outerGlow = this.add.graphics();
         drawAngledPanel(outerGlow, x - 80, 72, 160, 52, 0xffcf6e, 0xffcf6e, 0.14);
@@ -135,7 +154,17 @@ export class RoomListScene extends Phaser.Scene {
       }
       this.modeButtonLayer.add(createFightButton(this, x, 96, 150, 38, label, () => selectMode(mode), {
         accent: selected ? 0xffcf6e : accent,
+        enabled,
       }).container);
+      if (!enabled) {
+        const disabledHit = this.add.rectangle(x - 75, 77, 150, 38, 0xffffff, 0.001)
+          .setOrigin(0, 0)
+          .setInteractive({ useHandCursor: false })
+          .on("pointerover", (pointer: Phaser.Input.Pointer) => this.showCollaborateUnsupportedPopup(pointer.x, pointer.y))
+          .on("pointermove", (pointer: Phaser.Input.Pointer) => this.positionCollaborateUnsupportedPopup(pointer.x, pointer.y))
+          .on("pointerout", () => this.hideCollaborateUnsupportedPopup());
+        this.modeButtonLayer.add(disabledHit);
+      }
       if (selected) {
         this.modeButtonLayer.add(this.add.text(x, 130, "^", {
           fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
@@ -382,5 +411,42 @@ export class RoomListScene extends Phaser.Scene {
       padding: { x: 16, y: 8 },
     }).setOrigin(0.5).setAlpha(0);
     this.tweens.add({ targets: toast, alpha: 1, duration: 180, yoyo: true, hold: 1800, onComplete: () => toast.destroy() });
+  }
+
+  private showCollaborateUnsupportedPopup(pointerX: number, pointerY: number): void {
+    if (!this.collaborateUnsupportedPopup) {
+      const message = t("room_list.collaborate_unsupported");
+      const width = 236;
+      const height = 46;
+      const popup = this.add.container(0, 0).setDepth(1000);
+      const bg = this.add.graphics();
+      bg.fillStyle(0x0d131b, 0.98).fillRoundedRect(0, 0, width, height, 4);
+      bg.lineStyle(2, 0xffcf6e, 0.95).strokeRoundedRect(0, 0, width, height, 4);
+      popup.add(bg);
+      popup.add(this.add.text(width / 2, height / 2, message, {
+        fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+        fontSize: "15px",
+        color: "#f6f1e6",
+      }).setOrigin(0.5));
+      popup.setSize(width, height);
+      this.collaborateUnsupportedPopup = popup;
+    }
+    this.collaborateUnsupportedPopup.setVisible(true);
+    this.positionCollaborateUnsupportedPopup(pointerX, pointerY);
+  }
+
+  private positionCollaborateUnsupportedPopup(pointerX: number, pointerY: number): void {
+    const popup = this.collaborateUnsupportedPopup;
+    if (!popup) return;
+    const width = popup.width;
+    const height = popup.height;
+    const x = Phaser.Math.Clamp(pointerX + 14, 12, 1280 - width - 12);
+    const y = Phaser.Math.Clamp(pointerY + 16, 12, 720 - height - 12);
+    popup.setPosition(x, y);
+  }
+
+  private hideCollaborateUnsupportedPopup(): void {
+    this.collaborateUnsupportedPopup?.destroy();
+    this.collaborateUnsupportedPopup = null;
   }
 }

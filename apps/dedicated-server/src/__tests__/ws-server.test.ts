@@ -17,6 +17,28 @@ describe("WsTransportServer", () => {
       transport.close();
     }
   });
+
+  it("serves /version over the underlying HTTP server", async () => {
+    const port = await getFreePort();
+    const transport = new WsTransportServer(port, ["127.0.0.1"], undefined, {
+      webTransportEnabled: true,
+      version: "test-build",
+      collaborateEnabled: true,
+    });
+
+    try {
+      const response = await fetch(`http://127.0.0.1:${port}/version`);
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        version: "test-build",
+        webTransport: true,
+        collaborate: true,
+      });
+    } finally {
+      transport.close();
+    }
+  });
 });
 
 function getFreePort(): Promise<number> {
