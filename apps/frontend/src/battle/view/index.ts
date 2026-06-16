@@ -34,6 +34,7 @@ import { createBattleTextures } from "./textures";
 export class BattleView {
   private readonly fighters: FighterView;
   private readonly crosshair: CrosshairView;
+  private readonly secondaryCrosshair: CrosshairView;
   private readonly projectiles: ProjectileView;
   private readonly effects: EffectsView;
   private readonly mobs: MobView;
@@ -69,6 +70,7 @@ export class BattleView {
     this.collaborateHud = new CollaborateHud(scene);
     this.points = new PointView(scene);
     this.crosshair = new CrosshairView(scene);
+    this.secondaryCrosshair = new CrosshairView(scene, "cursor-x");
     this.projectiles = new ProjectileView(scene);
     this.effects = new EffectsView(scene);
     this.debug = new BattleDebugView(scene);
@@ -80,6 +82,7 @@ export class BattleView {
     localFighterKey: FighterKey = "Player1",
     alpha = 1,
     rollbackBlend = 1,
+    secondaryInput?: BattleInputState,
   ): void {
     const localFighter =
       localFighterKey === "Player1" ? state.player : state.target;
@@ -123,6 +126,7 @@ export class BattleView {
     this.effects.render(state.effects, state.shields);
     if (state.collaborateExtra?.shop.open) {
       this.crosshair.setVisible(false);
+      this.secondaryCrosshair.setVisible(false);
     } else {
       this.crosshair.render({
         pointerX: input.aimX,
@@ -145,6 +149,32 @@ export class BattleView {
         activeCardCooldownRemaining: localFighter.activeCardCooldownUntil,
         activeCardCooldownTotal: localFighter.activeCard?.cooldownTicks ?? 0,
       });
+      if (secondaryInput) {
+        const targetFighter = state.target;
+        this.secondaryCrosshair.render({
+          pointerX: secondaryInput.aimX,
+          pointerY: secondaryInput.aimY,
+          danger: targetFighter.ammo <= 0 || targetFighter.reloadRemaining > 0,
+          highlight: canYoumuDashToPointer(
+            targetFighter,
+            secondaryInput.aimX,
+            secondaryInput.aimY,
+            this.arenaBounds,
+          ),
+          ammoDisplay: targetFighter.ammoDisplay,
+          ammoCount: targetFighter.ammo,
+          ammoMax: targetFighter.ammoCapacity,
+          pointCount: targetFighter.pointCount,
+          bombs: targetFighter.bombs,
+          lives: targetFighter.lives,
+          activeCardUses: targetFighter.activeCardUses,
+          activeCardUseLimit: targetFighter.activeCard?.useLimit,
+          activeCardCooldownRemaining: targetFighter.activeCardCooldownUntil,
+          activeCardCooldownTotal: targetFighter.activeCard?.cooldownTicks ?? 0,
+        });
+      } else {
+        this.secondaryCrosshair.setVisible(false);
+      }
     }
   }
 

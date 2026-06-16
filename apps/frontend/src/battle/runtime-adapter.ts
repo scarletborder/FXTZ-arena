@@ -8,6 +8,7 @@ export class BattleRuntimeAdapter {
   private runtime!: RaidLogicRuntime;
   private logicReady = false;
   private autoReloadObservedShotsFired = 0;
+  private targetAutoReloadObservedShotsFired = 0;
   private currentOutput!: BattleOutputFrame;
 
   constructor(
@@ -16,6 +17,7 @@ export class BattleRuntimeAdapter {
     private getKeys: () => any,
     private getIsInputLocked: () => boolean,
     private createInput: (fighter: any, prevShots: number) => any,
+    private createTargetInput: (fighter: any, prevShots: number) => any,
     private isSyncRunning: () => boolean,
     private stepSync: (input: any) => void,
     private recordFrame: () => void
@@ -85,15 +87,21 @@ export class BattleRuntimeAdapter {
       if (!this.getIsInputLocked()) {
         const fighter = this.localFighterState(localFighterKey);
         const lastInput = this.createInput(fighter, this.autoReloadObservedShotsFired);
+        const targetInput = this.sceneData.localSingleDevice
+          ? this.createTargetInput(this.runtime.state.target, this.targetAutoReloadObservedShotsFired)
+          : undefined;
 
         if (this.isSyncRunning() && this.logicReady) {
           this.stepSync(lastInput);
         } else if (this.runtime.gameOver && Phaser.Input.Keyboard.JustDown(keys.enter)) {
           this.scene.events.emit(BattleEvents.GO_TO_RESULT);
         } else if (this.logicReady) {
-          this.stepRuntimeWithInput(lastInput);
+          this.stepRuntimeWithInput(lastInput, targetInput);
         }
         this.updateAutoReloadObservation(localFighterKey, lastInput);
+        if (targetInput) {
+          this.updateTargetAutoReloadObservation(targetInput);
+        }
 
         if (this.logicReady && !this.getIsInputLocked()) {
           const p1Input = this.runtime.lastPlayerInput ?? lastInput;
@@ -105,11 +113,19 @@ export class BattleRuntimeAdapter {
     }
   }
 
-  stepRuntimeWithInput(input: BattleInputState): void {
-    this.runtime.step({
-      mode: this.sceneData.mode === "ai" ? "ai" : "training",
-      player: input,
-    });
+  stepRuntimeWithInput(input: BattleInputState, targetInput?: BattleInputState): void {
+    if (this.sceneData.localSingleDevice && targetInput) {
+      this.runtime.step({
+        mode: "online",
+        player: input,
+        target: targetInput,
+      });
+    } else {
+      this.runtime.step({
+        mode: this.sceneData.mode === "ai" ? "ai" : "training",
+        player: input,
+      });
+    }
     this.recordFrame();
   }
 
@@ -146,6 +162,20 @@ export class BattleRuntimeAdapter {
       fighter.shotsFired <= this.autoReloadObservedShotsFired
     ) {
       this.autoReloadObservedShotsFired = fighter.shotsFired;
+    }
+  }
+
+  private updateTargetAutoReloadObservation(lastInput: BattleInputState): void {
+    if (!lastInput) return;
+
+    const fighter = this.runtime.state.target;
+    if (
+      lastInput.reloadPressed ||
+      fighter.reloadRemaining > 0 ||
+      fighter.ammo > 0 ||
+      fighter.shotsFired <= this.targetAutoReloadObservedShotsFired
+    ) {
+      this.targetAutoReloadObservedShotsFired = fighter.shotsFired;
     }
   }
 }

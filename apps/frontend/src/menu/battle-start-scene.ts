@@ -41,12 +41,17 @@ export class BattleStartScene extends Phaser.Scene {
     });
 
     createFightButton(this, 946, 298, 360, 86, t("battle_start.story_mode"), () => this.scene.start("story-start-loadout"), { accent: 0x5c7185 });
-    createFightButton(this, 946, 416, 360, 86, t("battle_start.ai_battle"), () => showMapDialog(this, this.mapDialogContainer, (container) => {
+    createFightButton(this, 946, 390, 360, 74, t("battle_start.local_single_battle"), () => showMapDialog(this, this.mapDialogContainer, (container) => {
+      this.mapDialogContainer = container;
+    }, (mapId) => {
+      this.scene.start("select", { mode: "local_single", mapId } satisfies SelectionData);
+    }, { accent: 0x26c6da }), { subLabel: t("battle_start.local_single_battle_hint"), accent: 0x26c6da });
+    createFightButton(this, 946, 488, 360, 74, t("battle_start.ai_battle"), () => showMapDialog(this, this.mapDialogContainer, (container) => {
       this.mapDialogContainer = container;
     }, (mapId, cpuLoadoutPresetId) => {
       this.scene.start("select", { mode: "ai", mapId, cpuLoadoutPresetId } satisfies SelectionData);
     }, { showCpuLoadout: true }), { subLabel: t("battle_start.choose_loadout"), accent: 0xe33d44 });
-    createFightButton(this, 946, 534, 360, 86, t("battle_start.training"), () => this.scene.start("select", { mode: "training" } satisfies SelectionData), { subLabel: t("battle_start.no_cost_limit"), accent: 0x26c6da });
+    createFightButton(this, 946, 586, 360, 74, t("battle_start.training"), () => this.scene.start("select", { mode: "training" } satisfies SelectionData), { subLabel: t("battle_start.no_cost_limit"), accent: 0x5c7185 });
 
     const updateConnectionState = (s: ConnectionStatus) => {
       const connected = s === "connected";

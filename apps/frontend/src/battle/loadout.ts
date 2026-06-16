@@ -20,6 +20,7 @@ export interface BattleSceneData {
   readonly playerInitPoint?: number;
   readonly opponentInitPoint?: number;
   readonly debug?: boolean;
+  readonly localSingleDevice?: boolean;
   readonly battleConfig?: BattleConfig;
   readonly localPlayerId?: PlayerId;
   readonly runtime?: RaidLogicRuntime;

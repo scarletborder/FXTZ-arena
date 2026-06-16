@@ -103,6 +103,13 @@ export function createBattleTextures(scene: Phaser.Scene): void {
     g.lineBetween(64, 128, 98, 128);
     g.lineBetween(158, 128, 192, 128);
   });
+  make("cursor-x", (g) => {
+    g.lineStyle(7, 0xffffff, 1);
+    g.lineBetween(82, 82, 174, 174);
+    g.lineBetween(174, 82, 82, 174);
+    g.lineStyle(3, 0xffffff, 0.82);
+    g.strokeCircle(128, 128, 42);
+  });
   make("bomb", (g) => {
     g.fillStyle(0xffffff, 1);
     g.fillCircle(128, 128, 34);

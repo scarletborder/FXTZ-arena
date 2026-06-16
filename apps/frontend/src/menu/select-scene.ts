@@ -48,6 +48,7 @@ export class SelectScene extends Phaser.Scene {
   private battleMode: BattleRoomMode = "versus";
   private selectedMapId: SelectionData["mapId"];
   private debugCooperate: SelectionData["debugCooperate"];
+  private localSinglePlayerOneLoadout: SelectionData["localSinglePlayerOneLoadout"];
   private cpuLoadoutPresetId: CpuLoadoutPresetId = "marisa_solo";
   private playerId: string | undefined;
   private localConfirmHandler: SelectionData["onLocalConfirm"] | undefined;
@@ -120,6 +121,7 @@ export class SelectScene extends Phaser.Scene {
     this.battleMode = data.battleMode ?? connectionManager.battleMode ?? "versus";
     this.selectedMapId = data.mapId;
     this.debugCooperate = data.debugCooperate;
+    this.localSinglePlayerOneLoadout = data.localSinglePlayerOneLoadout;
     this.cpuLoadoutPresetId = data.cpuLoadoutPresetId ?? "marisa_solo";
     this.playerId = data.playerId;
     this.localConfirmHandler = data.onLocalConfirm;
@@ -135,8 +137,10 @@ export class SelectScene extends Phaser.Scene {
         : this.mode === "debug_cooperate"
           ? t("select.subtitle.debug_cooperate")
           : this.mode === "local"
-          ? t("select.subtitle.local")
-          : t("select.subtitle.cpu");
+            ? t("select.subtitle.local")
+            : this.mode === "local_single"
+              ? t("select.subtitle.local_single")
+              : t("select.subtitle.cpu");
     drawFightingBackdrop(this, "SELECT", subtitle);
 
     // Online mode: custom back button sends leave_room
@@ -281,6 +285,7 @@ export class SelectScene extends Phaser.Scene {
       this.addCardRoster();
     }
     this.addCostDisplay();
+    this.addLocalSingleSelectBadge();
 
     const label = this.mode === "online" || this.mode === "local" || this.mode === "debug_cooperate"
       ? t("select.confirm_loadout")
@@ -530,6 +535,28 @@ export class SelectScene extends Phaser.Scene {
       width: 240,
       height: 14,
     });
+  }
+
+  private addLocalSingleSelectBadge(): void {
+    if (this.mode !== "local_single") {
+      return;
+    }
+
+    const isP2 = this.localSinglePlayerOneLoadout !== undefined;
+    const badge = this.add.container(1036, 82);
+    const graphics = this.add.graphics();
+    graphics.fillStyle(isP2 ? 0xe33d44 : 0x26c6da, 0.98);
+    graphics.fillRect(-116, -24, 232, 48);
+    graphics.lineStyle(3, 0xffffff, 0.9);
+    graphics.strokeRect(-116, -24, 232, 48);
+    badge.add(graphics);
+    badge.add(this.add.text(0, 0, isP2 ? t("select.p2_select") : t("select.p1_select"), {
+      fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+      fontSize: "26px",
+      fontStyle: "900",
+      color: "#ffffff",
+    }).setOrigin(0.5));
+    this.layer.add(badge);
   }
 
   private registerScrollArea(
@@ -893,6 +920,37 @@ export class SelectScene extends Phaser.Scene {
       cardIds: selectedCards,
       activeCardId,
     };
+    if (this.mode === "local_single") {
+      if (!this.localSinglePlayerOneLoadout) {
+        this.scene.start("select", {
+          mode: "local_single",
+          mapId: this.selectedMapId,
+          localSinglePlayerOneLoadout: {
+            primaryCharacterId: player.primaryCharacterId,
+            alternateCharacterId: player.alternateCharacterId,
+            abilityCardIds: player.cardIds ?? [],
+            activeAbilityCardId: player.activeCardId,
+          },
+        } satisfies SelectionData);
+        return;
+      }
+
+      this.scene.start("loading", {
+        mode: "training",
+        localSingleDevice: true,
+        playerName: t("select.player_one"),
+        opponentName: t("select.player_two"),
+        returnScene: "battle-start",
+        loadouts: {
+          player: playerLoadoutToFighterLoadout(this.localSinglePlayerOneLoadout),
+          target: player,
+        },
+        mapId: this.selectedMapId ?? "hakurei_shrine",
+        debug: uiSettings.debug,
+      });
+      return;
+    }
+
     const loadouts: BattleLoadouts = {
       player,
       target: this.mode === "training"
@@ -953,6 +1011,15 @@ function roleLabel(role: CharacterDefinition["roleClass"]): string {
     scout: t("role.scout"),
     sniper: t("role.sniper"),
   }[role];
+}
+
+function playerLoadoutToFighterLoadout(loadout: PlayerLoadout): FighterLoadout {
+  return {
+    primaryCharacterId: loadout.primaryCharacterId,
+    alternateCharacterId: loadout.alternateCharacterId,
+    cardIds: [...loadout.abilityCardIds],
+    activeCardId: loadout.activeAbilityCardId,
+  };
 }
 
 function statLevel(speed: CharacterDefinition["moveSpeed"]): number {

@@ -43,6 +43,7 @@ export class BattleScene extends Phaser.Scene {
   private applyingBattleLayout = false;
   private pendingLayoutRefresh: Phaser.Time.TimerEvent | undefined;
   private rollbackVisualFrames = 0;
+  private localSingleDevice = false;
 
   constructor() {
     super("battle");
@@ -54,6 +55,7 @@ export class BattleScene extends Phaser.Scene {
     this.arenaBounds = resolveArenaBounds(data.mapId ?? data.battleConfig?.mapId);
     this.applyingBattleLayout = false;
     this.rollbackVisualFrames = 0;
+    this.localSingleDevice = data.localSingleDevice === true;
 
     // 1. 优先初始化输入控制器
     this.inputCtrl = new BattleInputController(this, data, this.arenaBounds);
@@ -103,6 +105,7 @@ export class BattleScene extends Phaser.Scene {
           this.shopCtrl?.getPendingActiveCardSwitchId(),
           () => this.shopCtrl?.clearPending()
         ),
+      (fighter, prevShots) => this.inputCtrl.generateP2Input(fighter, prevShots),
       () => this.networkMgr?.isSyncRunning() ?? false,
       (input) => this.networkMgr?.step(input),
       (aimConsumed?: boolean) => {
@@ -272,7 +275,8 @@ export class BattleScene extends Phaser.Scene {
       lastInput,
       localFighterKey,
       this.runtimeAdapter.getAccumulator() / 16.666,
-      this.rollbackVisualFrames > 0 ? 0.7 : 1
+      this.rollbackVisualFrames > 0 ? 0.7 : 1,
+      this.localSingleDevice ? this.inputCtrl.getLastP2Input() : undefined
     );
 
     // 5. 更新 UI

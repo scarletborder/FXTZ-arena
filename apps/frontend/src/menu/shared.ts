@@ -28,7 +28,7 @@ export type SceneKey =
   | "replay-record"
   | "replay-playback"
   | "spectator-loading";
-export type SelectionMode = "ai" | "training" | "online" | "local" | "debug_cooperate";
+export type SelectionMode = "ai" | "training" | "online" | "local" | "local_single" | "debug_cooperate";
 export type DebugCooperateJumpTarget = "start" | "elite" | "boss";
 export type CodexTab = "characters" | "cards";
 export type CpuLoadoutPresetId = "marisa_solo" | "sakuya_cirno" | "kaguya_reisen";
@@ -50,6 +50,8 @@ export interface SelectionData {
   };
   /** Optional callback used by local LAN to hand the chosen loadout back to the orchestrator. */
   readonly onLocalConfirm?: (loadout: PlayerLoadout) => void;
+  /** P1 loadout carried into the second local single-player selection pass. */
+  readonly localSinglePlayerOneLoadout?: PlayerLoadout;
   /** Optional scene key to return to when leaving the selection screen. */
   readonly returnScene?: SceneKey;
 }

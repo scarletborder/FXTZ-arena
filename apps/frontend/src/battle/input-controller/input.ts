@@ -72,9 +72,11 @@ export function createBattleInput(
     (mobileState?.reloadPressed ?? false) ||
     (joystickState?.reloadPressed ?? false) ||
     (keyboardEnabled && keys.reload.isDown);
-  const shootPressed =
+  const shootPressed = (
     mobileState?.shootPressed ??
     (joystickState?.shootPressed || undefined) ??
+    false
+  ) ||
     (pointerEnabled && pointer.leftButtonDown() && !pointer.rightButtonDown());
   const emptyShotReloadPressed = shouldReloadInsteadOfShooting(
     options.autoReloadContext,
@@ -87,8 +89,11 @@ export function createBattleInput(
     aimY: Math.trunc(joystickState?.aimY ?? pointerWorld.y),
     shootPressed: shootPressed && !emptyShotReloadPressed,
     bombPressed:
-      mobileState?.bombPressed ??
-      (joystickState?.bombPressed || undefined) ??
+      (
+        mobileState?.bombPressed ??
+        (joystickState?.bombPressed || undefined) ??
+        false
+      ) ||
       (pointerEnabled && pointer.rightButtonDown()),
     activeCardPressed:
       (mobileState?.activeCardPressed ?? false) ||

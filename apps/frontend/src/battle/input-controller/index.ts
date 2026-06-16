@@ -6,7 +6,7 @@ import Phaser from "phaser";
 
 import { type BattleInputState } from "@repo/raid-logic";
 import { type ArenaBounds, BattleEvents } from "@repo/constants";
-import { BattleKeyMap, createBattleInput, getBattlePointerWorld } from "./input";
+import { BattleKeyMap, createBattleInput, getBattlePointerWorld, type BattleInputBundle } from "./input";
 import { BattleSceneData } from "../loadout";
 import { BattleMobileControls, shouldEnableMobileBattleControls } from "./mobile";
 import { BattleKeybinds, createBattleKeybinds } from "./pc";
@@ -16,12 +16,17 @@ import { uiSettings } from "../../store/settings";
 export class BattleInputController {
   private keybinds!: BattleKeybinds;
   private keys!: BattleKeyMap;
+  private p2Keybinds: BattleKeybinds | undefined;
+  private p2Keys: BattleKeyMap | undefined;
   private mobileControls: BattleMobileControls | undefined;
   private joystickControls: BattleJoystickController | undefined;
+  private p2JoystickControls: BattleJoystickController | undefined;
   private readonly activeProfile: InputProfileId;
+  private readonly p2Profile: InputProfileId | undefined;
   private mobileControlsEnabled = false;
   private previousScaleAutoCenter: Phaser.Scale.CenterType | undefined;
   private lastInput!: BattleInputState & { readonly pointerX: number; readonly pointerY: number };
+  private lastP2Input: BattleInputBundle | undefined;
 
   private transitionReadyRequested = false;
   private shopReadyRequested = false;
@@ -44,9 +49,15 @@ export class BattleInputController {
 
     const keybinds = uiSettings.keybinds;
     this.activeProfile = resolveActiveProfile(sceneData);
+    this.p2Profile = sceneData.localSingleDevice ? resolveLocalSingleP2Profile() : undefined;
     this.keybinds = createBattleKeybinds(scene, keybinds);
     this.keys = this.keybinds.keys;
     this.joystickControls = createJoystickController(scene, this.activeProfile);
+    if (sceneData.localSingleDevice) {
+      this.p2Keybinds = createBattleKeybinds(scene, keybinds);
+      this.p2Keys = this.p2Keybinds.keys;
+      this.p2JoystickControls = this.p2Profile ? createJoystickController(scene, this.p2Profile) : undefined;
+    }
 
     this.scene.events.on(BattleEvents.TRANSITION_READY, () => {
       this.transitionReadyRequested = true;
@@ -68,6 +79,13 @@ export class BattleInputController {
         arenaBounds: this.arenaBounds,
       },
     );
+    if (this.p2Keys) {
+      this.lastP2Input = createBattleInput(
+        scene,
+        this.p2Keys,
+        this.p2InputOptions(),
+      );
+    }
   }
 
   getKeys(): BattleKeyMap {
@@ -76,6 +94,10 @@ export class BattleInputController {
 
   getLastInput(): BattleInputState & { readonly pointerX: number; readonly pointerY: number } {
     return this.lastInput;
+  }
+
+  getLastP2Input(): BattleInputBundle | undefined {
+    return this.lastP2Input;
   }
 
   setLastInput(input: any): void {
@@ -130,6 +152,25 @@ export class BattleInputController {
     return input;
   }
 
+  generateP2Input(
+    fighter: any,
+    previousShotsFired: number,
+  ): BattleInputBundle | undefined {
+    if (!this.p2Keys) {
+      return undefined;
+    }
+    const input = createBattleInput(
+      this.scene,
+      this.p2Keys,
+      {
+        ...this.p2InputOptions(),
+        autoReloadContext: { fighter, previousShotsFired },
+      },
+    );
+    this.lastP2Input = input;
+    return input;
+  }
+
   updateAimCoordinate(): void {
     if (this.activeProfile.startsWith("joystick:")) {
       return;
@@ -152,10 +193,18 @@ export class BattleInputController {
       pointerX: input.pointerX,
       pointerY: input.pointerY,
     };
+    if (this.p2Keys) {
+      this.lastP2Input = createBattleInput(
+        this.scene,
+        this.p2Keys,
+        this.p2InputOptions(),
+      );
+    }
   }
 
   destroy(): void {
     this.keybinds?.destroy();
+    this.p2Keybinds?.destroy();
     this.mobileControls?.destroy();
   }
 
@@ -220,6 +269,16 @@ export class BattleInputController {
       activeCardSwitchId: activeCardSwitch,
     };
   }
+
+  private p2InputOptions(): Parameters<typeof createBattleInput>[2] {
+    const useKeyboard = this.p2Profile === "keyboard";
+    return {
+      joystickControls: this.p2JoystickControls,
+      keyboardEnabled: useKeyboard,
+      pointerEnabled: useKeyboard,
+      arenaBounds: this.arenaBounds,
+    };
+  }
 }
 
 function resolveActiveProfile(sceneData: BattleSceneData): InputProfileId {
@@ -229,6 +288,10 @@ function resolveActiveProfile(sceneData: BattleSceneData): InputProfileId {
       : uiSettings.account.p1Profile;
   }
   return uiSettings.account.p1Profile;
+}
+
+function resolveLocalSingleP2Profile(): InputProfileId {
+  return uiSettings.account.p2Profile === "mobile" ? "keyboard" : uiSettings.account.p2Profile;
 }
 
 function createJoystickController(

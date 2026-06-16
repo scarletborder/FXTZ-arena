@@ -101,12 +101,12 @@ export class LoadingScene extends Phaser.Scene {
       data.mode === "online" ? t("loading.init_sync") : t("loading.init_local"),
     );
 
-    if (data.mode === "online" || data.mode === "local") {
+    if (data.mode === "online" || (data.mode === "local" && !data.localSingleDevice)) {
       this.createConnectionBadge();
       this.setConnectionStatus(t("loading.p2p_init"), 0xffcf6e);
     }
 
-    if (data.mode === "online" || data.mode === "local") {
+    if (data.mode === "online" || (data.mode === "local" && !data.localSingleDevice)) {
       this.p2p = data.p2p ?? new P2pConnection(connectionManager, {
         localPlayerId: data.localPlayerId ?? "Player1",
         enabled: data.mode === "local" ? true : data.battleConfig?.p2pEnabled === true,
@@ -157,7 +157,9 @@ export class LoadingScene extends Phaser.Scene {
   }
 
   private async prepareRuntime(): Promise<void> {
-    const runtimeMode = this.loadingData.mode === "ai"
+    const runtimeMode = this.loadingData.localSingleDevice
+      ? "online"
+      : this.loadingData.mode === "ai"
       ? "ai"
       : this.loadingData.mode === "online" || this.loadingData.mode === "local"
         ? "online"
@@ -189,7 +191,7 @@ export class LoadingScene extends Phaser.Scene {
         this.sendLoadingDone();
         this.label?.setText(t("loading.waiting_sync"));
       }
-    } else if (this.loadingData.mode === "local") {
+    } else if (this.loadingData.mode === "local" && !this.loadingData.localSingleDevice) {
       this.onlineReady = true;
       this.maybeSendLoadingDone();
       this.label?.setText(t("loading.local_p2p_connected_wait"));

@@ -26,7 +26,7 @@ export class BattleNetworkManager {
     private pruneBefore: (frame: number) => void,
     private onRollback: () => void
   ) {
-    if (sceneData.mode !== "online" && sceneData.mode !== "local") return;
+    if (sceneData.mode !== "online" && (sceneData.mode !== "local" || sceneData.localSingleDevice)) return;
     const isLocalBattle = sceneData.mode === "local";
 
     this.onlineStatusText = scene.add

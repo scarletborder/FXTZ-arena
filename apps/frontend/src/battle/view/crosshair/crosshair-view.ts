@@ -12,11 +12,11 @@ export class CrosshairView {
   private readonly activeCardStatus: CrosshairActiveCardStatus;
   private readonly statusMarkers: CrosshairStatusMarkers;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, textureKey = "cursor") {
     this.crosshair = scene.add
-      .image(640, 360, "cursor")
+      .image(640, 360, textureKey)
       .setOrigin(0.5)
-      .setScale(0.22)
+      .setScale(textureKey === "cursor-x" ? 0.24 : 0.22)
       .setDepth(Depth.Crosshair);
     this.ammoStatus = new CrosshairAmmoStatus(scene);
     this.activeCardStatus = new CrosshairActiveCardStatus(scene);
