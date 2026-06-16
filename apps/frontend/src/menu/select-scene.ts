@@ -30,7 +30,7 @@ import {
   type SceneKey,
   type SelectionData,
 } from "./shared";
-import { uiSettings } from "../store/settings";
+import { getProfileUsername, uiSettings } from "../store/settings";
 import { Depth } from "../utils/depth";
 import { queueMenuAssets } from "./assets";
 import {
@@ -938,8 +938,8 @@ export class SelectScene extends Phaser.Scene {
       this.scene.start("loading", {
         mode: "training",
         localSingleDevice: true,
-        playerName: t("select.player_one"),
-        opponentName: t("select.player_two"),
+        playerName: getProfileUsername("Player1") || t("select.player_one"),
+        opponentName: getProfileUsername("Player2") || t("select.player_two"),
         returnScene: "battle-start",
         loadouts: {
           player: playerLoadoutToFighterLoadout(this.localSinglePlayerOneLoadout),
