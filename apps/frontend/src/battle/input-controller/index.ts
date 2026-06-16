@@ -1,5 +1,6 @@
 export * from "./pc";
 export * from "./mobile";
+export * from "./gamepad";
 import Phaser from "phaser";
 
 
@@ -9,12 +10,15 @@ import { BattleKeyMap, createBattleInput, getBattlePointerWorld } from "./input"
 import { BattleSceneData } from "../loadout";
 import { BattleMobileControls, shouldEnableMobileBattleControls } from "./mobile";
 import { BattleKeybinds, createBattleKeybinds } from "./pc";
+import { BattleJoystickController, InputProfileId } from "./gamepad";
 import { uiSettings } from "../../store/settings";
 
 export class BattleInputController {
   private keybinds!: BattleKeybinds;
   private keys!: BattleKeyMap;
   private mobileControls: BattleMobileControls | undefined;
+  private joystickControls: BattleJoystickController | undefined;
+  private readonly activeProfile: InputProfileId;
   private mobileControlsEnabled = false;
   private previousScaleAutoCenter: Phaser.Scale.CenterType | undefined;
   private lastInput!: BattleInputState & { readonly pointerX: number; readonly pointerY: number };
@@ -29,6 +33,7 @@ export class BattleInputController {
   ) {
     this.mobileControlsEnabled =
       shouldEnableMobileBattleControls(scene) &&
+      resolveActiveProfile(sceneData) === "mobile" &&
       !sceneData.replayData &&
       !sceneData.spectatorData;
 
@@ -38,8 +43,10 @@ export class BattleInputController {
     }
 
     const keybinds = uiSettings.keybinds;
+    this.activeProfile = resolveActiveProfile(sceneData);
     this.keybinds = createBattleKeybinds(scene, keybinds);
     this.keys = this.keybinds.keys;
+    this.joystickControls = createJoystickController(scene, this.activeProfile);
 
     this.scene.events.on(BattleEvents.TRANSITION_READY, () => {
       this.transitionReadyRequested = true;
@@ -53,9 +60,13 @@ export class BattleInputController {
     this.lastInput = createBattleInput(
       scene,
       this.keys,
-      this.mobileControls,
-      undefined,
-      this.arenaBounds
+      {
+        mobileControls: this.mobileControls,
+        joystickControls: this.joystickControls,
+        keyboardEnabled: this.activeProfile === "keyboard",
+        pointerEnabled: this.activeProfile === "keyboard",
+        arenaBounds: this.arenaBounds,
+      },
     );
   }
 
@@ -102,9 +113,14 @@ export class BattleInputController {
     let input = createBattleInput(
       this.scene,
       this.keys,
-      this.mobileControls,
-      { fighter, previousShotsFired },
-      this.arenaBounds
+      {
+        mobileControls: this.mobileControls,
+        joystickControls: this.joystickControls,
+        keyboardEnabled: this.activeProfile === "keyboard",
+        pointerEnabled: this.activeProfile === "keyboard",
+        autoReloadContext: { fighter, previousShotsFired },
+        arenaBounds: this.arenaBounds,
+      },
     ) as BattleInputState & { readonly pointerX: number; readonly pointerY: number; transitionReadyPressed?: boolean; shopReadyPressed?: boolean; shopPurchaseItemId?: string; activeCardSwitchId?: string };
 
     input = this.applyCollaborateTransitionReady(input, getCollaborateExtra(), localFighterKey);
@@ -115,13 +131,26 @@ export class BattleInputController {
   }
 
   updateAimCoordinate(): void {
-    const pointerWorld = this.getPointerWorld();
+    if (this.activeProfile.startsWith("joystick:")) {
+      return;
+    }
+    const input = createBattleInput(
+      this.scene,
+      this.keys,
+      {
+        mobileControls: this.mobileControls,
+        joystickControls: this.joystickControls,
+        keyboardEnabled: this.activeProfile === "keyboard",
+        pointerEnabled: this.activeProfile === "keyboard",
+        arenaBounds: this.arenaBounds,
+      },
+    );
     this.lastInput = {
       ...this.lastInput,
-      aimX: Math.trunc(pointerWorld.x),
-      aimY: Math.trunc(pointerWorld.y),
-      pointerX: pointerWorld.x,
-      pointerY: pointerWorld.y,
+      aimX: input.aimX,
+      aimY: input.aimY,
+      pointerX: input.pointerX,
+      pointerY: input.pointerY,
     };
   }
 
@@ -191,4 +220,24 @@ export class BattleInputController {
       activeCardSwitchId: activeCardSwitch,
     };
   }
+}
+
+function resolveActiveProfile(sceneData: BattleSceneData): InputProfileId {
+  if (sceneData.mode === "online" || sceneData.mode === "local" || sceneData.mode === "ai") {
+    return uiSettings.account.battleProfile === "Player2"
+      ? uiSettings.account.p2Profile
+      : uiSettings.account.p1Profile;
+  }
+  return uiSettings.account.p1Profile;
+}
+
+function createJoystickController(
+  scene: Phaser.Scene,
+  profile: InputProfileId,
+): BattleJoystickController | undefined {
+  if (!profile.startsWith("joystick:")) {
+    return undefined;
+  }
+  const padIndex = Math.max(0, Number(profile.slice("joystick:".length)) || 0);
+  return new BattleJoystickController(scene, uiSettings.joystick, padIndex);
 }

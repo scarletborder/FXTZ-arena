@@ -4,15 +4,12 @@ import { t } from "@repo/i18n";
 import {
   bodyStyle,
   createFightButton,
-  createTextField,
 } from "../ui";
 import {
   setMusicVolume,
   setSoundVolume,
-  setUsername,
   uiSettings,
 } from "../../store/settings";
-import type { TextFieldControl } from "../shared";
 import type { SettingsScene } from "./index";
 import { showLanguageDialog } from "../ui/dialogs/language-dialog";
 
@@ -22,57 +19,17 @@ interface SliderControl {
 }
 
 export function renderGeneralTab(scene: SettingsScene, layer: Phaser.GameObjects.Container): void {
-  let activeField: TextFieldControl | undefined;
-  const usernameField = createTextField(scene, 36, 124, 360, {
-    value: uiSettings.username,
-    maxLength: MAX_PLAYER_NAME_LENGTH,
-    onFocus: (field) => {
-      if (activeField === field) {
-        return;
-      }
-      activeField?.setActive(false);
-      activeField = field;
-    },
-    onChange: setUsername,
-  });
-  usernameField.hitArea.on("pointerdown", () => {
-    activeField?.setActive(false);
-    activeField = usernameField;
-    usernameField.setActive(true);
-  });
-
-  const onKeyDown = (event: KeyboardEvent) => activeField?.handleKey(event);
-  const onPaste = (event: ClipboardEvent) => {
-    const text = event.clipboardData?.getData("text") ?? "";
-    if (activeField && text) {
-      activeField.handlePaste(text);
-      event.preventDefault();
-    }
-  };
-
   layer.add(sectionTitle(scene, 36, 34, t("settings.general")));
-  layer.add(scene.add.text(36, 86, t("settings.general.username.title"), bodyStyle("#f6f1e6", 18)));
-  layer.add(usernameField.container);
-
-  layer.add(sectionTitle(scene, 36, 190, t("settings.general")));
-  layer.add(scene.add.text(36, 242, t("settings.general.music.title"), bodyStyle("#f6f1e6", 18)));
-  layer.add(createVolumeSlider(scene, 36, 280, 360, uiSettings.music, setMusicVolume).container);
-  layer.add(scene.add.text(36, 334, t("settings.general.sound.title"), bodyStyle("#f6f1e6", 18)));
-  layer.add(createVolumeSlider(scene, 36, 372, 360, uiSettings.sound, setSoundVolume).container);
+  layer.add(scene.add.text(36, 86, t("settings.general.music.title"), bodyStyle("#f6f1e6", 18)));
+  layer.add(createVolumeSlider(scene, 36, 124, 360, uiSettings.music, setMusicVolume).container);
+  layer.add(scene.add.text(36, 178, t("settings.general.sound.title"), bodyStyle("#f6f1e6", 18)));
+  layer.add(createVolumeSlider(scene, 36, 216, 360, uiSettings.sound, setSoundVolume).container);
 
   const languageLabel = scene.add.text(616, 34, t("settings.general.language.title"), bodyStyle("#f6f1e6", 18));
   const languageHint = scene.add.text(616, 72, t("settings.general.language.subtitle"), bodyStyle("#b7c7d8", 15));
   layer.add([languageLabel, languageHint, createFightButton(scene, 741, 130, 250, 54, t("settings.general.language.title"), () => {
     showLanguageDialog(scene);
   }, { accent: 0x34d399 }).container]);
-
-  scene.input.keyboard?.on("keydown", onKeyDown);
-  window.addEventListener("paste", onPaste);
-  scene.addCleanup(() => {
-    scene.input.keyboard?.off("keydown", onKeyDown);
-    window.removeEventListener("paste", onPaste);
-    activeField = undefined;
-  });
 }
 
 function sectionTitle(scene: Phaser.Scene, x: number, y: number, label: string): Phaser.GameObjects.Text {
@@ -185,4 +142,3 @@ function createVolumeSlider(
 function clampVolume(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
-const MAX_PLAYER_NAME_LENGTH = 32;

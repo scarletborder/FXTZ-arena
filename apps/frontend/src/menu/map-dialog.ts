@@ -109,6 +109,13 @@ export function createMapDropdown<TId extends string = MapId>(
     .setOrigin(0, 0)
     .setInteractive({ useHandCursor: true });
 
+  const redrawMask = () => {
+    const worldPosition = optionsLayer.getWorldTransformMatrix().transformPoint(0, 0);
+    maskShape.clear();
+    maskShape.fillStyle(0xffffff, 1);
+    maskShape.fillRect(worldPosition.x, worldPosition.y, width, optionsHeight);
+  };
+
   const redraw = () => {
     background.clear();
     background.fillStyle(open ? 0x202a38 : 0x151b26, 0.98);
@@ -118,7 +125,8 @@ export function createMapDropdown<TId extends string = MapId>(
     arrow.setText(open ? "^" : "v");
     optionsLayer.setVisible(open);
     container.setDepth(open ? 10000 : 0);
-    container.parentContainer?.bringToTop(container);
+    if (open) redrawMask();
+    bringContainerChainToTop(container);
   };
 
   const setScrollOffset = (nextOffset: number) => {
@@ -187,8 +195,7 @@ export function createMapDropdown<TId extends string = MapId>(
   });
 
   const maskShape = scene.make.graphics({ x: 0, y: 0 });
-  maskShape.fillStyle(0xffffff, 1);
-  maskShape.fillRect(x, y + height + 6, width, optionsHeight);
+  redrawMask();
   optionsContent.enableFilters();
   optionsContent.filters?.internal.addMask(maskShape);
   const viewportHitArea = scene.add.rectangle(0, 0, width, optionsHeight, 0xffffff, 0.001)
@@ -207,8 +214,9 @@ export function createMapDropdown<TId extends string = MapId>(
     _deltaX: number,
     deltaY: number,
   ) => {
-    const bounds = new Phaser.Geom.Rectangle(x, y + height + 6, width, optionsHeight);
-    if (open && Phaser.Geom.Rectangle.Contains(bounds, pointer.x, pointer.y)) {
+    const localPoint = container.getWorldTransformMatrix().applyInverse(pointer.x, pointer.y);
+    const bounds = new Phaser.Geom.Rectangle(0, height + 6, width, optionsHeight);
+    if (open && Phaser.Geom.Rectangle.Contains(bounds, localPoint.x, localPoint.y)) {
       setScrollOffset(scrollOffset + deltaY);
     }
   };
@@ -228,6 +236,15 @@ export function createMapDropdown<TId extends string = MapId>(
   container.add([background, label, arrow, hitArea, optionsLayer]);
   redraw();
   return { container };
+}
+
+function bringContainerChainToTop(container: Phaser.GameObjects.Container): void {
+  let current: Phaser.GameObjects.Container = container;
+  while (current.parentContainer) {
+    const parent = current.parentContainer;
+    parent.bringToTop(current);
+    current = parent;
+  }
 }
 
 function mapName<TId extends string>(

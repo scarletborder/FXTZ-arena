@@ -9,6 +9,7 @@ import {
 import type { FighterState } from "../types";
 import type { BattleKeyMap } from ".";
 import type { BattleMobileControls } from ".";
+import type { BattleJoystickController } from "./gamepad";
 
 export type { BattleKeyMap } from ".";
 
@@ -22,19 +23,40 @@ export interface BattleInputAutoReloadContext {
   readonly previousShotsFired: number;
 }
 
+export interface BattleInputOptions {
+  readonly mobileControls?: BattleMobileControls;
+  readonly joystickControls?: BattleJoystickController;
+  readonly keyboardEnabled?: boolean;
+  readonly pointerEnabled?: boolean;
+  readonly autoReloadContext?: BattleInputAutoReloadContext;
+  readonly arenaBounds?: ArenaBounds;
+}
+
 export function createBattleInput(
   scene: Phaser.Scene,
   keys: BattleKeyMap,
-  mobileControls?: BattleMobileControls,
+  mobileControlsOrOptions?: BattleMobileControls | BattleInputOptions,
   autoReloadContext?: BattleInputAutoReloadContext,
   arenaBounds?: ArenaBounds,
 ): BattleInputBundle {
+  const options = isBattleInputOptions(mobileControlsOrOptions)
+    ? mobileControlsOrOptions
+    : {
+      mobileControls: mobileControlsOrOptions,
+      autoReloadContext,
+      arenaBounds,
+    };
+  const mobileControls = options.mobileControls;
+  const joystickControls = options.joystickControls;
+  const keyboardEnabled = options.keyboardEnabled ?? true;
+  const pointerEnabled = options.pointerEnabled ?? true;
   const mobileState = mobileControls?.readState();
   const pointerWorld = getBattlePointerWorld(
     scene,
     mobileControls,
-    arenaBounds,
+    options.arenaBounds,
   );
+  const joystickState = joystickControls?.readState(options.arenaBounds);
   const pointer = scene.input.activePointer;
   const keyboardMoveX = ((keys.moveRight.isDown ? 1 : 0) - (keys.moveLeft.isDown ? 1 : 0)) as
     | -1
@@ -44,37 +66,55 @@ export function createBattleInput(
     | -1
     | 0
     | 1;
-  const moveX = mobileState?.moveX || keyboardMoveX;
-  const moveY = mobileState?.moveY || keyboardMoveY;
+  const moveX = mobileState?.moveX || joystickState?.moveX || (keyboardEnabled ? keyboardMoveX : 0);
+  const moveY = mobileState?.moveY || joystickState?.moveY || (keyboardEnabled ? keyboardMoveY : 0);
   const manualReloadPressed =
-    (mobileState?.reloadPressed ?? false) || keys.reload.isDown;
+    (mobileState?.reloadPressed ?? false) ||
+    (joystickState?.reloadPressed ?? false) ||
+    (keyboardEnabled && keys.reload.isDown);
   const shootPressed =
     mobileState?.shootPressed ??
-    (pointer.leftButtonDown() && !pointer.rightButtonDown());
+    (joystickState?.shootPressed || undefined) ??
+    (pointerEnabled && pointer.leftButtonDown() && !pointer.rightButtonDown());
   const emptyShotReloadPressed = shouldReloadInsteadOfShooting(
-    autoReloadContext,
+    options.autoReloadContext,
     shootPressed,
   );
   return {
     moveX,
     moveY,
-    aimX: Math.trunc(pointerWorld.x),
-    aimY: Math.trunc(pointerWorld.y),
+    aimX: Math.trunc(joystickState?.aimX ?? pointerWorld.x),
+    aimY: Math.trunc(joystickState?.aimY ?? pointerWorld.y),
     shootPressed: shootPressed && !emptyShotReloadPressed,
-    bombPressed: mobileState?.bombPressed ?? pointer.rightButtonDown(),
+    bombPressed:
+      mobileState?.bombPressed ??
+      (joystickState?.bombPressed || undefined) ??
+      (pointerEnabled && pointer.rightButtonDown()),
     activeCardPressed:
       (mobileState?.activeCardPressed ?? false) ||
-      Phaser.Input.Keyboard.JustDown(keys.activeCard),
+      (joystickState?.activeCardPressed ?? false) ||
+      (keyboardEnabled && Phaser.Input.Keyboard.JustDown(keys.activeCard)),
     reloadPressed:
       manualReloadPressed ||
       emptyShotReloadPressed ||
-      shouldAutoReloadAfterLastShot(autoReloadContext),
-    alternateHeld: (mobileState?.alternateHeld ?? false) || keys.alternate.isDown,
-    infoHeld: keys.info.isDown,
-    transitionReadyPressed: false,
-    pointerX: pointerWorld.x,
-    pointerY: pointerWorld.y,
+      shouldAutoReloadAfterLastShot(options.autoReloadContext),
+    alternateHeld:
+      (mobileState?.alternateHeld ?? false) ||
+      (joystickState?.alternateHeld ?? false) ||
+      (keyboardEnabled && keys.alternate.isDown),
+    infoHeld: (joystickState?.infoHeld ?? false) || (keyboardEnabled && keys.info.isDown),
+    transitionReadyPressed:
+      (joystickState?.enterPressed ?? false) ||
+      (keyboardEnabled && Phaser.Input.Keyboard.JustDown(keys.enter)),
+    pointerX: joystickState?.aimX ?? pointerWorld.x,
+    pointerY: joystickState?.aimY ?? pointerWorld.y,
   };
+}
+
+function isBattleInputOptions(
+  value: BattleMobileControls | BattleInputOptions | undefined,
+): value is BattleInputOptions {
+  return Boolean(value && ("joystickControls" in value || "autoReloadContext" in value || "arenaBounds" in value));
 }
 
 function shouldReloadInsteadOfShooting(
