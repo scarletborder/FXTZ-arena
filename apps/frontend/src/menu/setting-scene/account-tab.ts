@@ -57,6 +57,9 @@ export function renderAccountTab(scene: SettingsScene, layer: Phaser.GameObjects
   };
 
   const activateField = (field: TextFieldControl) => {
+    if (activeField === field) {
+      return;
+    }
     activeField?.setActive(false);
     activeField = field;
     field.setActive(true);
@@ -77,7 +80,10 @@ export function renderAccountTab(scene: SettingsScene, layer: Phaser.GameObjects
         refreshSettings();
       },
     });
-    field.hitArea.on("pointerdown", () => activateField(field));
+    field.hitArea.on("pointerdown", () => {
+      activateField(field);
+      field.focus();
+    });
     return field;
   };
 
