@@ -1,10 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("phaser", () => ({
+  default: {},
+}));
 
 import type { BattleOutputState } from "@repo/raid-logic";
 import type { CharacterDefinition, FighterKey, FighterState, ProjectileState } from "@repo/content";
 
 import AudioCmd, { type AudioCommand } from "../commands/AudioCmd";
-import { BattleAudioDirector } from "./audio";
+import { BattleAudioDirector } from "./sfx/audio";
 
 describe("BattleAudioDirector", () => {
   it("does not classify Neutral projectiles as Player2 character shots", () => {
@@ -51,6 +55,7 @@ function battleState(params: {
   return {
     frame: params.frame,
     gameOver: false,
+    result: "running",
     player: fighter("Player1", character("reimu")),
     target: fighter("Player2", character("marisa")),
     points: [],

@@ -23,9 +23,12 @@ export class RoomLobbyScene extends Phaser.Scene {
     super("lobby" satisfies SceneKey);
   }
 
-  create(): void {
+  create(data?: SelectionData): void {
     this.selfReady = false;
     this.leavingOnlineRoom = false;
+    if (data?.battleMode) {
+      connectionManager.battleMode = data.battleMode;
+    }
 
     drawFightingBackdrop(this, "LOBBY", "WAITING ROOM");
 
@@ -117,6 +120,7 @@ export class RoomLobbyScene extends Phaser.Scene {
     const infoLines: string[] = [];
     if (connectionManager.roomName) infoLines.push(t("room_lobby.room_name", { name: connectionManager.roomName }));
     if (connectionManager.hostName) infoLines.push(t("room_lobby.host", { name: connectionManager.hostName }));
+    if (connectionManager.battleMode) infoLines.push(t("room_lobby.battle_mode", { mode: battleModeLabel(connectionManager.battleMode) }));
     if (connectionManager.lifeCount !== null) infoLines.push(t("room_lobby.lives", { count: connectionManager.lifeCount }));
     if (connectionManager.costLimit !== null) infoLines.push(t("room_lobby.cost_limit", { count: connectionManager.costLimit }));
     const statusText = connectionManager.roomStatus === "waiting" ? t("room_lobby.status_waiting") : connectionManager.roomStatus === "selecting" ? t("room_lobby.status_selecting") : connectionManager.roomStatus ?? t("room_lobby.status_unknown");
@@ -147,20 +151,22 @@ export class RoomLobbyScene extends Phaser.Scene {
       this.drawPlayerSlot(556, 332, "2P", myName, "", guestOccupied, true);
     }
 
-    this.contentContainer.add(
-      this.add.text(582, 470, t("room_lobby.spectator_seats"), {
-        fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
-        fontSize: "15px",
-        color: "#ffcf6e",
-      }),
-    );
-    this.contentContainer.add(
-      this.add.text(720, 470, formatSpectatorNames(connectionManager.spectatorNames), {
-        fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
-        fontSize: "15px",
-        color: "#d7e3ef",
-      }).setWordWrapWidth(450),
-    );
+    if (connectionManager.allowSpectators !== false) {
+      this.contentContainer.add(
+        this.add.text(582, 470, t("room_lobby.spectator_seats"), {
+          fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+          fontSize: "15px",
+          color: "#ffcf6e",
+        }),
+      );
+      this.contentContainer.add(
+        this.add.text(720, 470, formatSpectatorNames(connectionManager.spectatorNames), {
+          fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+          fontSize: "15px",
+          color: "#d7e3ef",
+        }).setWordWrapWidth(450),
+      );
+    }
 
     // ── Bottom status text and buttons ──────────────────────
     if (isHost) {
@@ -264,10 +270,13 @@ export class RoomLobbyScene extends Phaser.Scene {
         break;
       }
       case "game_starting":
+        connectionManager.battleMode = (m as { battleMode?: import("@repo/types").BattleRoomMode }).battleMode
+          ?? connectionManager.battleMode;
         this.scene.start("select", {
           mode: "online",
           roomId: connectionManager.roomId ?? undefined,
           playerId: connectionManager.playerId ?? undefined,
+          battleMode: connectionManager.battleMode ?? undefined,
         } satisfies SelectionData);
         break;
       case "peer_status": {
@@ -322,4 +331,8 @@ export class RoomLobbyScene extends Phaser.Scene {
 
 function formatSpectatorNames(names: readonly string[]): string {
   return names.length > 0 ? names.join(", ") : t("room_lobby.no_spectators");
+}
+
+function battleModeLabel(mode: import("@repo/types").BattleRoomMode): string {
+  return mode === "collaborate" ? t("room_lobby.mode_collaborate") : t("room_lobby.mode_versus");
 }

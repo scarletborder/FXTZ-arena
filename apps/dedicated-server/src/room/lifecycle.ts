@@ -26,10 +26,11 @@ export class RoomLifecycle {
     if (room.loadouts[0] && room.loadouts[1]) {
       room.status = "loading";
       room.battleId = randomUUID();
-      room.seed = randomInt(0, 2_147_483_647);
+      room.seed ??= randomInt(0, 2_147_483_647);
 
       const config: BattleConfig = {
         battleId: room.battleId,
+        battleMode: room.battleMode,
         mapId: room.mapId,
         seed: room.seed,
         fps: 60,

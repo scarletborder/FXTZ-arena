@@ -12,6 +12,7 @@ import type {
   ProjectileState,
   ShieldState,
 } from "@repo/content";
+import type { BattleRules } from "../battle-rules";
 import type { CollisionResult } from "../physics-adapter";
 import { fpHypotFp, fpClamp, fpMin, fpMax } from "@repo/content";
 import {
@@ -20,6 +21,7 @@ import {
   stepBulletProjectile,
 } from "./bullet";
 import { createLaserProjectile, stepLaserProjectile } from "./laser";
+import { BattleSizeManager } from "../size-manager";
 
 export type BulletProjectileParams = Omit<
   Parameters<typeof createBulletProjectile>[0],
@@ -65,6 +67,12 @@ export interface ProjectileHitTarget {
 
 export class ProjectileSystem {
   private nextProjectileId = 1;
+
+  constructor(
+    private readonly sizeManager = new BattleSizeManager({
+      battleMode: "versus",
+    }),
+  ) {}
 
   reset(): void {
     this.nextProjectileId = 1;
@@ -151,6 +159,7 @@ export class ProjectileSystem {
     readonly hitTargets?: readonly ProjectileHitTarget[];
     readonly shields?: readonly ShieldState[];
     readonly aimByFighter?: ProjectileAimByFighter;
+    readonly rules?: BattleRules;
     /** Mutable ref set to true when a projectile retarget reads aim. */
     readonly aimConsumedRef?: { value: boolean };
     readonly onHit: (
@@ -182,10 +191,12 @@ export class ProjectileSystem {
         if (projectile.kind === "laser" || projectile.kind === "spark") {
           stepLaserProjectile(projectile);
         } else {
-          const target =
-            projectile.owner === "Player1" ? params.target : params.player;
           syncOwnerBoundProjectile(projectile, params);
-          stepBulletProjectile(projectile, params.frame, target);
+          stepBulletProjectile(
+            projectile,
+            params.frame,
+            this.resolveBulletTarget(projectile, params),
+          );
         }
       }
     }
@@ -216,14 +227,26 @@ export class ProjectileSystem {
           rapierGrazeMap.set(result.projectileId, grazers);
         }
         for (const result of results) {
-          if (result.blockedByShield) {
+          const projectile = params.projectiles.find(
+            (candidate) => candidate.id === result.projectileId,
+          );
+          if (
+            result.blockedByShield &&
+            projectile &&
+            result.blockedByShieldOwner &&
+            canProjectileClearProjectile(
+              projectile,
+              { owner: result.blockedByShieldOwner },
+              params.rules,
+            )
+          ) {
             rapierHitMap.set(result.projectileId, "blocked");
           }
         }
       }
     }
 
-    resolveProjectileClears(params.projectiles, params.frame);
+    resolveProjectileClears(params.projectiles, params.frame, params.rules);
     params.clearProjectiles?.(params.projectiles);
 
     const hitTargets = params.hitTargets ?? [
@@ -240,7 +263,10 @@ export class ProjectileSystem {
       ) {
         continue;
       }
-      if (canInteract && isBlockedByShield(projectile, params.shields ?? [])) {
+      if (
+        canInteract &&
+        isBlockedByShield(projectile, params.shields ?? [], params.rules)
+      ) {
         continue;
       }
       if (canInteract) {
@@ -249,6 +275,7 @@ export class ProjectileSystem {
           hitTargets,
           rapierHitMap,
           rapierMobHitMap,
+          params.rules,
         );
         if (victim) {
           const accepted = params.onHit({
@@ -273,6 +300,7 @@ export class ProjectileSystem {
             projectile,
             hitTargets,
             rapierGrazeMap,
+            params.rules,
           )) {
             params.onGraze({
               projectile,
@@ -287,12 +315,51 @@ export class ProjectileSystem {
       const expired =
         projectile.expireAt !== undefined &&
         params.frame >= projectile.expireAt;
-      if (!expired && !isProjectileOutOfWorld(projectile)) {
+      if (
+        !expired &&
+        !isProjectileOutOfWorld(
+          projectile,
+          this.sizeManager.arenaBounds,
+          this.sizeManager.projectileWorldPadding(),
+        )
+      ) {
         remaining.push(projectile);
       }
     }
 
     params.projectiles.splice(0, params.projectiles.length, ...remaining);
+  }
+
+  private resolveBulletTarget(
+    projectile: ProjectileState,
+    params: {
+      readonly player: FighterState;
+      readonly target: FighterState;
+      readonly hitTargets?: readonly ProjectileHitTarget[];
+      readonly aimByFighter?: ProjectileAimByFighter;
+    },
+  ): FighterState {
+    if (
+      this.sizeManager.battleMode === "collaborate" &&
+      (projectile.owner === "Player1" || projectile.owner === "Player2")
+    ) {
+      const aim = params.aimByFighter?.[projectile.owner];
+      const mob = aim
+        ? nearestNeutralTargetToPoint(params.hitTargets ?? [], aim.x, aim.y)
+        : undefined;
+      if (mob) {
+        return mobTargetAsFighter(mob);
+      }
+      if (aim) {
+        projectile.homingUntil = 0;
+        return {
+          ...(projectile.owner === "Player1" ? params.target : params.player),
+          x: aim.x,
+          y: aim.y,
+        };
+      }
+    }
+    return projectile.owner === "Player1" ? params.target : params.player;
   }
 }
 
@@ -302,8 +369,10 @@ function syncOwnerBoundProjectile(
     readonly frame: number;
     readonly player: FighterState;
     readonly target: FighterState;
+    readonly hitTargets?: readonly ProjectileHitTarget[];
     readonly aimByFighter?: ProjectileAimByFighter;
     readonly aimConsumedRef?: { value: boolean };
+    readonly rules?: BattleRules;
   },
 ): void {
   if (projectile.polarFollowOwner !== undefined) {
@@ -320,8 +389,13 @@ function syncOwnerBoundProjectile(
   ) {
     const aim = params.aimByFighter?.[projectile.retargetAimOwner];
     if (aim) {
-      projectile.retargetX = aim.x;
-      projectile.retargetY = aim.y;
+      const neutralTarget =
+        params.rules?.mode === "collaborate" &&
+        (projectile.owner === "Player1" || projectile.owner === "Player2")
+          ? nearestNeutralTargetToPoint(params.hitTargets ?? [], aim.x, aim.y)
+          : undefined;
+      projectile.retargetX = neutralTarget?.x ?? aim.x;
+      projectile.retargetY = neutralTarget?.y ?? aim.y;
       if (params.aimConsumedRef) {
         params.aimConsumedRef.value = true;
       }
@@ -336,10 +410,42 @@ function syncOwnerBoundProjectile(
   }
 }
 
+function nearestNeutralTargetToPoint(
+  targets: readonly ProjectileHitTarget[],
+  x: number,
+  y: number,
+): ProjectileHitTarget | undefined {
+  let best: ProjectileHitTarget | undefined;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const target of targets) {
+    if (target.key !== "Neutral") {
+      continue;
+    }
+    const distance = (target.x - x) ** 2 + (target.y - y) ** 2;
+    if (
+      distance < bestDistance ||
+      (distance === bestDistance && (target.mobId ?? 0) < (best?.mobId ?? 0))
+    ) {
+      best = target;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+function mobTargetAsFighter(target: ProjectileHitTarget): FighterState {
+  return {
+    key: "Neutral",
+    x: target.x,
+    y: target.y,
+  } as FighterState;
+}
+
 function physicsGrazeTargets(
   projectile: ProjectileState,
   targets: readonly ProjectileHitTarget[],
   rapierGrazeMap: Map<number, FighterKey[]> | undefined,
+  rules?: BattleRules,
 ): readonly ProjectileHitTarget[] {
   const grazedByKeys = rapierGrazeMap?.get(projectile.id);
   if (!grazedByKeys || grazedByKeys.length === 0) {
@@ -349,7 +455,7 @@ function physicsGrazeTargets(
   return targets.filter(
     (target) =>
       target.key !== "Neutral" &&
-      target.key !== projectile.owner &&
+      canProjectileGrazeTarget(projectile, target, rules) &&
       target.hitWidth === undefined &&
       target.hitHeight === undefined &&
       keySet.has(target.key),
@@ -370,11 +476,12 @@ function firstHitTarget(
   targets: readonly ProjectileHitTarget[],
   rapierHitMap: Map<number, FighterKey | "blocked"> | undefined,
   rapierMobHitMap?: Map<number, number>,
+  rules?: BattleRules,
 ): ProjectileHitTarget | undefined {
   const rapierVictim = rapierHitMap?.get(projectile.id);
   const rapierMobVictim = rapierMobHitMap?.get(projectile.id);
   for (const target of targets) {
-    if (projectile.owner === target.key) {
+    if (!canProjectileDamageTarget(projectile, target, rules)) {
       continue;
     }
     let isHit: boolean;
@@ -430,6 +537,7 @@ export function clearProjectilesAround(
 function resolveProjectileClears(
   projectiles: ProjectileState[],
   frame: number,
+  rules?: BattleRules,
 ): void {
   const clearers = projectiles.filter(
     (projectile) =>
@@ -448,7 +556,7 @@ function resolveProjectileClears(
       }
       return !clearers.some(
         (clearer) =>
-          clearer.owner !== projectile.owner &&
+          canProjectileClearProjectile(clearer, projectile, rules) &&
           projectileIntersectsClearer(clearer, projectile),
       );
     }),
@@ -633,13 +741,14 @@ function canUseRapierHitTest(projectile: ProjectileState): boolean {
 function isBlockedByShield(
   projectile: ProjectileState,
   shields: readonly ShieldState[],
+  rules?: BattleRules,
 ): boolean {
   if (!canShieldBlockProjectile(projectile)) {
     return false;
   }
 
   for (const shield of shields) {
-    if (projectile.owner === shield.owner) {
+    if (!canProjectileClearProjectile(projectile, shield, rules)) {
       continue;
     }
     if (rotatedRectsIntersect(projectile, shield)) {
@@ -647,6 +756,39 @@ function isBlockedByShield(
     }
   }
   return false;
+}
+
+function canProjectileDamageTarget(
+  projectile: ProjectileState,
+  target: ProjectileHitTarget,
+  rules: BattleRules | undefined,
+): boolean {
+  return (
+    rules?.canProjectileDamageTarget(projectile.owner, target.key) ??
+    projectile.owner !== target.key
+  );
+}
+
+function canProjectileGrazeTarget(
+  projectile: ProjectileState,
+  target: ProjectileHitTarget,
+  rules: BattleRules | undefined,
+): boolean {
+  return (
+    rules?.canProjectileGrazeTarget(projectile.owner, target.key) ??
+    projectile.owner !== target.key
+  );
+}
+
+function canProjectileClearProjectile(
+  clearer: Pick<ProjectileState, "owner">,
+  projectile: Pick<ProjectileState, "owner">,
+  rules: BattleRules | undefined,
+): boolean {
+  return (
+    rules?.canProjectileClearProjectile(clearer.owner, projectile.owner) ??
+    clearer.owner !== projectile.owner
+  );
 }
 
 function canShieldBlockProjectile(projectile: ProjectileState): boolean {

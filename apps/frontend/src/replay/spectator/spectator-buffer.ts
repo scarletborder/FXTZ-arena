@@ -19,6 +19,7 @@ export class SpectatorInputBuffer {
       reloadPressed: message.reloadPressed,
       alternateHeld: message.alternateHeld,
       infoHeld: message.infoHeld,
+      transitionReadyPressed: message.transitionReadyPressed === true,
     });
     for (const redundant of message.UnreliableLinkExtra?.redundantInputs ?? []) {
       this.inputs.get(message.playerId)?.set(redundant.frame, {
@@ -32,6 +33,7 @@ export class SpectatorInputBuffer {
         reloadPressed: redundant.reloadPressed,
         alternateHeld: redundant.alternateHeld,
         infoHeld: redundant.infoHeld,
+        transitionReadyPressed: redundant.transitionReadyPressed === true,
       });
     }
   }

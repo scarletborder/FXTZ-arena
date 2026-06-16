@@ -1,4 +1,4 @@
-import type { MapId } from "../core";
+import type { BattleRoomMode, MapId } from "../core";
 
 export type RoomStatus =
   | "waiting"
@@ -12,6 +12,7 @@ export interface RoomSummary {
   readonly name: string;
   readonly hostName?: string;
   readonly hasPassword: boolean;
+  readonly battleMode: BattleRoomMode;
   readonly mapId: MapId;
   readonly lifeCount: number;
   readonly costLimit: number;

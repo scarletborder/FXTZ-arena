@@ -2,12 +2,13 @@ import type { SettingsScene } from "./index";
 
 import Phaser from "phaser";
 
-export type SettingsTabKey = "online" | "general" | "about" | "debug";
+export type SettingsTabKey = "online" | "general" | "account" | "keyboard" | "joystick" | "about" | "debug";
 
 export interface SettingsTabDefinition {
   readonly key: SettingsTabKey;
   readonly label: string;
   readonly render: (scene: SettingsScene, layer: Phaser.GameObjects.Container) => void;
+  readonly disabled?: (scene: Phaser.Scene) => boolean;
 }
 
 export interface SettingsSceneCleanup {

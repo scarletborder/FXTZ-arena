@@ -18,6 +18,14 @@ export class CombatSyncManager {
     ["Player1", neutralInput()],
     ["Player2", neutralInput()],
   ]);
+  private readonly forcedShopReadyFrames = new Map<PlayerId, Map<number, number>>([
+    ["Player1", new Map()],
+    ["Player2", new Map()],
+  ]);
+  private readonly forcedTransitionReadyFrames = new Map<PlayerId, Set<number>>([
+    ["Player1", new Set()],
+    ["Player2", new Set()],
+  ]);
   private lastReceivedRemoteFrame = 0;
   private lastPeerAckFrame = 0;
   private lastReportedConfirmedInputFrame = 0;
@@ -95,6 +103,8 @@ export class CombatSyncManager {
 
     this.stepRuntimeFrame(frame);
     this.options.callbacks.recordFrame(this.runtime.aimConsumedThisFrame);
+    this.maybeScheduleLocalForcedTransitionReady(frame + 1);
+    this.maybeScheduleLocalForcedShopReady(frame + 1);
     this.pruneOnlineHistory();
     this.trySendGameOverVerdict();
   }
@@ -139,6 +149,11 @@ export class CombatSyncManager {
 
     if (msg.type === "peer_game_over" && msg.playerId === this.remotePlayerId) {
       this.receivePeerGameOver(msg);
+      return;
+    }
+
+    if (msg.type === "peer_collaborate_shop_forced_ready" && msg.playerId === this.remotePlayerId) {
+      this.receiveForcedShopReady(msg.playerId, msg.frame, msg.shopIndex);
       return;
     }
 
@@ -190,6 +205,29 @@ export class CombatSyncManager {
 
     if (msg.type === "peer_game_over" && msg.playerId === this.remotePlayerId) {
       this.receivePeerGameOver(msg);
+      return;
+    }
+
+    if (msg.type === "peer_collaborate_shop_forced_ready" && msg.playerId === this.remotePlayerId) {
+      this.receiveForcedShopReady(msg.playerId, msg.frame, msg.shopIndex);
+    }
+  }
+
+  private receiveForcedShopReady(playerId: PlayerId, frame: number, shopIndex: number): void {
+    if (playerId === this.localPlayerId) return;
+    if (!Number.isInteger(frame) || frame <= 0 || !Number.isInteger(shopIndex) || shopIndex <= 0) return;
+
+    const frames = this.forcedShopReadyFrames.get(playerId);
+    if (!frames || frames.get(frame) === shopIndex) {
+      return;
+    }
+    frames.set(frame, shopIndex);
+
+    if (frame <= this.runtime.frame) {
+      this.rollbackTo(frame);
+      if (!this.runtime.gameOver && !this.paused) {
+        this.options.callbacks.hideStatusText();
+      }
     }
   }
 
@@ -234,9 +272,10 @@ export class CombatSyncManager {
 
   private consumeSendSceneQueue(): void {
     this.queues.drainPending((item) => {
-      this.storeInput(this.localPlayerId, item.frame, item.input);
-      this.lastKnownInputs.set(this.localPlayerId, item.input);
-      this.sendInput(item.frame, item.input);
+      const input = this.applyForcedInputs(this.localPlayerId, item.frame, item.input);
+      this.storeInput(this.localPlayerId, item.frame, input);
+      this.lastKnownInputs.set(this.localPlayerId, input);
+      this.sendInput(item.frame, input);
     });
   }
 
@@ -389,6 +428,13 @@ export class CombatSyncManager {
   }
 
   private winnerPlayerId(): PlayerId {
+    const result = this.runtime.state.result;
+    if (result === "versus_player1" || result === "collaborate_victory") {
+      return "Player1";
+    }
+    if (result === "versus_player2" || result === "collaborate_defeat") {
+      return "Player2";
+    }
     return this.runtime.state.target.lives <= 0 ? "Player1" : "Player2";
   }
 
@@ -425,7 +471,7 @@ export class CombatSyncManager {
       }
       redundant.push({
         frame,
-        ...cloneInput(input),
+        ...this.applyForcedInputs(this.localPlayerId, frame, cloneInput(input)),
       });
     }
     return redundant;
@@ -433,10 +479,68 @@ export class CombatSyncManager {
 
   private getInputForFrame(playerId: PlayerId, frame: number): BattleInputState {
     const actual = this.inputs.get(playerId)?.get(frame);
-    if (actual) return actual;
+    if (actual) return this.applyForcedInputs(playerId, frame, actual);
     const predicted = cloneInput(this.lastKnownInputs.get(playerId) ?? neutralInput());
     this.predictedInputs.set(inputKey(playerId, frame), predicted);
-    return predicted;
+    return this.applyForcedInputs(playerId, frame, predicted);
+  }
+
+  private applyForcedInputs(playerId: PlayerId, frame: number, input: BattleInputState): BattleInputState {
+    let next = input;
+    if (this.forcedTransitionReadyFrames.get(playerId)?.has(frame)) {
+      next = {
+        ...next,
+        transitionReadyPressed: true,
+      };
+    }
+    const shopIndex = this.forcedShopReadyFrames.get(playerId)?.get(frame);
+    if (!shopIndex) {
+      return next;
+    }
+    return {
+      ...next,
+      shopReadyPressed: true,
+      shopPurchaseItemId: undefined,
+      activeCardSwitchId: undefined,
+    };
+  }
+
+  private maybeScheduleLocalForcedTransitionReady(frame: number): void {
+    const extra = this.runtime.state.collaborateExtra;
+    if (!extra || extra.state !== "transition_sync" || extra.transitionType !== "auto") {
+      return;
+    }
+    const localKey = this.localFighterKey();
+    const localReady = localKey === "Player1"
+      ? extra.player1TransitionReady
+      : extra.player2TransitionReady;
+    if (localReady) {
+      return;
+    }
+    this.forcedTransitionReadyFrames
+      .get(this.localPlayerId)
+      ?.add(Math.max(frame, extra.transitionReadyFrame));
+  }
+
+  private maybeScheduleLocalForcedShopReady(frame: number): void {
+    const extra = this.runtime.state.collaborateExtra;
+    const localKey = this.localFighterKey();
+    const shop = extra?.shop;
+    if (!shop?.open || !shop.revivedByPlayerId[localKey] || shop.readyByPlayerId[localKey]) {
+      return;
+    }
+
+    const shopIndex = shop.shopIndex;
+    this.forcedShopReadyFrames.get(this.localPlayerId)?.set(frame, shopIndex);
+
+    const message: ClientMessage = {
+      type: "collaborate_shop_forced_ready",
+      frame,
+      shopIndex,
+    };
+    if (!this.options.p2p?.send(message)) {
+      this.connectionManager.send(message);
+    }
   }
 
   private pruneOnlineHistory(): void {
@@ -481,6 +585,20 @@ export class CombatSyncManager {
         this.aimConsumingFrames.delete(frame);
       }
     }
+    for (const frames of this.forcedShopReadyFrames.values()) {
+      for (const [frame] of frames) {
+        if (frame < safelyConfirmedInputFrame) {
+          frames.delete(frame);
+        }
+      }
+    }
+    for (const frames of this.forcedTransitionReadyFrames.values()) {
+      for (const frame of frames) {
+        if (frame < safelyConfirmedInputFrame) {
+          frames.delete(frame);
+        }
+      }
+    }
   }
 
   private advanceRemoteContiguousFrame(): void {
@@ -515,6 +633,10 @@ function neutralInput(): BattleInputState {
     reloadPressed: false,
     alternateHeld: false,
     infoHeld: false,
+    transitionReadyPressed: false,
+    shopReadyPressed: false,
+    shopPurchaseItemId: undefined,
+    activeCardSwitchId: undefined,
   };
 }
 
@@ -530,6 +652,10 @@ function cloneInput(input: BattleInputState): BattleInputState {
     reloadPressed: input.reloadPressed,
     alternateHeld: input.alternateHeld,
     infoHeld: input.infoHeld,
+    transitionReadyPressed: input.transitionReadyPressed === true,
+    shopReadyPressed: input.shopReadyPressed === true,
+    shopPurchaseItemId: input.shopPurchaseItemId,
+    activeCardSwitchId: input.activeCardSwitchId,
   };
 }
 
@@ -552,6 +678,18 @@ function canonicalizeInput(input: BattleInputState): BattleInputState {
     reloadPressed: input.reloadPressed,
     alternateHeld: input.alternateHeld,
     infoHeld: input.infoHeld,
+    transitionReadyPressed: input.transitionReadyPressed === true,
+    shopReadyPressed: input.shopReadyPressed === true,
+    shopPurchaseItemId:
+      typeof input.shopPurchaseItemId === "string" &&
+      input.shopPurchaseItemId.length > 0
+        ? input.shopPurchaseItemId
+        : undefined,
+    activeCardSwitchId:
+      typeof input.activeCardSwitchId === "string" &&
+      input.activeCardSwitchId.length > 0
+        ? input.activeCardSwitchId
+        : undefined,
   };
 }
 
@@ -560,7 +698,8 @@ function canonicalizeInput(input: BattleInputState): BattleInputState {
  *
  * Always-compared fields (discrete / boolean):
  *   moveX, moveY, shootPressed, bombPressed, activeCardPressed,
- *   reloadPressed, alternateHeld, infoHeld
+ *   reloadPressed, alternateHeld, infoHeld, transitionReadyPressed,
+ *   shopReadyPressed, shopPurchaseItemId, activeCardSwitchId
  *
  * Conditionally-compared field (aimX, aimY):
  *   The player moves the mouse every single frame, so aim coordinates
@@ -591,6 +730,10 @@ function sameIntentWithAim(left: BattleInputState, right: BattleInputState): boo
   if (left.reloadPressed !== right.reloadPressed) return false;
   if (left.alternateHeld !== right.alternateHeld) return false;
   if (left.infoHeld !== right.infoHeld) return false;
+  if ((left.transitionReadyPressed === true) !== (right.transitionReadyPressed === true)) return false;
+  if ((left.shopReadyPressed === true) !== (right.shopReadyPressed === true)) return false;
+  if ((left.shopPurchaseItemId ?? "") !== (right.shopPurchaseItemId ?? "")) return false;
+  if ((left.activeCardSwitchId ?? "") !== (right.activeCardSwitchId ?? "")) return false;
 
   return left.aimX === right.aimX && left.aimY === right.aimY;
 }
@@ -605,6 +748,10 @@ function sameIntent(left: BattleInputState, right: BattleInputState): boolean {
   if (left.reloadPressed !== right.reloadPressed) return false;
   if (left.alternateHeld !== right.alternateHeld) return false;
   if (left.infoHeld !== right.infoHeld) return false;
+  if ((left.transitionReadyPressed === true) !== (right.transitionReadyPressed === true)) return false;
+  if ((left.shopReadyPressed === true) !== (right.shopReadyPressed === true)) return false;
+  if ((left.shopPurchaseItemId ?? "") !== (right.shopPurchaseItemId ?? "")) return false;
+  if ((left.activeCardSwitchId ?? "") !== (right.activeCardSwitchId ?? "")) return false;
 
   // Aim only matters when something consumes it.
   if (!hasAimConsumingAction(left) && !hasAimConsumingAction(right)) {

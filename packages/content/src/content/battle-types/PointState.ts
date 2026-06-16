@@ -1,10 +1,23 @@
 import type { FighterKey } from "./common";
 
-export type PointPrefabId = "point_small" | "point_medium" | "point_large";
+export type PointRewardKind = "point" | "money" | "power";
+export type CollectibleRewardSize = "small" | "medium" | "large";
+export type PointPrefabId =
+  | "point_small"
+  | "point_medium"
+  | "point_large"
+  | "money_small"
+  | "money_medium"
+  | "money_large"
+  | "power_small"
+  | "power_medium"
+  | "power_large";
 
 export interface PointState {
   readonly id: number;
   readonly prefabId: PointPrefabId;
+  readonly rewardKind: PointRewardKind;
+  readonly rewardSize: CollectibleRewardSize;
   x: number;
   y: number;
   previousX: number;

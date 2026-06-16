@@ -1,6 +1,6 @@
 import { validateLoadout } from "@repo/raid-logic";
 import { MAX_PLAYER_NAME_LENGTH, MAX_ROOM_NAME_LENGTH } from "@repo/constants";
-import type { BattleConfig, PlayerId } from "@repo/types";
+import type { BattleConfig, BattleRoomMode, PlayerId } from "@repo/types";
 
 import type { ServerConfig } from "../config";
 import { findQuickMatchRoom } from "../matchmaking";
@@ -11,6 +11,8 @@ import type { TransportConnection } from "../transport/interface";
 
 import type {
   ClientMessage,
+  CollaborateShopActionMessage,
+  CollaborateShopForcedReadyMessage,
   CreateRoomMessage,
   HelloMessage,
   GameOverMessage,
@@ -132,6 +134,10 @@ export class MessageHandler {
         return this.handleSpectatorInputFrame(connection, raw as SpectatorInputFrameMessage);
       case "game_over":
         return this.handleGameOver(connection, raw as GameOverMessage);
+      case "collaborate_shop_forced_ready":
+        return this.handleCollaborateShopForcedReady(connection, raw as CollaborateShopForcedReadyMessage);
+      case "collaborate_shop_action":
+        return this.handleCollaborateShopAction(connection, raw as CollaborateShopActionMessage);
       case "ping":
         return this.handlePing(connection, raw as PingMessage);
       default:
@@ -193,6 +199,7 @@ export class MessageHandler {
               hostName: this.hostName(room),
               lifeCount: room.lifeCount,
               costLimit: room.costLimit,
+              battleMode: room.battleMode,
             });
 
             // Clean up remaining players' sessions so they can create/join new rooms
@@ -224,6 +231,7 @@ export class MessageHandler {
             hostName: this.hostName(room),
             lifeCount: room.lifeCount,
             costLimit: room.costLimit,
+            battleMode: room.battleMode,
           });
         } else {
           if (slotIdx !== -1 && session.playerId) {
@@ -240,6 +248,7 @@ export class MessageHandler {
               hostName: remainingSession?.username ?? "",
               lifeCount: room.lifeCount,
               costLimit: room.costLimit,
+              battleMode: room.battleMode,
             });
 
             // Clean up remaining player: remove from room and clear session
@@ -333,6 +342,7 @@ export class MessageHandler {
       type: "room_joined",
       roomId: room.id,
       playerId: reconnect.playerId,
+      battleMode: room.battleMode,
     });
 
     const config = this.buildBattleConfig(room);
@@ -353,6 +363,9 @@ export class MessageHandler {
       hostName: this.hostName(room),
       lifeCount: room.lifeCount,
       costLimit: room.costLimit,
+      battleMode: room.battleMode,
+      allowSpectators: room.allowSpectators,
+      spectatorCount: room.spectatorConnectionIds.length,
     });
     this.notifyPeerStatus(room, slotIndex, reconnect.playerId, "reconnected");
     return true;
@@ -386,13 +399,19 @@ export class MessageHandler {
       return;
     }
 
+    const battleMode = normalizeBattleMode(msg.battleMode);
+    if (!this.ensureBattleModeEnabled(connection, battleMode)) {
+      return;
+    }
+
     const room = this.roomManager.create({
       name: normalizeDisplayName(msg.name, MAX_ROOM_NAME_LENGTH, `${session.username}'s room`),
       password: msg.password,
+      battleMode,
       mapId: msg.mapId,
       lifeCount: msg.lifeCount,
       costLimit: msg.costLimit,
-      allowSpectators: msg.allowSpectators !== false,
+      allowSpectators: battleMode === "collaborate" ? false : msg.allowSpectators !== false,
     });
 
     const assignment = this.roomManager.assignSlot(room, connection.id);
@@ -413,12 +432,15 @@ export class MessageHandler {
     this.send(connection, {
       type: "room_created",
       roomId: room.id,
+      seed: room.seed ?? undefined,
     });
 
     this.send(connection, {
       type: "room_joined",
       roomId: room.id,
       playerId: assignment.playerId,
+      battleMode: room.battleMode,
+      seed: room.seed ?? undefined,
     });
 
     this.send(connection, {
@@ -430,6 +452,7 @@ export class MessageHandler {
       hostName: session.username,
       lifeCount: room.lifeCount,
       costLimit: room.costLimit,
+      battleMode: room.battleMode,
       allowSpectators: room.allowSpectators,
       spectatorCount: room.spectatorConnectionIds.length,
       spectatorNames: this.spectatorNames(room),
@@ -463,6 +486,10 @@ export class MessageHandler {
         code: ErrorCodes.ROOM_NOT_FOUND,
         message: `Room ${msg.roomId} not found`,
       });
+      return;
+    }
+
+    if (!this.ensureBattleModeEnabled(connection, room.battleMode)) {
       return;
     }
 
@@ -508,6 +535,8 @@ export class MessageHandler {
       type: "room_joined",
       roomId: room.id,
       playerId: assignment.playerId,
+      battleMode: room.battleMode,
+      seed: room.seed ?? undefined,
     });
 
     // Get host info for lobby display
@@ -523,6 +552,7 @@ export class MessageHandler {
       hostName: hostSession?.username ?? "",
       lifeCount: room.lifeCount,
       costLimit: room.costLimit,
+      battleMode: room.battleMode,
     });
 
     // Notify the other player about room state change
@@ -541,6 +571,9 @@ export class MessageHandler {
         hostName: otherSession?.username ?? "",
         lifeCount: room.lifeCount,
         costLimit: room.costLimit,
+        battleMode: room.battleMode,
+        allowSpectators: room.allowSpectators,
+        spectatorCount: room.spectatorConnectionIds.length,
       });
     }
   }
@@ -551,6 +584,15 @@ export class MessageHandler {
   ): void {
     const session = this.sessionStore.get(connection.id);
     if (!session) return;
+
+    if (room.battleMode === "collaborate") {
+      this.send(connection, {
+        type: "error",
+        code: ErrorCodes.INVALID_STATE,
+        message: "Collaborate rooms do not support spectators",
+      });
+      return;
+    }
 
     if (!room.allowSpectators) {
       this.send(connection, {
@@ -568,6 +610,7 @@ export class MessageHandler {
       type: "room_joined",
       roomId: room.id,
       spectator: true,
+      battleMode: room.battleMode,
     });
 
     const state = this.createRoomStateFor(room, undefined);
@@ -602,8 +645,12 @@ export class MessageHandler {
       return;
     }
 
+    const battleMode = normalizeBattleMode(msg.battleMode);
+    if (!this.ensureBattleModeEnabled(connection, battleMode)) {
+      return;
+    }
     const rooms = this.roomManager.getAllRooms();
-    const match = findQuickMatchRoom(rooms);
+    const match = findQuickMatchRoom(rooms, battleMode);
 
     if (!match) {
       this.send(connection, {
@@ -632,6 +679,8 @@ export class MessageHandler {
       type: "room_joined",
       roomId: match.id,
       playerId: assignment.playerId,
+      battleMode: match.battleMode,
+      seed: match.seed ?? undefined,
     });
 
     const hostSession = this.sessionStore.get(match.connectionIds[0]!);
@@ -646,6 +695,9 @@ export class MessageHandler {
       hostName: hostSession?.username ?? "",
       lifeCount: match.lifeCount,
       costLimit: match.costLimit,
+      battleMode: match.battleMode,
+      allowSpectators: match.allowSpectators,
+      spectatorCount: match.spectatorConnectionIds.length,
     });
 
     // Notify the other player
@@ -664,6 +716,9 @@ export class MessageHandler {
         hostName: otherSession?.username ?? "",
         lifeCount: match.lifeCount,
         costLimit: match.costLimit,
+        battleMode: match.battleMode,
+        allowSpectators: match.allowSpectators,
+        spectatorCount: match.spectatorConnectionIds.length,
       });
     }
   }
@@ -671,8 +726,20 @@ export class MessageHandler {
   private handleListRooms(connection: TransportConnection, msg: ListRoomsMessage): void {
     const pageSize = Math.max(1, Math.min(24, Math.floor(Number(msg.pageSize) || 12)));
     const page = Math.max(1, Math.floor(Number(msg.page) || 1));
+    const battleMode = normalizeBattleMode(msg.battleMode);
+    if (!this.ensureBattleModeEnabled(connection, battleMode, false)) {
+      this.send(connection, {
+        type: "room_list",
+        rooms: [],
+        page: 1,
+        pageSize,
+        total: 0,
+        totalPages: 1,
+      });
+      return;
+    }
     const rooms = this.roomManager
-      [msg.spectatorsOnly === true ? "getSpectatableRooms" : "getListableRooms"]()
+      [msg.spectatorsOnly === true ? "getSpectatableRooms" : "getListableRooms"](battleMode)
       .sort((a, b) => b.createdAt - a.createdAt);
     const total = rooms.length;
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -741,6 +808,7 @@ export class MessageHandler {
         hostName: this.hostName(room),
         lifeCount: room.lifeCount,
         costLimit: room.costLimit,
+        battleMode: room.battleMode,
       });
       return;
     }
@@ -765,6 +833,7 @@ export class MessageHandler {
         hostName: "",
         lifeCount: room.lifeCount,
         costLimit: room.costLimit,
+        battleMode: room.battleMode,
       });
     }
 
@@ -846,6 +915,7 @@ export class MessageHandler {
 
     this.notifyAllConnected(room, {
       type: "game_starting",
+      battleMode: room.battleMode,
     });
   }
 
@@ -905,6 +975,7 @@ export class MessageHandler {
         hostName: hostSession?.username ?? "",
         lifeCount: room.lifeCount,
         costLimit: room.costLimit,
+        battleMode: room.battleMode,
       });
     }
   }
@@ -936,7 +1007,7 @@ export class MessageHandler {
 
     // Validate loadout
     const validation = validateLoadout(msg.loadout, {
-      mode: "standard",
+      mode: room.battleMode,
       costLimit: room.costLimit,
     });
     if (!validation.valid) {
@@ -1098,6 +1169,10 @@ export class MessageHandler {
       reloadPressed: msg.reloadPressed,
       alternateHeld: msg.alternateHeld,
       infoHeld: msg.infoHeld,
+      transitionReadyPressed: msg.transitionReadyPressed === true,
+      shopReadyPressed: msg.shopReadyPressed === true,
+      shopPurchaseItemId: msg.shopPurchaseItemId,
+      activeCardSwitchId: msg.activeCardSwitchId,
       UnreliableLinkExtra: msg.UnreliableLinkExtra,
     });
 
@@ -1179,6 +1254,7 @@ export class MessageHandler {
       hostName: this.hostName(room),
       lifeCount: room.lifeCount,
       costLimit: room.costLimit,
+      battleMode: room.battleMode,
     });
 
     // Clean up all players' sessions so they can create/join new rooms after the match
@@ -1195,6 +1271,53 @@ export class MessageHandler {
     this.roomManager.delete(room.id);
   }
 
+  private handleCollaborateShopForcedReady(
+    connection: TransportConnection,
+    msg: CollaborateShopForcedReadyMessage,
+  ): void {
+    const session = this.sessionStore.get(connection.id);
+    if (!session || !session.roomId || !session.playerId) return;
+
+    const room = this.roomManager.get(session.roomId);
+    if (!room || room.status !== "fighting") return;
+    if (!Number.isInteger(msg.frame) || msg.frame <= 0) return;
+    if (!Number.isInteger(msg.shopIndex) || msg.shopIndex <= 0) return;
+
+    this.relayToPeer(connection, {
+      type: "peer_collaborate_shop_forced_ready",
+      playerId: session.playerId,
+      frame: msg.frame,
+      shopIndex: msg.shopIndex,
+    });
+  }
+
+  private handleCollaborateShopAction(
+    connection: TransportConnection,
+    msg: CollaborateShopActionMessage,
+  ): void {
+    const session = this.sessionStore.get(connection.id);
+    if (!session || !session.roomId || !session.playerId) return;
+
+    const room = this.roomManager.get(session.roomId);
+    if (!room || room.status !== "fighting") return;
+    if (!Number.isInteger(msg.shopIndex) || msg.shopIndex <= 0) return;
+
+    this.relayToPeer(connection, {
+      type: "peer_collaborate_shop_action",
+      playerId: session.playerId,
+      shopIndex: msg.shopIndex,
+      ready: msg.ready === true ? true : undefined,
+      purchaseItemId:
+        typeof msg.purchaseItemId === "string" && msg.purchaseItemId.length > 0
+          ? msg.purchaseItemId
+          : undefined,
+      activeCardSwitchId:
+        typeof msg.activeCardSwitchId === "string" && msg.activeCardSwitchId.length > 0
+          ? msg.activeCardSwitchId
+          : undefined,
+    });
+  }
+
   // ─── Ping / Pong ──────────────────────────────────
 
   private handlePing(connection: TransportConnection, msg: PingMessage): void {
@@ -1208,6 +1331,24 @@ export class MessageHandler {
 
   private send(connection: TransportConnection, message: ServerMessage): void {
     connection.send(message);
+  }
+
+  private ensureBattleModeEnabled(
+    connection: TransportConnection,
+    battleMode: BattleRoomMode,
+    sendError = true,
+  ): boolean {
+    if (battleMode !== "collaborate" || this.config.enableCollaborate) {
+      return true;
+    }
+    if (sendError) {
+      this.send(connection, {
+        type: "error",
+        code: ErrorCodes.INVALID_STATE,
+        message: "Collaborate mode rooms are not enabled on this server",
+      });
+    }
+    return false;
   }
 
   private refreshSessionUsername(connectionId: string, username: string | undefined): void {
@@ -1289,6 +1430,7 @@ export class MessageHandler {
       hostName: this.hostName(room),
       lifeCount: room.lifeCount,
       costLimit: room.costLimit,
+      battleMode: room.battleMode,
       allowSpectators: room.allowSpectators,
       spectatorCount: room.spectatorConnectionIds.length,
       spectatorNames: this.spectatorNames(room),
@@ -1316,6 +1458,10 @@ export class MessageHandler {
       reloadPressed: msg.reloadPressed,
       alternateHeld: msg.alternateHeld,
       infoHeld: msg.infoHeld,
+      transitionReadyPressed: msg.transitionReadyPressed === true,
+      shopReadyPressed: msg.shopReadyPressed === true,
+      shopPurchaseItemId: msg.shopPurchaseItemId,
+      activeCardSwitchId: msg.activeCardSwitchId,
       UnreliableLinkExtra: msg.UnreliableLinkExtra,
     };
     this.rememberSpectatorInput(room, relay);
@@ -1348,6 +1494,7 @@ export class MessageHandler {
     }
     return this.withUsernames(room, {
       battleId: room.battleId,
+      battleMode: room.battleMode,
       mapId: room.mapId,
       seed: room.seed,
       fps: 60,
@@ -1436,6 +1583,10 @@ function normalizeOptionalDisplayName(value: string | undefined, maxLength: numb
   const trimmed = value?.trim();
   if (!trimmed) return undefined;
   return Array.from(trimmed).slice(0, maxLength).join("");
+}
+
+function normalizeBattleMode(value: BattleRoomMode | undefined): BattleRoomMode {
+  return value === "collaborate" ? "collaborate" : "versus";
 }
 
 function normalizeP2pSignal(signal: P2pSignalMessage["signal"] | undefined): P2pSignalMessage["signal"] | null {

@@ -24,6 +24,7 @@ import type {
   YoumuSlashArcSegment,
 } from "./types";
 import { ProjectileVisualStore } from "./visuals";
+import type { BattleRoomMode } from "@repo/types";
 
 interface YoumuSlashArcGroup {
   readonly key: string;
@@ -48,6 +49,7 @@ export class ProjectileView {
     frame: number,
     fighters: ProjectileFighters,
     localFighterKey: FighterKey = "Player1",
+    battleMode: BattleRoomMode = "versus",
     alpha = 1,
     rollbackBlend = 1,
   ): void {
@@ -60,7 +62,7 @@ export class ProjectileView {
       active.add(projectile.id);
       if (shouldRenderPreviewLine(projectile)) {
         this.visuals.destroy(projectile.id);
-        this.renderPreviewLine(projectile, alpha, localFighterKey);
+        this.renderPreviewLine(projectile, alpha, localFighterKey, battleMode);
         continue;
       }
       this.previewLines.get(projectile.id)?.setVisible(false);
@@ -81,7 +83,7 @@ export class ProjectileView {
         group.segments.push({
           display,
           angle: projectile.angle,
-          alpha: projectileAlpha(projectile, localFighterKey),
+          alpha: projectileAlpha(projectile, localFighterKey, battleMode),
           segmentIndex: spec.segmentIndex,
         });
         slashGroups.set(key, group);
@@ -91,6 +93,7 @@ export class ProjectileView {
           display,
           spec,
           localFighterKey,
+          battleMode,
           rollbackBlend,
         );
       } else {
@@ -99,6 +102,7 @@ export class ProjectileView {
           display,
           spec,
           localFighterKey,
+          battleMode,
           rollbackBlend,
         );
       }
@@ -114,6 +118,7 @@ export class ProjectileView {
     projectile: ProjectileState,
     alpha: number,
     localFighterKey: FighterKey,
+    battleMode: BattleRoomMode,
   ): void {
     const display = projectileDisplay(projectile, alpha);
     let preview = this.previewLines.get(projectile.id);
@@ -136,7 +141,7 @@ export class ProjectileView {
       length: display.width,
       width: display.height,
     });
-    preview.setAlpha(projectileAlpha(projectile, localFighterKey));
+    preview.setAlpha(projectileAlpha(projectile, localFighterKey, battleMode));
     preview.setVisible(true);
   }
 

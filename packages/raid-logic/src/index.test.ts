@@ -114,6 +114,46 @@ describe("@repo/raid-logic loadout validation", () => {
     expect(result.valid).toBe(true);
   });
 
+  it("accepts collaborate loadouts with two characters and no ability cards", () => {
+    const result = validateLoadout(
+      {
+        primaryCharacterId: "reimu",
+        alternateCharacterId: "sakuya",
+        abilityCardIds: [],
+      },
+      { mode: "collaborate" },
+    );
+
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it("rejects collaborate loadouts with ability cards or an active card", () => {
+    const withCards = validateLoadout(
+      {
+        primaryCharacterId: "reimu",
+        alternateCharacterId: "sakuya",
+        abilityCardIds: ["spirit_strike_card"],
+        activeAbilityCardId: "spirit_strike_card",
+      },
+      { mode: "collaborate" },
+    );
+    const withActiveOnly = validateLoadout(
+      {
+        primaryCharacterId: "reimu",
+        alternateCharacterId: "sakuya",
+        abilityCardIds: [],
+        activeAbilityCardId: "spirit_strike_card",
+      },
+      { mode: "collaborate" },
+    );
+
+    expect(withCards.errors).toContain("collaborate_ability_cards_forbidden");
+    expect(withCards.valid).toBe(false);
+    expect(withActiveOnly.errors).toContain("collaborate_ability_cards_forbidden");
+    expect(withActiveOnly.valid).toBe(false);
+  });
+
   it("rejects duplicate characters", () => {
     const result = validateLoadout({
       primaryCharacterId: "reimu",
@@ -147,8 +187,8 @@ describe("@repo/raid-logic", () => {
     expect(runFixedTickExample(3)).toEqual({
       frame: 3,
       fighters: [
-        { playerId: "Player1", x: -288, y: 0 },
-        { playerId: "Player2", x: 300, y: 0 },
+        { playerId: "Player1", x: 192, y: 280 },
+        { playerId: "Player2", x: 600, y: 280 },
       ],
     });
   });

@@ -22,6 +22,10 @@ function createHandler(config: ServerConfig = DEFAULT_SERVER_CONFIG) {
   return { sessionStore, roomManager, handler };
 }
 
+function createCollaborateHandler() {
+  return createHandler({ ...DEFAULT_SERVER_CONFIG, enableCollaborate: true });
+}
+
 function performHello(handler: MessageHandler, conn: MockConnection, username = "Player1") {
   handler.registerConnection(conn);
   handler.handle(conn, { type: "hello", username, clientVersion: "1.0.0", debug: false });
@@ -478,6 +482,49 @@ describe("MessageHandler", () => {
       const fullList = viewer.findSentMessage("room_list");
       expect(fullList?.rooms.some((room) => room.hostName === "Bob" && room.hasPassword)).toBe(true);
     });
+
+    it("filters room list by battle mode", () => {
+      const { handler } = createCollaborateHandler();
+      const versusHost = new MockConnection("versus-host");
+      const collaborateHost = new MockConnection("collaborate-host");
+      const viewer = new MockConnection("mode-viewer");
+
+      performHello(handler, versusHost, "Alice");
+      performHello(handler, collaborateHost, "Bob");
+      performHello(handler, viewer, "Viewer");
+
+      handler.handle(versusHost, {
+        type: "create_room",
+        name: "Versus",
+        battleMode: "versus",
+        mapId: "hakurei_shrine",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+      handler.handle(collaborateHost, {
+        type: "create_room",
+        name: "Co-op",
+        battleMode: "collaborate",
+        mapId: "collaborate_test_arena",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+
+      viewer.clearMessages();
+      handler.handle(viewer, { type: "list_rooms", page: 1, pageSize: 12, battleMode: "versus" });
+      const versusList = viewer.findSentMessage("room_list");
+
+      expect(versusList?.rooms).toHaveLength(1);
+      expect(versusList?.rooms[0].battleMode).toBe("versus");
+
+      viewer.clearMessages();
+      handler.handle(viewer, { type: "list_rooms", page: 1, pageSize: 12, battleMode: "collaborate" });
+      const list = viewer.findSentMessage("room_list");
+
+      expect(list?.rooms).toHaveLength(1);
+      expect(list?.rooms[0].battleMode).toBe("collaborate");
+      expect(list?.rooms[0].mapId).toBe("collaborate_test_arena");
+    });
   });
 
   describe("quick match", () => {
@@ -537,6 +584,149 @@ describe("MessageHandler", () => {
 
       const error = conn.findSentMessage("error");
       expect(error?.code).toBe("already_in_room");
+    });
+  });
+
+  describe("collaborate rooms", () => {
+    it("rejects collaborate room creation unless enabled", () => {
+      const { handler } = createHandler();
+      const host = new MockConnection("collab-disabled-host");
+
+      performHello(handler, host, "Host");
+      handler.handle(host, {
+        type: "create_room",
+        name: "Co-op",
+        battleMode: "collaborate",
+        mapId: "collaborate_test_arena",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+
+      const error = host.findSentMessage("error");
+      expect(error?.code).toBe("invalid_state");
+      expect(host.findSentMessage("room_created")).toBeUndefined();
+    });
+
+    it("rejects spectator joins", () => {
+      const { handler } = createCollaborateHandler();
+      const host = new MockConnection("collab-host");
+      const spectator = new MockConnection("collab-spectator");
+
+      performHello(handler, host, "Host");
+      handler.handle(host, {
+        type: "create_room",
+        name: "Co-op",
+        battleMode: "collaborate",
+        mapId: "collaborate_test_arena",
+        lifeCount: 2,
+        costLimit: 10,
+        allowSpectators: true,
+      });
+      const roomId = host.findSentMessage("room_created")!.roomId;
+
+      performHello(handler, spectator, "Viewer");
+      spectator.clearMessages();
+      handler.handle(spectator, { type: "join_room", roomId, spectator: true });
+
+      const error = spectator.findSentMessage("error");
+      expect(error?.code).toBe("invalid_state");
+    });
+
+    it("rejects ready loadouts with ability cards", () => {
+      const { handler } = createCollaborateHandler();
+      const host = new MockConnection("collab-ready-host");
+      const guest = new MockConnection("collab-ready-guest");
+
+      performHello(handler, host, "Host");
+      performHello(handler, guest, "Guest");
+
+      handler.handle(host, {
+        type: "create_room",
+        name: "Co-op",
+        battleMode: "collaborate",
+        mapId: "collaborate_test_arena",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+      const roomId = host.findSentMessage("room_created")!.roomId;
+      expect(host.findSentMessage("room_joined")?.battleMode).toBe("collaborate");
+
+      handler.handle(guest, { type: "join_room", roomId });
+      expect(guest.findSentMessage("room_joined")?.battleMode).toBe("collaborate");
+      handler.handle(guest, { type: "lobby_ready", ready: true });
+      handler.handle(host, { type: "start_game" });
+      host.clearMessages();
+
+      handler.handle(host, {
+        type: "ready",
+        loadout: {
+          primaryCharacterId: "reimu",
+          alternateCharacterId: "marisa",
+          abilityCardIds: ["spirit_strike_card"],
+          activeAbilityCardId: "spirit_strike_card",
+        },
+      });
+
+      const error = host.findSentMessage("error");
+      expect(error?.code).toBe("invalid_loadout");
+      expect(error?.message).toContain("collaborate_ability_cards_forbidden");
+    });
+
+    it("returns the deterministic seed to host and guest for collaborate rooms", () => {
+      const { handler } = createCollaborateHandler();
+      const host = new MockConnection("collab-seed-host");
+      const guest = new MockConnection("collab-seed-guest");
+
+      performHello(handler, host, "Host");
+      performHello(handler, guest, "Guest");
+
+      handler.handle(host, {
+        type: "create_room",
+        name: "Co-op",
+        battleMode: "collaborate",
+        mapId: "collaborate_test_arena",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+
+      const created = host.findSentMessage("room_created");
+      const hostJoined = host.findSentMessage("room_joined");
+      expect(created?.seed).toEqual(expect.any(Number));
+      expect(hostJoined?.seed).toBe(created?.seed);
+
+      handler.handle(guest, { type: "join_room", roomId: created!.roomId });
+
+      const guestJoined = guest.findSentMessage("room_joined");
+      expect(guestJoined?.seed).toBe(created?.seed);
+    });
+
+    it("includes battle mode when starting loadout selection", () => {
+      const { handler } = createCollaborateHandler();
+      const host = new MockConnection("collab-start-host");
+      const guest = new MockConnection("collab-start-guest");
+
+      performHello(handler, host, "Host");
+      performHello(handler, guest, "Guest");
+
+      handler.handle(host, {
+        type: "create_room",
+        name: "Co-op",
+        battleMode: "collaborate",
+        mapId: "collaborate_test_arena",
+        lifeCount: 2,
+        costLimit: 10,
+      });
+      const roomId = host.findSentMessage("room_created")!.roomId;
+
+      handler.handle(guest, { type: "join_room", roomId });
+      handler.handle(guest, { type: "lobby_ready", ready: true });
+      host.clearMessages();
+      guest.clearMessages();
+
+      handler.handle(host, { type: "start_game" });
+
+      expect(host.findSentMessage("game_starting")?.battleMode).toBe("collaborate");
+      expect(guest.findSentMessage("game_starting")?.battleMode).toBe("collaborate");
     });
   });
 

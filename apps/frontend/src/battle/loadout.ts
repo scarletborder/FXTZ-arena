@@ -1,10 +1,11 @@
-import type { BattleConfig, MapId, PlayerId, ServerMessage } from "@repo/types";
+import type { BattleConfig, BattleRoomMode, MapId, PlayerId, ServerMessage } from "@repo/types";
 import type { BattleLoadouts, RaidLogicRuntime } from "@repo/raid-logic";
 import type { PeerConnection } from "../network/p2p";
 import type { StoryAiOverride, StoryBattleContext } from "../story/types";
 import type { ReplayFile } from "../replay/types";
 import type { SpectatorInputBuffer } from "../replay/spectator/spectator-buffer";
 import type { UdpDirectSession } from "../network/udp-direct-session";
+import type { DebugCooperateRuntimeJump } from "../menu/debug-cooperate";
 
 export type { BattleLoadouts, FighterLoadout } from "@repo/raid-logic";
 
@@ -15,9 +16,11 @@ export interface BattleSceneData {
   readonly returnScene?: string;
   readonly loadouts?: BattleLoadouts;
   readonly mapId?: MapId;
+  readonly battleMode?: BattleRoomMode;
   readonly playerInitPoint?: number;
   readonly opponentInitPoint?: number;
   readonly debug?: boolean;
+  readonly localSingleDevice?: boolean;
   readonly battleConfig?: BattleConfig;
   readonly localPlayerId?: PlayerId;
   readonly runtime?: RaidLogicRuntime;
@@ -26,6 +29,9 @@ export interface BattleSceneData {
   readonly spectatorCountProvider?: () => number;
   readonly ai?: StoryAiOverride;
   readonly story?: StoryBattleContext;
+  readonly debugCooperate?: {
+    readonly jump?: DebugCooperateRuntimeJump;
+  };
   /** performance.now() timestamp used as battle frame 0 after the loading countdown. */
   readonly battleZeroTimeMs?: number;
   /** Replay playback mode data. */

@@ -1,9 +1,10 @@
-import type { NeutralMobState } from "@repo/types";
+import type { CollaborateExtraState, NeutralMobState } from "@repo/types";
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
 
 import { getAbilityCard, getCharacter } from "../content";
 import type {
   EffectState,
+  BattleResult,
   FighterState,
   PointState,
   ProjectileState,
@@ -21,6 +22,7 @@ export interface BattleModelSnapshot {
   readonly version: 1;
   readonly frame: number;
   readonly gameOver: boolean;
+  readonly result?: BattleResult;
   readonly nextProjectileId: number;
   readonly nextEffectId: number;
   readonly nextNeutralMobId: number;
@@ -36,6 +38,7 @@ export interface BattleModelSnapshot {
   readonly projectiles: readonly ProjectileSnapshot[];
   readonly effects: readonly EffectSnapshot[];
   readonly stats: TrainingStats;
+  readonly collaborateExtra?: CollaborateExtraState;
 }
 
 export type FighterSnapshot = Omit<
@@ -82,6 +85,7 @@ export type PointSnapshot = PointState;
 export function createBattleModelSnapshot(params: {
   readonly frame: number;
   readonly gameOver: boolean;
+  readonly result?: BattleResult;
   readonly player: FighterState;
   readonly target: FighterState;
   readonly projectiles: readonly ProjectileState[];
@@ -97,6 +101,7 @@ export function createBattleModelSnapshot(params: {
   readonly clearRings: readonly ClearRingState[];
   readonly mobSpawner: NeutralMobSpawnerState | undefined;
   readonly ticker?: TickerManagerSnapshot;
+  readonly collaborateExtra?: CollaborateExtraState;
 }): BattleModelSnapshot {
   const ticker = new TickerManager();
   ticker.setCurrentFrame(params.frame);
@@ -104,6 +109,7 @@ export function createBattleModelSnapshot(params: {
     version: 1,
     frame: params.frame,
     gameOver: params.gameOver,
+    result: params.result,
     nextProjectileId: params.nextProjectileId,
     nextEffectId: params.nextEffectId,
     nextNeutralMobId: params.nextNeutralMobId,
@@ -125,6 +131,44 @@ export function createBattleModelSnapshot(params: {
       serializeEffect(effect, params.frame),
     ),
     stats: { ...params.stats },
+    collaborateExtra: params.collaborateExtra
+      ? cloneCollaborateExtra(params.collaborateExtra)
+      : undefined,
+  };
+}
+
+export function cloneCollaborateExtra(
+  state: CollaborateExtraState,
+): CollaborateExtraState {
+  return {
+    ...state,
+    wave: { ...state.wave },
+    shop: {
+      ...state.shop,
+      rarityPulls: { ...state.shop.rarityPulls },
+      goods: state.shop.goods.map((item) => ({ ...item })),
+      goodsByPlayerId: {
+        Player1: state.shop.goodsByPlayerId.Player1.map((item) => ({
+          ...item,
+        })),
+        Player2: state.shop.goodsByPlayerId.Player2.map((item) => ({
+          ...item,
+        })),
+        Neutral: state.shop.goodsByPlayerId.Neutral.map((item) => ({
+          ...item,
+        })),
+      },
+      purchasesByPlayerId: {
+        Player1: [...state.shop.purchasesByPlayerId.Player1],
+        Player2: [...state.shop.purchasesByPlayerId.Player2],
+        Neutral: [...state.shop.purchasesByPlayerId.Neutral],
+      },
+      readyByPlayerId: { ...state.shop.readyByPlayerId },
+      revivedByPlayerId: { ...state.shop.revivedByPlayerId },
+    },
+    moneyByPlayerId: { ...state.moneyByPlayerId },
+    scoreByPlayerId: { ...state.scoreByPlayerId },
+    eliteBossSpell: { ...state.eliteBossSpell },
   };
 }
 

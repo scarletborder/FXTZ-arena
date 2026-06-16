@@ -1,12 +1,13 @@
 import Phaser from "phaser";
 import { t } from "@repo/i18n";
+import { validateLoadout } from "@repo/raid-logic";
 import {
   getAllAbilityCardDefinitions,
   getAllCharacterDefinitions,
   type AbilityCardDefinition,
   type CharacterDefinition,
 } from "@repo/content";
-import type { AbilityCardId, CharacterId, PlayerLoadout } from "@repo/types";
+import type { AbilityCardId, BattleRoomMode, CharacterId, PlayerLoadout } from "@repo/types";
 
 import { type BattleLoadouts } from "../battle/loadout";
 import { type FighterLoadout } from "../battle/loadout";
@@ -18,7 +19,6 @@ import {
   createSmallTab,
   drawCharacterPreviewIcon,
   drawFightingBackdrop,
-  drawAngledPanel,
   drawPanelToLayer,
   bodyStyle,
 } from "./ui";
@@ -30,15 +30,25 @@ import {
   type SceneKey,
   type SelectionData,
 } from "./shared";
-import { uiSettings } from "../store/settings";
+import { getProfileUsername, uiSettings } from "../store/settings";
 import { Depth } from "../utils/depth";
 import { queueMenuAssets } from "./assets";
+import {
+  createDebugCooperateBattleConfig,
+  createDebugCooperateBotPeer,
+  debugCooperateBotLoadout,
+  resolveDebugCooperateRuntimeJump,
+  withDebugCooperateResources,
+} from "./debug-cooperate";
 
 const COST_LIMIT = 10;
 
 export class SelectScene extends Phaser.Scene {
   private mode: SelectionData["mode"] = "ai";
+  private battleMode: BattleRoomMode = "versus";
   private selectedMapId: SelectionData["mapId"];
+  private debugCooperate: SelectionData["debugCooperate"];
+  private localSinglePlayerOneLoadout: SelectionData["localSinglePlayerOneLoadout"];
   private cpuLoadoutPresetId: CpuLoadoutPresetId = "marisa_solo";
   private playerId: string | undefined;
   private localConfirmHandler: SelectionData["onLocalConfirm"] | undefined;
@@ -108,7 +118,10 @@ export class SelectScene extends Phaser.Scene {
 
   create(data: SelectionData): void {
     this.mode = data.mode;
+    this.battleMode = data.battleMode ?? connectionManager.battleMode ?? "versus";
     this.selectedMapId = data.mapId;
+    this.debugCooperate = data.debugCooperate;
+    this.localSinglePlayerOneLoadout = data.localSinglePlayerOneLoadout;
     this.cpuLoadoutPresetId = data.cpuLoadoutPresetId ?? "marisa_solo";
     this.playerId = data.playerId;
     this.localConfirmHandler = data.onLocalConfirm;
@@ -118,12 +131,16 @@ export class SelectScene extends Phaser.Scene {
     this.selectedCards.clear();
 
     const subtitle = this.mode === "online"
-      ? "ONLINE VERSUS"
+      ? this.isCollaborateMode() ? t("select.subtitle.online_collaborate") : t("select.subtitle.online_versus")
       : this.mode === "training"
-        ? "TRAINING"
-        : this.mode === "local"
-          ? "LOCAL LAN"
-          : "CPU VERSUS";
+        ? t("select.subtitle.training")
+        : this.mode === "debug_cooperate"
+          ? t("select.subtitle.debug_cooperate")
+          : this.mode === "local"
+            ? t("select.subtitle.local")
+            : this.mode === "local_single"
+              ? t("select.subtitle.local_single")
+              : t("select.subtitle.cpu");
     drawFightingBackdrop(this, "SELECT", subtitle);
 
     // Online mode: custom back button sends leave_room
@@ -264,10 +281,15 @@ export class SelectScene extends Phaser.Scene {
       this.render();
     });
     this.addCharacterRoster();
-    this.addCardRoster();
+    if (!this.isCollaborateMode()) {
+      this.addCardRoster();
+    }
     this.addCostDisplay();
+    this.addLocalSingleSelectBadge();
 
-    const label = this.mode === "online" || this.mode === "local" ? t("select.confirm_loadout") : t("select.confirm_battle");
+    const label = this.mode === "online" || this.mode === "local" || this.mode === "debug_cooperate"
+      ? t("select.confirm_loadout")
+      : t("select.confirm_battle");
     const confirmButton = createFightButton(this, 1036, 680, 250, 58, label, () => this.confirm(), {
       enabled: this.isValid(),
       accent: 0xe33d44,
@@ -290,7 +312,10 @@ export class SelectScene extends Phaser.Scene {
     const height = 140;
     const box = this.add.container(x - width / 2, y - height / 2);
     const graphics = this.add.graphics();
-    drawAngledPanel(graphics, 0, 0, width, height, 0x111821, 0x5c7185, 0.95);
+    graphics.fillStyle(0x111821, 0.95);
+    graphics.fillRect(0, 0, width, height);
+    graphics.lineStyle(2, 0x5c7185, 0.95);
+    graphics.strokeRect(1, 1, width - 2, height - 2);
     graphics.lineStyle(1, 0x273548, 0.6);
     graphics.lineBetween(18, 46, width - 18, 46);
     box.add(graphics);
@@ -314,7 +339,10 @@ export class SelectScene extends Phaser.Scene {
   }
 
   private addCharacterRoster(): void {
-    const panel = { x: 66, y: 40, width: 612, height: 392 };
+    const collaborateMode = this.isCollaborateMode();
+    const panel = collaborateMode
+      ? { x: 66, y: 40, width: 706, height: 548 }
+      : { x: 66, y: 40, width: 612, height: 392 };
     drawPanelToLayer(this, this.layer, panel.x, panel.y, panel.width, panel.height, t("select.characters"));
     const roleFilters = [
       ["all", t("select.all")],
@@ -349,7 +377,7 @@ export class SelectScene extends Phaser.Scene {
       panel.height - 92,
     );
     const listContainer = this.add.container(0, 0);
-    const columns = 4;
+    const columns = collaborateMode ? 5 : 4;
     const tileWidth = 112;
     const tileHeight = 152;
     const gapX = 18;
@@ -402,7 +430,13 @@ export class SelectScene extends Phaser.Scene {
 
   private addCardRoster(): void {
     const panel = { x: 66, y: 440, width: 820, height: 272 };
-    drawPanelToLayer(this, this.layer, panel.x, panel.y, panel.width, panel.height, t("select.cards"));
+    const panelGraphics = this.add.graphics();
+    panelGraphics.fillStyle(0x101820, 0.88);
+    panelGraphics.fillRect(panel.x, panel.y, panel.width, panel.height);
+    panelGraphics.lineStyle(2, 0x34475c, 0.88);
+    panelGraphics.strokeRect(panel.x + 1, panel.y + 1, panel.width - 2, panel.height - 2);
+    this.layer.add(panelGraphics);
+    this.layer.add(this.add.text(panel.x + 24, panel.y + 18, t("select.cards"), bodyStyle("#ffcf6e", 17)));
     const cardFilters = [
       ["all", t("select.all")],
       ["active", t("select.active")],
@@ -501,6 +535,28 @@ export class SelectScene extends Phaser.Scene {
       width: 240,
       height: 14,
     });
+  }
+
+  private addLocalSingleSelectBadge(): void {
+    if (this.mode !== "local_single") {
+      return;
+    }
+
+    const isP2 = this.localSinglePlayerOneLoadout !== undefined;
+    const badge = this.add.container(1036, 82);
+    const graphics = this.add.graphics();
+    graphics.fillStyle(isP2 ? 0xe33d44 : 0x26c6da, 0.98);
+    graphics.fillRect(-116, -24, 232, 48);
+    graphics.lineStyle(3, 0xffffff, 0.9);
+    graphics.strokeRect(-116, -24, 232, 48);
+    badge.add(graphics);
+    badge.add(this.add.text(0, 0, isP2 ? t("select.p2_select") : t("select.p1_select"), {
+      fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+      fontSize: "26px",
+      fontStyle: "900",
+      color: "#ffffff",
+    }).setOrigin(0.5));
+    this.layer.add(badge);
   }
 
   private registerScrollArea(
@@ -729,6 +785,9 @@ export class SelectScene extends Phaser.Scene {
   }
 
   private toggleCard(card: AbilityCardDefinition): void {
+    if (this.isCollaborateMode()) {
+      return;
+    }
     if (this.selectedCards.has(card.id)) {
       this.selectedCards.delete(card.id);
     } else {
@@ -790,6 +849,9 @@ export class SelectScene extends Phaser.Scene {
     if (!this.primaryId || !this.alternateId || this.primaryId === this.alternateId) {
       return false;
     }
+    if (this.isCollaborateMode()) {
+      return true;
+    }
     return this.mode === "training" || this.totalCost() <= COST_LIMIT;
   }
 
@@ -802,11 +864,12 @@ export class SelectScene extends Phaser.Scene {
     }
 
     if (this.mode === "local") {
-      const activeCardId = [...this.selectedCards].find((id) => getCardById(id).kind === "active");
+      const selectedCards = this.isCollaborateMode() ? [] : [...this.selectedCards];
+      const activeCardId = selectedCards.find((id) => getCardById(id).kind === "active");
       this.localConfirmHandler?.({
         primaryCharacterId: this.primaryId,
         alternateCharacterId: this.alternateId,
-        abilityCardIds: [...this.selectedCards],
+        abilityCardIds: selectedCards,
         activeAbilityCardId: activeCardId,
       });
       this.confirmButton.setEnabled(false);
@@ -815,14 +878,79 @@ export class SelectScene extends Phaser.Scene {
       return;
     }
 
+    if (this.mode === "debug_cooperate") {
+      const player = withDebugCooperateResources({
+        primaryCharacterId: this.primaryId,
+        alternateCharacterId: this.alternateId,
+        cardIds: [],
+        activeCardId: undefined,
+      });
+      const target = debugCooperateBotLoadout();
+      const mapId = this.selectedMapId ?? "collaborate_test_arena";
+      const battleConfig = createDebugCooperateBattleConfig({
+        mapId,
+        playerLoadout: player,
+        botLoadout: target,
+      });
+      this.scene.start("loading", {
+        mode: "local",
+        playerName: uiSettings.username,
+        opponentName: t("settings.debug.cooperate.bot_name"),
+        returnScene: "settings",
+        loadouts: { player, target },
+        mapId,
+        battleMode: "collaborate",
+        debug: true,
+        battleConfig,
+        localPlayerId: "Player1",
+        p2p: createDebugCooperateBotPeer(),
+        debugCooperate: {
+          jump: resolveDebugCooperateRuntimeJump(mapId, this.debugCooperate),
+        },
+      });
+      return;
+    }
+
     // Local mode (ai / training) — navigate directly
-    const activeCardId = [...this.selectedCards].find((id) => getCardById(id).kind === "active");
+    const selectedCards = this.isCollaborateMode() ? [] : [...this.selectedCards];
+    const activeCardId = selectedCards.find((id) => getCardById(id).kind === "active");
     const player: FighterLoadout = {
       primaryCharacterId: this.primaryId,
       alternateCharacterId: this.alternateId,
-      cardIds: [...this.selectedCards],
+      cardIds: selectedCards,
       activeCardId,
     };
+    if (this.mode === "local_single") {
+      if (!this.localSinglePlayerOneLoadout) {
+        this.scene.start("select", {
+          mode: "local_single",
+          mapId: this.selectedMapId,
+          localSinglePlayerOneLoadout: {
+            primaryCharacterId: player.primaryCharacterId,
+            alternateCharacterId: player.alternateCharacterId,
+            abilityCardIds: player.cardIds ?? [],
+            activeAbilityCardId: player.activeCardId,
+          },
+        } satisfies SelectionData);
+        return;
+      }
+
+      this.scene.start("loading", {
+        mode: "training",
+        localSingleDevice: true,
+        playerName: getProfileUsername("Player1") || t("select.player_one"),
+        opponentName: getProfileUsername("Player2") || t("select.player_two"),
+        returnScene: "battle-start",
+        loadouts: {
+          player: playerLoadoutToFighterLoadout(this.localSinglePlayerOneLoadout),
+          target: player,
+        },
+        mapId: this.selectedMapId ?? "hakurei_shrine",
+        debug: uiSettings.debug,
+      });
+      return;
+    }
+
     const loadouts: BattleLoadouts = {
       player,
       target: this.mode === "training"
@@ -841,12 +969,21 @@ export class SelectScene extends Phaser.Scene {
   }
 
   private sendOnlineReady(): void {
+    const selectedCards = this.isCollaborateMode() ? [] : [...this.selectedCards];
     const loadout: PlayerLoadout = {
       primaryCharacterId: this.primaryId!,
       alternateCharacterId: this.alternateId!,
-      abilityCardIds: [...this.selectedCards],
-      activeAbilityCardId: [...this.selectedCards].find((id) => getCardById(id).kind === "active") ?? undefined,
+      abilityCardIds: selectedCards,
+      activeAbilityCardId: selectedCards.find((id) => getCardById(id).kind === "active") ?? undefined,
     };
+    const validation = validateLoadout(loadout, { mode: this.battleMode });
+    if (!validation.valid) {
+      this.statusText
+        .setText(t("select.error", { message: validation.errors.join(", ") }))
+        .setColor("#ff5c66")
+        .setVisible(true);
+      return;
+    }
 
     // Send network message first, then update UI
     connectionManager.send({ type: "ready", loadout });
@@ -856,6 +993,10 @@ export class SelectScene extends Phaser.Scene {
     this.confirmButton.setEnabled(false);
     this.confirmButton.setLabel(t("select.wait_opponent"));
     this.statusText.setText(t("select.confirmed_waiting")).setColor("#ffcf6e").setVisible(true);
+  }
+
+  private isCollaborateMode(): boolean {
+    return this.battleMode === "collaborate" || this.mode === "debug_cooperate";
   }
 }
 
@@ -870,6 +1011,15 @@ function roleLabel(role: CharacterDefinition["roleClass"]): string {
     scout: t("role.scout"),
     sniper: t("role.sniper"),
   }[role];
+}
+
+function playerLoadoutToFighterLoadout(loadout: PlayerLoadout): FighterLoadout {
+  return {
+    primaryCharacterId: loadout.primaryCharacterId,
+    alternateCharacterId: loadout.alternateCharacterId,
+    cardIds: [...loadout.abilityCardIds],
+    activeCardId: loadout.activeAbilityCardId,
+  };
 }
 
 function statLevel(speed: CharacterDefinition["moveSpeed"]): number {

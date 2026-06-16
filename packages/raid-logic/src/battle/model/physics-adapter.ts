@@ -7,10 +7,10 @@ import {
 import { fp } from "@shaisrc/fixed-point";
 
 import {
-  ARENA_HEIGHT,
-  ARENA_WIDTH,
+  DEFAULT_ARENA_BOUNDS,
   GRAZE_CIRCLE_DIAMETER,
   PLAYER_CORE_RADIUS,
+  type ArenaBounds,
 } from "@repo/types";
 
 import type {
@@ -32,6 +32,7 @@ export interface CollisionResult {
   readonly victimMobId?: number;
   readonly grazedByKey?: FighterKey;
   readonly blockedByShield?: true;
+  readonly blockedByShieldOwner?: FighterKey;
 }
 
 /**
@@ -53,6 +54,10 @@ export class BattlePhysics {
   private readonly grazeBodyIds = new Set<string>();
   private readonly mobBodyIds = new Set<string>();
   private readonly pointBodyIds = new Set<string>();
+
+  constructor(
+    private readonly arenaBounds: ArenaBounds = DEFAULT_ARENA_BOUNDS,
+  ) {}
 
   async init(): Promise<void> {
     await ensureRapierInit();
@@ -131,7 +136,8 @@ export class BattlePhysics {
         !Number.isFinite(p.width)
       ) {
         const bodyId = `proj-graze:${p.id}`;
-        const length = Math.hypot(ARENA_WIDTH, ARENA_HEIGHT) * 2;
+        const length =
+          Math.hypot(this.arenaBounds.width, this.arenaBounds.height) * 2;
         this.world.addBody({
           id: bodyId,
           kind: "projectile",
@@ -398,7 +404,11 @@ function resolveCollision(
     if (projectileMap.get(projectileNum)?.owner === shieldOwner) {
       return null;
     }
-    return { projectileId: projectileNum, blockedByShield: true };
+    return {
+      projectileId: projectileNum,
+      blockedByShield: true,
+      blockedByShieldOwner: shieldOwner as FighterKey,
+    };
   }
 
   if (otherId.startsWith("graze:")) {

@@ -31,8 +31,8 @@ export class IntelligenceManager {
   private readonly dumbRampTicks: number;
   private phaseTicks = 0;
   private dumbTicks = 0;
-  private prevSelfLives = 2;
-  private prevOpponentLives = 2;
+  private prevSelfLives = 3;
+  private prevOpponentLives = 3;
 
   constructor(options: {
     readonly smartDurationSeconds?: number;

@@ -1,4 +1,4 @@
-import type { BattleConfig, ClientMessage, PlayerId, ServerMessage } from "@repo/types";
+import type { BattleConfig, BattleRoomMode, ClientMessage, PlayerId, ServerMessage } from "@repo/types";
 import { APP_BUILD_LABEL, IS_DESKTOP_APP } from "@repo/constants";
 import { isWebTransportAddress, normalizeServerAddress } from "./address";
 import { findServerCertificateFingerprint } from "./fingerprint";
@@ -27,6 +27,8 @@ export class ConnectionManager {
 
   /** Latest known server protocol version. */
   serverVersion: string | null = null;
+  /** Whether the connected server advertises collaborate rooms. */
+  collaborateRoomsEnabled: boolean | null = null;
   /** ID of the room this client is currently in, if any. */
   roomId: string | null = null;
   /** This client's assigned player slot in the room. */
@@ -35,8 +37,12 @@ export class ConnectionManager {
   opponentUsername: string | null = null;
   /** Latest room status received from the server. */
   roomStatus: string | null = null;
+  /** Current room battle mode. */
+  battleMode: BattleRoomMode | null = null;
   /** Battle configuration received from server when both players ready. */
   battleConfig: BattleConfig | null = null;
+  /** Deterministic room seed assigned by the dedicated server. */
+  roomSeed: number | null = null;
 
   /** Lobby: room display name. */
   roomName: string | null = null;
@@ -122,6 +128,7 @@ export class ConnectionManager {
       console.log("[FXTZ] Connection opened", { address: normalizedAddress, useWebTransport });
       this.setStatus("connected");
       this.startPing();
+      void this.refreshServerVersion(normalizedAddress);
 
       const reconnect = this.roomId && this.playerId
         ? {
@@ -221,6 +228,31 @@ export class ConnectionManager {
     }
   }
 
+  private async refreshServerVersion(normalizedAddress: string): Promise<void> {
+    try {
+      const response = await fetch(buildVersionUrl(normalizedAddress), { cache: "no-store" });
+      if (!response.ok) {
+        this.collaborateRoomsEnabled = false;
+        this.notifyStatusListeners();
+        return;
+      }
+      const payload = await response.json() as Partial<{
+        version: unknown;
+        collaborate: unknown;
+        enableCollaborate: unknown;
+        webTransport: unknown;
+      }>;
+      if (typeof payload.version === "string" && payload.version.length > 0) {
+        this.serverVersion = payload.version;
+      }
+      this.collaborateRoomsEnabled = payload.collaborate === true || payload.enableCollaborate === true;
+      this.notifyStatusListeners();
+    } catch {
+      this.collaborateRoomsEnabled = false;
+      this.notifyStatusListeners();
+    }
+  }
+
   /** Close the server connection. */
   disconnect(): void {
     this.manualDisconnect = true;
@@ -250,6 +282,9 @@ export class ConnectionManager {
         this.serverVersion = msg.serverVersion;
         this.notifyStatusListeners();
         break;
+      case "room_created":
+        if (msg.seed !== undefined) this.roomSeed = msg.seed;
+        break;
       case "room_joined":
         this.roomId = msg.roomId;
         this.playerId = msg.playerId ?? null;
@@ -263,10 +298,14 @@ export class ConnectionManager {
         this.hostName = null;
         this.lifeCount = null;
         this.costLimit = null;
+        this.battleMode = null;
+        this.roomSeed = null;
         this.spectatorNames = [];
         this.playerNames = [];
         this.allowSpectators = null;
         this.spectatorCount = 0;
+        if (msg.battleMode !== undefined) this.battleMode = msg.battleMode;
+        if (msg.seed !== undefined) this.roomSeed = msg.seed;
         break;
       case "room_state": {
         const previousStatus = this.roomStatus;
@@ -291,6 +330,7 @@ export class ConnectionManager {
         if (msg.hostName !== undefined) this.hostName = msg.hostName;
         if (msg.lifeCount !== undefined) this.lifeCount = msg.lifeCount;
         if (msg.costLimit !== undefined) this.costLimit = msg.costLimit;
+        if (msg.battleMode !== undefined) this.battleMode = msg.battleMode;
         if (msg.opponentReady !== undefined) this.opponentReady = msg.opponentReady;
         if (msg.allowSpectators !== undefined) this.allowSpectators = msg.allowSpectators;
         if (msg.spectatorCount !== undefined) this.spectatorCount = msg.spectatorCount;
@@ -300,6 +340,11 @@ export class ConnectionManager {
       }
       case "battle_start":
         this.battleConfig = msg.config;
+        this.battleMode = msg.config.battleMode;
+        this.roomSeed = msg.config.seed;
+        break;
+      case "game_starting":
+        if (msg.battleMode !== undefined) this.battleMode = msg.battleMode;
         break;
       case "error":
         if (msg.code === "reconnect_failed") {
@@ -318,10 +363,12 @@ export class ConnectionManager {
     this.opponentUsername = null;
     this.roomStatus = null;
     this.battleConfig = null;
+    this.roomSeed = null;
     this.roomName = null;
     this.hostName = null;
     this.lifeCount = null;
     this.costLimit = null;
+    this.battleMode = null;
     this.opponentReady = null;
     this.isSpectator = false;
     this.spectatorNames = [];
@@ -369,6 +416,15 @@ export class ConnectionManager {
 function buildFingerprintUrl(normalizedAddress: string): string {
   const url = new URL(normalizedAddress);
   url.pathname = "/fingerprint";
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
+function buildVersionUrl(normalizedAddress: string): string {
+  const url = new URL(normalizedAddress);
+  url.protocol = url.protocol === "wss:" ? "https:" : url.protocol === "ws:" ? "http:" : url.protocol;
+  url.pathname = "/version";
   url.search = "";
   url.hash = "";
   return url.toString();

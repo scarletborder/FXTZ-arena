@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { t } from "@repo/i18n";
 import type { BattleConfig, ServerMessage } from "@repo/types";
 
-import { queueBattleAssets } from "../../battle/assets";
+import { queueBattleAssets } from "../../battle/utils/assets";
 import type { BattleLoadouts } from "../../battle/loadout";
 import BgmCmd from "../../commands/BgmCmd";
 import { connectionManager, type SceneKey } from "../../menu/shared";

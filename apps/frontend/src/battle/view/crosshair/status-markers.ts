@@ -35,16 +35,26 @@ export class CrosshairStatusMarkers {
     readonly lives: number;
     readonly bombs: number;
   }): void {
+    const visibleLives = Math.max(0, params.lives - 1);
     for (let index = 0; index < this.lifeMarkers.length; index += 1) {
       const marker = this.lifeMarkers[index];
       marker.setPosition(params.x + index * 14, params.y + 58);
-      marker.setVisible(index < params.lives);
+      marker.setVisible(index < visibleLives);
     }
 
     for (let index = 0; index < this.bombIcons.length; index += 1) {
       const icon = this.bombIcons[index];
       icon.setPosition(params.x + index * 14, params.y + 78);
       icon.setVisible(index < params.bombs);
+    }
+  }
+
+  setVisible(visible: boolean): void {
+    for (const marker of this.lifeMarkers) {
+      marker.setVisible(visible);
+    }
+    for (const icon of this.bombIcons) {
+      icon.setVisible(visible);
     }
   }
 }

@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { IS_DESKTOP_APP } from "@repo/constants";
+import { DEFAULT_BOMBS, DEFAULT_LIVES, IS_DESKTOP_APP } from "@repo/constants";
 import { t } from "@repo/i18n";
 import type { MapId, PlayerLoadout, ServerMessage } from "@repo/types";
 
@@ -278,11 +278,12 @@ export class UdpConnectScene extends Phaser.Scene {
       type: "battle_start",
       config: {
         battleId: `${Date.now()}`,
+        battleMode: "versus",
         mapId: this.selectedMapId,
         seed: 1,
         fps: 60,
-        lifeCount: 2,
-        defaultBombCount: 3,
+        lifeCount: DEFAULT_LIVES,
+        defaultBombCount: DEFAULT_BOMBS,
         costLimit: 10,
         players: [
           {

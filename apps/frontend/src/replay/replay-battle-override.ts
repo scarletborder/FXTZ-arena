@@ -7,12 +7,12 @@ import {
 } from "@repo/raid-logic";
 import type { FighterState } from "@repo/content";
 import { FIXED_STEP_MS, GAME_WIDTH } from "@repo/constants";
-import { createBattleInput, type BattleInputBundle } from "../battle/input";
-import type { BattleKeyMap } from "../battle/keybind";
-import type { BattleMobileControls } from "../battle/keybind";
+import { createBattleInput, type BattleInputBundle } from "../battle/input-controller/input";
+import type { BattleKeyMap } from "../battle/input-controller";
+import type { BattleMobileControls } from "../battle/input-controller";
 import { BattleView } from "../battle/view";
 import { BattlePauseMenuController } from "../battle/view/pause";
-import { BattleAudioDirector } from "../battle/audio";
+import { BattleAudioDirector } from "../battle/sfx/audio";
 import { Depth } from "../utils/depth";
 import type { BattleSceneData } from "../battle/loadout";
 import type { ReplayFile } from "./types";

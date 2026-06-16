@@ -63,6 +63,12 @@ export abstract class BattleAbilityCard {
       cooldownTicks: this.cooldownTicks,
       description: this.description,
       gallery: this.gallery,
+      collaborateShop: {
+        rarity:
+          this.id === "extra_life" || this.id === "ember"
+            ? "disabled"
+            : "common",
+      },
     };
   }
 

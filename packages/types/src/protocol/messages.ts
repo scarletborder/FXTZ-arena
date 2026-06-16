@@ -1,5 +1,6 @@
 import type {
   BattleConfig,
+  BattleRoomMode,
   MapId,
   PlayerId,
   PlayerLoadout,
@@ -28,6 +29,7 @@ export interface CreateRoomMessage {
   name: string;
   username?: string;
   password?: string;
+  battleMode?: BattleRoomMode;
   mapId: MapId;
   lifeCount: number;
   costLimit: number;
@@ -48,12 +50,14 @@ export interface QuickMatchMessage {
   type: "quick_match";
   username?: string;
   p2pEnabled?: boolean;
+  battleMode?: BattleRoomMode;
 }
 
 export interface ListRoomsMessage {
   type: "list_rooms";
   page: number;
   pageSize: number;
+  battleMode?: BattleRoomMode;
   spectatorsOnly?: boolean;
 }
 
@@ -110,6 +114,10 @@ export interface InputFrameMessage {
   reloadPressed: boolean;
   alternateHeld: boolean;
   infoHeld: boolean;
+  transitionReadyPressed?: boolean;
+  shopReadyPressed?: boolean;
+  shopPurchaseItemId?: string;
+  activeCardSwitchId?: string;
   UnreliableLinkExtra?: UnreliableLinkExtra;
 }
 
@@ -134,6 +142,10 @@ export interface RedundantInputFrame {
   readonly reloadPressed: boolean;
   readonly alternateHeld: boolean;
   readonly infoHeld: boolean;
+  readonly transitionReadyPressed?: boolean;
+  readonly shopReadyPressed?: boolean;
+  readonly shopPurchaseItemId?: string;
+  readonly activeCardSwitchId?: string;
 }
 
 export interface GameOverMessage {
@@ -141,6 +153,20 @@ export interface GameOverMessage {
   frame: number;
   ackFrame: number;
   winnerPlayerId: PlayerId;
+}
+
+export interface CollaborateShopForcedReadyMessage {
+  type: "collaborate_shop_forced_ready";
+  frame: number;
+  shopIndex: number;
+}
+
+export interface CollaborateShopActionMessage {
+  type: "collaborate_shop_action";
+  shopIndex: number;
+  ready?: boolean;
+  purchaseItemId?: string;
+  activeCardSwitchId?: string;
 }
 
 export interface PingMessage {
@@ -165,6 +191,8 @@ export type ClientMessage =
   | InputFrameMessage
   | SpectatorInputFrameMessage
   | GameOverMessage
+  | CollaborateShopForcedReadyMessage
+  | CollaborateShopActionMessage
   | PingMessage;
 
 // ──────────────────────────────────────────
@@ -188,6 +216,7 @@ export interface RoomListMessage {
 export interface RoomCreatedMessage {
   type: "room_created";
   roomId: string;
+  seed?: number;
 }
 
 export interface RoomJoinedMessage {
@@ -195,6 +224,8 @@ export interface RoomJoinedMessage {
   roomId: string;
   playerId?: PlayerId;
   spectator?: boolean;
+  battleMode?: BattleRoomMode;
+  seed?: number;
 }
 
 export interface RoomStateMessage {
@@ -208,6 +239,7 @@ export interface RoomStateMessage {
   hostName?: string;
   lifeCount?: number;
   costLimit?: number;
+  battleMode?: BattleRoomMode;
   allowSpectators?: boolean;
   spectatorCount?: number;
   spectatorNames?: readonly string[];
@@ -216,6 +248,7 @@ export interface RoomStateMessage {
 
 export interface GameStartingMessage {
   type: "game_starting";
+  battleMode?: BattleRoomMode;
 }
 
 export interface OpponentReadyMessage {
@@ -242,6 +275,10 @@ export interface InputFrameRelayMessage {
   reloadPressed: boolean;
   alternateHeld: boolean;
   infoHeld: boolean;
+  transitionReadyPressed?: boolean;
+  shopReadyPressed?: boolean;
+  shopPurchaseItemId?: string;
+  activeCardSwitchId?: string;
   UnreliableLinkExtra?: UnreliableLinkExtra;
 }
 
@@ -290,6 +327,22 @@ export interface PeerGameOverMessage {
   winnerPlayerId: PlayerId;
 }
 
+export interface PeerCollaborateShopForcedReadyMessage {
+  type: "peer_collaborate_shop_forced_ready";
+  playerId: PlayerId;
+  frame: number;
+  shopIndex: number;
+}
+
+export interface PeerCollaborateShopActionMessage {
+  type: "peer_collaborate_shop_action";
+  playerId: PlayerId;
+  shopIndex: number;
+  ready?: boolean;
+  purchaseItemId?: string;
+  activeCardSwitchId?: string;
+}
+
 export interface ErrorMessage {
   type: "error";
   code: string;
@@ -317,6 +370,8 @@ export type ServerMessage =
   | InputFrameRelayMessage
   | PeerStatusMessage
   | PeerGameOverMessage
+  | PeerCollaborateShopForcedReadyMessage
+  | PeerCollaborateShopActionMessage
   | BattleFinishedMessage
   | ErrorMessage
   | PongMessage;

@@ -1,8 +1,14 @@
 import { APP_BUILD_LABEL } from "@repo/constants";
-import type { ClientMessage, InputFrameMessage, PlayerId, PlayerLoadout, ServerMessage } from "@repo/types";
+import type { ClientMessage, PlayerId, PlayerLoadout, ServerMessage } from "@repo/types";
 
 import type { ConnectionManager } from "./client";
 import { listenUdp, sendUdp, stopUdp, subscribeUdp } from "./desktop-udp";
+import {
+  clientMessageToPeerServerMessage,
+  createNetworkServiceContext,
+  proxyDirectPeerServerMessage,
+  type NetworkServiceContext,
+} from "./handler";
 import { type ClientInfo, PeerDeviceType } from "./local-lan/services/signaling";
 import type { PeerConnection, P2pStatus } from "./p2p";
 
@@ -177,7 +183,12 @@ export class UdpDirectSession {
   }
 
   sendPeerPacket(localPlayerId: PlayerId, message: ClientMessage): boolean {
-    const packet = this.clientMessageToServerMessage(localPlayerId, message);
+    const serviceContext = createNetworkServiceContext(localPlayerId, {
+      transport: "udp-direct",
+      role: this.role,
+      peerAddr: this.peerAddr,
+    });
+    const packet = clientMessageToPeerServerMessage(serviceContext, message);
     if (!packet) {
       return false;
     }
@@ -256,50 +267,6 @@ export class UdpDirectSession {
     }
   }
 
-  private clientMessageToServerMessage(playerId: PlayerId, message: ClientMessage): ServerMessage | null {
-    switch (message.type) {
-      case "p2p_intent":
-        return {
-          type: "peer_p2p_intent",
-          playerId,
-          enabled: message.enabled,
-        };
-      case "p2p_signal":
-        return {
-          type: "peer_p2p_signal",
-          playerId,
-          signal: message.signal,
-        };
-      case "p2p_ready":
-        return {
-          type: "peer_p2p_ready",
-          playerId,
-        };
-      case "loading_done":
-        return {
-          type: "peer_loading_done",
-          playerId,
-        };
-      case "input_frame": {
-        const inputFrame = message as InputFrameMessage;
-        return {
-          ...inputFrame,
-          playerId,
-        };
-      }
-      case "game_over":
-        return {
-          type: "peer_game_over",
-          playerId,
-          frame: message.frame,
-          ackFrame: message.ackFrame,
-          winnerPlayerId: message.winnerPlayerId,
-        };
-      default:
-        return null;
-    }
-  }
-
   private createClientInfo(username: string): ClientInfo {
     return {
       id: this.createToken(),
@@ -323,11 +290,16 @@ class UdpDirectPeerConnection implements PeerConnection {
   private onMessage: (message: ServerMessage) => void = () => undefined;
   private peerLoadingDone = false;
   private started = false;
+  private readonly serviceContext: NetworkServiceContext;
 
   constructor(
     private readonly session: UdpDirectSession,
     private readonly localPlayerId: PlayerId,
-  ) { }
+  ) {
+    this.serviceContext = createNetworkServiceContext(localPlayerId, {
+      transport: "udp-direct-peer",
+    });
+  }
 
   get connected(): boolean {
     return true;
@@ -365,24 +337,12 @@ class UdpDirectPeerConnection implements PeerConnection {
   }
 
   handleServerMessage(message: ServerMessage): boolean {
-    if (message.type === "peer_loading_done") {
-      if (message.playerId === this.localPlayerId) {
-        return true;
-      }
-      this.peerLoadingDone = true;
-      this.onMessage(message);
-      return true;
-    }
-
-    if (message.type === "input_frame" || message.type === "peer_game_over") {
-      if ("playerId" in message && message.playerId === this.localPlayerId) {
-        return true;
-      }
-      this.onMessage(message);
-      return true;
-    }
-
-    return false;
+    return proxyDirectPeerServerMessage(this.serviceContext, message, {
+      onPeerLoadingDone: () => {
+        this.peerLoadingDone = true;
+      },
+      onMessage: (nextMessage) => this.onMessage(nextMessage),
+    });
   }
 
   send(message: ClientMessage): boolean {

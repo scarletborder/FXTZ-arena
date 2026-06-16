@@ -50,6 +50,11 @@ export class CrosshairActiveCardStatus {
     );
   }
 
+  setVisible(visible: boolean): void {
+    this.text.setVisible(visible);
+    this.battery.setVisible(visible);
+  }
+
   private drawBattery(
     x: number,
     y: number,

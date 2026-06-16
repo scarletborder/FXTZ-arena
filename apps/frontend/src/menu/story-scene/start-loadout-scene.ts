@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { t } from "@repo/i18n";
 import { EnumDifficulty, type CharacterId } from "@repo/types";
 
-import { loadPortraitAssets } from "../../battle/assets";
+import { loadPortraitAssets } from "../../battle/utils/assets";
 import { queueAllStoryJson } from "../../story/assets";
 import { createInitialStoryState } from "../../story/state";
 import type { StoryId, StoryProgressData } from "../../story/types";

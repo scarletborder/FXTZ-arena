@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 
 import { assetUrl } from "../utils/assets";
-import { loadPortraitAssets } from "../battle/assets";
+import { loadPortraitAssets } from "../battle/utils/assets";
 import { queueAbilityCardIconAssets } from "../ability-card-assets";
 import type { StoryDialogueLine, StoryId } from "./types";
 

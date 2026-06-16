@@ -16,7 +16,7 @@ export class ResultScene extends Phaser.Scene {
     drawFightingBackdrop(this, "RESULT", "MATCH END");
     this.add.text(438, 112, t("result.title"), headingStyle(46));
     drawPanel(this, 350, 184, 580, 350, t("result.stats"));
-    this.add.text(420, 244, t("result.winner", { name: data.winnerName ?? uiSettings.username }), bodyStyle("#ffcf6e", 24));
+    this.add.text(420, 244, resultLine(data), bodyStyle("#ffcf6e", 24));
     this.add.text(420, 304, t("result.duration", { seconds: (data.durationSeconds ?? 0).toFixed(1) }), bodyStyle("#d7e3ef", 20));
     this.add.rectangle(640, 428, 2, 150, 0x41546d, 0.9);
     this.drawPlayerColumn(490, 352, data.players[0]);
@@ -71,4 +71,14 @@ export class ResultScene extends Phaser.Scene {
       .setDepth(Depth.Debug)
       .setScrollFactor(0);
   }
+}
+
+function resultLine(data: ResultData): string {
+  if (data.battleResult === "collaborate_victory") {
+    return t("result.challenge_victory");
+  }
+  if (data.battleResult === "collaborate_defeat") {
+    return t("result.challenge_defeat");
+  }
+  return t("result.winner", { name: data.winnerName ?? uiSettings.username });
 }

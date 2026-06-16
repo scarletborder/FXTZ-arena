@@ -1,22 +1,27 @@
 import { fp } from "@shaisrc/fixed-point";
 
 import {
+  DEFAULT_ARENA_BOUNDS,
   PLAYER_CORE_RADIUS,
-  ENEMY_PROJECTILE_GRAZE_POINT_REWARD,
-  NEUTRAL_PROJECTILE_GRAZE_POINT_REWARD,
   PLAYER_SPAWN,
   TARGET_SPAWN,
-  type NeutralMob,
-  type NeutralMobActionContext,
+  COLLABORATE_MOB_SCORE_VALUES,
+  COLLABORATE_MONEY_PICKUP_SCORE_VALUES,
+  COLLABORATE_POINT_PICKUP_SCORE_VALUES,
+  createDefaultCollaborateExtraState,
   type NeutralMobState,
   type ProjectileCollisionContext,
+  type ArenaBounds,
+  type CollaborateExtraState,
 } from "@repo/types";
 
 import { getAbilityCard, getCharacter } from "../content";
 import type { BattleLoadouts, FighterLoadout } from "../loadout";
-import type { BattleInputState } from "@repo/types";
+import type { BattleInputState, BattleRoomMode, NeutralMobActionContext } from "@repo/types";
 import type {
   BattleOutputState,
+  BattleResult,
+  CharacterActionContext,
   EffectState,
   FighterKey,
   FighterState,
@@ -25,25 +30,15 @@ import type {
   ShieldState,
   TrainingStats,
 } from "@repo/content";
-import type { NeutralMobSpawner, NeutralMobSpawnerState } from "@repo/content";
+import type { NeutralMobSpawner } from "@repo/content";
 import { resolveMobSpawner } from "@repo/content";
 import { BattleFighter } from "./battle-fighter";
-import { POINT_COUNT_MAX } from "../constants";
+import { createBattleRules, type BattleRules } from "./battle-rules";
 import { CpuPlayer } from "../aicpu";
 import { EffectSystem } from "./effects";
-import {
-  createClearRingState,
-  stepClearRings,
-  type ClearRingState,
-} from "./entities/clear-ring";
+import type { ClearRingState } from "./entities/clear-ring";
 import { hashBattleModel, hashBattleModelComponents, hashToHex } from "./hash";
 import { BattlePhysics } from "./physics-adapter";
-import {
-  createPointState,
-  POINT_COLLECT_TICKS,
-  pointIsOutsideArena,
-  pointVelocityFromFrame,
-} from "./points";
 import {
   ProjectileSystem,
   type BulletProjectileParams,
@@ -52,23 +47,40 @@ import {
 } from "./projectile";
 import {
   createBattleModelSnapshot,
+  cloneCollaborateExtra,
   restoreEffectSnapshot,
-  restoreClearRingSnapshot,
   restoreFighterSnapshot,
   restoreProjectileSnapshot,
   type BattleModelSnapshot,
 } from "./snapshot";
 import { TickerManager } from "./ticker-manager";
-import type { CharacterActionContext } from "@repo/content";
-import { fpClamp, fpAtan2, fpHypotFp } from "@repo/content";
-
-const ACTIVE_CARD_COOLDOWN_GROUP_PREFIX = "active-card-cooldown";
+import { ClearRingManager } from "./manager/clear-ring-manager";
+import { NeutralMobManager } from "./manager/neutral-mob-manager";
+import { clampPointCount, PointManager } from "./manager/point-manager";
+import { ActiveCardCooldownManager } from "./manager/active-card-cooldown-manager";
+import { BattleSizeManager } from "./size-manager";
+import { clampCollaborateCurrency } from "./utils/currency";
+import { hitsBeam as computeBeamHit } from "./utils/geometry";
+import {
+  createCharacterActionContext as buildCharacterActionContext,
+  createNeutralMobActionContext as buildNeutralMobActionContext,
+} from "./context-factory";
+import {
+  beginCollaborateTransitionState,
+  processCollaborateTransitionSync as processCollaborateTransitionSyncState,
+  processCollaborateShopInputs as processCollaborateShopInputState,
+  recoverDeadCollaborateShopPlayers as recoverDeadCollaborateShopPlayerState,
+  resetCollaborateShopActiveCards as resetCollaborateShopActiveCardState,
+} from "./collaborate-shop";
+import { processFighterActions as processFighterControllerActions } from "./controller";
+import {
+  resolveProjectileGraze,
+  resolveProjectileHit,
+} from "./referee";
 
 export class BattleModel {
   readonly projectiles: ProjectileState[] = [];
   readonly effects: EffectState[] = [];
-  readonly clearRings: ClearRingState[] = [];
-  readonly points: PointState[] = [];
   readonly stats: TrainingStats = {
     shots: 0,
     hits: 0,
@@ -78,6 +90,7 @@ export class BattleModel {
   };
   frame = 0;
   gameOver = false;
+  result: BattleResult = "running";
   /**
    * Set to true during stepFrame when a system reads aim coordinates in
    * a way that would alter the simulation output (shoot, bomb, active
@@ -104,24 +117,31 @@ export class BattleModel {
     Player2: { x: PLAYER_SPAWN.x, y: PLAYER_SPAWN.y },
     Neutral: { x: 0, y: 0 },
   };
-  private readonly neutralMobs: NeutralMob<
-    NeutralMobState,
-    BulletProjectileParams,
-    LaserProjectileParams
-  >[] = [];
-  private nextNeutralMobId = 1;
-  private nextPointId = 1;
-  private nextClearRingId = 1;
   private readonly loadouts: BattleLoadouts;
-  private readonly projectileSystem = new ProjectileSystem();
+  private readonly rules: BattleRules;
+  readonly neutralMobManager: NeutralMobManager;
+  readonly pointManager: PointManager;
+  readonly clearRingManager = new ClearRingManager();
+  private readonly projectileSystem: ProjectileSystem;
   private readonly effectSystem = new EffectSystem();
   private readonly ticker = new TickerManager();
+  private readonly activeCardCooldowns = new ActiveCardCooldownManager(
+    this.ticker,
+  );
   private readonly playerInitPoint: number;
   private readonly opponentInitPoint: number;
+  private readonly playerInitMoney: number;
+  private readonly opponentInitMoney: number;
+  private readonly seed: number;
+  private readonly arenaBounds: ArenaBounds;
+  private readonly battleMode: BattleRoomMode;
+  private collaborateExtra: CollaborateExtraState | undefined;
+  private readonly sizeManager: BattleSizeManager;
+  private readonly playerSpawn: { readonly x: number; readonly y: number };
+  private readonly targetSpawn: { readonly x: number; readonly y: number };
   private readonly playerFighter: BattleFighter;
   private readonly targetFighter: BattleFighter;
   private readonly cpuPlayer: CpuPlayer | undefined;
-  private readonly mobSpawner: NeutralMobSpawner | undefined;
   private physics: BattlePhysics | undefined;
   private pendingSpawns: Array<() => void> = [];
 
@@ -135,8 +155,22 @@ export class BattleModel {
     params: {
       readonly enableCpuTarget?: boolean;
       readonly neutralMobSpawner?: NeutralMobSpawner | null;
+      readonly battleMode?: BattleRoomMode;
+      readonly arenaBounds?: ArenaBounds;
+      readonly playerSpawn?: { readonly x: number; readonly y: number };
+      readonly targetSpawn?: { readonly x: number; readonly y: number };
       readonly playerInitPoint?: number;
       readonly opponentInitPoint?: number;
+      readonly playerInitMoney?: number;
+      readonly opponentInitMoney?: number;
+      readonly seed?: number;
+      readonly debugCooperate?: {
+        readonly jump?: {
+          readonly nodeIndex: number;
+          readonly currentWaveId: string;
+          readonly transitionTarget?: "elite" | "boss";
+        };
+      };
       readonly ai?: {
         readonly smartDurationSeconds?: number;
         readonly dumbRampSeconds?: number;
@@ -144,38 +178,81 @@ export class BattleModel {
     } = {},
   ) {
     this.loadouts = loadouts;
+    const battleMode = params.battleMode ?? "versus";
+    this.battleMode = battleMode;
+    this.collaborateExtra =
+      battleMode === "collaborate"
+        ? createDefaultCollaborateExtraState(0, params.seed ?? 1)
+        : undefined;
+    this.rules = createBattleRules(battleMode);
+    this.sizeManager = new BattleSizeManager({
+      battleMode,
+      arenaBounds: params.arenaBounds ?? DEFAULT_ARENA_BOUNDS,
+    });
+    this.arenaBounds = this.sizeManager.arenaBounds;
+    this.playerSpawn = params.playerSpawn ?? PLAYER_SPAWN;
+    this.targetSpawn = params.targetSpawn ?? TARGET_SPAWN;
+    this.currentAimByFighter.Player1 = {
+      x: this.targetSpawn.x,
+      y: this.targetSpawn.y,
+    };
+    this.currentAimByFighter.Player2 = {
+      x: this.playerSpawn.x,
+      y: this.playerSpawn.y,
+    };
+    this.pointManager = new PointManager(this.arenaBounds, (award) =>
+      this.handleCollectibleAward(award),
+    );
+    this.projectileSystem = new ProjectileSystem(this.sizeManager);
     this.playerInitPoint = clampPointCount(params.playerInitPoint ?? 0);
     this.opponentInitPoint = clampPointCount(params.opponentInitPoint ?? 0);
+    this.playerInitMoney = clampCollaborateCurrency(
+      params.playerInitMoney ?? 0,
+    );
+    this.opponentInitMoney = clampCollaborateCurrency(
+      params.opponentInitMoney ?? 0,
+    );
+    this.seed = params.seed ?? 1;
     this.playerFighter = new BattleFighter(
       "Player1",
       getCharacter(loadouts.player.primaryCharacterId),
       getCharacter(loadouts.player.alternateCharacterId),
-      PLAYER_SPAWN.x,
-      PLAYER_SPAWN.y,
+      this.playerSpawn.x,
+      this.playerSpawn.y,
       loadouts.player.activeCardId
         ? getAbilityCard(loadouts.player.activeCardId)
         : undefined,
       loadoutCards(loadouts.player),
       loadouts.player.storyModeOverride,
+      this.arenaBounds,
     );
     this.targetFighter = new BattleFighter(
       "Player2",
       getCharacter(loadouts.target.primaryCharacterId),
       getCharacter(loadouts.target.alternateCharacterId),
-      TARGET_SPAWN.x,
-      TARGET_SPAWN.y,
+      this.targetSpawn.x,
+      this.targetSpawn.y,
       loadouts.target.activeCardId
         ? getAbilityCard(loadouts.target.activeCardId)
         : undefined,
       loadoutCards(loadouts.target),
       loadouts.target.storyModeOverride,
+      this.arenaBounds,
     );
     this.applyInitialPoints();
-    this.cpuPlayer = params.enableCpuTarget ? new CpuPlayer(params.ai) : undefined;
-    this.mobSpawner =
+    this.applyInitialCollaborateMoney();
+    this.cpuPlayer = params.enableCpuTarget
+      ? new CpuPlayer(params.ai)
+      : undefined;
+    const mobSpawner =
       params.neutralMobSpawner === undefined
         ? (resolveMobSpawner("default-a") ?? undefined)
         : (params.neutralMobSpawner ?? undefined);
+    this.neutralMobManager = new NeutralMobManager(
+      mobSpawner,
+      this.arenaBounds,
+    );
+    this.applyDebugCooperateJump(params.debugCooperate?.jump);
   }
 
   get player(): FighterState {
@@ -186,16 +263,20 @@ export class BattleModel {
     return this.targetFighter.state;
   }
 
+  get points(): PointState[] {
+    return this.pointManager.points;
+  }
+
+  get clearRings(): ClearRingState[] {
+    return this.clearRingManager.clearRings;
+  }
+
   reset(): void {
     this.projectileSystem.reset();
     this.effectSystem.reset();
-    this.mobSpawner?.reset();
-    this.neutralMobs.length = 0;
-    this.nextNeutralMobId = 1;
-    this.points.length = 0;
-    this.nextPointId = 1;
-    this.clearRings.length = 0;
-    this.nextClearRingId = 1;
+    this.neutralMobManager.reset();
+    this.pointManager.reset();
+    this.clearRingManager.reset();
     this.projectiles.length = 0;
     this.effects.length = 0;
     this.stats.shots = 0;
@@ -206,13 +287,18 @@ export class BattleModel {
     this.frame = 0;
     this.ticker.reset();
     this.gameOver = false;
+    this.result = "running";
+    this.collaborateExtra =
+      this.battleMode === "collaborate"
+        ? createDefaultCollaborateExtraState(0, this.seed)
+        : undefined;
     this.physics?.reset();
     this.cpuPlayer?.reset();
     this.playerFighter.reset(
       getCharacter(this.loadouts.player.primaryCharacterId),
       getCharacter(this.loadouts.player.alternateCharacterId),
-      PLAYER_SPAWN.x,
-      PLAYER_SPAWN.y,
+      this.playerSpawn.x,
+      this.playerSpawn.y,
       this.loadouts.player.activeCardId
         ? getAbilityCard(this.loadouts.player.activeCardId)
         : undefined,
@@ -222,8 +308,8 @@ export class BattleModel {
     this.targetFighter.reset(
       getCharacter(this.loadouts.target.primaryCharacterId),
       getCharacter(this.loadouts.target.alternateCharacterId),
-      TARGET_SPAWN.x,
-      TARGET_SPAWN.y,
+      this.targetSpawn.x,
+      this.targetSpawn.y,
       this.loadouts.target.activeCardId
         ? getAbilityCard(this.loadouts.target.activeCardId)
         : undefined,
@@ -231,75 +317,66 @@ export class BattleModel {
       this.loadouts.target.storyModeOverride,
     );
     this.applyInitialPoints();
-  }
-
-  allocateNeutralMobId(params?: {
-    readonly waveId: number;
-    readonly waveMemberIndex: number;
-  }): number {
-    if (params) {
-      const id = stableNeutralMobId(params.waveId, params.waveMemberIndex);
-      this.nextNeutralMobId = Math.max(this.nextNeutralMobId, id + 1);
-      return id;
-    }
-    return this.nextNeutralMobId++;
-  }
-
-  addNeutralMob(
-    mob: NeutralMob<
-      NeutralMobState,
-      BulletProjectileParams,
-      LaserProjectileParams
-    >,
-  ): void {
-    if (this.neutralMobs.some((existing) => existing.id === mob.id)) {
-      throw new Error(`Duplicate neutral mob id: ${mob.id}`);
-    }
-    this.neutralMobs.push(mob);
-    this.nextNeutralMobId = Math.max(this.nextNeutralMobId, mob.id + 1);
-    this.sortNeutralMobs();
-  }
-
-  neutralMobStates(): readonly NeutralMobState[] {
-    return this.neutralMobs.map((mob) => mob.snapshot());
-  }
-
-  getNextNeutralMobId(): number {
-    return this.nextNeutralMobId;
-  }
-
-  allocatePointId(): number {
-    return this.nextPointId++;
-  }
-
-  addPoint(point: PointState): void {
-    if (this.points.some((existing) => existing.id === point.id)) {
-      throw new Error(`Duplicate point id: ${point.id}`);
-    }
-    this.points.push(point);
-    this.nextPointId = Math.max(this.nextPointId, point.id + 1);
-    this.sortPoints();
-  }
-
-  pointStates(): readonly PointState[] {
-    return this.points;
-  }
-
-  setPlayerPointCount(pointCount: number): void {
-    this.player.pointCount = clampPointCount(pointCount);
+    this.applyInitialCollaborateMoney();
+    this.applyDebugCooperateJump(undefined);
   }
 
   private applyInitialPoints(): void {
-    this.player.pointCount = this.playerInitPoint;
-    this.target.pointCount = this.opponentInitPoint;
+    this.pointManager.setPointCount(this.player, this.playerInitPoint);
+    this.pointManager.setPointCount(this.target, this.opponentInitPoint);
   }
 
-  getNextPointId(): number {
-    return this.nextPointId;
+  private applyInitialCollaborateMoney(): void {
+    if (!this.collaborateExtra) return;
+    this.collaborateExtra = {
+      ...this.collaborateExtra,
+      moneyByPlayerId: {
+        ...this.collaborateExtra.moneyByPlayerId,
+        Player1: this.playerInitMoney,
+        Player2: this.opponentInitMoney,
+      },
+    };
   }
 
-  getNextClearRingId(): number {
-    return this.nextClearRingId;
+  private applyDebugCooperateJump(
+    jump:
+      | {
+          readonly nodeIndex: number;
+          readonly currentWaveId: string;
+          readonly transitionTarget?: "elite" | "boss";
+        }
+      | undefined,
+  ): void {
+    if (!jump || this.battleMode !== "collaborate" || !this.collaborateExtra) {
+      return;
+    }
+    const nodeIndex = Math.max(0, Math.trunc(jump.nodeIndex));
+    this.neutralMobManager.restoreSpawner({
+      spawnerId: "example-collaborate-mob-spawner",
+      nodeIndex,
+      phase: jump.transitionTarget ? "transition_sync" : "running",
+      shopIndex: 0,
+      waveStartFrame: 0,
+      nextWaveAllowedFrame: 0,
+      forceNextWaveFrame: 0,
+      spawnedMemberKeys: [],
+    });
+    this.collaborateExtra = {
+      ...this.collaborateExtra,
+      state: jump.transitionTarget ? "transition_sync" : "running",
+      pendingTransitionTarget: jump.transitionTarget ?? null,
+      transitionType: jump.transitionTarget ? "manual" : null,
+      transitionReadyFrame: this.frame,
+      player1TransitionReady: false,
+      player2TransitionReady: false,
+      wave: {
+        waveIndex: nodeIndex,
+        currentWaveId: jump.currentWaveId,
+        waveStartFrame: this.frame,
+        nextWaveAllowedFrame: this.frame,
+        forceNextWaveFrame: this.frame,
+      },
+    };
   }
 
   step(input: BattleInputState): void {
@@ -335,11 +412,42 @@ export class BattleModel {
     this.ticker.setCurrentFrame(this.frame);
     this.stats.elapsedTicks += 1;
 
+    if (
+      this.processCollaborateTransitionSync(
+        firstInput,
+        secondInput,
+        firstIsPlayer,
+      )
+    ) {
+      return;
+    }
+
+    if (this.collaborateExtra?.shop.open) {
+      this.processCollaborateShopInputs(
+        firstInput,
+        secondInput,
+        firstIsPlayer,
+      );
+      this.stepMobSpawner();
+      if (!this.collaborateExtra?.shop.open) {
+        this.stepRunningFrame(firstInput, secondInput, firstIsPlayer);
+      }
+      return;
+    }
+
+    this.stepRunningFrame(firstInput, secondInput, firstIsPlayer);
+  }
+
+  private stepRunningFrame(
+    firstInput: BattleInputState,
+    secondInput: BattleInputState | undefined,
+    firstIsPlayer: boolean,
+  ): void {
     // --- Phase 1: Timer ticking (order-independent) ---
     this.pendingSpawns = [];
     this.playerFighter.tickTimers();
     this.targetFighter.tickTimers();
-    this.syncActiveCardCooldownsFromTicker();
+    this.activeCardCooldowns.sync([this.player, this.target]);
 
     if (this.gameOver) return;
 
@@ -371,6 +479,7 @@ export class BattleModel {
       aimConsumedRef: projAimConsumed,
       hitTargets: this.currentHitTargets(),
       shields: this.currentShields(),
+      rules: this.rules,
       computeRapierHits: physics
         ? (projectiles) =>
             physics.computeCollisions(
@@ -378,7 +487,7 @@ export class BattleModel {
               this.player,
               this.target,
               this.currentShields(),
-              this.neutralMobStates(),
+              this.neutralMobManager.states(),
               this.points,
               {
                 Player1: this.playerFighter.getGrazeRadiusMultiplier(),
@@ -395,7 +504,7 @@ export class BattleModel {
     }
     this.removeInactiveNeutralMobs();
     this.stepPoints();
-    physics?.syncPointBodies(this.points);
+    physics?.syncPointBodies(this.pointManager.points);
     this.flushDeferredSpawns();
     this.effectSystem.stepEffects(this.effects, this.frame);
   }
@@ -420,14 +529,18 @@ export class BattleModel {
     return {
       frame: this.frame,
       gameOver: this.gameOver,
+      result: this.result,
       player: this.player,
       target: this.target,
       points: this.points,
-      neutralMobs: this.neutralMobStates(),
+      neutralMobs: this.neutralMobManager.states(),
       projectiles: this.projectiles,
       effects: this.effects,
       shields: this.currentShields(),
       stats: this.stats,
+      collaborateExtra: this.collaborateExtra
+        ? cloneCollaborateExtra(this.collaborateExtra)
+        : undefined,
     };
   }
 
@@ -435,6 +548,7 @@ export class BattleModel {
     return createBattleModelSnapshot({
       frame: this.frame,
       gameOver: this.gameOver,
+      result: this.result,
       player: this.player,
       target: this.target,
       projectiles: this.projectiles,
@@ -442,14 +556,15 @@ export class BattleModel {
       stats: this.stats,
       nextProjectileId: this.projectileSystem.getNextId(),
       nextEffectId: this.effectSystem.getNextId(),
-      nextNeutralMobId: this.nextNeutralMobId,
-      nextPointId: this.nextPointId,
-      nextClearRingId: this.nextClearRingId,
-      neutralMobs: this.neutralMobStates(),
+      nextNeutralMobId: this.neutralMobManager.getNextNeutralMobId(),
+      nextPointId: this.pointManager.getNextPointId(),
+      nextClearRingId: this.clearRingManager.getNextClearRingId(),
+      neutralMobs: this.neutralMobManager.states(),
       points: this.points,
       clearRings: this.clearRings,
-      mobSpawner: this.mobSpawnerState(),
+      mobSpawner: this.neutralMobManager.mobSpawnerState(),
       ticker: this.ticker.snapshot(),
+      collaborateExtra: this.collaborateExtra,
     });
   }
 
@@ -469,6 +584,16 @@ export class BattleModel {
     );
     this.ticker.setCurrentFrame(this.frame);
     this.gameOver = snapshot.gameOver;
+    this.result =
+      snapshot.result ??
+      (snapshot.gameOver ? this.legacyResultFromSnapshot(snapshot) : "running");
+    this.collaborateExtra =
+      this.battleMode === "collaborate"
+        ? cloneCollaborateExtra(
+            snapshot.collaborateExtra ??
+              createDefaultCollaborateExtraState(snapshot.frame, 1),
+          )
+        : undefined;
     restoreFighterSnapshot(this.player, snapshot.player, this.frame);
     restoreFighterSnapshot(this.target, snapshot.target, this.frame);
     this.projectiles.splice(
@@ -485,42 +610,49 @@ export class BattleModel {
         restoreEffectSnapshot(effect, this.frame),
       ),
     );
-    this.points.splice(
-      0,
-      this.points.length,
-      ...snapshot.points.map((point) => ({ ...point })),
+    this.pointManager.restore(snapshot.points, snapshot.nextPointId);
+    this.clearRingManager.restore(
+      snapshot.clearRings,
+      this.frame,
+      snapshot.nextClearRingId,
     );
-    this.clearRings.splice(
-      0,
-      this.clearRings.length,
-      ...snapshot.clearRings.map((ring) =>
-        restoreClearRingSnapshot(ring, this.frame),
-      ),
-    );
-    this.restoreActiveCardCooldownTimer(this.player);
-    this.restoreActiveCardCooldownTimer(this.target);
-    this.restoreNeutralMobSnapshots(snapshot.neutralMobs);
+    this.activeCardCooldowns.restore([this.player, this.target], this.frame);
+    this.neutralMobManager.restoreSnapshots(snapshot.neutralMobs);
     Object.assign(this.stats, snapshot.stats);
     this.projectileSystem.restoreNextId(
       this.projectiles,
       snapshot.nextProjectileId,
     );
     this.effectSystem.restoreNextId(this.effects, snapshot.nextEffectId);
-    this.nextNeutralMobId = Math.max(
+    this.neutralMobManager.restoreNextId(
       snapshot.nextNeutralMobId,
-      1 + Math.max(0, ...snapshot.neutralMobs.map((mob) => mob.id)),
+      snapshot.neutralMobs,
     );
-    this.nextPointId = Math.max(
-      snapshot.nextPointId,
-      1 + Math.max(0, ...snapshot.points.map((point) => point.id)),
+    this.neutralMobManager.restoreSpawner(snapshot.mobSpawner);
+    this.physics?.reset();
+  }
+
+  beginCollaborateTransition(
+    target: "elite" | "boss" | "shop",
+    type: "auto" | "manual",
+  ): void {
+    this.collaborateExtra = beginCollaborateTransitionState({
+      extra: this.collaborateExtra,
+      frame: this.frame,
+      target,
+      type,
+    });
+  }
+
+  private clearCollaborateTransitionHazards(): void {
+    this.projectiles.splice(
+      0,
+      this.projectiles.length,
+      ...this.projectiles.filter(
+        (projectile) => projectile.owner !== "Neutral",
+      ),
     );
-    this.nextClearRingId = Math.max(
-      snapshot.nextClearRingId,
-      1 + Math.max(0, ...snapshot.clearRings.map((ring) => ring.id)),
-    );
-    if (snapshot.mobSpawner) {
-      this.mobSpawner?.restore(snapshot.mobSpawner);
-    }
+    this.neutralMobManager.clearActiveMobs();
     this.physics?.reset();
   }
 
@@ -536,158 +668,121 @@ export class BattleModel {
     fighter: BattleFighter,
     input: BattleInputState | undefined,
   ): void {
-    if (this.gameOver) return;
-    const state = fighter.state;
-    if (state.deadUntil > 0) return;
-
-    if (!input) {
-      if (state.key === "Player2") {
-        if (this.cpuPlayer) {
-          this.stepTargetAi();
-        } else {
-          this.stepTargetSimple();
-        }
-      }
-      return;
-    }
-
-    // Deterministic action order within a fighter's turn:
-    fighter.selectActiveCharacter(input.alternateHeld);
-    this.currentAimByFighter[state.key] = { x: input.aimX, y: input.aimY };
-    state.facing = fpAtan2(
-      fp.fromFloat(input.aimY - state.y),
-      fp.fromFloat(input.aimX - state.x),
+    processFighterControllerActions(
+      {
+        frame: this.frame,
+        gameOver: this.gameOver,
+        player: this.player,
+        target: this.target,
+        targetFighter: this.targetFighter,
+        projectiles: this.projectiles,
+        points: this.points,
+        arenaBounds: this.arenaBounds,
+        cpuPlayer: this.cpuPlayer,
+        neutralMobManager: this.neutralMobManager,
+        currentAimByFighter: this.currentAimByFighter,
+        createActionContext: (self) => this.fighterActionContext(self),
+        processActiveCardSwitch: (battleFighter, activeCardSwitchId) =>
+          this.processActiveCardSwitch(battleFighter, activeCardSwitchId),
+        registerActiveCardUse: (state) => {
+          this.activeCardCooldowns.register(state, this.frame);
+        },
+        pauseActiveCardCooldowns: (ticks) => {
+          this.activeCardCooldowns.pause([this.player, this.target], ticks);
+        },
+        consumeAim: () => {
+          this.aimConsumedThisFrame = true;
+        },
+        setLastTargetInput: (targetInput) => {
+          this.lastTargetInput = targetInput;
+        },
+      },
+      fighter,
+      input,
     );
-    fighter.moveBy(input);
-    fighter.postUpdate(this.fighterActionContext(state));
-    fighter.handleReload(input.reloadPressed);
-
-    const ctx = this.fighterActionContext(state);
-    if (input.activeCardPressed) {
-      if (fighter.useActiveCard(ctx)) {
-        this.registerActiveCardCooldown(state);
-        this.aimConsumedThisFrame = true;
-      }
-    }
-    if (input.bombPressed) {
-      const previousTimeStopUntil = state.timeStopUntil;
-      fighter.useBomb(ctx, input.aimX, input.aimY);
-      this.aimConsumedThisFrame = true;
-      if (
-        state.activeCharacter.bombId === "sakuya_time_stop" &&
-        state.timeStopUntil > previousTimeStopUntil
-      ) {
-        this.pauseActiveCardCooldowns(
-          state.timeStopUntil - previousTimeStopUntil,
-        );
-      }
-    }
-    if (input.shootPressed) {
-      fighter.fire(ctx, input.aimX, input.aimY);
-      this.aimConsumedThisFrame = true;
-    }
   }
 
-  private stepTargetAi(): void {
-    const fighter = this.target;
-    const aiInput = this.cpuPlayer!.getAction({
+  private processCollaborateTransitionSync(
+    firstInput: BattleInputState,
+    secondInput: BattleInputState | undefined,
+    firstIsPlayer: boolean,
+  ): boolean {
+    const result = processCollaborateTransitionSyncState({
+      extra: this.collaborateExtra,
       frame: this.frame,
-      self: fighter,
-      opponent: this.player,
-      projectiles: this.projectiles,
-      neutralMobs: this.neutralMobStates(),
-      points: this.points,
+      firstInput,
+      secondInput,
+      firstIsPlayer,
+      seed: this.seed,
+      playerFighter: this.playerFighter,
+      targetFighter: this.targetFighter,
     });
-
-    this.lastTargetInput = aiInput;
-    this.targetFighter.selectActiveCharacter(aiInput.alternateHeld);
-    this.currentAimByFighter[fighter.key] = {
-      x: aiInput.aimX,
-      y: aiInput.aimY,
-    };
-    fighter.facing = fpAtan2(
-      fp.fromFloat(aiInput.aimY - fighter.y),
-      fp.fromFloat(aiInput.aimX - fighter.x),
-    );
-    this.targetFighter.moveBy(aiInput);
-    this.targetFighter.postUpdate(this.fighterActionContext(fighter));
-    this.targetFighter.handleReload(aiInput.reloadPressed);
-
-    const ctx = this.fighterActionContext(fighter);
-    if (aiInput.bombPressed) {
-      const previousTimeStopUntil = fighter.timeStopUntil;
-      this.targetFighter.useBomb(ctx, aiInput.aimX, aiInput.aimY);
-      if (
-        fighter.activeCharacter.bombId === "sakuya_time_stop" &&
-        fighter.timeStopUntil > previousTimeStopUntil
-      ) {
-        this.pauseActiveCardCooldowns(
-          fighter.timeStopUntil - previousTimeStopUntil,
-        );
-      }
+    this.collaborateExtra = result.extra;
+    if (result.shouldClearHazards) {
+      this.clearCollaborateTransitionHazards();
     }
-    if (aiInput.shootPressed) {
-      this.targetFighter.fire(ctx, aiInput.aimX, aiInput.aimY);
+    if (result.openedShop) {
+      this.resetCollaborateShopActiveCards();
+      this.recoverDeadCollaborateShopPlayers();
     }
+    return result.handled;
   }
 
-  private stepTargetSimple(): void {
-    const fighter = this.target;
-    if (fighter.movementLockedUntil === 0) {
-      // Sinusoidal movement pattern for the simple AI target
-      const fpFrame = fp.fromInt(this.frame);
-      const fpSinOffset = fp.mul(
-        fp.sin(fp.div(fpFrame, fp.fromInt(36))),
-        fp.fromFloat(1.6),
-      );
-      const fpCosOffset = fp.mul(
-        fp.cos(fp.div(fpFrame, fp.fromInt(50))),
-        fp.fromFloat(1.2),
-      );
-      fighter.x = fp.toFloat(
-        fpClamp(
-          fp.add(fp.fromFloat(fighter.x), fpSinOffset),
-          fp.fromInt(780),
-          fp.fromInt(1150),
-        ),
-      );
-      fighter.y = fp.toFloat(
-        fpClamp(
-          fp.add(fp.fromFloat(fighter.y), fpCosOffset),
-          fp.fromInt(72),
-          fp.fromInt(600),
-        ),
-      );
-    }
-    fighter.facing = fpAtan2(
-      fp.fromFloat(this.player.y - fighter.y),
-      fp.fromFloat(this.player.x - fighter.x),
+  private resetCollaborateShopActiveCards(): void {
+    resetCollaborateShopActiveCardState({
+      frame: this.frame,
+      playerFighter: this.playerFighter,
+      targetFighter: this.targetFighter,
+      registerActiveCardUse: (fighter) => {
+        this.activeCardCooldowns.register(fighter.state, this.frame);
+      },
+    });
+  }
+
+  private processCollaborateShopInputs(
+    firstInput: BattleInputState,
+    secondInput: BattleInputState | undefined,
+    firstIsPlayer: boolean,
+  ): void {
+    this.collaborateExtra = processCollaborateShopInputState({
+      extra: this.collaborateExtra,
+      firstInput,
+      secondInput,
+      firstIsPlayer,
+      playerFighter: this.playerFighter,
+      targetFighter: this.targetFighter,
+      pointManager: this.pointManager,
+      frame: this.frame,
+      processActiveCardSwitch: (fighter, activeCardSwitchId) =>
+        this.processActiveCardSwitch(fighter, activeCardSwitchId),
+      isFighterDefeated: (fighter) => this.isFighterDefeated(fighter.state),
+      registerActiveCardUse: (fighter) => {
+        this.activeCardCooldowns.register(fighter.state, this.frame);
+      },
+    });
+  }
+
+  private processActiveCardSwitch(
+    fighter: BattleFighter,
+    activeCardSwitchId: string | undefined,
+  ): void {
+    if (!activeCardSwitchId) return;
+    const card = fighter.state.abilityCards.find(
+      (candidate) => candidate.id === activeCardSwitchId,
     );
-    this.currentAimByFighter[fighter.key] = {
-      x: this.player.x,
-      y: this.player.y,
-    };
-    this.targetFighter.postUpdate(this.fighterActionContext(fighter));
-    const shootPressed = this.frame % 72 === 0;
-    if (shootPressed) {
-      this.targetFighter.fire(
-        this.fighterActionContext(fighter),
-        this.player.x,
-        this.player.y,
-      );
-    }
-    this.lastTargetInput = {
-      moveX: Math.sin(this.frame / 36) > 0.01 ? 1 : Math.sin(this.frame / 36) < -0.01 ? -1 : 0,
-      moveY: Math.cos(this.frame / 50) > 0.01 ? 1 : Math.cos(this.frame / 50) < -0.01 ? -1 : 0,
-      aimX: Math.trunc(this.player.x),
-      aimY: Math.trunc(this.player.y),
-      shootPressed,
-      bombPressed: false,
-      activeCardPressed: false,
-      reloadPressed: false,
-      alternateHeld: false,
-      infoHeld: false,
-    };
+    if (!card || card.kind !== "active") return;
+    if (fighter.state.activeCard?.id === card.id) return;
+    fighter.setActiveAbilityCard(card);
+    this.activeCardCooldowns.register(fighter.state, this.frame);
+  }
+
+  private recoverDeadCollaborateShopPlayers(): void {
+    this.collaborateExtra = recoverDeadCollaborateShopPlayerState({
+      extra: this.collaborateExtra,
+      playerFighter: this.playerFighter,
+      targetFighter: this.targetFighter,
+      isFighterDefeated: (fighter) => this.isFighterDefeated(fighter.state),
+    });
   }
 
   private onProjectileHit(
@@ -697,59 +792,98 @@ export class BattleModel {
       FighterKey
     >,
   ): boolean {
-    const { owner, victim } = ctx;
-    if (victim.key === "Neutral") {
-      const mob = this.neutralMobs.find(
-        (candidate) => candidate.id === neutralMobIdFromHitTarget(victim),
-      );
-      const mobDamage = ctx.projectile.damage;
-      if (!mob) {
-        return false;
-      }
-      const wasActive = mob.state.active;
-      const result = mob.onProjectileHit(mobDamage);
-      if (result === "ignored") {
-        return false;
-      }
-      if (wasActive && !mob.state.active) {
-        mob.onDeath(owner);
-        this.dropPointFromMob(mob.state);
-        mob.onDeathEffect();
-      }
-      return true;
-    }
-    const damage = ctx.damage;
-    const fighterState = victim.key === "Player1" ? this.player : this.target;
-    const victimFighter =
-      victim.key === "Player1" ? this.playerFighter : this.targetFighter;
-    const attackerCards =
-      owner === "Player1"
-        ? this.playerFighter.cardDefinitions()
-        : owner === "Player2"
-          ? this.targetFighter.cardDefinitions()
-          : [];
-    const result = victimFighter.onProjectileHit({
-      owner,
-      victim: fighterState,
+    return resolveProjectileHit({
+      ctx,
+      rules: this.rules,
       player: this.player,
       target: this.target,
+      playerFighter: this.playerFighter,
+      targetFighter: this.targetFighter,
+      neutralMobManager: this.neutralMobManager,
       stats: this.stats,
       frame: this.frame,
-      damage,
-      actionContext: this.fighterActionContext(fighterState),
-      attackerCards,
+      createActionContext: (fighter) => this.fighterActionContext(fighter),
+      handleNeutralMobKilled: (mob, source) =>
+        this.handleNeutralMobKilled(mob, source),
+      cancelTimeStop: (fighter) => this.cancelTimeStop(fighter),
+      handleFighterDefeated: (fighter) => this.handleFighterDefeated(fighter),
     });
-    if (result === "ignored") {
-      return false;
+  }
+
+  private handleFighterDefeated(fighter: FighterState): void {
+    if (this.battleMode !== "collaborate") {
+      this.finishBattle(
+        fighter.key === "Player1" ? "versus_player2" : "versus_player1",
+      );
+      return;
     }
-    if (fighterState.timeStopUntil > 0) {
-      this.cancelTimeStop(fighterState);
+
+    fighter.deadUntil = Number.MAX_SAFE_INTEGER;
+    fighter.actionLockedUntil = Number.MAX_SAFE_INTEGER;
+    fighter.nonFireActionLockedUntil = Number.MAX_SAFE_INTEGER;
+    fighter.movementLockedUntil = Number.MAX_SAFE_INTEGER;
+    fighter.switchLockedUntil = Number.MAX_SAFE_INTEGER;
+    fighter.reloadRemaining = 0;
+
+    this.evaluateCollaborateDefeat();
+  }
+
+  private evaluateCollaborateDefeat(): void {
+    if (
+      this.battleMode !== "collaborate" ||
+      this.collaborateExtra?.bossDefeated
+    ) {
+      return;
     }
-    if (result === "game-over") {
-      this.gameOver = true;
-      return true;
+    if (
+      this.isFighterDefeated(this.player) &&
+      this.isFighterDefeated(this.target)
+    ) {
+      this.updateCollaborateResult("defeat");
+      this.finishBattle("collaborate_defeat");
     }
-    return true;
+  }
+
+  private evaluateCollaborateVictory(): void {
+    if (
+      this.battleMode !== "collaborate" ||
+      !this.collaborateExtra?.bossDefeated
+    ) {
+      return;
+    }
+    this.updateCollaborateResult("victory");
+    this.finishBattle("collaborate_victory");
+  }
+
+  private updateCollaborateResult(state: "victory" | "defeat"): void {
+    if (!this.collaborateExtra) return;
+    if (this.collaborateExtra.state === state) return;
+    this.collaborateExtra = {
+      ...this.collaborateExtra,
+      state,
+    };
+  }
+
+  private finishBattle(result: BattleResult): void {
+    this.gameOver = true;
+    this.result = result;
+  }
+
+  private isFighterDefeated(fighter: FighterState): boolean {
+    return fighter.lives <= 0 && fighter.deadUntil > 0;
+  }
+
+  private legacyResultFromSnapshot(
+    snapshot: BattleModelSnapshot,
+  ): BattleResult {
+    if (this.battleMode === "collaborate") {
+      return snapshot.collaborateExtra?.state === "victory"
+        ? "collaborate_victory"
+        : "collaborate_defeat";
+    }
+    return snapshot.target.deaths > snapshot.player.deaths
+      ? "versus_player1"
+      : "versus_player2";
   }
 
   private onProjectileGraze(
@@ -759,30 +893,14 @@ export class BattleModel {
       FighterKey
     >,
   ): void {
-    const { owner, victim, projectile } = ctx;
-    if (victim.key !== "Player1" && victim.key !== "Player2") {
-      return;
-    }
-    if (owner !== "Neutral" && owner === victim.key) {
-      return;
-    }
-    const fighter = victim.key === "Player1" ? this.player : this.target;
-    if (
-      fighter.deadUntil > 0 ||
-      fighter.grazedProjectileIds.includes(projectile.id)
-    ) {
-      return;
-    }
-    fighter.grazedProjectileIds = [
-      ...fighter.grazedProjectileIds,
-      projectile.id,
-    ];
-    fighter.pointCount = clampPointCount(
-      fighter.pointCount +
-        (owner === "Neutral"
-          ? NEUTRAL_PROJECTILE_GRAZE_POINT_REWARD
-          : ENEMY_PROJECTILE_GRAZE_POINT_REWARD),
-    );
+    resolveProjectileGraze({
+      ctx,
+      rules: this.rules,
+      player: this.player,
+      target: this.target,
+      addCollaborateScore: (key, value) =>
+        this.addCollaborateScore(key, value),
+    });
   }
 
   private cancelTimeStop(caster: FighterState): void {
@@ -796,92 +914,29 @@ export class BattleModel {
     for (const projectile of this.projectiles) {
       this.ticker.resumeProjectileTimeline(projectile, remainingPauseTicks);
     }
-    this.resumeActiveCardCooldowns(remainingPauseTicks);
-  }
-
-  private registerActiveCardCooldown(fighter: FighterState): void {
-    const group = activeCardCooldownGroup(fighter.key);
-    this.ticker.removeGroup(group);
-    if (fighter.activeCardCooldownUntil > 0) {
-      this.ticker.register(this.frame + fighter.activeCardCooldownUntil, group);
-    }
-  }
-
-  private syncActiveCardCooldownsFromTicker(): void {
-    this.syncActiveCardCooldownFromTicker(this.player);
-    this.syncActiveCardCooldownFromTicker(this.target);
-  }
-
-  private syncActiveCardCooldownFromTicker(fighter: FighterState): void {
-    const group = activeCardCooldownGroup(fighter.key);
-    if (fighter.activeCardCooldownUntil <= 0) {
-      fighter.activeCardCooldownUntil = 0;
-      this.ticker.removeGroup(group);
-      return;
-    }
-
-    const remaining = Math.max(
-      0,
-      this.ticker.getRemainingTicks(group) - this.timeStopRemaining(),
+    this.activeCardCooldowns.resume(
+      [this.player, this.target],
+      remainingPauseTicks,
     );
-    fighter.activeCardCooldownUntil = remaining;
-    if (remaining <= 0) {
-      this.ticker.removeGroup(group);
-    }
-  }
-
-  private restoreActiveCardCooldownTimer(fighter: FighterState): void {
-    const group = activeCardCooldownGroup(fighter.key);
-    if (fighter.activeCardCooldownUntil <= 0) {
-      fighter.activeCardCooldownUntil = 0;
-      this.ticker.removeGroup(group);
-      return;
-    }
-
-    const tickerRemaining = this.ticker.getRemainingTicks(group);
-    if (tickerRemaining > 0) {
-      fighter.activeCardCooldownUntil = Math.max(
-        0,
-        tickerRemaining - this.timeStopRemaining(),
-      );
-      return;
-    }
-
-    this.ticker.register(
-      this.frame + fighter.activeCardCooldownUntil + this.timeStopRemaining(),
-      group,
-    );
-  }
-
-  private timeStopRemaining(): number {
-    return Math.max(this.player.timeStopUntil, this.target.timeStopUntil);
-  }
-
-  private pauseActiveCardCooldowns(ticks: number): void {
-    if (ticks <= 0) return;
-    this.ticker.pauseGroup(activeCardCooldownGroup("Player1"), ticks);
-    this.ticker.pauseGroup(activeCardCooldownGroup("Player2"), ticks);
-    this.syncActiveCardCooldownsFromTicker();
-  }
-
-  private resumeActiveCardCooldowns(ticks: number): void {
-    if (ticks <= 0) return;
-    this.ticker.resumeGroup(activeCardCooldownGroup("Player1"), ticks);
-    this.ticker.resumeGroup(activeCardCooldownGroup("Player2"), ticks);
-    this.syncActiveCardCooldownsFromTicker();
   }
 
   private fighterActionContext(self: FighterState): CharacterActionContext {
-    const frame = this.frame;
-    return {
-      frame,
+    return buildCharacterActionContext({
+      frame: this.frame,
       self,
       opponent: self.key === "Player1" ? this.target : this.player,
+      enemyTargets:
+        this.battleMode === "collaborate"
+          ? this.currentEnemyTargetsFor(self.key)
+          : undefined,
       projectiles: this.projectiles,
       effects: this.effects,
       stats: this.stats,
+      consumeAim: () => {
+        this.aimConsumedThisFrame = true;
+      },
       spawnBullet: (params) => {
-        const spawnFrame = params.frame ?? frame;
+        const spawnFrame = params.frame ?? this.frame;
         const owner = params.owner === "Player1" ? this.player : this.target;
         const pauseTicks =
           params.pausedUntil === undefined ? owner.projectilePauseUntil : 0;
@@ -902,7 +957,7 @@ export class BattleModel {
         });
       },
       spawnLaser: (params) => {
-        const spawnFrame = params.frame ?? frame;
+        const spawnFrame = params.frame ?? this.frame;
         const owner = params.owner === "Player1" ? this.player : this.target;
         const pauseTicks =
           params.pausedUntil === undefined ? owner.projectilePauseUntil : 0;
@@ -923,7 +978,7 @@ export class BattleModel {
         });
       },
       spawnSegment: (params) => {
-        const spawnFrame = params.frame ?? frame;
+        const spawnFrame = params.frame ?? this.frame;
         const owner = params.owner === "Player1" ? this.player : this.target;
         const pauseTicks =
           params.pausedUntil === undefined ? owner.projectilePauseUntil : 0;
@@ -974,211 +1029,142 @@ export class BattleModel {
       pauseProjectileTimeline: (projectile, ticks) => {
         this.ticker.pauseProjectileTimeline(projectile, ticks);
       },
-    };
+    });
   }
 
   private neutralMobActionContext(): NeutralMobActionContext<
     BulletProjectileParams,
     LaserProjectileParams
   > {
-    const frame = this.frame;
-    return {
-      frame,
+    return buildNeutralMobActionContext({
+      frame: this.frame,
+      arenaBounds: this.arenaBounds,
       player: { x: this.player.x, y: this.player.y },
       target: { x: this.target.x, y: this.target.y },
-      spawnBullet: (params: BulletProjectileParams) => {
-        const spawnParams = {
-          ...params,
-          owner: "Neutral" as const,
-          sourceCharacterId: undefined,
-          frame: params.frame ?? frame,
-        };
+      spawnBullet: (params) => {
         this.pendingSpawns.push(() => {
-          this.projectileSystem.spawnBullet(this.projectiles, spawnParams);
+          this.projectileSystem.spawnBullet(this.projectiles, params);
         });
       },
-      spawnLaser: (params: LaserProjectileParams) => {
-        const spawnParams = {
-          ...params,
-          owner: "Neutral" as const,
-          sourceCharacterId: undefined,
-          frame: params.frame ?? frame,
-        };
+      spawnLaser: (params) => {
         this.pendingSpawns.push(() => {
-          this.projectileSystem.spawnLaser(this.projectiles, spawnParams);
+          this.projectileSystem.spawnLaser(this.projectiles, params);
         });
       },
-    };
-  }
-
-  mobSpawnerState(): NeutralMobSpawnerState | undefined {
-    return this.mobSpawner?.snapshot();
+    });
   }
 
   private stepMobSpawner(): void {
-    if (!this.mobSpawner) return;
-    // During time stop, freeze spawner (no new mobs, no volley scheduling)
-    if (this.player.timeStopUntil > 0 || this.target.timeStopUntil > 0) return;
-    this.mobSpawner.step({
+    this.neutralMobManager.stepSpawner({
       frame: this.frame,
       player: this.player,
       target: this.target,
-      neutralMobs: this.neutralMobs,
-      allocateMobId: (params) => this.allocateNeutralMobId(params),
-      spawnMob: (mob) => this.addNeutralMob(mob),
+      arenaBounds: this.arenaBounds,
+      timeStopped: this.timeStopped(),
+      collaborateExtra: this.collaborateExtra,
+      updateCollaborateExtra: (updater) => {
+        if (!this.collaborateExtra) return;
+        this.collaborateExtra = updater(this.collaborateExtra);
+      },
+      beginCollaborateTransition: (target, type) => {
+        this.beginCollaborateTransition(target, type);
+      },
     });
   }
 
   private stepNeutralMobs(): void {
-    this.sortNeutralMobs();
-    const timeStopped =
-      this.player.timeStopUntil > 0 || this.target.timeStopUntil > 0;
-    if (timeStopped) {
-      // During time stop: update previous positions for interpolation, freeze everything else
-      for (const mob of this.neutralMobs) {
-        mob.state.previousX = mob.state.x;
-        mob.state.previousY = mob.state.y;
-      }
-      return;
-    }
-    for (const mob of this.neutralMobs) {
-      const wasActive = mob.state.active;
-      mob.step(this.neutralMobActionContext());
-      if (wasActive && !mob.state.active) {
-        mob.onDeath(null);
-        mob.onDeathEffect();
-      }
-    }
-    this.removeInactiveNeutralMobs();
-  }
-
-  private sortNeutralMobs(): void {
-    this.neutralMobs.sort((left, right) => left.id - right.id);
-  }
-
-  private sortPoints(): void {
-    this.points.sort((left, right) => left.id - right.id);
+    this.neutralMobManager.stepMobs({
+      timeStopped:
+        this.timeStopped() || this.collaborateExtra?.shop.open === true,
+      createActionContext: () => this.neutralMobActionContext(),
+      onSpecialMobDefeated: (mob) => this.handleNeutralMobKilled(mob),
+    });
   }
 
   private removeInactiveNeutralMobs(): void {
-    this.neutralMobs.splice(
-      0,
-      this.neutralMobs.length,
-      ...this.neutralMobs.filter((mob) => mob.state.active),
-    );
+    this.neutralMobManager.removeInactive();
+    this.evaluateCollaborateVictory();
   }
 
   private stepPoints(): void {
-    this.sortPoints();
-    const timeStopped =
-      this.player.timeStopUntil > 0 || this.target.timeStopUntil > 0;
-    for (const point of this.points) {
-      point.previousX = point.x;
-      point.previousY = point.y;
-      if (point.collectingBy) {
-        point.collectTicksRemaining -= 1;
-        if (point.collectTicksRemaining <= 0) {
-          this.awardPoint(point);
-          point.active = false;
-        }
-        continue;
-      }
-      if (timeStopped) {
-        continue;
-      }
-      point.x = fp.toFloat(
-        fp.add(fp.fromFloat(point.x), fp.fromFloat(point.vx)),
-      );
-      point.y = fp.toFloat(
-        fp.add(fp.fromFloat(point.y), fp.fromFloat(point.vy)),
-      );
-      if (pointIsOutsideArena(point)) {
-        point.active = false;
-        continue;
-      }
-      this.tryCollectPoint(point);
-    }
-    this.points.splice(
-      0,
-      this.points.length,
-      ...this.points.filter((point) => point.active),
-    );
-  }
-
-  private tryCollectPoint(point: PointState): void {
-    for (const fighter of [this.playerFighter, this.targetFighter]) {
-      const state = fighter.state;
-      if (state.deadUntil > 0) {
-        continue;
-      }
-      const fpDistance = fpHypotFp(
-        fp.sub(fp.fromFloat(point.x), fp.fromFloat(state.x)),
-        fp.sub(fp.fromFloat(point.y), fp.fromFloat(state.y)),
-      );
-      if (fp.lte(fpDistance, fp.fromFloat(fighter.getPointCollectRadius()))) {
-        point.collectingBy = state.key;
-        point.collectTicksRemaining = POINT_COLLECT_TICKS;
-        return;
-      }
-    }
-  }
-
-  private awardPoint(point: PointState): void {
-    const fighter =
-      point.collectingBy === "Player1"
-        ? this.player
-        : point.collectingBy === "Player2"
-          ? this.target
-          : undefined;
-    if (fighter) {
-      fighter.pointCount = Math.min(
-        POINT_COUNT_MAX,
-        fighter.pointCount + point.value,
-      );
-    }
+    this.pointManager.step({
+      collectors: [this.playerFighter, this.targetFighter],
+      timeStopped:
+        this.timeStopped() || this.collaborateExtra?.shop.open === true,
+    });
   }
 
   private dropPointFromMob(mob: NeutralMobState): void {
-    const rewardSize = mob.pointRewardSize;
-    if (!rewardSize) {
-      return;
-    }
-    const velocity = pointVelocityFromFrame(this.frame, "low", mob.id);
-    this.addPoint(
-      createPointState({
-        id: this.allocatePointId(),
-        x: mob.x,
-        y: mob.y,
-        rewardSize,
-        vx: velocity.vx,
-        vy: velocity.vy,
-      }),
-    );
+    this.pointManager.dropPointFromMob(this.frame, mob);
   }
 
-  private restoreNeutralMobSnapshots(
-    snapshots: readonly NeutralMobState[],
+  private handleNeutralMobKilled(
+    mob: NeutralMobState,
+    source?: FighterKey | null,
   ): void {
-    const ids = new Set(snapshots.map((snapshot) => snapshot.id));
-    this.neutralMobs.splice(
-      0,
-      this.neutralMobs.length,
-      ...this.neutralMobs.filter((mob) => ids.has(mob.id)),
-    );
-    for (const snapshot of snapshots) {
-      const existing = this.neutralMobs.find(
-        (candidate) => candidate.id === snapshot.id,
+    this.dropPointFromMob(mob);
+    if (source === "Player1" || source === "Player2") {
+      this.addCollaborateScore(
+        source,
+        COLLABORATE_MOB_SCORE_VALUES[mob.class ?? "minion"],
       );
-      if (existing) {
-        existing.restore(snapshot);
-      } else if (this.mobSpawner) {
-        const created = this.mobSpawner.createMobFromSnapshot(snapshot);
-        if (created) {
-          this.neutralMobs.push(created);
-        }
-      }
     }
-    this.sortNeutralMobs();
+    if (this.battleMode !== "collaborate" || mob.class !== "boss") {
+      return;
+    }
+    if (!this.collaborateExtra?.bossDefeated) {
+      this.collaborateExtra = this.collaborateExtra
+        ? { ...this.collaborateExtra, bossDefeated: true }
+        : this.collaborateExtra;
+    }
+    this.evaluateCollaborateVictory();
+  }
+
+  private handleCollectibleAward(award: {
+    readonly collectorKey: FighterKey;
+    readonly point: PointState;
+  }): void {
+    if (
+      this.battleMode !== "collaborate" ||
+      !this.collaborateExtra ||
+      (award.collectorKey !== "Player1" && award.collectorKey !== "Player2")
+    ) {
+      return;
+    }
+    const score =
+      award.point.rewardKind === "money"
+        ? COLLABORATE_MONEY_PICKUP_SCORE_VALUES[award.point.rewardSize]
+        : COLLABORATE_POINT_PICKUP_SCORE_VALUES[award.point.rewardSize];
+    this.addCollaborateScore(award.collectorKey, score);
+    if (award.point.rewardKind === "money") {
+      this.addCollaborateMoney(award.collectorKey, award.point.value);
+    }
+  }
+
+  private addCollaborateMoney(key: "Player1" | "Player2", value: number): void {
+    if (!this.collaborateExtra) return;
+    this.collaborateExtra = {
+      ...this.collaborateExtra,
+      moneyByPlayerId: {
+        ...this.collaborateExtra.moneyByPlayerId,
+        [key]: clampCollaborateCurrency(
+          this.collaborateExtra.moneyByPlayerId[key] + value,
+        ),
+      },
+    };
+  }
+
+  private addCollaborateScore(key: "Player1" | "Player2", value: number): void {
+    if (!this.collaborateExtra || value <= 0) return;
+    this.collaborateExtra = {
+      ...this.collaborateExtra,
+      scoreByPlayerId: {
+        ...this.collaborateExtra.scoreByPlayerId,
+        [key]: clampCollaborateCurrency(
+          this.collaborateExtra.scoreByPlayerId[key] + value,
+        ),
+      },
+    };
   }
 
   private flushDeferredSpawns(): void {
@@ -1196,8 +1182,7 @@ export class BattleModel {
     readonly duration: number;
     readonly followsOwner?: boolean;
   }): void {
-    const ring = createClearRingState({
-      id: this.nextClearRingId++,
+    this.clearRingManager.spawn({
       owner: params.owner,
       x: params.x,
       y: params.y,
@@ -1206,23 +1191,26 @@ export class BattleModel {
       duration: params.duration,
       followsOwner: params.followsOwner,
     });
-    this.clearRings.push(ring);
     this.stepClearRings(this.projectiles);
   }
 
   private stepClearRings(
     projectiles: ProjectileState[] = this.projectiles,
   ): void {
-    stepClearRings({
+    this.clearRingManager.step({
       frame: this.frame,
-      clearRings: this.clearRings,
       projectiles,
       fighters: {
         Player1: this.player,
         Player2: this.target,
         Neutral: undefined,
       },
+      rules: this.rules,
     });
+  }
+
+  private timeStopped(): boolean {
+    return this.player.timeStopUntil > 0 || this.target.timeStopUntil > 0;
   }
 
   private capturePreviousFighterState(): void {
@@ -1254,8 +1242,10 @@ export class BattleModel {
         }
         return !masters.some(
           (master) =>
-            master.owner !== projectile.owner &&
-            hitsBeam(master, projectile.x, projectile.y),
+            this.rules.canProjectileClearProjectile(
+              master.owner,
+              projectile.owner,
+            ) && computeBeamHit(master, projectile.x, projectile.y),
         );
       }),
     );
@@ -1286,40 +1276,19 @@ export class BattleModel {
         y: this.target.y,
         hitRadius: fighterHitRadius(this.target),
       },
-      ...this.neutralMobs
-        .filter((mob) => mob.state.active)
-        .sort((left, right) => left.id - right.id)
-        .map((mob) => ({
-          key: mob.state.key,
-          x: mob.state.x,
-          y: mob.state.y,
-          hitRadius: mob.state.hitRadius,
-          hitWidth: mob.state.hitWidth,
-          hitHeight: mob.state.hitHeight,
-          mobId: mob.id,
-        })),
+      ...this.neutralMobManager.hitTargets(),
     ];
+  }
+
+  private currentEnemyTargetsFor(owner: FighterKey): readonly ProjectileHitTarget[] {
+    return this.currentHitTargets().filter((target) =>
+      this.rules.canProjectileDamageTarget(owner, target.key),
+    );
   }
 }
 
 function fighterHitRadius(fighter: FighterState): number {
   return PLAYER_CORE_RADIUS * fighter.hitCircleRadiusMultiplier;
-}
-
-function neutralMobIdFromHitTarget(
-  target: ProjectileHitTarget,
-): number | undefined {
-  return target.mobId;
-}
-
-function stableNeutralMobId(waveId: number, waveMemberIndex: number): number {
-  const normalizedWaveId = Math.max(0, Math.floor(waveId));
-  const normalizedMemberIndex = Math.max(0, Math.floor(waveMemberIndex));
-  return normalizedWaveId * 1000 + normalizedMemberIndex + 1;
-}
-
-function activeCardCooldownGroup(key: FighterKey): string {
-  return `${ACTIVE_CARD_COOLDOWN_GROUP_PREFIX}:${key}`;
 }
 
 const DEFAULT_BATTLE_LOADOUTS: BattleLoadouts = {
@@ -1337,43 +1306,10 @@ const DEFAULT_BATTLE_LOADOUTS: BattleLoadouts = {
   },
 };
 
-function hitsBeam(beam: ProjectileState, x: number, y: number): boolean {
-  const fpDx = fp.sub(fp.fromFloat(x), fp.fromFloat(beam.x));
-  const fpDy = fp.sub(fp.fromFloat(y), fp.fromFloat(beam.y));
-  const fpAngle = fp.fromFloat(beam.angle);
-  const fpCos = fp.cos(fpAngle);
-  const fpSin = fp.sin(fpAngle);
-
-  const fpForward = fp.add(fp.mul(fpDx, fpCos), fp.mul(fpDy, fpSin));
-  const fpSide = fp.abs(
-    fp.add(fp.mul(fp.negate(fpDx), fpSin), fp.mul(fpDy, fpCos)),
-  );
-
-  if (!Number.isFinite(beam.width)) {
-    return (
-      fp.gte(fpForward, fp.fromInt(0)) &&
-      fp.lte(fpSide, fp.div(fp.fromFloat(beam.height), fp.fromInt(2)))
-    );
-  }
-  return (
-    fp.lte(
-      fp.abs(fpForward),
-      fp.div(fp.fromFloat(beam.width), fp.fromInt(2)),
-    ) && fp.lte(fpSide, fp.div(fp.fromFloat(beam.height), fp.fromInt(2)))
-  );
-}
-
 function loadoutCards(loadout: FighterLoadout) {
   const ids = new Set(loadout.cardIds ?? []);
   if (loadout.activeCardId) {
     ids.add(loadout.activeCardId);
   }
   return Array.from(ids).map((id) => getAbilityCard(id));
-}
-
-function clampPointCount(pointCount: number): number {
-  if (!Number.isFinite(pointCount)) {
-    return 0;
-  }
-  return Math.max(0, Math.min(POINT_COUNT_MAX, Math.floor(pointCount)));
 }

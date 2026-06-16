@@ -2,11 +2,11 @@ import { fp } from "@shaisrc/fixed-point";
 
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
 import {
-  ARENA_HEIGHT,
-  ARENA_WIDTH,
+  DEFAULT_ARENA_BOUNDS,
   DEFAULT_BOMBS,
   PLAYER_CORE_RADIUS,
   speedRankToPixelsPerTick,
+  type ArenaBounds,
 } from "@repo/types";
 
 import type { BattleInputState } from "@repo/types";
@@ -59,6 +59,7 @@ export class BattleFighter {
     activeCard: AbilityCardDefinition | undefined,
     cards: readonly AbilityCardDefinition[] = activeCard ? [activeCard] : [],
     storyModeOverride?: StoryModeOverride,
+    private readonly arenaBounds: ArenaBounds = DEFAULT_ARENA_BOUNDS,
   ) {
     this.storyModeOverride = storyModeOverride;
     this.state = createFighter(
@@ -127,6 +128,37 @@ export class BattleFighter {
     return this.battleCards.map((card) => card.definition);
   }
 
+  acquireAbilityCard(card: AbilityCardDefinition): void {
+    if (this.state.abilityCards.some((existing) => existing.id === card.id)) {
+      return;
+    }
+    const battleCard = createBattleAbilityCard(card);
+    this.battleCards = [...this.battleCards, battleCard];
+    this.state.abilityCards = [...this.state.abilityCards, card];
+    battleCard.onInitialize({
+      self: this.state,
+      resolution: { defaultBombs: this.reviveBombs },
+    });
+  }
+
+  setActiveAbilityCard(card: AbilityCardDefinition | undefined): void {
+    if (card && card.kind !== "active") {
+      return;
+    }
+    if (card && !this.state.abilityCards.some((existing) => existing.id === card.id)) {
+      this.acquireAbilityCard(card);
+    }
+    this.state.activeCard = card;
+    this.activeBattleCard = card ? createBattleAbilityCard(card) : undefined;
+    this.resetActiveCardUsage();
+  }
+
+  resetActiveCardUsage(): void {
+    const useLimit = this.state.activeCard?.useLimit;
+    this.state.activeCardUses = typeof useLimit === "number" ? useLimit : 0;
+    this.state.activeCardCooldownUntil = 0;
+  }
+
   getPointCollectRadius(): number {
     return (
       this.activeCharacter.pointCollectRadius +
@@ -192,7 +224,7 @@ export class BattleFighter {
           fp.mul(fp.fromFloat(input.moveX), fp.fromFloat(speed)),
         ),
         fp.fromFloat(PLAYER_CORE_RADIUS),
-        fp.fromFloat(ARENA_WIDTH - PLAYER_CORE_RADIUS),
+        fp.fromFloat(this.arenaBounds.width - PLAYER_CORE_RADIUS),
       ),
     );
     this.state.y = fp.toFloat(
@@ -202,7 +234,7 @@ export class BattleFighter {
           fp.mul(fp.fromFloat(input.moveY), fp.fromFloat(speed)),
         ),
         fp.fromFloat(PLAYER_CORE_RADIUS),
-        fp.fromFloat(ARENA_HEIGHT - PLAYER_CORE_RADIUS),
+        fp.fromFloat(this.arenaBounds.height - PLAYER_CORE_RADIUS),
       ),
     );
   }
@@ -337,7 +369,10 @@ export class BattleFighter {
     this.characterFor(params.victim.primaryCharacter).onHit(hitContext);
     this.characterFor(params.victim.alternateCharacter).onHit(hitContext);
     for (const card of this.battleCards) {
-      if (this.storyModeOverride?.enabled === true && card.storyModeOverride?.onHit) {
+      if (
+        this.storyModeOverride?.enabled === true &&
+        card.storyModeOverride?.onHit
+      ) {
         card.storyModeOverride.onHit(hitContext);
       } else {
         card.onHit(hitContext);
@@ -412,7 +447,10 @@ export class BattleFighter {
         attacker: params.attackerCards,
       },
       resolution: {
-        defaultBombs: this.storyModeOverride?.enabled === true ? this.reviveBombs : DEFAULT_BOMBS,
+        defaultBombs:
+          this.storyModeOverride?.enabled === true
+            ? this.reviveBombs
+            : DEFAULT_BOMBS,
         ignored: false,
       },
     };

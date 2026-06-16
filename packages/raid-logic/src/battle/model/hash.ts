@@ -1,6 +1,6 @@
 import { fp } from "@shaisrc/fixed-point";
 import type { BattleModel } from ".";
-import type { NeutralMobState } from "@repo/types";
+import type { CollaborateExtraState, NeutralMobState } from "@repo/types";
 import type { ClearRingState } from "./entities/clear-ring";
 import type {
   EffectState,
@@ -32,11 +32,22 @@ const NEUTRAL_MOB_HASHED_KEYS = new Set([
   "MaxHealth",
   "CurrentHealth",
   "pointRewardSize",
+  "moneyRewardSize",
+  "powerRewardSize",
+  "pointRewardDrops",
+  "moneyRewardDrops",
+  "powerRewardDrops",
   "damageTaken",
   "active",
   "ageTicks",
   "sfxFlags",
 ]);
+
+type NeutralMobStateWithRewardDrops = NeutralMobState & {
+  readonly pointRewardDrops?: readonly NeutralMobSpawnerStateValue[];
+  readonly moneyRewardDrops?: readonly NeutralMobSpawnerStateValue[];
+  readonly powerRewardDrops?: readonly NeutralMobSpawnerStateValue[];
+};
 
 class DeterministicHasher {
   private value = 0x811c9dc5;
@@ -82,15 +93,16 @@ export function hashBattleModel(model: BattleModel): number {
   const hasher = new DeterministicHasher();
   hasher.writeNumber(model.frame);
   hasher.writeNumber(model.gameOver ? 1 : 0);
-  hasher.writeNumber(model.getNextNeutralMobId());
-  hasher.writeNumber(model.getNextPointId());
-  hasher.writeNumber(model.getNextClearRingId());
+  hasher.writeNumber(model.neutralMobManager.getNextNeutralMobId());
+  hasher.writeNumber(model.pointManager.getNextPointId());
+  hasher.writeNumber(model.clearRingManager.getNextClearRingId());
   writeFighter(hasher, model.player);
   writeFighter(hasher, model.target);
-  writeNeutralMobs(hasher, model.neutralMobStates());
-  writePoints(hasher, model.pointStates());
+  writeNeutralMobs(hasher, model.neutralMobManager.states());
+  writePoints(hasher, model.pointManager.pointStates());
   writeClearRings(hasher, model.clearRings);
-  writeSpawnerState(hasher, model.mobSpawnerState());
+  writeSpawnerState(hasher, model.neutralMobManager.mobSpawnerState());
+  writeCollaborateExtra(hasher, model.toOutputState().collaborateExtra);
   writeProjectiles(hasher, model.projectiles);
   writeEffects(hasher, model.effects);
   writeStats(hasher, model.stats);
@@ -117,19 +129,22 @@ export function hashBattleModelComponents(
   return {
     frame: hash("frame", (h) => h.writeNumber(model.frame)),
     counters: hash("counters", (h) => {
-      h.writeNumber(model.getNextNeutralMobId());
-      h.writeNumber(model.getNextPointId());
-      h.writeNumber(model.getNextClearRingId());
+      h.writeNumber(model.neutralMobManager.getNextNeutralMobId());
+      h.writeNumber(model.pointManager.getNextPointId());
+      h.writeNumber(model.clearRingManager.getNextClearRingId());
     }),
     player: hash("player", (h) => writeFighter(h, model.player)),
     target: hash("target", (h) => writeFighter(h, model.target)),
     neutralMobs: hash("mobs", (h) =>
-      writeNeutralMobs(h, model.neutralMobStates()),
+      writeNeutralMobs(h, model.neutralMobManager.states()),
     ),
-    points: hash("points", (h) => writePoints(h, model.pointStates())),
+    points: hash("points", (h) => writePoints(h, model.pointManager.pointStates())),
     clearRings: hash("rings", (h) => writeClearRings(h, model.clearRings)),
     spawner: hash("spawner", (h) =>
-      writeSpawnerState(h, model.mobSpawnerState()),
+      writeSpawnerState(h, model.neutralMobManager.mobSpawnerState()),
+    ),
+    collaborateExtra: hash("collab", (h) =>
+      writeCollaborateExtra(h, model.toOutputState().collaborateExtra),
     ),
     projectiles: hash("projs", (h) => writeProjectiles(h, model.projectiles)),
     effects: hash("effects", (h) => writeEffects(h, model.effects)),
@@ -145,6 +160,7 @@ function writeNeutralMobs(
   for (const mob of [...neutralMobs].sort(
     (left, right) => left.id - right.id,
   )) {
+    const rewardMob = mob as NeutralMobStateWithRewardDrops;
     hasher.writeNumber(mob.id);
     hasher.writeString(mob.key);
     hasher.writeString(mob.kind);
@@ -162,6 +178,20 @@ function writeNeutralMobs(
     hasher.writeNumber(mob.MaxHealth);
     hasher.writeNumber(mob.CurrentHealth);
     hasher.writeString(mob.pointRewardSize ?? "");
+    hasher.writeString(mob.moneyRewardSize ?? "");
+    hasher.writeString(mob.powerRewardSize ?? "");
+    writeStateValue(
+      hasher,
+      (rewardMob.pointRewardDrops ?? []) as unknown as NeutralMobSpawnerStateValue,
+    );
+    writeStateValue(
+      hasher,
+      (rewardMob.moneyRewardDrops ?? []) as unknown as NeutralMobSpawnerStateValue,
+    );
+    writeStateValue(
+      hasher,
+      (rewardMob.powerRewardDrops ?? []) as unknown as NeutralMobSpawnerStateValue,
+    );
     hasher.writeNumber(mob.damageTaken ?? 0);
     hasher.writeNumber(mob.active ? 1 : 0);
     hasher.writeNumber(mob.ageTicks);
@@ -197,6 +227,8 @@ function writePoints(
   for (const point of [...points].sort((left, right) => left.id - right.id)) {
     hasher.writeNumber(point.id);
     hasher.writeString(point.prefabId);
+    hasher.writeString(point.rewardKind);
+    hasher.writeString(point.rewardSize);
     writeFixed(hasher, point.x);
     writeFixed(hasher, point.y);
     writeFixed(hasher, point.previousX);
@@ -406,6 +438,21 @@ function writeSpawnerState(
   }
   hasher.writeNumber(1);
   writeStateValue(hasher, state as NeutralMobSpawnerStateValue);
+}
+
+function writeCollaborateExtra(
+  hasher: DeterministicHasher,
+  state: CollaborateExtraState | undefined,
+): void {
+  if (!state) {
+    hasher.writeNumber(0);
+    return;
+  }
+  hasher.writeNumber(1);
+  writeStateValue(
+    hasher,
+    state as unknown as NeutralMobSpawnerStateValue,
+  );
 }
 
 function writeStateValue(

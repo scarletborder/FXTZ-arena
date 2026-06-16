@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ServerMessage } from "@repo/types";
 
 import type { ConnectionManager } from "./client";
+import { dataChannelMessageToPeerServerMessage } from "./handler";
 import { P2pConnection } from "./p2p";
 
 describe("P2pConnection", () => {
@@ -90,15 +91,22 @@ describe("P2pConnection", () => {
     expect(handled).toBe(false);
 
     // Simulate the same packet arriving through the RTC channel mapping.
-    (p2p as unknown as { onMessage: (message: unknown) => void }).onMessage = onMessage;
-    const mapped = (p2p as unknown as { remotePlayerId: () => "Player1" | "Player2" }).remotePlayerId;
-    expect(mapped).toBeDefined();
-    onMessage({
+    const mapped = dataChannelMessageToPeerServerMessage(
+      { localPlayerId: "Player1", extra: {} },
+      {
+        type: "game_over",
+        frame: 42,
+        ackFrame: 40,
+        winnerPlayerId: "Player1",
+      } as unknown as ServerMessage,
+    );
+    expect(mapped).toEqual({
       type: "peer_game_over",
       playerId: "Player2",
       frame: 42,
       ackFrame: 40,
       winnerPlayerId: "Player1",
     });
+    onMessage(mapped);
   });
 });

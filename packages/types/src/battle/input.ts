@@ -11,6 +11,10 @@ export interface BattleInputState {
   readonly reloadPressed: boolean;
   readonly alternateHeld: boolean;
   readonly infoHeld: boolean;
+  readonly transitionReadyPressed?: boolean;
+  readonly shopReadyPressed?: boolean;
+  readonly shopPurchaseItemId?: string;
+  readonly activeCardSwitchId?: string;
 }
 
 export interface PlayerFrameInput {
@@ -25,6 +29,10 @@ export interface PlayerFrameInput {
   readonly reloadPressed: boolean;
   readonly alternateHeld: boolean;
   readonly infoHeld: boolean;
+  readonly transitionReadyPressed?: boolean;
+  readonly shopReadyPressed?: boolean;
+  readonly shopPurchaseItemId?: string;
+  readonly activeCardSwitchId?: string;
 }
 
 export interface FrameInput {

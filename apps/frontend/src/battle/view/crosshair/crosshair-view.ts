@@ -12,11 +12,11 @@ export class CrosshairView {
   private readonly activeCardStatus: CrosshairActiveCardStatus;
   private readonly statusMarkers: CrosshairStatusMarkers;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, textureKey = "cursor") {
     this.crosshair = scene.add
-      .image(640, 360, "cursor")
+      .image(640, 360, textureKey)
       .setOrigin(0.5)
-      .setScale(0.22)
+      .setScale(textureKey === "cursor-x" ? 0.24 : 0.22)
       .setDepth(Depth.Crosshair);
     this.ammoStatus = new CrosshairAmmoStatus(scene);
     this.activeCardStatus = new CrosshairActiveCardStatus(scene);
@@ -24,6 +24,7 @@ export class CrosshairView {
   }
 
   render(params: CrosshairRenderParams): void {
+    this.setVisible(true);
     const barX = params.pointerX + 44;
     const barY = params.pointerY - 28;
     const statusLeft = params.pointerX - 28;
@@ -47,6 +48,13 @@ export class CrosshairView {
       lives: params.lives,
       bombs: params.bombs,
     });
+  }
+
+  setVisible(visible: boolean): void {
+    this.crosshair.setVisible(visible);
+    this.ammoStatus.setVisible(visible);
+    this.activeCardStatus.setVisible(visible);
+    this.statusMarkers.setVisible(visible);
   }
 }
 

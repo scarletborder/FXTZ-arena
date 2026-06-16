@@ -1,15 +1,51 @@
-import type { BattlePlayerId } from "../core";
-import type { PointRewardSize } from "@repo/constants";
+import type { BattlePlayerId, CharacterId } from "../core";
+import type {
+  ArenaBounds,
+  MoneyRewardSize,
+  PointRewardSize,
+  PowerRewardSize,
+} from "@repo/constants";
 
 export type NeutralMobId = number;
 export type NeutralMobBehavior = "move" | "fire" | "switch_form" | "die";
 export type NeutralMobDeathSource = BattlePlayerId | null;
+export type NeutralMobClass = "minion" | "elite" | "boss";
+export type NeutralMobSpellPhase = "non_spell" | "spell_card";
+
+export interface NeutralMobSpellCardDefinitionState {
+  readonly id: string;
+  readonly displayName: string;
+  readonly maxHealth: number;
+  readonly durationTicks: number;
+}
+
+export interface NeutralMobSpellCardState {
+  readonly phase: NeutralMobSpellPhase;
+  readonly spellCardIndex: number;
+  readonly totalSpellCards: number;
+  readonly remainingSpellCards: number;
+  readonly currentHealth: number;
+  readonly maxHealth: number;
+  readonly nonSpellMaxHealth: number;
+  readonly nonSpellThresholdHealth: number;
+  readonly remainingTicks: number;
+  readonly activeSpellCardName?: string;
+  readonly spellCards: readonly NeutralMobSpellCardDefinitionState[];
+}
+
+export interface NeutralMobRewardDropState {
+  readonly size: PointRewardSize | MoneyRewardSize | PowerRewardSize;
+  readonly count?: number;
+}
 
 export interface NeutralMobState {
   readonly id: NeutralMobId;
   readonly key: "Neutral";
   readonly kind: string;
+  readonly class?: NeutralMobClass;
+  readonly displayName?: string;
   readonly textureKey?: string;
+  readonly characterId?: CharacterId;
   x: number;
   y: number;
   previousX: number;
@@ -23,11 +59,17 @@ export interface NeutralMobState {
   MaxHealth: number;
   CurrentHealth: number;
   pointRewardSize?: PointRewardSize;
+  moneyRewardSize?: MoneyRewardSize;
+  powerRewardSize?: PowerRewardSize;
+  pointRewardDrops?: readonly NeutralMobRewardDropState[];
+  moneyRewardDrops?: readonly NeutralMobRewardDropState[];
+  powerRewardDrops?: readonly NeutralMobRewardDropState[];
   damageTaken?: number;
   active: boolean;
   ageTicks: number;
   /** Bitmask of SFX flags for the renderer. */
   sfxFlags: number;
+  spellCard?: NeutralMobSpellCardState;
 }
 
 export interface NeutralMobTargetState {
@@ -37,6 +79,7 @@ export interface NeutralMobTargetState {
 
 export interface NeutralMobActionContext<TBulletParams, TLaserParams> {
   readonly frame: number;
+  readonly arenaBounds: ArenaBounds;
   readonly player: NeutralMobTargetState;
   readonly target: NeutralMobTargetState;
   spawnBullet(params: TBulletParams): void;
@@ -54,9 +97,15 @@ export abstract class NeutralMob<
     return this.state.id;
   }
 
-  abstract move(ctx: NeutralMobActionContext<TBulletParams, TLaserParams>): void;
-  abstract fire(ctx: NeutralMobActionContext<TBulletParams, TLaserParams>): void;
-  abstract switchForm(ctx: NeutralMobActionContext<TBulletParams, TLaserParams>): void;
+  abstract move(
+    ctx: NeutralMobActionContext<TBulletParams, TLaserParams>,
+  ): void;
+  abstract fire(
+    ctx: NeutralMobActionContext<TBulletParams, TLaserParams>,
+  ): void;
+  abstract switchForm(
+    ctx: NeutralMobActionContext<TBulletParams, TLaserParams>,
+  ): void;
   abstract die(ctx: NeutralMobActionContext<TBulletParams, TLaserParams>): void;
   abstract onProjectileHit(damage: number): "accepted" | "ignored";
   abstract onDeath(source: NeutralMobDeathSource): void;

@@ -6,8 +6,8 @@ import {
   ConfirmedFrameHashAccumulator,
 } from "@repo/raid-logic";
 
-import type { BattleSceneData } from "./loadout";
-import { BattleDebugLogger, type DebugFrameLogRecord } from "./logger";
+import type { BattleSceneData } from "../loadout";
+import { BattleDebugLogger, type DebugFrameLogRecord } from "../logger";
 
 const DEBUG_HISTORY_LIMIT = 3600;
 

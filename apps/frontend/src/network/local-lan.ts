@@ -2,6 +2,7 @@ import { SignalingConnection as PublicSignalingConnection, type ClientInfo, type
 import { decodeBase64, encodeStringToBase64 } from "./local-lan/utils/base64";
 import { APP_BUILD_LABEL } from "@repo/constants";
 import type { ClientMessage, PlayerId, PlayerLoadout, ServerMessage } from "@repo/types";
+import { clientMessageToPeerServerMessage, createNetworkServiceContext } from "./handler";
 
 const PUBLIC_SIGNALING_URL = "wss://public.localsend.org/v1/ws";
 
@@ -134,8 +135,12 @@ export class LocalLanSession {
   }
 
   createP2pBridge(targetPeerId: string, localPlayerId: PlayerId): { send(message: ClientMessage): void } {
+    const serviceContext = createNetworkServiceContext(localPlayerId, {
+      transport: "local-lan",
+      targetPeerId,
+    });
     return {
-      send: (message) => this.sendPeerPacket(targetPeerId, localPlayerId, message),
+      send: (message) => this.sendPeerPacket(targetPeerId, serviceContext, message),
     };
   }
 
@@ -225,12 +230,16 @@ export class LocalLanSession {
     this.callbacks.onMatch?.(peer);
   }
 
-  private sendPeerPacket(targetPeerId: string, localPlayerId: PlayerId, message: ClientMessage): void {
+  private sendPeerPacket(
+    targetPeerId: string,
+    serviceContext: ReturnType<typeof createNetworkServiceContext>,
+    message: ClientMessage,
+  ): void {
     if (!this.signaling || !this.client) {
       return;
     }
 
-    const packet = this.clientMessageToServerMessage(localPlayerId, message);
+    const packet = clientMessageToPeerServerMessage(serviceContext, message);
     if (!packet) {
       return;
     }
@@ -241,43 +250,6 @@ export class LocalLanSession {
       targetId: targetPeerId,
       message: packet,
     });
-  }
-
-  private clientMessageToServerMessage(playerId: PlayerId, message: ClientMessage): ServerMessage | null {
-    switch (message.type) {
-      case "p2p_intent":
-        return {
-          type: "peer_p2p_intent",
-          playerId,
-          enabled: message.enabled,
-        };
-      case "p2p_signal":
-        return {
-          type: "peer_p2p_signal",
-          playerId,
-          signal: message.signal,
-        };
-      case "p2p_ready":
-        return {
-          type: "peer_p2p_ready",
-          playerId,
-        };
-      case "loading_done":
-        return {
-          type: "peer_loading_done",
-          playerId,
-        };
-      case "game_over":
-        return {
-          type: "peer_game_over",
-          playerId,
-          frame: message.frame,
-          ackFrame: message.ackFrame,
-          winnerPlayerId: message.winnerPlayerId,
-        };
-      default:
-        return null;
-    }
   }
 
   private sendPayload(targetPeerId: string, payload: LocalPayload): void {

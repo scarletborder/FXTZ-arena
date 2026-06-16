@@ -118,6 +118,7 @@ export function createTextField(
     active = nextActive;
     if (nextActive) {
       activeTextField = control;
+      syncNativeInput();
       if (!wasActive) {
         options.onFocus?.(control);
       }
@@ -247,7 +248,7 @@ export function createTextField(
     redraw();
   });
 
-  container.add([background, label, domElement, hitArea]);
+  container.add([background, label, hitArea, domElement]);
   domElement.addListener(domEvents);
   domElement.on("focusin", onDomFocusIn);
   domElement.on("focusout", onDomFocusOut);

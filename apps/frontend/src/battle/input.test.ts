@@ -18,8 +18,9 @@ vi.mock("phaser", () => ({
   },
 }));
 
-import { createBattleInput, type BattleKeyMap } from "./input";
-import type { BattleMobileControls } from "./keybind";
+import { createBattleInput, type BattleKeyMap } from "./input-controller/input";
+import type { BattleMobileControls } from "./input-controller";
+import { BattleJoystickController, DEFAULT_JOYSTICK_SETTINGS } from "./input-controller/gamepad";
 
 describe("createBattleInput", () => {
   it("truncates mobile aim coordinates before building logic input", () => {
@@ -45,9 +46,37 @@ describe("createBattleInput", () => {
     expect(input.aimX).toBe(312);
     expect(input.aimY).toBe(456);
   });
+
+  it("moves joystick aim from right stick state", () => {
+    const scene = createSceneStub({
+      input: {
+        gamepad: {
+          total: 1,
+          gamepads: [createPadStub({ rightStickX: 1, rightStickY: 0 })],
+        },
+      },
+    });
+    const joystick = new BattleJoystickController(scene, DEFAULT_JOYSTICK_SETTINGS);
+
+    const input = createBattleInput(
+      scene,
+      createKeys(),
+      {
+        joystickControls: joystick,
+        keyboardEnabled: false,
+        pointerEnabled: false,
+        arenaBounds: { width: 1280, height: 720, viewportWidth: 1280, viewportHeight: 720 },
+      },
+    );
+
+    expect(input.aimX).toBe(613);
+    expect(input.aimY).toBe(360);
+    expect(input.pointerX).toBe(613);
+    expect(input.pointerY).toBe(360);
+  });
 });
 
-function createSceneStub() {
+function createSceneStub(overrides: { readonly input?: Record<string, unknown> } = {}) {
   const pointer = {
     x: 0,
     y: 0,
@@ -56,14 +85,42 @@ function createSceneStub() {
     positionToCamera: () => ({ x: 0, y: 0 }),
   };
   return {
-    input: { activePointer: pointer },
+    input: { activePointer: pointer, ...overrides.input },
     cameras: { main: {} },
   } as never;
+}
+
+function createPadStub({
+  rightStickX,
+  rightStickY,
+}: {
+  readonly rightStickX: number;
+  readonly rightStickY: number;
+}) {
+  return {
+    axes: [
+      { getValue: () => 0 },
+      { getValue: () => 0 },
+      { getValue: () => rightStickX },
+      { getValue: () => rightStickY },
+    ],
+    leftStick: { x: 0, y: 0 },
+    rightStick: { x: rightStickX, y: rightStickY },
+    setAxisThreshold: vi.fn(),
+  };
 }
 
 function createKeys(): BattleKeyMap {
   const key = { isDown: false };
   return {
+    moveUp: key,
+    moveLeft: key,
+    moveDown: key,
+    moveRight: key,
+    alternate: key,
+    reload: key,
+    info: key,
+    activeCard: key,
     w: key,
     a: key,
     s: key,

@@ -198,6 +198,8 @@ describe("CpuPlayer Marisa null preset", () => {
         {
           id: 1,
           prefabId: "point_small",
+          rewardKind: "point",
+          rewardSize: "small",
           x: self.x + 150,
           y: self.y,
           previousX: self.x + 150,
@@ -257,6 +259,8 @@ describe("CpuPlayer Marisa null preset", () => {
         {
           id: 1,
           prefabId: "point_small",
+          rewardKind: "point",
+          rewardSize: "small",
           x: self.x + 150,
           y: self.y,
           previousX: self.x + 150,

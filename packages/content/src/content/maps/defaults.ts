@@ -1,12 +1,21 @@
-import { ARENA_HEIGHT, ARENA_WIDTH } from "@repo/constants";
+import {
+  ARENA_HEIGHT,
+  ARENA_WIDTH,
+  COLLABORATE_ARENA_HEIGHT,
+  COLLABORATE_ARENA_WIDTH,
+  COLLABORATE_VIEWPORT_HEIGHT,
+  COLLABORATE_VIEWPORT_WIDTH,
+  PLAYER_SPAWN,
+  TARGET_SPAWN,
+} from "@repo/constants";
 import type { MapDefinition } from "./types";
 
 const STANDARD_SPAWN_POINTS = [
-  { id: "left", x: -ARENA_WIDTH / 4, y: 0, facingAngleTicks: 0 },
+  { id: "left", x: PLAYER_SPAWN.x, y: PLAYER_SPAWN.y, facingAngleTicks: 0 },
   {
     id: "right",
-    x: ARENA_WIDTH / 4,
-    y: 0,
+    x: TARGET_SPAWN.x,
+    y: TARGET_SPAWN.y,
     facingAngleTicks: 30000,
   },
 ] as const;
@@ -23,6 +32,42 @@ const HAKUREI_SHRINE: MapDefinition = {
   bgmKey: "bgm_hakurei-shrine",
   spawnPoints: STANDARD_SPAWN_POINTS,
   mobSpawnerId: "default-a",
+};
+
+const COLLABORATE_TEST_ARENA: MapDefinition = {
+  id: "collaborate_test_arena",
+  name: "合作测试竞技场",
+  width: COLLABORATE_ARENA_WIDTH,
+  height: COLLABORATE_ARENA_HEIGHT,
+  viewportWidth: COLLABORATE_VIEWPORT_WIDTH,
+  viewportHeight: COLLABORATE_VIEWPORT_HEIGHT,
+  background: {
+    textureKey: "map-bg-collaborate-test-arena",
+    assetPath: "assets/bg/arena_standard.jpg",
+  },
+  bgmKey: "bgm_hakurei-shrine",
+  spawnPoints: [
+    {
+      id: "left",
+      x: 1200,
+      y: 720,
+      facingAngleTicks: 0,
+    },
+    {
+      id: "right",
+      x: 1200,
+      y: 720,
+      facingAngleTicks: 30000,
+    },
+  ],
+  mobSpawnerId: "example-collaborate-mob-spawner",
+};
+
+const COLLABORATE_TEST_ARENA_2: MapDefinition = {
+  ...COLLABORATE_TEST_ARENA,
+  id: "collaborate_test_arena_2",
+  name: "合作测试竞技场2",
+  mobSpawnerId: "collaborate-test-arena-2-mob-spawner",
 };
 
 export const DEFAULT_MAPS: readonly MapDefinition[] = [
@@ -75,14 +120,31 @@ export const DEFAULT_MAPS: readonly MapDefinition[] = [
     spawnPoints: STANDARD_SPAWN_POINTS,
     mobSpawnerId: "shoot_range_spawn",
   },
+  COLLABORATE_TEST_ARENA,
+  COLLABORATE_TEST_ARENA_2,
 ];
 
-export function getCombatMapDefinition(mapId: string): MapDefinition | undefined {
+export function getCombatMapDefinition(
+  mapId: string,
+): MapDefinition | undefined {
   return DEFAULT_MAPS.find((map) => map.id === mapId);
 }
 
 export function getAvailableCombatMaps(): readonly MapDefinition[] {
-  return DEFAULT_MAPS.filter((map) => map.id !== "shoot_range");
+  return getAvailableVersusMaps();
+}
+
+export function getAvailableVersusMaps(): readonly MapDefinition[] {
+  return DEFAULT_MAPS.filter(
+    (map) =>
+      map.id !== "shoot_range" &&
+      map.id !== "collaborate_test_arena" &&
+      map.id !== "collaborate_test_arena_2",
+  );
+}
+
+export function getAvailableCollaborateMaps(): readonly MapDefinition[] {
+  return [COLLABORATE_TEST_ARENA, COLLABORATE_TEST_ARENA_2];
 }
 
 export const get_available_combat_maps = getAvailableCombatMaps;

@@ -12,6 +12,8 @@ type NodeServer = HttpServer | HttpsServer;
 interface HttpMetadata {
   readonly fingerprint?: string;
   readonly webTransportEnabled: boolean;
+  readonly version?: string;
+  readonly collaborateEnabled?: boolean;
 }
 
 export interface WsTransportTlsOptions {
@@ -35,6 +37,19 @@ function handleHttpRequest(req: IncomingMessage, res: ServerResponse, meta: Http
       "cache-control": "no-store",
     });
     res.end(`${meta.fingerprint}\n`);
+    return;
+  }
+  if (req.method === "GET" && path === "/version") {
+    res.writeHead(200, {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      "access-control-allow-origin": "*",
+    });
+    res.end(JSON.stringify({
+      version: meta.version ?? "unknown",
+      webTransport: meta.webTransportEnabled,
+      collaborate: meta.collaborateEnabled === true,
+    }));
     return;
   }
   if (req.method === "GET" && path === "/echo") {

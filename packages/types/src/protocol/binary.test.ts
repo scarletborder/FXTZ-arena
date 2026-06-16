@@ -91,6 +91,69 @@ describe("protocol binary codec", () => {
     expect(decodeProtocolMessage(encodeProtocolMessage(message))).toEqual(message);
   });
 
+  it("round-trips transition ready inputs", () => {
+    const message: ClientMessage = {
+      type: "input_frame",
+      frame: 18,
+      ackFrame: 17,
+      moveX: 0,
+      moveY: 0,
+      aimX: 400,
+      aimY: 300,
+      shootPressed: false,
+      bombPressed: false,
+      activeCardPressed: false,
+      reloadPressed: false,
+      alternateHeld: false,
+      infoHeld: false,
+      transitionReadyPressed: true,
+    };
+
+    expect(decodeProtocolMessage(encodeProtocolMessage(message))).toEqual(message);
+  });
+
+  it("round-trips collaborate shop inputs", () => {
+    const message: ClientMessage = {
+      type: "input_frame",
+      frame: 28,
+      ackFrame: 27,
+      moveX: 0,
+      moveY: 0,
+      aimX: 400,
+      aimY: 300,
+      shootPressed: false,
+      bombPressed: false,
+      activeCardPressed: false,
+      reloadPressed: false,
+      alternateHeld: false,
+      infoHeld: false,
+      shopReadyPressed: true,
+      shopPurchaseItemId: "shop-1:card:multi_shot",
+      activeCardSwitchId: "spirit_strike_card",
+      UnreliableLinkExtra: {
+        redundantInputs: [
+          {
+            frame: 27,
+            moveX: 0,
+            moveY: 0,
+            aimX: 401,
+            aimY: 301,
+            shootPressed: false,
+            bombPressed: false,
+            activeCardPressed: false,
+            reloadPressed: false,
+            alternateHeld: false,
+            infoHeld: false,
+            shopPurchaseItemId: "shop-1:life",
+            activeCardSwitchId: "spirit_strike_card",
+          },
+        ],
+      },
+    };
+
+    expect(decodeProtocolMessage(encodeProtocolMessage(message))).toEqual(message);
+  });
+
   it("keeps low-frequency messages in binary-framed JSON", () => {
     const message: ClientMessage = {
       type: "hello",

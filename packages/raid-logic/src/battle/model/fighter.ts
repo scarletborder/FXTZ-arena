@@ -1,5 +1,5 @@
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
-import { DEFAULT_BOMBS } from "@repo/types";
+import { DEFAULT_BOMBS, DEFAULT_LIVES } from "@repo/types";
 
 import type { FighterKey, FighterState } from "@repo/content";
 
@@ -21,7 +21,7 @@ export function createFighter(
     previousY: y,
     previousFacing: 0,
 
-    lives: 2,
+    lives: DEFAULT_LIVES,
     bombs: DEFAULT_BOMBS,
     pointCount: 0,
 

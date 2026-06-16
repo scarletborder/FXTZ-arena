@@ -1,4 +1,4 @@
-import AudioCmd from "../commands/AudioCmd";
+import AudioCmd from "../../commands/AudioCmd";
 import type { BattleOutputState } from "@repo/raid-logic";
 import type { FighterKey, ProjectileState } from "@repo/content";
 import type { NeutralMobState } from "@repo/types";

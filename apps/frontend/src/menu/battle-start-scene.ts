@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { IS_DESKTOP_APP } from "@repo/constants";
 import { t } from "@repo/i18n";
-import type { PlayerId } from "@repo/types";
+import type { BattleRoomMode, PlayerId } from "@repo/types";
 
 import type { ConnectionStatus } from "../network";
 import { uiSettings } from "../store/settings";
@@ -31,7 +31,7 @@ export class BattleStartScene extends Phaser.Scene {
     this.drawIndicator("disconnected");
 
     drawPanel(this, 72, 176, 520, 432, t("battle_start.online"));
-    drawPanel(this, 686, 176, 520, 432, t("battle_start.local"));
+    drawPanel(this, 686, 146, 520, 492, t("battle_start.local"));
     this.roomListBtn = createFightButton(this, 332, 272, 330, 70, t("battle_start.room_list"), () => this.scene.start("room-list"), { enabled: false, subLabel: t("battle_start.browse_rooms") });
     this.localLanBtn = createFightButton(this, 332, 374, 330, 70, t("battle_start.local_lan"), () => this.scene.start("local-lan"), { enabled: false, subLabel: t("battle_start.discover_lan_players") });
     createFightButton(this, 332, 462, 330, 62, t("battle_start.udp_connect"), () => this.scene.start("udp-connect"), {
@@ -40,13 +40,18 @@ export class BattleStartScene extends Phaser.Scene {
       accent: 0x26c6da,
     });
 
-    createFightButton(this, 946, 298, 360, 86, t("battle_start.story_mode"), () => this.scene.start("story-start-loadout"), { accent: 0x5c7185 });
-    createFightButton(this, 946, 416, 360, 86, t("battle_start.ai_battle"), () => showMapDialog(this, this.mapDialogContainer, (container) => {
+    createFightButton(this, 946, 274, 360, 74, t("battle_start.story_mode"), () => this.scene.start("story-start-loadout"), { accent: 0x5c7185 });
+    createFightButton(this, 946, 372, 360, 74, t("battle_start.local_single_battle"), () => showMapDialog(this, this.mapDialogContainer, (container) => {
+      this.mapDialogContainer = container;
+    }, (mapId) => {
+      this.scene.start("select", { mode: "local_single", mapId } satisfies SelectionData);
+    }, { accent: 0x26c6da }), { subLabel: t("battle_start.local_single_battle_hint"), accent: 0x26c6da });
+    createFightButton(this, 946, 470, 360, 74, t("battle_start.ai_battle"), () => showMapDialog(this, this.mapDialogContainer, (container) => {
       this.mapDialogContainer = container;
     }, (mapId, cpuLoadoutPresetId) => {
       this.scene.start("select", { mode: "ai", mapId, cpuLoadoutPresetId } satisfies SelectionData);
     }, { showCpuLoadout: true }), { subLabel: t("battle_start.choose_loadout"), accent: 0xe33d44 });
-    createFightButton(this, 946, 534, 360, 86, t("battle_start.training"), () => this.scene.start("select", { mode: "training" } satisfies SelectionData), { subLabel: t("battle_start.no_cost_limit"), accent: 0x26c6da });
+    createFightButton(this, 946, 568, 360, 74, t("battle_start.training"), () => this.scene.start("select", { mode: "training" } satisfies SelectionData), { subLabel: t("battle_start.no_cost_limit"), accent: 0x5c7185 });
 
     const updateConnectionState = (s: ConnectionStatus) => {
       const connected = s === "connected";
@@ -85,7 +90,11 @@ export class BattleStartScene extends Phaser.Scene {
     if (m.type === "room_joined") {
       const playerId = m.playerId as PlayerId;
       const roomId = m.roomId as string;
-      if (playerId && roomId) this.scene.start("lobby", { mode: "online", roomId, playerId } satisfies SelectionData);
+      const battleMode = m.battleMode as BattleRoomMode | undefined;
+      if (battleMode) {
+        connectionManager.battleMode = battleMode;
+      }
+      if (playerId && roomId) this.scene.start("lobby", { mode: "online", roomId, playerId, battleMode } satisfies SelectionData);
     } else if (m.type === "error") {
       this.showToast(`${String(m.code)}: ${String(m.message)}`);
     }

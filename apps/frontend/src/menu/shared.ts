@@ -1,6 +1,7 @@
 import { getAbilityCardDefinition, getCharacterDefinition, type AbilityCardDefinition, type CharacterDefinition } from "@repo/content";
 import { t } from "@repo/i18n";
-import type { PlayerId, PlayerLoadout } from "@repo/types";
+import type { BattleResult } from "@repo/content";
+import type { BattleRoomMode, PlayerId, PlayerLoadout } from "@repo/types";
 
 import type { BattleSceneData } from "../battle/loadout";
 import type { ReplayFile } from "../replay/types";
@@ -27,7 +28,8 @@ export type SceneKey =
   | "replay-record"
   | "replay-playback"
   | "spectator-loading";
-export type SelectionMode = "ai" | "training" | "online" | "local";
+export type SelectionMode = "ai" | "training" | "online" | "local" | "local_single" | "debug_cooperate";
+export type DebugCooperateJumpTarget = "start" | "elite" | "boss";
 export type CodexTab = "characters" | "cards";
 export type CpuLoadoutPresetId = "marisa_solo" | "sakuya_cirno" | "kaguya_reisen";
 
@@ -39,8 +41,17 @@ export interface SelectionData {
   readonly roomId?: string;
   /** Set when mode === "online" — this client's player slot. */
   readonly playerId?: PlayerId;
+  /** Battle room mode for online selection rules. */
+  readonly battleMode?: BattleRoomMode;
+  /** Debug co-op entry point. */
+  readonly debugCooperate?: {
+    readonly target: DebugCooperateJumpTarget;
+    readonly eliteWaveIndex?: number;
+  };
   /** Optional callback used by local LAN to hand the chosen loadout back to the orchestrator. */
   readonly onLocalConfirm?: (loadout: PlayerLoadout) => void;
+  /** P1 loadout carried into the second local single-player selection pass. */
+  readonly localSinglePlayerOneLoadout?: PlayerLoadout;
   /** Optional scene key to return to when leaving the selection screen. */
   readonly returnScene?: SceneKey;
 }
@@ -54,6 +65,7 @@ export const connectionManager = new ConnectionManager();
 
 export interface ResultData {
   readonly winnerName?: string;
+  readonly battleResult?: BattleResult;
   readonly durationSeconds?: number;
   readonly players: readonly [ResultPlayerSummary, ResultPlayerSummary];
   readonly returnScene?: string;

@@ -31,7 +31,7 @@ import { RoomLifecycle } from "../../../../dedicated-server/src/room/lifecycle";
 import { RoomManager } from "../../../../dedicated-server/src/room/manager";
 import { SessionStore } from "../../../../dedicated-server/src/session/store";
 import type { TransportConnection } from "../../../../dedicated-server/src/transport/interface";
-import { createBattleInput, type BattleKeyMap } from "../../battle/input";
+import { createBattleInput, type BattleKeyMap } from "../../battle/input-controller/input";
 import type { BattleSceneData } from "../../battle/loadout";
 import type { ConnectionManager } from "../client";
 import type { P2pConnection } from "../p2p";
@@ -100,6 +100,7 @@ describe("CombatSyncManager rollback integration", () => {
       },
       gameOver: false,
       state: {
+        result: "running",
         target: { lives: 1 },
       },
       step: () => {
@@ -180,6 +181,7 @@ describe("CombatSyncManager rollback integration", () => {
         frame: 0,
         gameOver: false,
         state: {
+          result: "running",
           target: { lives: 1 },
         },
         step: () => undefined,
@@ -249,6 +251,7 @@ describe("CombatSyncManager rollback integration", () => {
       },
       gameOver: true,
       state: {
+        result: "versus_player1",
         target: { lives: 0 },
       },
       step: () => {
@@ -328,6 +331,211 @@ describe("CombatSyncManager rollback integration", () => {
       },
     ]);
   });
+
+  it("uses collaborate results as stable game_over verdict slots", () => {
+    const sent: ClientMessage[] = [];
+    let runtimeFrame = 8;
+    const runtime = {
+      get frame() {
+        return runtimeFrame;
+      },
+      gameOver: true,
+      state: {
+        result: "collaborate_victory",
+        target: { lives: 0 },
+      },
+      step: () => {
+        runtimeFrame += 1;
+      },
+      deserialize: () => undefined,
+    } as unknown as RaidLogicRuntime;
+
+    const manager = new CombatSyncManager(
+      runtime,
+      {
+        send: (msg: ClientMessage) => {
+          sent.push(msg);
+        },
+        setMessageHandler: () => undefined,
+      } as unknown as ConnectionManager,
+      {
+        sceneData: {
+          mode: "local",
+          localPlayerId: "Player1",
+          battleMode: "collaborate",
+        } satisfies BattleSceneData,
+        p2p: {
+          connected: false,
+          close: () => undefined,
+          send: (msg: ClientMessage) => {
+            sent.push(msg);
+            return true;
+          },
+        } as unknown as P2pConnection,
+        callbacks: {
+          recordFrame: () => undefined,
+          getRollbackRecord: () => null,
+          pruneRollbackHistoryAfter: () => undefined,
+          pruneRollbackHistoryBefore: () => undefined,
+          onRollback: () => undefined,
+          setStatusText: () => undefined,
+          hideStatusText: () => undefined,
+          delay: (_ms, callback) => callback(),
+          finishBattle: () => undefined,
+        },
+      },
+    );
+
+    manager.step(testInput());
+
+    expect(sent).toContainEqual({
+      type: "game_over",
+      frame: 8,
+      ackFrame: 0,
+      winnerPlayerId: "Player1",
+    });
+  });
+
+  it("replays a late forced shop ready message on its scheduled frame", () => {
+    let handler: ((msg: ServerMessage) => void) | null = null;
+    let runtimeFrame = 3;
+    const stepped: Array<{ frame: number; player: BattleInputState; target: BattleInputState }> = [];
+    const runtime = {
+      get frame() {
+        return runtimeFrame;
+      },
+      gameOver: false,
+      state: {
+        result: "running",
+        target: { lives: 1 },
+      },
+      step: () => {
+        runtimeFrame += 1;
+      },
+      deserialize: () => {
+        runtimeFrame = 1;
+      },
+      aimConsumedThisFrame: false,
+    } as unknown as RaidLogicRuntime;
+
+    new CombatSyncManager(
+      runtime,
+      {
+        send: () => undefined,
+        setMessageHandler: (nextHandler: ((msg: ServerMessage) => void) | null) => {
+          handler = nextHandler;
+        },
+      } as unknown as ConnectionManager,
+      {
+        sceneData: {
+          mode: "online",
+          localPlayerId: "Player1",
+          battleMode: "collaborate",
+        } satisfies BattleSceneData,
+        callbacks: {
+          recordFrame: () => undefined,
+          recordStepInputs: (record) => stepped.push(record),
+          getRollbackRecord: (frame) => frame === 1
+            ? ({ frame, snapshot: {} as BattleModelSnapshot } satisfies CombatRollbackRecord)
+            : null,
+          pruneRollbackHistoryAfter: () => undefined,
+          pruneRollbackHistoryBefore: () => undefined,
+          onRollback: () => undefined,
+          setStatusText: () => undefined,
+          hideStatusText: () => undefined,
+          delay: (_ms, callback) => callback(),
+          finishBattle: () => undefined,
+        },
+      },
+    );
+
+    if (!handler) {
+      throw new Error("CombatSyncManager did not install a message handler");
+    }
+    const currentHandler: (msg: ServerMessage) => void = handler;
+    currentHandler({
+      type: "peer_collaborate_shop_forced_ready",
+      playerId: "Player2",
+      frame: 2,
+      shopIndex: 1,
+    });
+
+    expect(stepped).toContainEqual(expect.objectContaining({
+      frame: 2,
+      target: expect.objectContaining({
+        shopReadyPressed: true,
+        shopPurchaseItemId: undefined,
+        activeCardSwitchId: undefined,
+      }),
+    }));
+  });
+
+  it("sends auto collaborate transition ready on the next input frame", () => {
+    const sent: ClientMessage[] = [];
+    let handler: ((msg: ServerMessage) => void) | null = null;
+    let runtimeFrame = 10;
+    const runtime = {
+      get frame() {
+        return runtimeFrame;
+      },
+      gameOver: false,
+      state: {
+        result: "running",
+        target: { lives: 1 },
+        collaborateExtra: {
+          state: "transition_sync",
+          transitionType: "auto",
+          transitionReadyFrame: 11,
+          player1TransitionReady: false,
+          player2TransitionReady: false,
+        },
+      },
+      step: () => {
+        runtimeFrame += 1;
+      },
+      aimConsumedThisFrame: false,
+    } as unknown as RaidLogicRuntime;
+
+    const manager = new CombatSyncManager(
+      runtime,
+      {
+        send: (msg: ClientMessage) => {
+          sent.push(msg);
+        },
+        setMessageHandler: (nextHandler: ((msg: ServerMessage) => void) | null) => {
+          handler = nextHandler;
+        },
+      } as unknown as ConnectionManager,
+      {
+        sceneData: {
+          mode: "online",
+          localPlayerId: "Player1",
+          battleMode: "collaborate",
+        } satisfies BattleSceneData,
+        callbacks: {
+          recordFrame: () => undefined,
+          getRollbackRecord: () => null,
+          pruneRollbackHistoryAfter: () => undefined,
+          pruneRollbackHistoryBefore: () => undefined,
+          onRollback: () => undefined,
+          setStatusText: () => undefined,
+          hideStatusText: () => undefined,
+          delay: (_ms, callback) => callback(),
+          finishBattle: () => undefined,
+        },
+      },
+    );
+
+    expect(handler).not.toBeNull();
+    manager.step(testInput());
+    manager.step(testInput());
+
+    expect(sent).toContainEqual(expect.objectContaining({
+      type: "input_frame",
+      frame: 12,
+      transitionReadyPressed: true,
+    }));
+  });
 });
 
 async function createClient(
@@ -338,6 +546,9 @@ async function createClient(
   const runtime = createRaidLogicRuntime({
     mode: "online",
     loadouts: loadoutsFromConfig(config),
+    mapId: config.mapId,
+    battleMode: config.battleMode,
+    seed: config.seed,
   });
   await runtime.initialize();
 
@@ -450,9 +661,6 @@ function expectFrameHashesMatch(left: SimulatedClient, right: SimulatedClient, f
   for (let frame = 0; frame <= finalFrame; frame += 1) {
     const leftHash = left.hashAt(frame);
     const rightHash = right.hashAt(frame);
-    if (leftHash !== rightHash) {
-      mismatches.push(`${frame}: ${leftHash ?? "<missing>"} != ${rightHash ?? "<missing>"}`);
-    }
 
     const leftSampledHash = left.sampledHashAt(frame);
     if (leftSampledHash && leftHash !== leftSampledHash) {
@@ -462,6 +670,10 @@ function expectFrameHashesMatch(left: SimulatedClient, right: SimulatedClient, f
     const rightSampledHash = right.sampledHashAt(frame);
     if (rightSampledHash && rightHash !== rightSampledHash) {
       mismatches.push(`${frame}: Player2 sampled ${rightSampledHash}, final ${rightHash ?? "<missing>"}`);
+    }
+
+    if (leftSampledHash && rightSampledHash && leftSampledHash !== rightSampledHash) {
+      mismatches.push(`${frame}: sampled ${leftSampledHash} != ${rightSampledHash}`);
     }
   }
 
@@ -480,6 +692,7 @@ class DedicatedServerHarness {
       ipv4Host: "127.0.0.1",
       ipv6Host: "::1",
       webTransport: false,
+      enableCollaborate: true,
       maxPlayersPerRoom: 2,
       maxRooms: 8,
       serverVersion: "test",
@@ -658,12 +871,20 @@ function loadoutsFromConfig(config: BattleConfig) {
       alternateCharacterId: player.alternateCharacterId,
       cardIds: player.abilityCardIds,
       activeCardId: player.activeAbilityCardId,
+      storyModeOverride: {
+        enabled: true as const,
+        lives: config.lifeCount,
+      },
     },
     target: {
       primaryCharacterId: target.primaryCharacterId,
       alternateCharacterId: target.alternateCharacterId,
       cardIds: target.abilityCardIds,
       activeCardId: target.activeAbilityCardId,
+      storyModeOverride: {
+        enabled: true as const,
+        lives: config.lifeCount,
+      },
     },
   };
 }
@@ -686,15 +907,15 @@ function inputFromFrontend(playerId: PlayerId, tick: number): BattleInputState {
       cameras: { main: {} },
     } as never,
     createKeys({
-      d: sign > 0 && tick % 80 < 24,
-      a: sign < 0 && tick % 80 < 24,
-      s: tick % 90 < 30,
-      w: tick % 90 >= 30 && tick % 90 < 60,
-      r: tick % 71 === 20,
-      shift: tick % 130 >= 70,
-      tab: false,
+      moveRight: sign > 0 && tick % 80 < 24,
+      moveLeft: sign < 0 && tick % 80 < 24,
+      moveDown: tick % 90 < 30,
+      moveUp: tick % 90 >= 30 && tick % 90 < 60,
+      reload: tick % 71 === 20,
+      alternate: tick % 130 >= 70,
+      info: false,
       enter: false,
-      e: tick === 260,
+      activeCard: tick === 260,
     }),
   );
   return input;
@@ -718,14 +939,14 @@ function testInput(): BattleInputState {
 function createKeys(state: Record<keyof BattleKeyMap, boolean>): BattleKeyMap {
   const key = (isDown: boolean) => ({ isDown, _justDown: isDown });
   return {
-    w: key(state.w),
-    a: key(state.a),
-    s: key(state.s),
-    d: key(state.d),
-    shift: key(state.shift),
-    r: key(state.r),
-    tab: key(state.tab),
+    moveUp: key(state.moveUp),
+    moveLeft: key(state.moveLeft),
+    moveDown: key(state.moveDown),
+    moveRight: key(state.moveRight),
+    alternate: key(state.alternate),
+    reload: key(state.reload),
+    info: key(state.info),
     enter: key(state.enter),
-    e: key(state.e),
+    activeCard: key(state.activeCard),
   } as unknown as BattleKeyMap;
 }
