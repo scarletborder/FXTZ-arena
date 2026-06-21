@@ -24,6 +24,7 @@ import { MobView } from "./mobs";
 import { PointView } from "./points";
 import { ProjectileView } from "./projectile";
 import { SpellCardHud } from "./spell-card-hud";
+import { WingmanView } from "../sfx/wingman";
 import {
   createBattleStage,
   type BattleStage,
@@ -36,6 +37,7 @@ export class BattleView {
   private readonly crosshair: CrosshairView;
   private readonly secondaryCrosshair: CrosshairView;
   private readonly projectiles: ProjectileView;
+  private readonly wingmen: WingmanView;
   private readonly effects: EffectsView;
   private readonly mobs: MobView;
   private readonly spellCardHud: SpellCardHud;
@@ -72,6 +74,7 @@ export class BattleView {
     this.crosshair = new CrosshairView(scene);
     this.secondaryCrosshair = new CrosshairView(scene, "cursor-x");
     this.projectiles = new ProjectileView(scene);
+    this.wingmen = new WingmanView(scene);
     this.effects = new EffectsView(scene);
     this.debug = new BattleDebugView(scene);
   }
@@ -111,6 +114,15 @@ export class BattleView {
       points: state.points,
       player: state.player,
       target: state.target,
+      alpha,
+      rollbackBlend,
+    });
+    this.wingmen.render({
+      player: state.player,
+      target: state.target,
+      frame: state.frame,
+      gameOver: state.gameOver,
+      localFighterKey,
       alpha,
       rollbackBlend,
     });
