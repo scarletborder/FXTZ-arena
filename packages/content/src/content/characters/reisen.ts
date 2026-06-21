@@ -27,8 +27,14 @@ export const REISEN_NORMAL_FORWARD_SPEED = "medium" as const;
 export const REISEN_SHIELD_FORWARD_SPEED = "high" as const;
 export const REISEN_NORMAL_DIAGONAL_SPEED = "medium" as const;
 export const REISEN_NORMAL_SPLIT_SPEED = "low" as const;
-export const REISEN_NORMAL_DAMAGE = 10;
-export const REISEN_NORMAL_SPLIT_DAMAGE = 20;
+export const REISEN_NORMAL_FORWARD_DAMAGE_BY_TIER = {
+  1: 35,
+  2: 35,
+  3: 30,
+  4: 30,
+} as const;
+export const REISEN_NORMAL_DIAGONAL_DAMAGE = 20;
+export const REISEN_NORMAL_SPLIT_DAMAGE = 15;
 export const REISEN_NORMAL_TIER_COUNTS: Record<PointPowerTier, number> = {
   1: 2,
   2: 8,
@@ -168,7 +174,9 @@ export class ReisenBattleCharacter extends BattleCharacter {
             : REISEN_NORMAL_FORWARD_SPEED,
         textureKey: "bullet_type_8_offset_0",
         frameDelay,
-        damage: REISEN_NORMAL_DAMAGE,
+        damage: REISEN_NORMAL_FORWARD_DAMAGE_BY_TIER[
+          this.pointPowerTier(fighter)
+        ],
       });
     }
   }
@@ -189,7 +197,7 @@ export class ReisenBattleCharacter extends BattleCharacter {
         speedRank: REISEN_NORMAL_DIAGONAL_SPEED,
         textureKey: "bullet_type_8_offset_3",
         frameDelay,
-        damage: REISEN_NORMAL_DAMAGE,
+        damage: REISEN_NORMAL_DIAGONAL_DAMAGE,
         expireTicks: REISEN_NORMAL_SPLIT_DELAY_TICKS,
       });
       this.spawnSplitPair(ctx, fighter, shotAngle, frameDelay);

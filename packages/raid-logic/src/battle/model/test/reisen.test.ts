@@ -10,7 +10,7 @@ import {
   REISEN_BOMB_SHIELD_LAYERS,
   REISEN_COST,
   REISEN_NORMAL_BULLET_SIZE,
-  REISEN_NORMAL_DAMAGE,
+  REISEN_NORMAL_FORWARD_DAMAGE_BY_TIER,
   REISEN_NORMAL_REPEAT_DELAY_FRAMES,
   REISEN_NORMAL_SPLIT_DAMAGE,
   REISEN_NORMAL_SPLIT_DELAY_TICKS,
@@ -74,7 +74,7 @@ describe("BattleModel Reisen", () => {
           projectile.textureKey === "bullet_type_8_offset_0" &&
           projectile.width === REISEN_NORMAL_BULLET_SIZE &&
           projectile.height === REISEN_NORMAL_BULLET_SIZE &&
-          projectile.damage === REISEN_NORMAL_DAMAGE,
+          projectile.damage === REISEN_NORMAL_FORWARD_DAMAGE_BY_TIER[1],
       ),
     ).toBe(true);
 

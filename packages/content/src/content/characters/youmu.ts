@@ -20,12 +20,13 @@ import { Vanilla } from "../decorators";
 
 const ARC_SEGMENTS = 8;
 const CLEAR_DAMAGE = 0;
-const SLASH_DAMAGE = 1; // 单次伤害需乘以62倍
+const SLASH_DAMAGE = 2;
+const SLASH_DURATION_TICKS = 20;
 const SLASH_TEXTURE_KEY = "effect_youmu_slash";
 const SLASH_ARC_INTERVAL = 4;
 
-const NORMALSHOOT_DAMAGE = 20;
-const BOMBSHOT_DAMAGE = 8;
+const NORMALSHOOT_DAMAGE = 35;
+const BOMBSHOT_DAMAGE = 40;
 
 const REAR_BULLET_SIZE = 12;
 const SLASH_DISTANCE_TIER1 = hitCircleUnits(12);
@@ -260,7 +261,7 @@ export class YoumuBattleCharacter extends BattleCharacter {
         lengthGrowthPerTick: 0,
         height: ringWidth,
         speedRank: "low",
-        expireTicks: 8,
+        expireTicks: SLASH_DURATION_TICKS,
         damage: SLASH_DAMAGE,
         spawnOffset: 0,
         pinned: true,

@@ -11,10 +11,21 @@ import {
 import { Vanilla } from "../decorators";
 
 const REAR_BEAM_DIAGONAL_ANGLE = Math.PI / 18;
-const NORMAL_SHOOT_DAMAGE = 54;
-const REAR_BEAM_DAMAGE = 1; // 乘以31
 const NORMAL_SHOT_LENGTH = hitCircleUnits(16);
 const NORMAL_SHOT_THICKNESS = hitCircleUnits(3);
+const NORMAL_SHOOT_DAMAGE_BY_TIER = {
+  1: 105,
+  2: 105,
+  3: 75,
+  4: 75,
+} as const;
+const REAR_BEAM_DAMAGE = 1;
+const REAR_BEAM_WINDUP_TICKS = 24;
+const REAR_BEAM_DURATION_TICKS = 25;
+const REAR_BEAM_TIER4_SIDE_DURATION_TICKS = 20;
+const BOMB_WINDUP_TICKS = secondsToTicks(1);
+const BOMB_DAMAGE_DURATION_TICKS = 150;
+const BOMB_FRAME_DAMAGE = 5;
 
 export class MarisaBattleCharacter extends BattleCharacter {
   readonly id = "marisa" as CharacterDefinition["id"];
@@ -59,7 +70,14 @@ export class MarisaBattleCharacter extends BattleCharacter {
         0,
         offset,
       );
-      this.spawnNormalLaser(ctx, fighter, position.x, position.y, angle);
+      this.spawnNormalLaser(
+        ctx,
+        fighter,
+        position.x,
+        position.y,
+        angle,
+        NORMAL_SHOOT_DAMAGE_BY_TIER[tier],
+      );
     }
 
     if (tier >= 2) {
@@ -73,8 +91,8 @@ export class MarisaBattleCharacter extends BattleCharacter {
     const radius = this.clearProjectiles(ctx, fighter, 24, clearRingTicks);
     this.spawnClearRing(ctx, fighter, radius, 0xff6b6b, clearRingTicks);
 
-    const windupTicks = secondsToTicks(1);
-    const durationTicks = secondsToTicks(3);
+    const windupTicks = BOMB_WINDUP_TICKS;
+    const durationTicks = BOMB_DAMAGE_DURATION_TICKS;
     const totalTicks = windupTicks + durationTicks;
     const angle = fighter.facing;
     fighter.actionLockedUntil = Math.max(fighter.actionLockedUntil, totalTicks);
@@ -112,7 +130,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
       maxLength: Number.POSITIVE_INFINITY,
       lengthGrowthPerTick: 0,
       speedRank: "low",
-      damage: 10,
+      damage: BOMB_FRAME_DAMAGE,
       expireTicks: totalTicks,
       spawnOffset: 0,
       pinned: true,
@@ -137,6 +155,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
     x: number,
     y: number,
     angle: number,
+    damage: number,
   ): void {
     ctx.spawnBullet({
       owner: fighter.key,
@@ -150,7 +169,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
       laserRenderMode: "tiled",
       speedRank: "high",
       homingTicks: 0,
-      damage: NORMAL_SHOOT_DAMAGE,
+      damage,
       spawnOffset: NORMAL_SHOT_LENGTH / 2,
       couldClear: false,
     });
@@ -162,8 +181,6 @@ export class MarisaBattleCharacter extends BattleCharacter {
     angle: number,
     tier: number,
   ): void {
-    const windupTicks = 24;
-    const durationTicks = 30;
     const sideOffset = hitCircleUnits(8);
     const rearOffset = -hitCircleUnits(16);
     const beamOffsets = [-sideOffset, sideOffset];
@@ -188,7 +205,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
           position.x,
           position.y,
           beamAngle,
-          windupTicks,
+          REAR_BEAM_WINDUP_TICKS,
         );
         this.spawnRearBeam(
           ctx,
@@ -196,8 +213,10 @@ export class MarisaBattleCharacter extends BattleCharacter {
           position.x,
           position.y,
           beamAngle,
-          windupTicks,
-          durationTicks,
+          REAR_BEAM_WINDUP_TICKS,
+          tier >= 4 && angleOffset !== 0
+            ? REAR_BEAM_TIER4_SIDE_DURATION_TICKS
+            : REAR_BEAM_DURATION_TICKS,
         );
       }
     }

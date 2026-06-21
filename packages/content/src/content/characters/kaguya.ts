@@ -22,7 +22,12 @@ export const KAGUYA_NORMAL_BULLET_SIZE = 42;
 export const KAGUYA_NORMAL_ORBIT_RADIUS = 64;
 export const KAGUYA_NORMAL_ORBIT_DELAY_TICKS = secondsToTicks(1.5);
 export const KAGUYA_NORMAL_INITIAL_SIDE_DEGREES = 90;
-export const KAGUYA_NORMAL_DAMAGE = 22;
+export const KAGUYA_NORMAL_DAMAGE_BY_TIER: Record<PointPowerTier, number> = {
+  1: 70,
+  2: 60,
+  3: 45,
+  4: 35,
+};
 export const KAGUYA_NORMAL_ANGULAR_SPEED =
   (Math.PI * 2) / KAGUYA_NORMAL_ORBIT_DELAY_TICKS;
 export const KAGUYA_NORMAL_RETARGET_SPEED =
@@ -43,7 +48,7 @@ export const KAGUYA_BOMB_SHOTS_PER_POINT = 32;
 export const KAGUYA_BOMB_LOCK_TICKS =
   KAGUYA_BOMB_WARNING_TICKS +
   KAGUYA_BOMB_SHOTS_PER_POINT * KAGUYA_BOMB_SHOT_INTERVAL_FRAMES;
-export const KAGUYA_BOMB_DAMAGE = 8;
+export const KAGUYA_BOMB_DAMAGE = 6;
 export const KAGUYA_BOMB_WARNING_HALF_WIDTH = 3;
 
 const FULL_CIRCLE = Math.PI * 2;
@@ -89,7 +94,14 @@ export class KaguyaBattleCharacter extends BattleCharacter {
     const spacing = FULL_CIRCLE / count;
 
     for (let index = 0; index < count; index += 1) {
-      this.spawnOrbitBullet(ctx, fighter, firstAngle + spacing * index, aimX, aimY);
+      this.spawnOrbitBullet(
+        ctx,
+        fighter,
+        firstAngle + spacing * index,
+        aimX,
+        aimY,
+        KAGUYA_NORMAL_DAMAGE_BY_TIER[tier],
+      );
     }
   }
 
@@ -140,6 +152,7 @@ export class KaguyaBattleCharacter extends BattleCharacter {
     polarAngle: number,
     aimX: number,
     aimY: number,
+    damage: number,
   ): void {
     const x = fighter.x + Math.cos(polarAngle) * KAGUYA_NORMAL_ORBIT_RADIUS;
     const y = fighter.y + Math.sin(polarAngle) * KAGUYA_NORMAL_ORBIT_RADIUS;
@@ -153,7 +166,7 @@ export class KaguyaBattleCharacter extends BattleCharacter {
       width: KAGUYA_NORMAL_BULLET_SIZE,
       height: KAGUYA_NORMAL_BULLET_SIZE,
       homingTicks: 0,
-      damage: KAGUYA_NORMAL_DAMAGE,
+      damage,
       spawnOffset: 0,
       retargetAt: ctx.frame + KAGUYA_NORMAL_ORBIT_DELAY_TICKS,
       retargetSpeed: KAGUYA_NORMAL_RETARGET_SPEED,

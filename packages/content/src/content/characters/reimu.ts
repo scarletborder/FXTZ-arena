@@ -21,9 +21,19 @@ const CENTER_SHOT_HIT_SIZE = 12;
 const HOMING_SHOT_HIT_SIZE = 10;
 const BOMB_ORB_SIZE = 40;
 
-const NORMALSHOOT_TARGET_DAMAGE = 20;
-const NORMALSHOOT_HOMING_DAMAGE = 10;
-const BOMB_ORB_DAMAGE = 40;
+const NORMALSHOOT_CENTER_DAMAGE_BY_TIER = {
+  1: 50,
+  2: 50,
+  3: 50,
+  4: 40,
+} as const;
+const NORMALSHOOT_HOMING_DAMAGE_BY_TIER = {
+  1: 20,
+  2: 20,
+  3: 15,
+  4: 15,
+} as const;
+const BOMB_ORB_DAMAGE = 95;
 
 export class ReimuBattleCharacter extends BattleCharacter {
   readonly id = "reimu" as CharacterDefinition["id"];
@@ -62,10 +72,23 @@ export class ReimuBattleCharacter extends BattleCharacter {
     const centerRepeats = tier >= 4 ? 2 : 1;
 
     for (let repeat = 0; repeat < centerRepeats; repeat += 1) {
-      this.spawnCenterShots(ctx, fighter, angle, repeat * 8, tier >= 2);
+      this.spawnCenterShots(
+        ctx,
+        fighter,
+        angle,
+        repeat * 8,
+        tier >= 2,
+        NORMALSHOOT_CENTER_DAMAGE_BY_TIER[tier],
+      );
     }
     for (let repeat = 0; repeat < sideRepeats; repeat += 1) {
-      this.spawnSideHomingShots(ctx, fighter, angle, repeat * 8);
+      this.spawnSideHomingShots(
+        ctx,
+        fighter,
+        angle,
+        repeat * 8,
+        NORMALSHOOT_HOMING_DAMAGE_BY_TIER[tier],
+      );
     }
   }
 
@@ -103,6 +126,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
     angle: number,
     frameDelay: number,
     parallel: boolean,
+    damage: number,
   ): void {
     const offsets = parallel ? [-hitCircleUnits(2), hitCircleUnits(2)] : [0];
     for (const offset of offsets) {
@@ -124,7 +148,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
         width: CENTER_SHOT_HIT_SIZE,
         height: CENTER_SHOT_HIT_SIZE,
         homingTicks: 0,
-        damage: NORMALSHOOT_TARGET_DAMAGE,
+        damage,
         spawnOffset: 0,
         frame: ctx.frame + frameDelay,
       });
@@ -136,6 +160,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
     fighter: FighterState,
     angle: number,
     frameDelay: number,
+    damage: number,
   ): void {
     const fpAngle = fp.fromFloat(angle);
     const fpPI4 = fp.fromFloat(Math.PI / 4);
@@ -149,7 +174,7 @@ export class ReimuBattleCharacter extends BattleCharacter {
         fp.toFloat(fpShotAngle),
         secondsToTicks(2),
         frameDelay,
-        NORMALSHOOT_HOMING_DAMAGE,
+        damage,
       );
     }
   }

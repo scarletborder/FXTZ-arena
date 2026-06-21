@@ -85,7 +85,7 @@ describe("BattleModel Ellen", () => {
     expect(
       bombBullets.every(
         (projectile) =>
-          projectile.damage === 2 &&
+          projectile.damage === 1 &&
           projectile.width === 30 &&
           projectile.height === 30 &&
           projectile.couldClear &&

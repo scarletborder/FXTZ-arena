@@ -20,7 +20,14 @@ const SAKUYA_BOMB_KNIFE_TEXTURE = "bullet_type_20_offset_1";
 const SAKUYA_SNIPE_KNIFE_TEXTURE = "bullet_type_20_offset_2";
 const SAKUYA_SIDE_KNIFE_TEXTURE = "bullet_type_20_offset_3";
 
-const NORMALSHOOT_DAMAGE = 20;
+const NORMALSHOOT_BASE_DAMAGE = 30;
+const NORMALSHOOT_SNIPE_DAMAGE = 15;
+const NORMALSHOOT_SIDE_DAMAGE_BY_TIER = {
+  1: 10,
+  2: 10,
+  3: 10,
+  4: 8,
+} as const;
 const BOMBSHOT_DAMAGE = 150;
 
 export class SakuyaBattleCharacter extends BattleCharacter {
@@ -83,7 +90,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
           height: KNIFE_HIT_SIZE,
         },
         undefined,
-        NORMALSHOOT_DAMAGE,
+        NORMALSHOOT_BASE_DAMAGE,
       );
     }
 
@@ -93,14 +100,28 @@ export class SakuyaBattleCharacter extends BattleCharacter {
     }
     if (tier >= 2) {
       this.spawnSnipeKnife(ctx, fighter, aimX, aimY, 8);
-      this.spawnSideKnives(ctx, fighter, 0, 2, NORMALSHOOT_DAMAGE, "high");
+      this.spawnSideKnives(
+        ctx,
+        fighter,
+        0,
+        2,
+        NORMALSHOOT_SIDE_DAMAGE_BY_TIER[tier],
+        "high",
+      );
     }
     if (tier >= 3) {
       this.spawnSnipeKnife(ctx, fighter, aimX, aimY, 16);
     }
     if (tier >= 4) {
       this.spawnSnipeKnife(ctx, fighter, aimX, aimY, 24);
-      this.spawnSideKnives(ctx, fighter, 8, 2, NORMALSHOOT_DAMAGE, "high");
+      this.spawnSideKnives(
+        ctx,
+        fighter,
+        8,
+        2,
+        NORMALSHOOT_SIDE_DAMAGE_BY_TIER[tier],
+        "high",
+      );
     }
   }
 
@@ -311,7 +332,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
         height: KNIFE_HIT_SIZE,
       },
       ctx.frame + frameDelay,
-      NORMALSHOOT_DAMAGE,
+      NORMALSHOOT_SNIPE_DAMAGE,
       SAKUYA_SNIPE_KNIFE_TEXTURE,
     );
   }

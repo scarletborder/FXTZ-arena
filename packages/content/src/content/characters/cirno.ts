@@ -20,9 +20,9 @@ const CENTER_GAP = hitCircleUnits(3);
 const BULLET_SIZE = 6;
 const BOMB_RADIUS_MULTIPLIER = 36;
 
-const BOMB_BULLET_DAMAGE = 10;
-const NORMAL_BULLET_DAMAGE = 10;
-const NORMAL_BULLET_SIDE_DAMAGE = 20;
+const BOMB_BULLET_DAMAGE = 40;
+const NORMAL_BULLET_DAMAGE = 20;
+const NORMAL_BULLET_SIDE_DAMAGE = 35;
 
 export class CirnoBattleCharacter extends BattleCharacter {
   readonly id = "cirno" as CharacterDefinition["id"];

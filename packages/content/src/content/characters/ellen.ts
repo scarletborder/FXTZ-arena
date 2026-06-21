@@ -23,9 +23,25 @@ const CENTER_BULLET_SIZE = scaledHitbox(24, 20, 32);
 const SIDE_BULLET_SIZE = scaledHitbox(36, 20, 32);
 const BOMB_BULLET_SIZE = scaledHitbox(48, 40, 64);
 
-const CENTER_DAMAGE = 20;
-const SIDE_DAMAGE = 15;
-const BOMB_FRAME_DAMAGE = 2;
+const CENTER_DAMAGE_BY_TIER = {
+  1: 50,
+  2: 50,
+  3: 40,
+  4: 40,
+} as const;
+const FORWARD_SIDE_DAMAGE_BY_TIER = {
+  1: 10,
+  2: 8,
+  3: 8,
+  4: 8,
+} as const;
+const BACK_SIDE_DAMAGE_BY_TIER = {
+  1: 5,
+  2: 5,
+  3: 5,
+  4: 5,
+} as const;
+const BOMB_FRAME_DAMAGE = 1;
 
 const FP_PI = fp.fromFloat(Math.PI);
 const FP_TWO_PI = fp.mul(FP_PI, fp.fromInt(2));
@@ -83,6 +99,7 @@ export class EllenBattleCharacter extends BattleCharacter {
         fighter,
         angle,
         ctx.frame + repeat * CENTER_SHOT_INTERVAL,
+        CENTER_DAMAGE_BY_TIER[tier],
       );
     }
 
@@ -94,6 +111,7 @@ export class EllenBattleCharacter extends BattleCharacter {
       secondsToTicks(1),
       "bullet_type_24_offset_1",
       SIDE_BULLET_SIZE,
+      FORWARD_SIDE_DAMAGE_BY_TIER[tier],
     );
 
     if (tier >= 2) {
@@ -105,6 +123,7 @@ export class EllenBattleCharacter extends BattleCharacter {
         secondsToTicks(1.2),
         "bullet_type_24_offset_1",
         SIDE_BULLET_SIZE,
+        FORWARD_SIDE_DAMAGE_BY_TIER[tier],
       );
     }
 
@@ -117,6 +136,7 @@ export class EllenBattleCharacter extends BattleCharacter {
         secondsToTicks(0.8),
         "bullet_type_24_offset_1",
         SIDE_BULLET_SIZE,
+        BACK_SIDE_DAMAGE_BY_TIER[tier],
       );
     }
 
@@ -129,6 +149,7 @@ export class EllenBattleCharacter extends BattleCharacter {
         secondsToTicks(0.8),
         "bullet_type_24_offset_1",
         SIDE_BULLET_SIZE,
+        BACK_SIDE_DAMAGE_BY_TIER[tier],
       );
     }
   }
@@ -166,6 +187,7 @@ export class EllenBattleCharacter extends BattleCharacter {
     fighter: FighterState,
     angle: number,
     frame: number,
+    damage: number,
   ): void {
     for (const side of [-1, 1]) {
       const position = this.offsetPosition(
@@ -186,7 +208,7 @@ export class EllenBattleCharacter extends BattleCharacter {
         width: CENTER_BULLET_SIZE.width,
         height: CENTER_BULLET_SIZE.height,
         homingTicks: 0,
-        damage: CENTER_DAMAGE,
+        damage,
         spawnOffset: 0,
         frame,
         couldClear: true,
@@ -202,6 +224,7 @@ export class EllenBattleCharacter extends BattleCharacter {
     retargetDelay: number,
     textureKey: string,
     size: { readonly width: number; readonly height: number },
+    damage: number,
   ): void {
     for (const degrees of angleDegrees) {
       const offset = degreesToRadians(degrees);
@@ -212,6 +235,7 @@ export class EllenBattleCharacter extends BattleCharacter {
         retargetDelay,
         textureKey,
         size,
+        damage,
       );
       this.spawnRetargetBullet(
         ctx,
@@ -220,6 +244,7 @@ export class EllenBattleCharacter extends BattleCharacter {
         retargetDelay,
         textureKey,
         size,
+        damage,
       );
     }
   }
@@ -231,6 +256,7 @@ export class EllenBattleCharacter extends BattleCharacter {
     retargetDelay: number,
     textureKey: string,
     size: { readonly width: number; readonly height: number },
+    damage: number,
   ): void {
     ctx.spawnBullet({
       owner: fighter.key,
@@ -243,7 +269,7 @@ export class EllenBattleCharacter extends BattleCharacter {
       width: size.width,
       height: size.height,
       homingTicks: 0,
-      damage: SIDE_DAMAGE,
+      damage,
       spawnOffset: 0,
       retargetAt: ctx.frame + retargetDelay,
       retargetSpeed: SIDE_RETARGET_SPEED,
