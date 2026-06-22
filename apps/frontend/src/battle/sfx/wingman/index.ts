@@ -26,6 +26,7 @@ interface WingmanVisual {
   readonly root: Phaser.GameObjects.Container;
   readonly graphics: Phaser.GameObjects.Graphics;
   initialized: boolean;
+  activeCharacterId: string;
 }
 
 type WingmanSlot = "player" | "target";
@@ -63,7 +64,7 @@ export class WingmanView {
     const graphics = this.scene.add.graphics();
     graphics.setBlendMode(Phaser.BlendModes.ADD);
     root.add(graphics);
-    return { root, graphics, initialized: false };
+    return { root, graphics, initialized: false, activeCharacterId: "" };
   }
 
   private renderFighter(
@@ -78,6 +79,13 @@ export class WingmanView {
     const visible = params.gameOver
       ? fighter.deadUntil === 0
       : fighter.deadUntil === 0 || isPlayer;
+    // When the active character changes, snap wingmen to the fighter's
+    // current position instead of smoothly sliding from the old spot.
+    if (visual.activeCharacterId !== fighter.activeCharacter.id) {
+      visual.initialized = false;
+      visual.activeCharacterId = fighter.activeCharacter.id;
+    }
+
     const profile = wingmanProfile(fighter.activeCharacter.id);
     const tier = pointPowerTier(fighter.pointCount);
     const emitters = profile?.wingmenForTier(tier) ?? [];
