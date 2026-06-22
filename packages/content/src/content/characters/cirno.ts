@@ -14,15 +14,15 @@ import {
 import { fpAtan2 } from "../fp";
 import { Vanilla } from "../decorators";
 
-const SIDE_OFFSET = hitCircleUnits(5);
-const REAR_OFFSET = -hitCircleUnits(10);
+const SIDE_OFFSET = hitCircleUnits(10);
+const REAR_OFFSET = -hitCircleUnits(15);
 const CENTER_GAP = hitCircleUnits(3);
 const BULLET_SIZE = 6;
 const BOMB_RADIUS_MULTIPLIER = 36;
 
 const BOMB_BULLET_DAMAGE = 40;
-const NORMAL_BULLET_DAMAGE = 20;
-const NORMAL_BULLET_SIDE_DAMAGE = 35;
+const NORMAL_BULLET_DAMAGE = 15;
+const NORMAL_BULLET_SIDE_DAMAGE = 25;
 
 export class CirnoBattleCharacter extends BattleCharacter {
   readonly id = "cirno" as CharacterDefinition["id"];
