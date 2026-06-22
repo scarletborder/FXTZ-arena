@@ -12,6 +12,7 @@ import "./sakuya";
 import "./cirno";
 import "./youmu";
 import "./ellen";
+import "./yuyuko";
 export * from "./kaguya";
 export * from "./reisen";
 

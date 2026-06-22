@@ -11,6 +11,7 @@ import {
   ReisenWingmanProfile,
   SakuyaWingmanProfile,
   YoumuWingmanProfile,
+  YuyukoWingmanProfile,
 } from "./character";
 import {
   CharacterWingmanProfile,
@@ -296,6 +297,7 @@ const PROFILES: ReadonlyMap<
   ["kaguya", new KaguyaWingmanProfile()],
   ["reisen", new ReisenWingmanProfile()],
   ["ellen", new EllenWingmanProfile()],
+  ["yuyuko", new YuyukoWingmanProfile()],
 ]);
 
 function wingmanProfile(

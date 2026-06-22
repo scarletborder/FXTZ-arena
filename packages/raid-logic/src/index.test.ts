@@ -380,6 +380,35 @@ describe("@repo/raid-logic", () => {
     expect(battle.state.fighters.get("Player1")?.ammo).toBe(2);
   });
 
+  it("yuyuko discards current ammo and reloads one round at a time", () => {
+    const battle = createReloadBattle("yuyuko", "reimu");
+    battle.tick([createInput(0, "Player1", { shootPressed: true })]);
+
+    battle.tick([createInput(1, "Player1", { reloadPressed: true })]);
+
+    const yuyuko = battle.state.fighters.get("Player1");
+    expect(yuyuko?.reloadStartedAmmo).toBe(0);
+    expect(yuyuko?.reloadTotalTicks).toBe(324);
+    expect(yuyuko?.reloadRemainingTicks).toBe(324);
+    expect(yuyuko?.ammo).toBe(0);
+
+    for (let frame = 2; frame < 57; frame += 1) {
+      battle.tick([createInput(frame, "Player1")]);
+    }
+
+    expect(battle.state.fighters.get("Player1")?.ammo).toBe(1);
+
+    for (
+      let frame = 57;
+      (battle.state.fighters.get("Player1")?.reloadRemainingTicks ?? 0) > 0;
+      frame += 1
+    ) {
+      battle.tick([createInput(frame, "Player1")]);
+    }
+
+    expect(battle.state.fighters.get("Player1")?.ammo).toBe(6);
+  });
+
   it("sakuya keeps current ammo and only restores at the end", () => {
     const battle = createReloadBattle("sakuya", "reimu");
     battle.tick([createInput(0, "Player1", { shootPressed: true })]);

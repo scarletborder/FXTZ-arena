@@ -112,6 +112,8 @@ function mappedProjectileFrame(
       return youmuProjectileFrame(projectile, frames);
     case "kaguya":
       return kaguyaProjectileFrame(projectile, frames);
+    case "yuyuko":
+      return yuyukoProjectileFrame(projectile, frames);
     default:
       return undefined;
   }
@@ -233,6 +235,14 @@ function kaguyaProjectileFrame(
     return imageSpec(frames, "bullet_type_18", projectile.id % 8);
   }
   return imageSpec(frames, "bullet_type_23", projectile.id % 4);
+}
+
+function yuyukoProjectileFrame(
+  projectile: ProjectileState,
+  frames: ReadonlyMap<string, BulletFrame>,
+): ProjectileSpec | undefined {
+  if (projectile.kind !== "orb") return undefined;
+  return imageSpec(frames, "bullet_type_19", projectile.id % 8);
 }
 
 function imageSpec(
