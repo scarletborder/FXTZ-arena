@@ -770,14 +770,14 @@ export class SelectScene extends Phaser.Scene {
   }
 
   private pickCharacter(id: CharacterDefinition["id"]): void {
-    if (!this.primaryId) {
-      this.primaryId = id;
-    } else if (!this.alternateId && this.primaryId !== id) {
-      this.alternateId = id;
-    } else if (this.primaryId === id) {
+    if (this.primaryId === id) {
       this.primaryId = undefined;
     } else if (this.alternateId === id) {
       this.alternateId = undefined;
+    } else if (!this.primaryId) {
+      this.primaryId = id;
+    } else if (!this.alternateId && this.primaryId !== id) {
+      this.alternateId = id;
     } else {
       this.alternateId = id;
     }
