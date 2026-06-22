@@ -60,9 +60,21 @@ export function projectileDisplay(
       ? lerp(projectile.previousWidth, projectile.width, alpha)
       : projectile.width;
   const height = projectileDisplayHeight(projectile, alpha);
+  const baseX = lerp(projectile.previousX, projectile.x, alpha);
+  const baseY = lerp(projectile.previousY, projectile.y, alpha);
+  // Apply center offset rotated by the sprite's actual rotation.
+  // The sprite is rotated by `angle + PI/2` in the store (for image kind),
+  // so the offset must rotate by the same amount to stay texture-relative.
+  // Physics body stays at the projectile's logical position (no offset).
+  const cosR = Math.cos(projectile.angle + Math.PI / 2);
+  const sinR = Math.sin(projectile.angle + Math.PI / 2);
+  const ox =
+    projectile.centerOffsetX * cosR - projectile.centerOffsetY * sinR;
+  const oy =
+    projectile.centerOffsetX * sinR + projectile.centerOffsetY * cosR;
   return {
-    x: lerp(projectile.previousX, projectile.x, alpha),
-    y: lerp(projectile.previousY, projectile.y, alpha),
+    x: baseX + ox,
+    y: baseY + oy,
     width: projectile.renderWidth ?? width,
     height,
   };

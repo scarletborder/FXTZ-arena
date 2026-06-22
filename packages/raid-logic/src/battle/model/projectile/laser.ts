@@ -89,6 +89,8 @@ export function createLaserProjectile(params: {
     previousHeight: params.height ?? (params.kind === "spark" ? 9 : 0),
     previousRenderHeight: params.renderHeight ?? params.height ?? 9,
     height: params.height ?? (params.kind === "spark" ? 9 : 0),
+    centerOffsetX: 0,
+    centerOffsetY: 0,
     renderWidth: undefined,
     renderHeight: params.renderHeight ?? params.height ?? 9,
     laserRenderMode: params.laserRenderMode,

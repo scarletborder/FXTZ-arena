@@ -23,6 +23,8 @@ export interface ProjectileState {
   previousHeight: number;
   previousRenderHeight?: number;
   height: number;
+  readonly centerOffsetX: number;
+  readonly centerOffsetY: number;
   readonly renderWidth?: number;
   renderHeight?: number;
   readonly laserRenderMode?: LaserRenderMode;

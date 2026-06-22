@@ -64,10 +64,26 @@ export function renderDebugTab(scene: SettingsScene, layer: Phaser.GameObjects.C
     layer.add(scene.add.text(36, 262, t("settings.debug.log_path.browser_hint"), bodyStyle("#b7c7d8", 18)));
   }
 
-  layer.add(sectionTitle(scene, 36, 408, t("settings.debug.cooperate.title")));
-  layer.add(createFightButton(scene, 161, 462, 250, 54, t("settings.debug.cooperate.button"), () => {
+  layer.add(sectionTitle(scene, 36, 380, t("settings.debug.cooperate.title")));
+  layer.add(createFightButton(scene, 161, 340, 250, 54, t("settings.debug.cooperate.button"), () => {
     debugCooperateDialog = showDebugCooperateDialog(scene, debugCooperateDialog);
   }, { accent: 0x34d399 }).container);
+
+
+  // ── Debug bullet volume section ──
+  const margin = 400;
+  layer.add(sectionTitle(scene, margin + 161, 80, "调试弹幕体积"));
+
+  layer.add(scene.add.text(
+    margin + 36,
+    100,
+    "在新场景中查看全部 30 种弹幕类型及其判定体积。\nShift 切换暂停，ESC 返回。",
+    bodyStyle("#9fd8ff", 16),
+  ));
+
+  layer.add(createFightButton(scene, margin + 161, 360, 250, 54, "打开调试弹幕体积", () => {
+    scene.scene.start("debug-bullet-volume");
+  }, { accent: 0x9b59b6 }).container);
 
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
     debugCooperateDialog?.destroy();

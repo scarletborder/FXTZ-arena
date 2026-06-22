@@ -27,7 +27,8 @@ export type SceneKey =
   | "story-result"
   | "replay-record"
   | "replay-playback"
-  | "spectator-loading";
+  | "spectator-loading"
+  | "debug-bullet-volume";
 export type SelectionMode = "ai" | "training" | "online" | "local" | "local_single" | "debug_cooperate";
 export type DebugCooperateJumpTarget = "start" | "elite" | "boss";
 export type CodexTab = "characters" | "cards";

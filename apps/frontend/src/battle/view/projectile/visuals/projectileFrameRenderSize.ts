@@ -19,6 +19,8 @@ export function projectileFrameRenderSize(
     rectHeight: frame.height,
     hitWidth: frame.hitWidth,
     hitHeight: frame.hitHeight,
+    CenterOffsetX: 0,
+    CenterOffsetY: 0,
   });
   return [size.width, size.height];
 }

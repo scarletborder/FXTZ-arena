@@ -78,6 +78,16 @@ export function createBulletProjectile(params: {
     height: Math.round(hitSize.height),
   };
 
+  // Scale center offsets proportionally to the render size (relative to source rect).
+  // CenterOffsetX/Y in metrics are absolute pixels in the source texture space;
+  // when the sprite is rendered at a different scale, the offset must scale too.
+  const rawCenterOffsetX = metrics?.CenterOffsetX ?? 0;
+  const rawCenterOffsetY = metrics?.CenterOffsetY ?? 0;
+  const offsetScale =
+    renderSize && metrics && metrics.rectWidth > 0
+      ? renderSize.width / metrics.rectWidth
+      : 1;
+
   const fpAngle = fp.fromFloat(params.angle);
   const fpCos = fp.cos(fpAngle);
   const fpSin = fp.sin(fpAngle);
@@ -108,6 +118,8 @@ export function createBulletProjectile(params: {
     previousHeight: physicsSize.height,
     previousRenderHeight: renderSize?.height,
     height: physicsSize.height,
+    centerOffsetX: rawCenterOffsetX * offsetScale,
+    centerOffsetY: rawCenterOffsetY * offsetScale,
     renderWidth: renderSize?.width,
     renderHeight: renderSize?.height,
     laserRenderMode: params.laserRenderMode,
