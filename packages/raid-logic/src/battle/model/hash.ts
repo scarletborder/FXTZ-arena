@@ -372,6 +372,9 @@ function writeProjectiles(
     writeFixed(hasher, projectile.vx);
     writeFixed(hasher, projectile.vy);
     writeFixed(hasher, projectile.width);
+    writeFixed(hasher, projectile.previousWidth);
+    writeFixed(hasher, projectile.previousHeight);
+    writeFixed(hasher, projectile.previousRenderHeight ?? 0);
     writeFixed(hasher, projectile.height);
     writeFixed(hasher, projectile.renderWidth ?? 0);
     writeFixed(hasher, projectile.renderHeight ?? 0);
@@ -396,6 +399,10 @@ function writeProjectiles(
     hasher.writeString(projectile.retargetAimOwner ?? "");
     writeFixed(hasher, projectile.widthGrowthPerTick);
     writeFixed(hasher, projectile.maxWidth ?? 0);
+    writeFixed(hasher, projectile.heightGrowthPerTick);
+    writeFixed(hasher, projectile.maxHeight ?? 0);
+    writeFixed(hasher, projectile.renderHeightGrowthPerTick);
+    writeFixed(hasher, projectile.maxRenderHeight ?? 0);
     hasher.writeNumber(projectile.damage);
     writeFixed(hasher, projectile.angle);
     hasher.writeNumber(projectile.couldClear ? 1 : 0);

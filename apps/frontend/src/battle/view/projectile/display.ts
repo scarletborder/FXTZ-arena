@@ -20,13 +20,19 @@ export function projectileAlpha(
   localFighterKey: FighterKey,
   battleMode: BattleRoomMode = "versus",
 ): number {
+  const visualAlpha =
+    projectile.kind === "spark" &&
+    (projectile.renderHeight ?? projectile.height) > projectile.height
+      ? 0.7
+      : 1;
   if (
     projectile.owner === localFighterKey ||
     (battleMode === "collaborate" &&
       (projectile.owner === "Player1" || projectile.owner === "Player2"))
   ) {
-    return OWN_PROJECTILE_ALPHA;
+    return OWN_PROJECTILE_ALPHA * visualAlpha;
   }
+  if (visualAlpha < 1) return visualAlpha;
   return projectile.damage === 0 ? PROJECTILE_PREVIEW_ALPHA : 1;
 }
 
@@ -39,11 +45,12 @@ export function projectileDisplay(
     !Number.isFinite(projectile.width)
   ) {
     const length = INFINITE_LASER_RENDER_LENGTH;
+    const height = projectileDisplayHeight(projectile, alpha);
     return {
       x: projectile.x + Math.cos(projectile.angle) * (length / 2),
       y: projectile.y + Math.sin(projectile.angle) * (length / 2),
       width: length,
-      height: projectile.renderHeight ?? projectile.height,
+      height,
     };
   }
 
@@ -52,12 +59,36 @@ export function projectileDisplay(
     Number.isFinite(projectile.width)
       ? lerp(projectile.previousWidth, projectile.width, alpha)
       : projectile.width;
+  const height = projectileDisplayHeight(projectile, alpha);
   return {
     x: lerp(projectile.previousX, projectile.x, alpha),
     y: lerp(projectile.previousY, projectile.y, alpha),
     width: projectile.renderWidth ?? width,
-    height: projectile.renderHeight ?? projectile.height,
+    height,
   };
+}
+
+function projectileDisplayHeight(
+  projectile: ProjectileState,
+  alpha: number,
+): number {
+  if (
+    Number.isFinite(projectile.previousRenderHeight) &&
+    Number.isFinite(projectile.renderHeight)
+  ) {
+    return lerp(
+      projectile.previousRenderHeight ?? 0,
+      projectile.renderHeight ?? 0,
+      alpha,
+    );
+  }
+  if (
+    Number.isFinite(projectile.previousHeight) &&
+    Number.isFinite(projectile.height)
+  ) {
+    return lerp(projectile.previousHeight, projectile.height, alpha);
+  }
+  return projectile.renderHeight ?? projectile.height;
 }
 
 function lerp(from: number, to: number, alpha: number): number {

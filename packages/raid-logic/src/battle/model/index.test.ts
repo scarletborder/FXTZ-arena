@@ -1093,28 +1093,93 @@ describe("BattleModel character bombs", () => {
       (projectile) =>
         projectile.kind === "spark" && projectile.owner === "Player1",
     );
-    expect(masterSpark?.visibleFrom).toBe(model.frame + 60);
-    expect(masterSpark?.pausedUntil).toBe(model.frame + 60);
+    expect(masterSpark?.visibleFrom).toBe(model.frame + 36);
+    expect(masterSpark?.pausedUntil).toBe(model.frame + 36);
+    expect(masterSpark?.height).toBe(0);
+    expect(masterSpark?.renderHeight).toBe(0);
+    expect(masterSpark?.maxHeight).toBe(HIT_CIRCLE_DIAMETER * 36);
+    expect(masterSpark?.maxRenderHeight).toBe(HIT_CIRCLE_DIAMETER * 54);
   });
 
-  it("marisa master spark damages rectangular neutral targets without throwing", async () => {
+  it("marisa master spark expands from the warning axis before damaging rectangular neutral targets", async () => {
     const model = await createBattleModel("marisa", "reimu");
     model.target.y = 600;
     const mob = new StaticRectNeutralMob(
       model.neutralMobManager.allocateNeutralMobId(),
       model.player.x + 200,
-      model.player.y,
+      model.player.y + HIT_CIRCLE_DIAMETER * 20,
     );
     model.neutralMobManager.addNeutralMob(mob);
 
     model.step(
-      input({ bombPressed: true, aimX: mob.state.x, aimY: mob.state.y }),
+      input({
+        bombPressed: true,
+        aimX: model.player.x + 400,
+        aimY: model.player.y,
+      }),
     );
-    for (let index = 0; index < 60; index += 1) {
-      model.step(input({ aimX: mob.state.x, aimY: mob.state.y }));
+    for (let index = 0; index < 36; index += 1) {
+      model.step(input({ aimX: model.player.x + 400, aimY: model.player.y }));
+    }
+
+    const masterSpark = model.projectiles.find(
+      (projectile) =>
+        projectile.kind === "spark" && projectile.owner === "Player1",
+    );
+    expect(masterSpark?.height).toBe(HIT_CIRCLE_DIAMETER * 3);
+    expect(mob.damageTaken).toBe(0);
+
+    for (let index = 0; index < 8; index += 1) {
+      model.step(input({ aimX: model.player.x + 400, aimY: model.player.y }));
     }
 
     expect(mob.damageTaken).toBeGreaterThan(0);
+  });
+
+  it("marisa master spark clears enemy projectiles after expanding over them", async () => {
+    const model = await createBattleModel("marisa", "reimu");
+    const projectileX = model.player.x + HIT_CIRCLE_DIAMETER * 30;
+    const projectileY = model.player.y + HIT_CIRCLE_DIAMETER * 8;
+    model.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Player2",
+        x: projectileX,
+        y: projectileY,
+        pausedUntil: 999,
+      }),
+      testProjectile({
+        id: 2,
+        owner: "Player2",
+        x: projectileX,
+        y: projectileY,
+        pausedUntil: 999,
+        couldClear: false,
+      }),
+    );
+
+    model.step(
+      input({
+        bombPressed: true,
+        aimX: model.player.x + 400,
+        aimY: model.player.y,
+      }),
+    );
+
+    expect(model.projectiles.some((projectile) => projectile.id === 1)).toBe(
+      true,
+    );
+
+    for (let index = 0; index < 48; index += 1) {
+      model.step(input({ aimX: model.player.x + 400, aimY: model.player.y }));
+    }
+
+    expect(model.projectiles.some((projectile) => projectile.id === 1)).toBe(
+      false,
+    );
+    expect(model.projectiles.some((projectile) => projectile.id === 2)).toBe(
+      true,
+    );
   });
 
   it("drives neutral mobs after Player1 and Player2 in stable mob id order", async () => {

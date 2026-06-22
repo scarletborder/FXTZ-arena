@@ -20,9 +20,11 @@ export interface ProjectileState {
   vy: number;
   width: number;
   previousWidth: number;
-  readonly height: number;
+  previousHeight: number;
+  previousRenderHeight?: number;
+  height: number;
   readonly renderWidth?: number;
-  readonly renderHeight?: number;
+  renderHeight?: number;
   readonly laserRenderMode?: LaserRenderMode;
   readonly laserVisualStyle?: LaserVisualStyle;
   readonly laserFramePairStartOffset?: number;
@@ -44,6 +46,10 @@ export interface ProjectileState {
   retargetAimOwner: FighterKey | undefined;
   widthGrowthPerTick: number;
   maxWidth: number | undefined;
+  heightGrowthPerTick: number;
+  maxHeight: number | undefined;
+  renderHeightGrowthPerTick: number;
+  maxRenderHeight: number | undefined;
   readonly damage: number;
   angle: number;
   readonly couldClear: boolean;

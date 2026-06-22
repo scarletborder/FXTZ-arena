@@ -186,6 +186,8 @@ export class ProjectileSystem {
       projectile.previousX = projectile.x;
       projectile.previousY = projectile.y;
       projectile.previousWidth = projectile.width;
+      projectile.previousHeight = projectile.height;
+      projectile.previousRenderHeight = projectile.renderHeight;
       const paused = params.frame < projectile.pausedUntil;
       if (!paused) {
         if (projectile.kind === "laser" || projectile.kind === "spark") {
@@ -573,6 +575,13 @@ function projectileIntersectsClearer(
   projectile: ProjectileState,
 ): boolean {
   if (
+    (clearer.kind === "laser" || clearer.kind === "spark") &&
+    !Number.isFinite(clearer.width)
+  ) {
+    return infiniteBeamIntersectsProjectile(clearer, projectile);
+  }
+
+  if (
     Number.isFinite(clearer.width) &&
     Number.isFinite(projectile.width) &&
     clearer.width > 0 &&
@@ -608,6 +617,35 @@ function projectileIntersectsClearer(
       fp.sub(fp.fromFloat(projectile.y), fp.fromFloat(clearer.y)),
     ),
     fp.add(clearerRadius, projectileRadius),
+  );
+}
+
+function infiniteBeamIntersectsProjectile(
+  beam: ProjectileState,
+  projectile: ProjectileState,
+): boolean {
+  const fpDx = fp.sub(fp.fromFloat(projectile.x), fp.fromFloat(beam.x));
+  const fpDy = fp.sub(fp.fromFloat(projectile.y), fp.fromFloat(beam.y));
+  const fpAngle = fp.fromFloat(beam.angle);
+  const fpCos = fp.cos(fpAngle);
+  const fpSin = fp.sin(fpAngle);
+  const fpForward = fp.add(fp.mul(fpDx, fpCos), fp.mul(fpDy, fpSin));
+  const fpSide = fp.abs(
+    fp.add(fp.mul(fp.negate(fpDx), fpSin), fp.mul(fpDy, fpCos)),
+  );
+  const projectileRadius = fp.div(
+    fp.fromFloat(
+      Number.isFinite(projectile.width)
+        ? Math.max(projectile.width, projectile.height)
+        : projectile.height,
+    ),
+    fp.fromInt(2),
+  );
+  const fpHalfBeam = fp.div(fp.fromFloat(beam.height), fp.fromInt(2));
+
+  return (
+    fp.gte(fpForward, fp.negate(projectileRadius)) &&
+    fp.lte(fpSide, fp.add(fpHalfBeam, projectileRadius))
   );
 }
 

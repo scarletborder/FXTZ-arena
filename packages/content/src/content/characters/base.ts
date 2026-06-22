@@ -70,6 +70,10 @@ export interface BattleLaserSpawnParams {
   readonly width?: number;
   readonly height?: number;
   readonly renderHeight?: number;
+  readonly maxHeight?: number;
+  readonly heightGrowthPerTick?: number;
+  readonly maxRenderHeight?: number;
+  readonly renderHeightGrowthPerTick?: number;
   readonly laserRenderMode?: LaserRenderMode;
   readonly laserVisualStyle?: LaserVisualStyle;
   readonly laserFramePairStartOffset?: number;

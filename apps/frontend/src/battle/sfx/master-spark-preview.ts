@@ -28,7 +28,11 @@ export function renderMasterSparkPreviewSfx(
   graphics.clear();
   graphics.setPosition(params.x, params.y);
   graphics.setRotation(params.angle);
-  graphics.lineStyle(2, 0xffffff, params.alpha ?? 0.75);
+  graphics.lineStyle(
+    Math.max(2, params.width),
+    params.color,
+    params.alpha ?? 0.7,
+  );
   graphics.beginPath();
   graphics.moveTo(0, 0);
   graphics.lineTo(params.length, 0);

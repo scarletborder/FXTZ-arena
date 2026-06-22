@@ -1,11 +1,32 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("phaser", () => ({
-  default: {},
+  default: {
+    Input: {
+      Keyboard: {
+        KeyCodes: {
+          W: 87,
+          A: 65,
+          S: 83,
+          D: 68,
+          SHIFT: 16,
+          R: 82,
+          TAB: 9,
+          ENTER: 13,
+          E: 69,
+        },
+      },
+    },
+  },
 }));
 
 import type { BattleOutputState } from "@repo/raid-logic";
-import type { CharacterDefinition, FighterKey, FighterState, ProjectileState } from "@repo/content";
+import type {
+  CharacterDefinition,
+  FighterKey,
+  FighterState,
+  ProjectileState,
+} from "@repo/content";
 
 import AudioCmd, { type AudioCommand } from "../commands/AudioCmd";
 import { BattleAudioDirector } from "./sfx/audio";
@@ -73,7 +94,10 @@ function battleState(params: {
   };
 }
 
-function fighter(key: FighterKey, activeCharacter: CharacterDefinition): FighterState {
+function fighter(
+  key: FighterKey,
+  activeCharacter: CharacterDefinition,
+): FighterState {
   return {
     key,
     x: 0,
@@ -179,6 +203,8 @@ function projectile(params: {
     vy: 0,
     width: params.width,
     previousWidth: params.width,
+    previousHeight: params.height,
+    previousRenderHeight: undefined,
     height: params.height,
     anchorX: undefined,
     anchorY: undefined,
@@ -194,6 +220,10 @@ function projectile(params: {
     retargetAimOwner: undefined,
     widthGrowthPerTick: 0,
     maxWidth: undefined,
+    heightGrowthPerTick: 0,
+    maxHeight: undefined,
+    renderHeightGrowthPerTick: 0,
+    maxRenderHeight: undefined,
     damage: 1,
     angle: 0,
     couldClear: true,

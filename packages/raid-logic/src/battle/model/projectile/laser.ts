@@ -33,6 +33,10 @@ export function createLaserProjectile(params: {
   readonly maxLength?: number;
   readonly lengthGrowthPerTick?: number;
   readonly renderHeight?: number;
+  readonly maxHeight?: number;
+  readonly heightGrowthPerTick?: number;
+  readonly maxRenderHeight?: number;
+  readonly renderHeightGrowthPerTick?: number;
   readonly damage?: number;
   readonly spawnOffset?: number;
   readonly pinned?: boolean;
@@ -82,6 +86,8 @@ export function createLaserProjectile(params: {
     vy: fp.toFloat(fp.mul(fpSin, fpV)),
     width,
     previousWidth: width,
+    previousHeight: params.height ?? (params.kind === "spark" ? 9 : 0),
+    previousRenderHeight: params.renderHeight ?? params.height ?? 9,
     height: params.height ?? (params.kind === "spark" ? 9 : 0),
     renderWidth: undefined,
     renderHeight: params.renderHeight ?? params.height ?? 9,
@@ -109,6 +115,10 @@ export function createLaserProjectile(params: {
     retargetAimOwner: undefined,
     widthGrowthPerTick: params.lengthGrowthPerTick ?? 0,
     maxWidth: params.maxLength,
+    heightGrowthPerTick: params.heightGrowthPerTick ?? 0,
+    maxHeight: params.maxHeight,
+    renderHeightGrowthPerTick: params.renderHeightGrowthPerTick ?? 0,
+    maxRenderHeight: params.maxRenderHeight,
     damage: params.damage ?? 1,
     angle: params.angle,
     couldClear: params.couldClear ?? true,
@@ -135,6 +145,33 @@ export function stepLaserProjectile(projectile: ProjectileState): void {
         : fp.fromInt(9999);
     const newWidth = fpMin(fpMaxW, fp.add(fpWidth, fpGrowth));
     projectile.width = fp.toFloat(newWidth);
+  }
+
+  if (projectile.heightGrowthPerTick > 0 && Number.isFinite(projectile.height)) {
+    const fpHeight = fp.fromFloat(projectile.height);
+    const fpGrowth = fp.fromFloat(projectile.heightGrowthPerTick);
+    const fpMaxH =
+      projectile.maxHeight !== undefined && Number.isFinite(projectile.maxHeight)
+        ? fp.fromFloat(projectile.maxHeight)
+        : fp.fromInt(9999);
+    projectile.height = fp.toFloat(fpMin(fpMaxH, fp.add(fpHeight, fpGrowth)));
+  }
+
+  if (
+    projectile.renderHeightGrowthPerTick > 0 &&
+    projectile.renderHeight !== undefined &&
+    Number.isFinite(projectile.renderHeight)
+  ) {
+    const fpHeight = fp.fromFloat(projectile.renderHeight);
+    const fpGrowth = fp.fromFloat(projectile.renderHeightGrowthPerTick);
+    const fpMaxH =
+      projectile.maxRenderHeight !== undefined &&
+      Number.isFinite(projectile.maxRenderHeight)
+        ? fp.fromFloat(projectile.maxRenderHeight)
+        : fp.fromInt(9999);
+    projectile.renderHeight = fp.toFloat(
+      fpMin(fpMaxH, fp.add(fpHeight, fpGrowth)),
+    );
   }
 
   if (

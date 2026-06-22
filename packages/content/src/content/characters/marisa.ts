@@ -26,9 +26,12 @@ const REAR_BEAM_DURATION_TICKS = 25;
 const REAR_BEAM_TIER4_SIDE_DURATION_TICKS = 20;
 const REAR_BEAM_DESPAWN_TICKS = 6;
 const REAR_BEAM_THICKNESS = hitCircleUnits(2);
-const BOMB_WINDUP_TICKS = secondsToTicks(1);
+const BOMB_WINDUP_TICKS = secondsToTicks(0.6);
 const BOMB_DAMAGE_DURATION_TICKS = 150;
 const BOMB_FRAME_DAMAGE = 5;
+const BOMB_SPARK_HIT_HEIGHT = hitCircleUnits(36);
+const BOMB_SPARK_RENDER_HEIGHT = hitCircleUnits(54);
+const BOMB_SPARK_EXPAND_TICKS = 12;
 
 export class MarisaBattleCharacter extends BattleCharacter {
   readonly id = "marisa" as CharacterDefinition["id"];
@@ -128,7 +131,13 @@ export class MarisaBattleCharacter extends BattleCharacter {
       x: fighter.x,
       y: fighter.y,
       angle,
-      height: hitCircleUnits(36),
+      height: 0,
+      renderHeight: 0,
+      maxHeight: BOMB_SPARK_HIT_HEIGHT,
+      heightGrowthPerTick: BOMB_SPARK_HIT_HEIGHT / BOMB_SPARK_EXPAND_TICKS,
+      maxRenderHeight: BOMB_SPARK_RENDER_HEIGHT,
+      renderHeightGrowthPerTick:
+        BOMB_SPARK_RENDER_HEIGHT / BOMB_SPARK_EXPAND_TICKS,
       initialLength: Number.POSITIVE_INFINITY,
       maxLength: Number.POSITIVE_INFINITY,
       lengthGrowthPerTick: 0,
@@ -142,6 +151,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
       visibleFrom: ctx.frame + windupTicks,
       pausedUntil: ctx.frame + windupTicks,
       couldClear: false,
+      clearsProjectiles: true,
     });
 
     fighter.invulnerableDelayRemaining = windupTicks;
