@@ -255,7 +255,12 @@ export class ProjectileSystem {
     ];
     for (const projectile of params.projectiles) {
       const visible = params.frame >= projectile.visibleFrom;
-      const canInteract = visible && projectile.damage > 0;
+      const damageWindowOpen =
+        (projectile.damageFrom === undefined ||
+          params.frame >= projectile.damageFrom) &&
+        (projectile.damageUntil === undefined ||
+          params.frame < projectile.damageUntil);
+      const canInteract = visible && damageWindowOpen && projectile.damage > 0;
       if (
         canInteract &&
         canShieldBlockProjectile(projectile) &&

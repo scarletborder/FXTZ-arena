@@ -33,6 +33,8 @@ export interface TickerManagerSnapshot {
 export interface ProjectileTimerSnapshot {
   readonly visibleIn: number;
   readonly expireIn: number | undefined;
+  readonly damageFromIn: number | undefined;
+  readonly damageUntilIn: number | undefined;
   readonly homingStartIn: number;
   readonly homingRemaining: number;
   readonly pausedRemaining: number;
@@ -42,6 +44,8 @@ export interface ProjectileTimerSnapshot {
 type ProjectileTimerKey =
   | "visibleFrom"
   | "expireAt"
+  | "damageFrom"
+  | "damageUntil"
   | "homingStartAt"
   | "homingUntil"
   | "pausedUntil"
@@ -50,6 +54,8 @@ type ProjectileTimerKey =
 const PROJECTILE_TIMERS: readonly ProjectileTimerKey[] = [
   "visibleFrom",
   "expireAt",
+  "damageFrom",
+  "damageUntil",
   "homingStartAt",
   "homingUntil",
   "pausedUntil",
@@ -59,6 +65,8 @@ const PROJECTILE_TIMERS: readonly ProjectileTimerKey[] = [
 const PROJECTILE_PAUSE_DEPENDENT_TIMERS: readonly ProjectileTimerKey[] = [
   "visibleFrom",
   "expireAt",
+  "damageFrom",
+  "damageUntil",
   "homingStartAt",
   "homingUntil",
   "retargetAt",
@@ -163,6 +171,14 @@ export class TickerManager {
         projectile.expireAt === undefined
           ? undefined
           : projectile.expireAt - this.currentFrame,
+      damageFromIn:
+        projectile.damageFrom === undefined
+          ? undefined
+          : projectile.damageFrom - this.currentFrame,
+      damageUntilIn:
+        projectile.damageUntil === undefined
+          ? undefined
+          : projectile.damageUntil - this.currentFrame,
       homingStartIn: projectile.homingStartAt - this.currentFrame,
       homingRemaining: projectile.homingUntil - this.currentFrame,
       pausedRemaining: projectile.pausedUntil - this.currentFrame,
@@ -182,6 +198,14 @@ export class TickerManager {
         snapshot.expireIn === undefined
           ? undefined
           : this.currentFrame + snapshot.expireIn,
+      damageFrom:
+        snapshot.damageFromIn === undefined
+          ? undefined
+          : this.currentFrame + snapshot.damageFromIn,
+      damageUntil:
+        snapshot.damageUntilIn === undefined
+          ? undefined
+          : this.currentFrame + snapshot.damageUntilIn,
       homingStartAt: this.currentFrame + snapshot.homingStartIn,
       homingUntil: this.currentFrame + snapshot.homingRemaining,
       pausedUntil: this.currentFrame + snapshot.pausedRemaining,

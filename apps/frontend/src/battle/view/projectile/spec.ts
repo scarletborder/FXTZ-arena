@@ -103,7 +103,7 @@ function mappedProjectileFrame(
     case "reimu":
       return reimuProjectileFrame(projectile, frame, frames);
     case "marisa":
-      return marisaProjectileFrame(projectile, frames);
+      return marisaProjectileFrame(projectile, frame, frames);
     case "sakuya":
       return sakuyaProjectileFrame(projectile, frames);
     case "cirno":
@@ -137,6 +137,7 @@ function reimuProjectileFrame(
 
 function marisaProjectileFrame(
   projectile: ProjectileState,
+  frame: number,
   frames: ReadonlyMap<string, BulletFrame>,
 ): ProjectileSpec | undefined {
   if (
@@ -147,6 +148,9 @@ function marisaProjectileFrame(
   }
   if (projectile.kind !== "laser") return undefined;
   if (projectile.damage === 0) return undefined;
+  if (projectile.laserVisualStyle === "th06") {
+    return th06LaserSpec(projectile, frame, frames);
+  }
   if (!Number.isFinite(projectile.width)) {
     return laserSpec(frames, "laser_type_1", 5);
   }
@@ -247,6 +251,40 @@ function laserSpec(
 ): ProjectileSpec | undefined {
   const frame = frames.get(`${bulletFrameKey(id, offset)}_middle`);
   return frame ? { kind: "laser", frame } : undefined;
+}
+
+function th06LaserSpec(
+  projectile: ProjectileState,
+  frame: number,
+  frames: ReadonlyMap<string, BulletFrame>,
+): ProjectileSpec | undefined {
+  const visibleFrom = projectile.visibleFrom;
+  const spawnTicks = Math.max(1, projectile.laserSpawnTicks ?? 1);
+  const despawnTicks = Math.max(1, projectile.laserDespawnTicks ?? 1);
+  const baseOffset = projectile.laserFramePairStartOffset ?? 1;
+  const damageFrom = projectile.damageFrom ?? visibleFrom + spawnTicks;
+  const despawnFrom =
+    projectile.damageUntil ??
+    Math.max(visibleFrom, (projectile.expireAt ?? visibleFrom) - despawnTicks);
+  let offset = baseOffset + 1;
+  let phaseProgress: number | undefined;
+  if (frame < damageFrom) {
+    offset = baseOffset;
+    phaseProgress = clamp01((frame - visibleFrom + 1) / spawnTicks);
+  } else if (frame >= despawnFrom) {
+    offset = baseOffset;
+    phaseProgress = clamp01(1 - (frame - despawnFrom + 1) / despawnTicks);
+  }
+  const laserFrame = frames.get(
+    `${bulletFrameKey("laser_type_1", offset)}_middle`,
+  );
+  return laserFrame
+    ? { kind: "laser", frame: laserFrame, phaseProgress }
+    : undefined;
+}
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
 }
 
 function projectileTexture(projectile: ProjectileState): string {

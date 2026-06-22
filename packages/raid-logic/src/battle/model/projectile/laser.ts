@@ -24,6 +24,10 @@ export function createLaserProjectile(params: {
   readonly height?: number;
   readonly speedRank?: "low" | "medium" | "high";
   readonly laserRenderMode?: ProjectileState["laserRenderMode"];
+  readonly laserVisualStyle?: ProjectileState["laserVisualStyle"];
+  readonly laserFramePairStartOffset?: number;
+  readonly laserSpawnTicks?: number;
+  readonly laserDespawnTicks?: number;
   readonly expireTicks?: number;
   readonly initialLength?: number;
   readonly maxLength?: number;
@@ -36,6 +40,8 @@ export function createLaserProjectile(params: {
   readonly rayLike?: boolean;
   readonly visibleFrom?: number;
   readonly pausedUntil?: number;
+  readonly damageFrom?: number;
+  readonly damageUntil?: number;
   readonly couldClear?: boolean;
   readonly clearsProjectiles?: boolean;
   readonly piercesTargets?: boolean;
@@ -76,10 +82,14 @@ export function createLaserProjectile(params: {
     vy: fp.toFloat(fp.mul(fpSin, fpV)),
     width,
     previousWidth: width,
-    height: params.kind === "spark" ? (params.height ?? 9) : 0,
+    height: params.height ?? (params.kind === "spark" ? 9 : 0),
     renderWidth: undefined,
     renderHeight: params.renderHeight ?? params.height ?? 9,
     laserRenderMode: params.laserRenderMode,
+    laserVisualStyle: params.laserVisualStyle,
+    laserFramePairStartOffset: params.laserFramePairStartOffset,
+    laserSpawnTicks: params.laserSpawnTicks,
+    laserDespawnTicks: params.laserDespawnTicks,
     anchorX: params.anchored ? params.x : undefined,
     anchorY: params.anchored ? params.y : undefined,
     visibleFrom: params.visibleFrom ?? params.frame,
@@ -87,6 +97,8 @@ export function createLaserProjectile(params: {
       params.expireTicks === undefined
         ? undefined
         : params.frame + params.expireTicks,
+    damageFrom: params.damageFrom,
+    damageUntil: params.damageUntil,
     homingStartAt: 0,
     homingUntil: 0,
     pausedUntil: params.pausedUntil ?? params.frame,

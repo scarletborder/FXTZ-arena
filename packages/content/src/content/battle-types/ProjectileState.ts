@@ -1,4 +1,9 @@
-import type { FighterKey, LaserRenderMode, ProjectileKind } from "./common";
+import type {
+  FighterKey,
+  LaserRenderMode,
+  LaserVisualStyle,
+  ProjectileKind,
+} from "./common";
 import type { CharacterDefinition } from "../characters/types";
 
 export interface ProjectileState {
@@ -19,10 +24,16 @@ export interface ProjectileState {
   readonly renderWidth?: number;
   readonly renderHeight?: number;
   readonly laserRenderMode?: LaserRenderMode;
+  readonly laserVisualStyle?: LaserVisualStyle;
+  readonly laserFramePairStartOffset?: number;
+  readonly laserSpawnTicks?: number;
+  readonly laserDespawnTicks?: number;
   readonly anchorX: number | undefined;
   readonly anchorY: number | undefined;
   visibleFrom: number;
   expireAt: number | undefined;
+  damageFrom?: number;
+  damageUntil?: number;
   homingStartAt: number;
   homingUntil: number;
   pausedUntil: number;

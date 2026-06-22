@@ -21,8 +21,11 @@ const NORMAL_SHOOT_DAMAGE_BY_TIER = {
 } as const;
 const REAR_BEAM_DAMAGE = 1;
 const REAR_BEAM_WINDUP_TICKS = 24;
+const REAR_BEAM_SPAWN_TICKS = 6;
 const REAR_BEAM_DURATION_TICKS = 25;
 const REAR_BEAM_TIER4_SIDE_DURATION_TICKS = 20;
+const REAR_BEAM_DESPAWN_TICKS = 6;
+const REAR_BEAM_THICKNESS = hitCircleUnits(2);
 const BOMB_WINDUP_TICKS = secondsToTicks(1);
 const BOMB_DAMAGE_DURATION_TICKS = 150;
 const BOMB_FRAME_DAMAGE = 5;
@@ -232,11 +235,10 @@ export class MarisaBattleCharacter extends BattleCharacter {
   ): void {
     ctx.spawnLaser({
       owner: fighter.key,
-      textureKey: "laser_type_1_offset_5",
       x,
       y,
       angle,
-      renderHeight: hitCircleUnits(2),
+      renderHeight: REAR_BEAM_THICKNESS,
       initialLength: Number.POSITIVE_INFINITY,
       maxLength: Number.POSITIVE_INFINITY,
       lengthGrowthPerTick: 0,
@@ -260,26 +262,38 @@ export class MarisaBattleCharacter extends BattleCharacter {
     frameDelay: number,
     expireTicks: number,
   ): void {
+    const visibleFrom = ctx.frame + frameDelay;
+    const damageFrom = visibleFrom + REAR_BEAM_SPAWN_TICKS;
+    const damageUntil = damageFrom + expireTicks;
     ctx.spawnLaser({
       owner: fighter.key,
-      textureKey: "laser_type_1_offset_5",
       x,
       y,
       angle,
-      renderHeight: hitCircleUnits(2),
+      height: REAR_BEAM_THICKNESS,
+      renderHeight: REAR_BEAM_THICKNESS,
+      laserVisualStyle: "th06",
+      laserFramePairStartOffset: 1,
+      laserSpawnTicks: REAR_BEAM_SPAWN_TICKS,
+      laserDespawnTicks: REAR_BEAM_DESPAWN_TICKS,
       initialLength: Number.POSITIVE_INFINITY,
       maxLength: Number.POSITIVE_INFINITY,
       lengthGrowthPerTick: 0,
       speedRank: "low",
-      expireTicks,
+      expireTicks:
+        frameDelay +
+        REAR_BEAM_SPAWN_TICKS +
+        expireTicks +
+        REAR_BEAM_DESPAWN_TICKS,
       damage: REAR_BEAM_DAMAGE,
       spawnOffset: 0,
       pinned: true,
       anchored: true,
       rayLike: true,
-      visibleFrom: ctx.frame + frameDelay,
+      visibleFrom,
       pausedUntil: ctx.frame + frameDelay,
-      frame: ctx.frame + frameDelay,
+      damageFrom,
+      damageUntil,
       couldClear: false,
     });
   }

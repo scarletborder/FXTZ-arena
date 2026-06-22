@@ -24,13 +24,35 @@ describe("BattleModel Marisa", () => {
       .sort((left, right) => left.y - right.y);
     expect(tier2RearBeams).toHaveLength(2);
     expect(tier2RearBeams.map((projectile) => projectile.height)).toEqual([
-      0,
-      0,
-    ]);
-    expect(tier2RearBeams.map((projectile) => projectile.renderHeight)).toEqual([
       HIT_CIRCLE_DIAMETER * 2,
       HIT_CIRCLE_DIAMETER * 2,
     ]);
+    expect(tier2RearBeams.map((projectile) => projectile.renderHeight)).toEqual(
+      [HIT_CIRCLE_DIAMETER * 2, HIT_CIRCLE_DIAMETER * 2],
+    );
+    expect(
+      tier2RearBeams.map((projectile) => projectile.laserVisualStyle),
+    ).toEqual(["th06", "th06"]);
+    expect(
+      tier2RearBeams.map((projectile) => projectile.laserFramePairStartOffset),
+    ).toEqual([1, 1]);
+    expect(
+      tier2RearBeams.map((projectile) => projectile.laserSpawnTicks),
+    ).toEqual([6, 6]);
+    expect(
+      tier2RearBeams.map((projectile) => projectile.laserDespawnTicks),
+    ).toEqual([6, 6]);
+    expect(
+      tier2RearBeams.map(
+        (projectile) => (projectile.damageFrom ?? 0) - projectile.visibleFrom,
+      ),
+    ).toEqual([6, 6]);
+    expect(
+      tier2RearBeams.map(
+        (projectile) =>
+          (projectile.expireAt ?? 0) - (projectile.damageUntil ?? 0),
+      ),
+    ).toEqual([6, 6]);
     expect(tier2RearBeams.map((projectile) => projectile.x)).toEqual([
       tier2.player.previousX - HIT_CIRCLE_DIAMETER * 16,
       tier2.player.previousX - HIT_CIRCLE_DIAMETER * 16,

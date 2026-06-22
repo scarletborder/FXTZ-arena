@@ -9,6 +9,7 @@ import type {
   FighterKey,
   FighterState,
   LaserRenderMode,
+  LaserVisualStyle,
   ProjectileState,
   TrainingStats,
 } from "../battle-types";
@@ -70,6 +71,10 @@ export interface BattleLaserSpawnParams {
   readonly height?: number;
   readonly renderHeight?: number;
   readonly laserRenderMode?: LaserRenderMode;
+  readonly laserVisualStyle?: LaserVisualStyle;
+  readonly laserFramePairStartOffset?: number;
+  readonly laserSpawnTicks?: number;
+  readonly laserDespawnTicks?: number;
   readonly expireTicks?: number;
   readonly initialLength?: number;
   readonly maxLength?: number;
@@ -81,6 +86,8 @@ export interface BattleLaserSpawnParams {
   readonly rayLike?: boolean;
   readonly visibleFrom?: number;
   readonly pausedUntil?: number;
+  readonly damageFrom?: number;
+  readonly damageUntil?: number;
   readonly frame?: number;
   readonly couldClear?: boolean;
   readonly clearsProjectiles?: boolean;

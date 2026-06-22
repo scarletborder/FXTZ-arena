@@ -38,6 +38,7 @@ export type ProjectileSpec =
   | {
       readonly kind: "laser";
       readonly frame: BulletFrame;
+      readonly phaseProgress?: number;
     }
   | {
       readonly kind: "youmuSlash";

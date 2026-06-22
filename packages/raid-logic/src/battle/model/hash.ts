@@ -138,7 +138,9 @@ export function hashBattleModelComponents(
     neutralMobs: hash("mobs", (h) =>
       writeNeutralMobs(h, model.neutralMobManager.states()),
     ),
-    points: hash("points", (h) => writePoints(h, model.pointManager.pointStates())),
+    points: hash("points", (h) =>
+      writePoints(h, model.pointManager.pointStates()),
+    ),
     clearRings: hash("rings", (h) => writeClearRings(h, model.clearRings)),
     spawner: hash("spawner", (h) =>
       writeSpawnerState(h, model.neutralMobManager.mobSpawnerState()),
@@ -182,15 +184,18 @@ function writeNeutralMobs(
     hasher.writeString(mob.powerRewardSize ?? "");
     writeStateValue(
       hasher,
-      (rewardMob.pointRewardDrops ?? []) as unknown as NeutralMobSpawnerStateValue,
+      (rewardMob.pointRewardDrops ??
+        []) as unknown as NeutralMobSpawnerStateValue,
     );
     writeStateValue(
       hasher,
-      (rewardMob.moneyRewardDrops ?? []) as unknown as NeutralMobSpawnerStateValue,
+      (rewardMob.moneyRewardDrops ??
+        []) as unknown as NeutralMobSpawnerStateValue,
     );
     writeStateValue(
       hasher,
-      (rewardMob.powerRewardDrops ?? []) as unknown as NeutralMobSpawnerStateValue,
+      (rewardMob.powerRewardDrops ??
+        []) as unknown as NeutralMobSpawnerStateValue,
     );
     hasher.writeNumber(mob.damageTaken ?? 0);
     hasher.writeNumber(mob.active ? 1 : 0);
@@ -371,10 +376,16 @@ function writeProjectiles(
     writeFixed(hasher, projectile.renderWidth ?? 0);
     writeFixed(hasher, projectile.renderHeight ?? 0);
     hasher.writeString(projectile.laserRenderMode ?? "");
+    hasher.writeString(projectile.laserVisualStyle ?? "");
+    hasher.writeNumber(projectile.laserFramePairStartOffset ?? 0);
+    hasher.writeNumber(projectile.laserSpawnTicks ?? 0);
+    hasher.writeNumber(projectile.laserDespawnTicks ?? 0);
     writeFixed(hasher, projectile.anchorX ?? 0);
     writeFixed(hasher, projectile.anchorY ?? 0);
     hasher.writeNumber(projectile.visibleFrom);
     hasher.writeNumber(projectile.expireAt ?? 0);
+    hasher.writeNumber(projectile.damageFrom ?? 0);
+    hasher.writeNumber(projectile.damageUntil ?? 0);
     hasher.writeNumber(projectile.homingStartAt);
     hasher.writeNumber(projectile.homingUntil);
     hasher.writeNumber(projectile.pausedUntil);
@@ -449,10 +460,7 @@ function writeCollaborateExtra(
     return;
   }
   hasher.writeNumber(1);
-  writeStateValue(
-    hasher,
-    state as unknown as NeutralMobSpawnerStateValue,
-  );
+  writeStateValue(hasher, state as unknown as NeutralMobSpawnerStateValue);
 }
 
 function writeStateValue(

@@ -64,6 +64,8 @@ export type ProjectileSnapshot = Omit<
   ProjectileState,
   | "visibleFrom"
   | "expireAt"
+  | "damageFrom"
+  | "damageUntil"
   | "homingStartAt"
   | "homingUntil"
   | "pausedUntil"
@@ -199,6 +201,8 @@ export function restoreProjectileSnapshot(
   const {
     visibleIn,
     expireIn,
+    damageFromIn,
+    damageUntilIn,
     homingStartIn,
     homingRemaining,
     pausedRemaining,
@@ -210,6 +214,8 @@ export function restoreProjectileSnapshot(
     ...ticker.restoreProjectileTimers({
       visibleIn,
       expireIn,
+      damageFromIn,
+      damageUntilIn,
       homingStartIn,
       homingRemaining,
       pausedRemaining,
@@ -328,6 +334,10 @@ function serializeProjectile(
     renderWidth: projectile.renderWidth,
     renderHeight: projectile.renderHeight,
     laserRenderMode: projectile.laserRenderMode,
+    laserVisualStyle: projectile.laserVisualStyle,
+    laserFramePairStartOffset: projectile.laserFramePairStartOffset,
+    laserSpawnTicks: projectile.laserSpawnTicks,
+    laserDespawnTicks: projectile.laserDespawnTicks,
     anchorX: projectile.anchorX,
     anchorY: projectile.anchorY,
     ...ticker.serializeProjectileTimers(projectile),

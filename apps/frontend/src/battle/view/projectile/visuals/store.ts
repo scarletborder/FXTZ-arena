@@ -95,14 +95,15 @@ export class ProjectileVisualStore {
     if (projectile.laserRenderMode === "tiled") {
       addTiledLaserImages(this.scene, container, display, spec.frame);
     } else {
+      const visualThickness =
+        display.height *
+        (spec.frame.width / spec.frame.hitWidth) *
+        (spec.phaseProgress ?? 1);
       const image = this.scene.add
         .image(0, 0, spec.frame.texture, spec.frame.frame)
         .setOrigin(0.5)
         .setRotation(Math.PI / 2)
-        .setDisplaySize(
-          display.height * (spec.frame.width / spec.frame.hitWidth),
-          length,
-        );
+        .setDisplaySize(Math.max(1, visualThickness), length);
       container.add(image);
     }
   }
