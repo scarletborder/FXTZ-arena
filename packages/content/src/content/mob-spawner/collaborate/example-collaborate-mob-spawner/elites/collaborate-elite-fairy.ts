@@ -314,7 +314,7 @@ export class CollaborateEliteFairy extends NeutralMob<
   ): void {
     const base = Math.PI / 2 + (this.state.fireSubphase % 2) * 0.22;
     for (const offset of [-0.32, 0, 0.32]) {
-      this.spawnBullet(ctx, base + offset, "medium", "bullet_type_21_offset_1", 14);
+      this.spawnBullet(ctx, base + offset, "medium", "bullet_type_21_offset_1", 8);
     }
   }
 
@@ -362,7 +362,7 @@ export class CollaborateEliteFairy extends NeutralMob<
     const base = this.state.fireSubphase * 0.19;
     for (let i = 0; i < 5; i += 1) {
       const angle = base + i * ((Math.PI * 2) / 5);
-      this.spawnBullet(ctx, angle, "medium", "bullet_type_21_offset_1", 16);
+      this.spawnBullet(ctx, angle, "medium", "bullet_type_21_offset_1", 9);
       this.spawnBullet(ctx, angle + 0.16, "low", "bullet_type_3_offset_6", 10);
     }
   }

@@ -18,8 +18,8 @@ const BOMB_FORWARD_DELAY_TICKS = secondsToTicks(0.5);
 const BOMB_REAR_DELAY_TICKS = secondsToTicks(0.75);
 const BOMB_ORB_DISTANCE = hitCircleUnits(28);
 const CENTER_SHOT_HIT_SIZE = 12;
-const HOMING_SHOT_HIT_SIZE = 10;
-const BOMB_ORB_SIZE = 40;
+const HOMING_SHOT_HIT_SIZE = 4;
+const BOMB_ORB_SIZE = 38;
 
 const NORMALSHOOT_CENTER_DAMAGE_BY_TIER = {
   1: 50,

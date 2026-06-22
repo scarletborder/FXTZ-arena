@@ -14,7 +14,7 @@ import {
 import { fpAtan2 } from "../fp";
 import { Vanilla } from "../decorators";
 
-const KNIFE_HIT_SIZE = 20;
+const KNIFE_HIT_SIZE = 8;
 const SAKUYA_KNIFE_TEXTURE = "bullet_type_20_offset_0";
 const SAKUYA_BOMB_KNIFE_TEXTURE = "bullet_type_20_offset_1";
 const SAKUYA_SNIPE_KNIFE_TEXTURE = "bullet_type_20_offset_2";

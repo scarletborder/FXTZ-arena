@@ -19,9 +19,9 @@ import { Vanilla } from "../decorators";
 
 const CENTER_PAIR_GAP = hitCircleUnitsFixed(4);
 const CENTER_SHOT_INTERVAL = 8;
-const CENTER_BULLET_SIZE = scaledHitbox(24, 20, 32);
-const SIDE_BULLET_SIZE = scaledHitbox(36, 20, 32);
-const BOMB_BULLET_SIZE = scaledHitbox(48, 40, 64);
+const CENTER_BULLET_SIZE = scaledHitbox(24, 11, 32);
+const SIDE_BULLET_SIZE = scaledHitbox(36, 15, 32);
+const BOMB_BULLET_SIZE = scaledHitbox(48, 38, 64);
 
 const CENTER_DAMAGE_BY_TIER = {
   1: 50,

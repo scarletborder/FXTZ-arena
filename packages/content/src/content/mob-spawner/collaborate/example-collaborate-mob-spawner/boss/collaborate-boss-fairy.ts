@@ -243,7 +243,7 @@ export class CollaborateBossFairy extends NeutralMob<
       fp.fromFloat(target.x - this.state.x),
     );
     for (const offset of [-0.08, 0, 0.08]) {
-      this.spawnBullet(ctx, angle + offset, "high", "bullet_type_21_offset_1", 12);
+      this.spawnBullet(ctx, angle + offset, "high", "bullet_type_21_offset_1", 7);
     }
   }
 
@@ -307,7 +307,7 @@ export class CollaborateBossFairy extends NeutralMob<
     for (let i = 0; i < 7; i += 1) {
       const angle = this.nextUnit() * Math.PI * 2;
       const speedRank = this.nextUnit() < 0.55 ? "low" : "medium";
-      this.spawnBullet(ctx, angle, speedRank, "bullet_type_21_offset_1", 12);
+      this.spawnBullet(ctx, angle, speedRank, "bullet_type_21_offset_1", 7);
     }
   }
 

@@ -326,12 +326,13 @@ export class TestArena2Fairy extends NeutralMob<
     >,
     angle: number,
     speedRank: BattleBulletSpawnParams["speedRank"],
-    size: number,
+    originalSize: number,
   ): void {
+    const isFairy2 = this.state.species === "fairy2";
+    const size = isFairy2 ? Math.ceil(originalSize * 11 / 20) : originalSize;
     ctx.spawnBullet({
       owner: "Neutral",
-      textureKey:
-        this.state.species === "fairy2"
+      textureKey: isFairy2
           ? "bullet_type_21_offset_1"
           : "bullet_type_3_offset_12",
       kind: "orb",

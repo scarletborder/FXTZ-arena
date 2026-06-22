@@ -166,8 +166,8 @@ export class HorizontalFairy extends NeutralMob<
         y: this.state.y,
         angle: fp.toFloat(angle as number),
         speedRank: "low",
-        width: 15,
-        height: 15,
+        width: 9,
+        height: 9,
         homingTicks: 0,
         spawnOffset: 0,
       });
