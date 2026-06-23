@@ -77,7 +77,7 @@ export function renderDebugTab(scene: SettingsScene, layer: Phaser.GameObjects.C
   layer.add(scene.add.text(
     margin + 36,
     72,
-    "在新场景中查看全部 30 种弹幕类型及其判定体积。\nShift 切换暂停，ESC 返回。",
+    "查看弹幕类型及其判定体积。\nShift 切换暂停，ESC 返回。",
     bodyStyle("#9fd8ff", 16),
   ));
 
