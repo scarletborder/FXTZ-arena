@@ -1,5 +1,3 @@
-import { fp } from "@shaisrc/fixed-point";
-
 import {
   DEFAULT_ARENA_BOUNDS,
   PLAYER_CORE_RADIUS,
@@ -17,11 +15,10 @@ import {
 
 import { getAbilityCard, getCharacter } from "../content";
 import type { BattleLoadouts, FighterLoadout } from "../loadout";
-import type { BattleInputState, BattleRoomMode, NeutralMobActionContext } from "@repo/types";
+import type { BattleInputState, BattleRoomMode } from "@repo/types";
 import type {
   BattleOutputState,
   BattleResult,
-  CharacterActionContext,
   EffectState,
   FighterKey,
   FighterState,
@@ -41,8 +38,6 @@ import { hashBattleModel, hashBattleModelComponents, hashToHex } from "./hash";
 import { BattlePhysics } from "./physics-adapter";
 import {
   ProjectileSystem,
-  type BulletProjectileParams,
-  type LaserProjectileParams,
   type ProjectileHitTarget,
 } from "./projectile";
 import {
@@ -62,10 +57,6 @@ import { BattleSizeManager } from "./size-manager";
 import { clampCollaborateCurrency } from "./utils/currency";
 import { hitsBeam as computeBeamHit } from "./utils/geometry";
 import {
-  createCharacterActionContext as buildCharacterActionContext,
-  createNeutralMobActionContext as buildNeutralMobActionContext,
-} from "./context-factory";
-import {
   beginCollaborateTransitionState,
   processCollaborateTransitionSync as processCollaborateTransitionSyncState,
   processCollaborateShopInputs as processCollaborateShopInputState,
@@ -77,6 +68,13 @@ import {
   resolveProjectileGraze,
   resolveProjectileHit,
 } from "./referee";
+import {
+  BattleFramePipeline,
+  type BattleFrameContext,
+  type BattleFrameInputPair,
+} from "./frame-pipeline";
+import { createBattleFrameBranchManagers } from "./frame-branch-manager";
+import { BattleActionContextManager } from "./action-context-manager";
 
 export class BattleModel {
   readonly projectiles: ProjectileState[] = [];
@@ -125,6 +123,8 @@ export class BattleModel {
   private readonly projectileSystem: ProjectileSystem;
   private readonly effectSystem = new EffectSystem();
   private readonly ticker = new TickerManager();
+  private readonly framePipeline: BattleFramePipeline;
+  private readonly actionContextManager: BattleActionContextManager;
   private readonly activeCardCooldowns = new ActiveCardCooldownManager(
     this.ticker,
   );
@@ -253,6 +253,61 @@ export class BattleModel {
       this.arenaBounds,
     );
     this.applyDebugCooperateJump(params.debugCooperate?.jump);
+    this.actionContextManager = new BattleActionContextManager({
+      arenaBounds: this.arenaBounds,
+      projectiles: this.projectiles,
+      effects: this.effects,
+      stats: this.stats,
+      clearRingManager: this.clearRingManager,
+      projectileSystem: this.projectileSystem,
+      effectSystem: this.effectSystem,
+      ticker: this.ticker,
+      rules: this.rules,
+      getFrame: () => this.frame,
+      getPlayer: () => this.player,
+      getTarget: () => this.target,
+      getBattleMode: () => this.battleMode,
+      getEnemyTargets: (owner) => this.currentEnemyTargetsFor(owner),
+      consumeAim: () => {
+        this.aimConsumedThisFrame = true;
+      },
+      deferSpawn: (spawn) => {
+        this.pendingSpawns.push(spawn);
+      },
+    });
+    const frameContext: BattleFrameContext = {
+      ensurePhysicsReady: () => this.ensurePhysicsReady(),
+      beginFrame: () => this.beginFrame(),
+      processCollaborateTransitionSync: (inputPair) =>
+        this.processCollaborateTransitionSync(
+          inputPair.firstInput,
+          inputPair.secondInput,
+          inputPair.firstIsPlayer,
+        ),
+      isCollaborateShopOpen: () => this.collaborateExtra?.shop.open === true,
+      processCollaborateShopInputs: (inputPair) =>
+        this.processCollaborateShopInputs(
+          inputPair.firstInput,
+          inputPair.secondInput,
+          inputPair.firstIsPlayer,
+        ),
+      stepMobSpawner: () => this.stepMobSpawner(),
+      beginRunningFrame: () => this.beginRunningFrame(),
+      processFighterActions: (inputPair) =>
+        this.processFighterActionPair(inputPair),
+      stepNeutralMobs: () => this.stepNeutralMobs(),
+      resolveProjectileClashes: () => this.resolveProjectileClashes(),
+      stepProjectiles: () => this.stepProjectiles(),
+      removeInactiveNeutralMobs: () => this.removeInactiveNeutralMobs(),
+      stepPoints: () => this.stepPoints(),
+      syncPointBodies: () => this.syncPointBodies(),
+      flushDeferredSpawns: () => this.flushDeferredSpawns(),
+      stepEffects: () => this.stepEffects(),
+    };
+    this.framePipeline = new BattleFramePipeline(
+      frameContext,
+      createBattleFrameBranchManagers(frameContext),
+    );
   }
 
   get player(): FighterState {
@@ -400,10 +455,16 @@ export class BattleModel {
     secondInput: BattleInputState | undefined,
     firstIsPlayer: boolean,
   ): void {
+    this.framePipeline.advance({ firstInput, secondInput, firstIsPlayer });
+  }
+
+  private ensurePhysicsReady(): void {
     if (!this.physics?.isReady()) {
       throw new Error("BattleModel requires Rapier physics before stepping");
     }
+  }
 
+  private beginFrame(): void {
     this.capturePreviousFighterState();
     this.frame += 1;
     this.aimConsumedThisFrame = false;
@@ -411,63 +472,39 @@ export class BattleModel {
     this.lastPlayerInput = null;
     this.ticker.setCurrentFrame(this.frame);
     this.stats.elapsedTicks += 1;
-
-    if (
-      this.processCollaborateTransitionSync(
-        firstInput,
-        secondInput,
-        firstIsPlayer,
-      )
-    ) {
-      return;
-    }
-
-    if (this.collaborateExtra?.shop.open) {
-      this.processCollaborateShopInputs(
-        firstInput,
-        secondInput,
-        firstIsPlayer,
-      );
-      this.stepMobSpawner();
-      if (!this.collaborateExtra?.shop.open) {
-        this.stepRunningFrame(firstInput, secondInput, firstIsPlayer);
-      }
-      return;
-    }
-
-    this.stepRunningFrame(firstInput, secondInput, firstIsPlayer);
   }
 
-  private stepRunningFrame(
-    firstInput: BattleInputState,
-    secondInput: BattleInputState | undefined,
-    firstIsPlayer: boolean,
-  ): void {
-    // --- Phase 1: Timer ticking (order-independent) ---
+  private beginRunningFrame(): boolean {
     this.pendingSpawns = [];
     this.playerFighter.tickTimers();
     this.targetFighter.tickTimers();
     this.activeCardCooldowns.sync([this.player, this.target]);
+    return this.gameOver;
+  }
 
-    if (this.gameOver) return;
-
-    // --- Phase 2: Fighter actions in priority order ---
-    if (firstIsPlayer) {
-      this.processFighterActions(this.playerFighter, firstInput);
-      this.processFighterActions(this.targetFighter, secondInput);
-      if (firstInput !== undefined) this.lastPlayerInput = firstInput;
-      if (secondInput !== undefined) this.lastTargetInput = secondInput;
+  private processFighterActionPair(inputPair: BattleFrameInputPair): void {
+    if (inputPair.firstIsPlayer) {
+      this.processFighterActions(this.playerFighter, inputPair.firstInput);
+      this.processFighterActions(this.targetFighter, inputPair.secondInput);
+      if (inputPair.firstInput !== undefined) {
+        this.lastPlayerInput = inputPair.firstInput;
+      }
+      if (inputPair.secondInput !== undefined) {
+        this.lastTargetInput = inputPair.secondInput;
+      }
     } else {
-      this.processFighterActions(this.targetFighter, firstInput);
-      this.processFighterActions(this.playerFighter, secondInput);
-      if (firstInput !== undefined) this.lastTargetInput = firstInput;
-      if (secondInput !== undefined) this.lastPlayerInput = secondInput;
+      this.processFighterActions(this.targetFighter, inputPair.firstInput);
+      this.processFighterActions(this.playerFighter, inputPair.secondInput);
+      if (inputPair.firstInput !== undefined) {
+        this.lastTargetInput = inputPair.firstInput;
+      }
+      if (inputPair.secondInput !== undefined) {
+        this.lastPlayerInput = inputPair.secondInput;
+      }
     }
-    this.stepMobSpawner();
-    this.stepNeutralMobs();
+  }
 
-    // --- Phase 3: Post-update ---
-    this.resolveProjectileClashes();
+  private stepProjectiles(): void {
     const physics = this.physics;
     const projAimConsumed = { value: false };
     this.projectileSystem.stepProjectiles({
@@ -497,15 +534,19 @@ export class BattleModel {
         : undefined,
       onHit: (ctx) => this.onProjectileHit(ctx),
       onGraze: (ctx) => this.onProjectileGraze(ctx),
-      clearProjectiles: (projectiles) => this.stepClearRings(projectiles),
+      clearProjectiles: (projectiles) =>
+        this.actionContextManager.stepClearRings(projectiles),
     });
     if (projAimConsumed.value) {
       this.aimConsumedThisFrame = true;
     }
-    this.removeInactiveNeutralMobs();
-    this.stepPoints();
-    physics?.syncPointBodies(this.pointManager.points);
-    this.flushDeferredSpawns();
+  }
+
+  private syncPointBodies(): void {
+    this.physics?.syncPointBodies(this.pointManager.points);
+  }
+
+  private stepEffects(): void {
     this.effectSystem.stepEffects(this.effects, this.frame);
   }
 
@@ -681,7 +722,8 @@ export class BattleModel {
         cpuPlayer: this.cpuPlayer,
         neutralMobManager: this.neutralMobManager,
         currentAimByFighter: this.currentAimByFighter,
-        createActionContext: (self) => this.fighterActionContext(self),
+        createActionContext: (self) =>
+          this.actionContextManager.createCharacterActionContext(self),
         processActiveCardSwitch: (battleFighter, activeCardSwitchId) =>
           this.processActiveCardSwitch(battleFighter, activeCardSwitchId),
         registerActiveCardUse: (state) => {
@@ -802,7 +844,8 @@ export class BattleModel {
       neutralMobManager: this.neutralMobManager,
       stats: this.stats,
       frame: this.frame,
-      createActionContext: (fighter) => this.fighterActionContext(fighter),
+      createActionContext: (fighter) =>
+        this.actionContextManager.createCharacterActionContext(fighter),
       handleNeutralMobKilled: (mob, source) =>
         this.handleNeutralMobKilled(mob, source),
       cancelTimeStop: (fighter) => this.cancelTimeStop(fighter),
@@ -920,140 +963,6 @@ export class BattleModel {
     );
   }
 
-  private fighterActionContext(self: FighterState): CharacterActionContext {
-    return buildCharacterActionContext({
-      frame: this.frame,
-      self,
-      opponent: self.key === "Player1" ? this.target : this.player,
-      enemyTargets:
-        this.battleMode === "collaborate"
-          ? this.currentEnemyTargetsFor(self.key)
-          : undefined,
-      projectiles: this.projectiles,
-      effects: this.effects,
-      stats: this.stats,
-      consumeAim: () => {
-        this.aimConsumedThisFrame = true;
-      },
-      spawnBullet: (params) => {
-        const spawnFrame = params.frame ?? this.frame;
-        const owner = params.owner === "Player1" ? this.player : this.target;
-        const pauseTicks =
-          params.pausedUntil === undefined ? owner.projectilePauseUntil : 0;
-        const spawnParams = {
-          ...params,
-          sourceCharacterId:
-            params.sourceCharacterId ?? self.activeCharacter.id,
-          frame: spawnFrame,
-          pausedUntil: params.pausedUntil ?? spawnFrame,
-        };
-        this.pendingSpawns.push(() => {
-          const startIndex = this.projectiles.length;
-          this.projectileSystem.spawnBullet(this.projectiles, spawnParams);
-          const projectile = this.projectiles[startIndex];
-          if (projectile) {
-            this.ticker.pauseProjectileTimeline(projectile, pauseTicks);
-          }
-        });
-      },
-      spawnLaser: (params) => {
-        const spawnFrame = params.frame ?? this.frame;
-        const owner = params.owner === "Player1" ? this.player : this.target;
-        const pauseTicks =
-          params.pausedUntil === undefined ? owner.projectilePauseUntil : 0;
-        const spawnParams = {
-          ...params,
-          sourceCharacterId:
-            params.sourceCharacterId ?? self.activeCharacter.id,
-          frame: spawnFrame,
-          pausedUntil: params.pausedUntil ?? spawnFrame,
-        };
-        this.pendingSpawns.push(() => {
-          const startIndex = this.projectiles.length;
-          this.projectileSystem.spawnLaser(this.projectiles, spawnParams);
-          const projectile = this.projectiles[startIndex];
-          if (projectile) {
-            this.ticker.pauseProjectileTimeline(projectile, pauseTicks);
-          }
-        });
-      },
-      spawnSegment: (params) => {
-        const spawnFrame = params.frame ?? this.frame;
-        const owner = params.owner === "Player1" ? this.player : this.target;
-        const pauseTicks =
-          params.pausedUntil === undefined ? owner.projectilePauseUntil : 0;
-        const spawnParams = {
-          ...params,
-          sourceCharacterId:
-            params.sourceCharacterId ?? self.activeCharacter.id,
-          frame: spawnFrame,
-          pausedUntil: params.pausedUntil ?? spawnFrame,
-        };
-        this.pendingSpawns.push(() => {
-          const startIndex = this.projectiles.length;
-          this.projectileSystem.spawnSegment(this.projectiles, spawnParams);
-          const projectile = this.projectiles[startIndex];
-          if (projectile) {
-            this.ticker.pauseProjectileTimeline(projectile, pauseTicks);
-          }
-        });
-      },
-      clearProjectilesAround: (params) => {
-        const before = this.projectiles.length;
-        this.spawnClearRingEntity({
-          owner: self.key,
-          x: params.x,
-          y: params.y,
-          radius: params.radius,
-          duration: 1,
-        });
-        return before - this.projectiles.length;
-      },
-      spawnClearRingEntity: (params) => {
-        this.spawnClearRingEntity({
-          owner: self.key,
-          ...params,
-        });
-      },
-      spawnClearRing: (params) => {
-        this.effectSystem.spawnRing(
-          this.effects,
-          this.frame,
-          params.x,
-          params.y,
-          params.tint,
-          fp.toFloat(fp.div(fp.fromFloat(params.radius), fp.fromInt(100))),
-          params.duration,
-        );
-      },
-      pauseProjectileTimeline: (projectile, ticks) => {
-        this.ticker.pauseProjectileTimeline(projectile, ticks);
-      },
-    });
-  }
-
-  private neutralMobActionContext(): NeutralMobActionContext<
-    BulletProjectileParams,
-    LaserProjectileParams
-  > {
-    return buildNeutralMobActionContext({
-      frame: this.frame,
-      arenaBounds: this.arenaBounds,
-      player: { x: this.player.x, y: this.player.y },
-      target: { x: this.target.x, y: this.target.y },
-      spawnBullet: (params) => {
-        this.pendingSpawns.push(() => {
-          this.projectileSystem.spawnBullet(this.projectiles, params);
-        });
-      },
-      spawnLaser: (params) => {
-        this.pendingSpawns.push(() => {
-          this.projectileSystem.spawnLaser(this.projectiles, params);
-        });
-      },
-    });
-  }
-
   private stepMobSpawner(): void {
     this.neutralMobManager.stepSpawner({
       frame: this.frame,
@@ -1076,7 +985,8 @@ export class BattleModel {
     this.neutralMobManager.stepMobs({
       timeStopped:
         this.timeStopped() || this.collaborateExtra?.shop.open === true,
-      createActionContext: () => this.neutralMobActionContext(),
+      createActionContext: () =>
+        this.actionContextManager.createNeutralMobActionContext(),
       onSpecialMobDefeated: (mob) => this.handleNeutralMobKilled(mob),
     });
   }
@@ -1172,41 +1082,6 @@ export class BattleModel {
       spawn();
     }
     this.pendingSpawns = [];
-  }
-
-  private spawnClearRingEntity(params: {
-    readonly owner: FighterKey;
-    readonly x: number;
-    readonly y: number;
-    readonly radius: number;
-    readonly duration: number;
-    readonly followsOwner?: boolean;
-  }): void {
-    this.clearRingManager.spawn({
-      owner: params.owner,
-      x: params.x,
-      y: params.y,
-      radius: params.radius,
-      frame: this.frame,
-      duration: params.duration,
-      followsOwner: params.followsOwner,
-    });
-    this.stepClearRings(this.projectiles);
-  }
-
-  private stepClearRings(
-    projectiles: ProjectileState[] = this.projectiles,
-  ): void {
-    this.clearRingManager.step({
-      frame: this.frame,
-      projectiles,
-      fighters: {
-        Player1: this.player,
-        Player2: this.target,
-        Neutral: undefined,
-      },
-      rules: this.rules,
-    });
   }
 
   private timeStopped(): boolean {
