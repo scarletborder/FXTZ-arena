@@ -15,7 +15,6 @@ import {
 } from "./character";
 import {
   CharacterWingmanProfile,
-  hitCircleUnits,
   pointPowerTier,
   type OrbitSource,
   type RelativeSource,
@@ -131,8 +130,6 @@ function renderWingmanGraphics(
   facing: number,
 ): void {
   graphics.clear();
-  graphics.lineStyle(1, 0xffffff, 0.12);
-  graphics.strokeCircle(0, 0, hitCircleUnits(9));
 
   for (const emitter of emitters) {
     const position = sourcePosition(emitter.source, facing, frame);
@@ -152,11 +149,6 @@ function drawEmitter(
   pulse: number,
 ): void {
   const scale = emitter.scale ?? 1;
-  graphics.lineStyle(1, emitter.accent, 0.18);
-  graphics.beginPath();
-  graphics.moveTo(0, 0);
-  graphics.lineTo(x, y);
-  graphics.strokePath();
 
   if (emitter.kind === "laser") {
     drawLaserEmitter(graphics, x, y, shotAngle, emitter, pulse, scale);
@@ -181,8 +173,6 @@ function drawOrbEmitter(
   scale: number,
 ): void {
   const radius = (5 + pulse * 1.5) * scale;
-  graphics.lineStyle(1, emitter.accent, 0.42);
-  graphics.strokeCircle(x, y, radius + 4 * scale);
   graphics.fillStyle(emitter.color, 0.8);
   graphics.fillCircle(x, y, radius);
   graphics.fillStyle(emitter.accent, 0.9);
@@ -196,7 +186,7 @@ function drawLaserEmitter(
   y: number,
   shotAngle: number,
   emitter: WingmanEmitterConfig,
-  pulse: number,
+  _pulse: number,
   scale: number,
 ): void {
   const nx = -Math.sin(shotAngle);
@@ -206,8 +196,6 @@ function drawLaserEmitter(
   graphics.moveTo(x - nx * 4 * scale, y - ny * 4 * scale);
   graphics.lineTo(x + nx * 4 * scale, y + ny * 4 * scale);
   graphics.strokePath();
-  graphics.lineStyle(2 * scale, emitter.color, 0.86);
-  graphics.strokeCircle(x, y, (5 + pulse) * scale);
   drawMuzzleLine(graphics, x, y, shotAngle, emitter.accent, 22 * scale, 0.5);
 }
 
@@ -255,8 +243,6 @@ function drawDiamondEmitter(
   graphics.lineTo(x - r, y);
   graphics.closePath();
   graphics.fillPath();
-  graphics.lineStyle(1, emitter.accent, 0.8);
-  graphics.strokeCircle(x, y, r + 3 * scale);
   drawMuzzleLine(graphics, x, y, shotAngle, emitter.color, 12 * scale, 0.42);
 }
 

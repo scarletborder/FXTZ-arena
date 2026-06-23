@@ -40,21 +40,21 @@ type BoundedMobActionContext = NeutralMobActionContext<
   readonly arenaBounds: ArenaBounds;
 };
 
-const MAX_HEALTH = 300;
+const MAX_HEALTH = 800;
 const SPELL_CARD_PLAN: SpellCardPlan = {
   nonSpellMaxHealth: MAX_HEALTH,
-  nonSpellThresholdHealth: 180,
+  nonSpellThresholdHealth: 650,
   spellCards: [
     {
       id: "ice-crystal-joke",
       displayName: "冰晶玩笑",
-      maxHealth: 260,
+      maxHealth: 800,
       durationTicks: secondsToTicks(20),
     },
     {
       id: "frozen-stardust",
       displayName: "冻结星屑",
-      maxHealth: 320,
+      maxHealth: 1200,
       durationTicks: secondsToTicks(24),
     },
   ],

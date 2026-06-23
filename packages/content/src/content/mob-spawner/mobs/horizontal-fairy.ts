@@ -34,7 +34,7 @@ type BoundedMobActionContext = NeutralMobActionContext<
   readonly arenaBounds: ArenaBounds;
 };
 
-const MAX_HEALTH = 50;
+const MAX_HEALTH = 101;
 const HIT_RADIUS = 36;
 const START_FIRE_TICKS = secondsToTicks(1.2);
 const FIRE_INTERVAL_TICKS = secondsToTicks(1.1);

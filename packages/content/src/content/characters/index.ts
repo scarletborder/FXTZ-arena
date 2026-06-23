@@ -12,9 +12,9 @@ import "./sakuya";
 import "./cirno";
 import "./youmu";
 import "./ellen";
-import "./yuyuko";
 export * from "./kaguya";
 export * from "./reisen";
+import "./yuyuko";
 
 import type { BattleCharacter } from "./base";
 import { characterLibrary } from "./character-library";

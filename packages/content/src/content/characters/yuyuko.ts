@@ -59,7 +59,7 @@ export class YuyukoBattleCharacter extends BattleCharacter {
   readonly name = "西行寺幽幽子";
   readonly cost = 5;
   readonly roleClass = "suppress" as CharacterDefinition["roleClass"];
-  readonly moveSpeed = "medium" as CharacterDefinition["moveSpeed"];
+  readonly moveSpeed = "low" as CharacterDefinition["moveSpeed"];
   readonly fireRate = "medium" as CharacterDefinition["fireRate"];
   readonly ammoCapacity = 6;
   readonly reloadTicksPerAmmo = secondsToTicks(0.9);
@@ -69,7 +69,7 @@ export class YuyukoBattleCharacter extends BattleCharacter {
     "commit_per_ammo" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = "low" as CharacterDefinition["bulletSpeed"];
   readonly description =
-    "· 华胥的亡灵公主\n· 蝶形弹幕以宽角压制空间\n· bomb以双重预警线展开激光与蝶群";
+    "· 白玉楼家主\n· 广范围弹幕以压制空间\n· bomb释放大量弹幕";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/yuyuko/portrait.png",
     attackPreviewAsset: "assets/characters/yuyuko/preview.png",
