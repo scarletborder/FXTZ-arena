@@ -3,9 +3,11 @@ import { t } from "@repo/i18n";
 
 import {
   bodyStyle,
+  createCheckbox,
   createFightButton,
 } from "../ui";
 import {
+  setBattleHoverResources,
   setMusicVolume,
   setSoundVolume,
   uiSettings,
@@ -24,6 +26,13 @@ export function renderGeneralTab(scene: SettingsScene, layer: Phaser.GameObjects
   layer.add(createVolumeSlider(scene, 36, 124, 360, uiSettings.music, setMusicVolume).container);
   layer.add(scene.add.text(36, 178, t("settings.general.sound.title"), bodyStyle("#f6f1e6", 18)));
   layer.add(createVolumeSlider(scene, 36, 216, 360, uiSettings.sound, setSoundVolume).container);
+
+  layer.add(sectionTitle(scene, 616, 178, t("settings.general.display.title")));
+  layer.add(scene.add.text(616, 220, t("settings.general.display.subtitle"), bodyStyle("#b7c7d8", 15)).setWordWrapWidth(370));
+  layer.add(createCheckbox(scene, 616, 268, uiSettings.battleHoverResources, {
+    label: t("settings.general.display.battleHoverResources"),
+    onChange: setBattleHoverResources,
+  }).container);
 
   const languageLabel = scene.add.text(616, 34, t("settings.general.language.title"), bodyStyle("#f6f1e6", 18));
   const languageHint = scene.add.text(616, 72, t("settings.general.language.subtitle"), bodyStyle("#b7c7d8", 15));

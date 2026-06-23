@@ -12,6 +12,7 @@ export interface UiSettings {
   stunServers: string[];
   music: number;
   sound: number;
+  battleHoverResources: boolean;
   selfAuthed: boolean;
   keybinds: KeybindSettings; // 键位设定
   account: AccountSettings;
@@ -28,6 +29,7 @@ const STORAGE_KEYS = {
   stunServers: "fxtz_stun_servers",
   music: "fxtz_music",
   sound: "fxtz_sound",
+  battleHoverResources: "fxtz_battle_hover_resources",
   selfAuthed: "selfAuthed",
   account: "fxtz_account",
   joystick: "fxtz_joystick",
@@ -197,6 +199,7 @@ export const uiSettings: UiSettings = {
   stunServers: [],
   music: readVolume(STORAGE_KEYS.music, 60),
   sound: readVolume(STORAGE_KEYS.sound, 60),
+  battleHoverResources: readBoolean(STORAGE_KEYS.battleHoverResources, true),
   selfAuthed: readBoolean(STORAGE_KEYS.selfAuthed, false),
   keybinds: readKeybinds(),
   account: readAccountSettings(),
@@ -272,6 +275,11 @@ export function setSoundVolume(volume: number): void {
   const normalized = normalizeVolume(volume);
   uiSettings.sound = normalized;
   writeVolume(STORAGE_KEYS.sound, normalized);
+}
+
+export function setBattleHoverResources(enabled: boolean): void {
+  uiSettings.battleHoverResources = enabled;
+  writeBoolean(STORAGE_KEYS.battleHoverResources, enabled);
 }
 
 export function setSelfAuthed(selfAuthed: boolean): void {
