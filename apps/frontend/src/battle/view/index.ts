@@ -97,6 +97,8 @@ export class BattleView {
       state.gameOver,
       input.infoHeld,
       localFighterKey,
+      input.aimX,
+      input.aimY,
       alpha,
       rollbackBlend,
     );
@@ -201,6 +203,10 @@ export class BattleView {
 
   renderDebugBodies(data: readonly BodyDebugData[]): void {
     this.debug.renderBodies(data);
+  }
+
+  destroy(): void {
+    this.fighters.destroy();
   }
 }
 

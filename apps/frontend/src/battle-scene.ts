@@ -380,6 +380,7 @@ export class BattleScene extends Phaser.Scene {
     this.battleBgmBridge = undefined;
 
     this.pauseCtrl?.destroy();
+    this.view?.destroy();
     this.pendingLayoutRefresh?.remove(false);
     this.pendingLayoutRefresh = undefined;
 

@@ -18,12 +18,18 @@ interface FighterVisual {
   readonly core: Phaser.GameObjects.Arc;
   readonly shieldCore: Phaser.GameObjects.Graphics;
   readonly graze: Phaser.GameObjects.Graphics;
-  readonly statusTag: Phaser.GameObjects.Text;
+  readonly reloadTag: Phaser.GameObjects.Text;
+  readonly resourceTag: Phaser.GameObjects.Text;
+  hoverVisible: boolean;
+  hoverShowTimer: Phaser.Time.TimerEvent | undefined;
+  hoverHideTimer: Phaser.Time.TimerEvent | undefined;
   lastActiveCardUses: number | undefined;
 }
 
 const COMBAT_DISPLAY_SIZE = 104;
 const ANIMATION_FRAME_TICKS = 10;
+const HOVER_REVEAL_DELAY_MS = 120;
+const HOVER_HIDE_DELAY_MS = 120;
 
 /** Max pixels visible fighter parts may move per frame during rollback catch-up. */
 const ROLLBACK_MAX_STEP = 24;
@@ -47,6 +53,8 @@ export class FighterView {
     gameOver: boolean,
     infoHeld: boolean,
     localFighterKey: FighterKey,
+    pointerX: number,
+    pointerY: number,
     alpha: number,
     rollbackBlend = 1,
   ): void {
@@ -57,6 +65,8 @@ export class FighterView {
       gameOver,
       infoHeld,
       localFighterKey === "Player1",
+      pointerX,
+      pointerY,
       alpha,
       rollbackBlend,
     );
@@ -67,9 +77,24 @@ export class FighterView {
       gameOver,
       infoHeld,
       localFighterKey === "Player2",
+      pointerX,
+      pointerY,
       alpha,
       rollbackBlend,
     );
+  }
+
+  destroy(): void {
+    for (const visual of [this.visuals.player, this.visuals.target]) {
+      this.cancelTimer(visual.hoverShowTimer);
+      this.cancelTimer(visual.hoverHideTimer);
+      visual.body.destroy();
+      visual.core.destroy();
+      visual.shieldCore.destroy();
+      visual.graze.destroy();
+      visual.reloadTag.destroy();
+      visual.resourceTag.destroy();
+    }
   }
 
   private createFighterVisual(x: number, y: number): FighterVisual {
@@ -84,7 +109,7 @@ export class FighterView {
       .setDepth(Depth.PlayerCore);
     const shieldCore = this.scene.add.graphics().setDepth(Depth.PlayerCore);
     const graze = this.scene.add.graphics().setDepth(Depth.GrazeCircle);
-    const statusTag = this.scene.add
+    const reloadTag = this.scene.add
       .text(x, y - 48, "", {
         fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
         fontSize: "14px",
@@ -92,7 +117,26 @@ export class FighterView {
       })
       .setOrigin(0.5)
       .setDepth(Depth.StatusTag);
-    return { body, core, shieldCore, graze, statusTag, lastActiveCardUses: undefined };
+    const resourceTag = this.scene.add
+      .text(x, y + 48, "", {
+        fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+        fontSize: "14px",
+        color: "#f6f1e6",
+      })
+      .setOrigin(0.5)
+      .setDepth(Depth.StatusTag);
+    return {
+      body,
+      core,
+      shieldCore,
+      graze,
+      reloadTag,
+      resourceTag,
+      hoverVisible: false,
+      hoverShowTimer: undefined,
+      hoverHideTimer: undefined,
+      lastActiveCardUses: undefined,
+    };
   }
 
   private updateFighter(
@@ -102,6 +146,8 @@ export class FighterView {
     gameOver: boolean,
     infoHeld: boolean,
     isPlayer: boolean,
+    pointerX: number,
+    pointerY: number,
     alpha: number,
     rollbackBlend: number,
   ): void {
@@ -160,34 +206,48 @@ export class FighterView {
       frame,
       visible && isPlayer,
     );
-    const statusAlpha =
-      fighter.reloadRemaining > 0 && fighter.deadUntil === 0
-        ? Math.floor(frame / 8) % 2 === 0
-          ? 1
-          : 0.25
-        : fighter.statusVisibleUntil > frame || fighter.deadUntil > 0
-          ? infoHeld
+    const hovered = isPointerOverFighter(pointerX, pointerY, renderX, renderY);
+    this.updateHoverVisibility(visual, hovered);
+    const baseResourceVisible =
+      infoHeld ||
+      fighter.statusVisibleUntil > frame ||
+      fighter.deadUntil > 0;
+    const hoverResourceVisible = visual.hoverVisible || visual.hoverHideTimer !== undefined;
+    const shouldShowResource = baseResourceVisible || hoverResourceVisible;
+    const resourceAlpha = baseResourceVisible ? 1 : hoverResourceVisible ? 0.92 : 0;
+    visual.reloadTag.setPosition(renderX, renderY - 58);
+    visual.resourceTag.setPosition(renderX, renderY + 58);
+    visual.reloadTag.setAlpha(
+      smoothValue(
+        visual.reloadTag.alpha,
+        fighter.reloadRemaining > 0 && fighter.deadUntil === 0
+          ? Math.floor(frame / 8) % 2 === 0
             ? 1
-            : 0.9
-          : 0;
-    visual.statusTag.setPosition(renderX, renderY - 48);
-    visual.statusTag.setAlpha(
-      smoothValue(visual.statusTag.alpha, statusAlpha, rollbackBlend),
+            : 0.25
+          : 0,
+        rollbackBlend,
+      ),
     );
+    visual.resourceTag.setAlpha(
+      smoothValue(visual.resourceTag.alpha, resourceAlpha, rollbackBlend),
+    );
+    visual.reloadTag.setVisible(fighter.reloadRemaining > 0 && fighter.deadUntil === 0);
+    visual.resourceTag.setVisible(shouldShowResource);
     if (fighter.reloadRemaining > 0 && fighter.deadUntil === 0) {
-      visual.statusTag.setText("[Reload]");
-      visual.statusTag.setColor("#ffffff");
+      visual.reloadTag.setText(t("battle.reloading"));
+      visual.reloadTag.setColor("#ffffff");
     } else {
-      visual.statusTag.setText(
-        fighter.deadUntil > 0
-          ? t("battle.recovering")
-          : t("battle.fighter_status", {
-              lives: Math.max(0, fighter.lives),
-              bombs: fighter.bombs,
-            }),
-      );
-      visual.statusTag.setColor("#f6f1e6");
+      visual.reloadTag.setText("");
     }
+    visual.resourceTag.setText(
+      fighter.deadUntil > 0
+        ? t("battle.recovering")
+        : t("battle.fighter_status", {
+            lives: Math.max(0, fighter.lives - 1),
+            bombs: fighter.bombs,
+          }),
+    );
+    visual.resourceTag.setColor("#f6f1e6");
     visual.core.setFillStyle(0xff4242, fighter.flashUntil > frame ? 0.22 : 1);
   }
 
@@ -304,6 +364,35 @@ export class FighterView {
     graze.lineStyle(1, 0xffffff, GRAZE_CIRCLE_ALPHA * 0.72);
     graze.strokeCircle(x, y, radius);
   }
+
+  private updateHoverVisibility(visual: FighterVisual, hovered: boolean): void {
+    if (hovered) {
+      this.cancelTimer(visual.hoverHideTimer);
+      visual.hoverHideTimer = undefined;
+      if (visual.hoverVisible || visual.hoverShowTimer) {
+        return;
+      }
+      visual.hoverShowTimer = this.scene.time.delayedCall(HOVER_REVEAL_DELAY_MS, () => {
+        visual.hoverShowTimer = undefined;
+        visual.hoverVisible = true;
+      });
+      return;
+    }
+
+    this.cancelTimer(visual.hoverShowTimer);
+    visual.hoverShowTimer = undefined;
+    if (!visual.hoverVisible || visual.hoverHideTimer) {
+      return;
+    }
+    visual.hoverHideTimer = this.scene.time.delayedCall(HOVER_HIDE_DELAY_MS, () => {
+      visual.hoverHideTimer = undefined;
+      visual.hoverVisible = false;
+    });
+  }
+
+  private cancelTimer(timer: Phaser.Time.TimerEvent | undefined): void {
+    timer?.remove(false);
+  }
 }
 
 function combatPoseForFacing(angle: number): {
@@ -325,4 +414,13 @@ function lerp(from: number, to: number, alpha: number): number {
 function lerpAngle(from: number, to: number, alpha: number): number {
   const delta = Math.atan2(Math.sin(to - from), Math.cos(to - from));
   return from + delta * alpha;
+}
+
+function isPointerOverFighter(
+  pointerX: number,
+  pointerY: number,
+  fighterX: number,
+  fighterY: number,
+): boolean {
+  return Math.hypot(pointerX - fighterX, pointerY - fighterY) <= COMBAT_DISPLAY_SIZE / 2;
 }
