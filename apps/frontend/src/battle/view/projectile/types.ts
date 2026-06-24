@@ -47,6 +47,9 @@ export type ProjectileSpec =
       readonly segmentCount: number;
     }
   | {
+      readonly kind: "ranCompanion";
+    }
+  | {
       readonly kind: "fallback";
       readonly texture: string;
       readonly tint: number;
@@ -56,6 +59,10 @@ export type ProjectileVisual =
   | {
       readonly kind: "image";
       readonly image: Phaser.GameObjects.Image;
+    }
+  | {
+      readonly kind: "sprite";
+      readonly sprite: Phaser.GameObjects.Sprite;
     }
   | {
       readonly kind: "laser";

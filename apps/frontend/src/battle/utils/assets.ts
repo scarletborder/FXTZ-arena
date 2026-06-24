@@ -1,11 +1,18 @@
 import Phaser from "phaser";
-import { DEFAULT_MAPS, getAllAbilityCardDefinitions, getAllCharacterDefinitions } from "@repo/content";
+import {
+  DEFAULT_MAPS,
+  getAllAbilityCardDefinitions,
+  getAllCharacterDefinitions,
+} from "@repo/content";
 
 import { assetUrl } from "../../utils/assets";
 import { hasResourceAsset } from "../../utils/resource-pack";
 import { abilityCardIconTextureKey } from "../../ability-card-assets";
 
-export function loadPortraitAssets(scene: Phaser.Scene, onComplete?: () => void): void {
+export function loadPortraitAssets(
+  scene: Phaser.Scene,
+  onComplete?: () => void,
+): void {
   const pendingPortraitKeys = new Set<string>();
 
   for (const character of getAllCharacterDefinitions()) {
@@ -14,10 +21,7 @@ export function loadPortraitAssets(scene: Phaser.Scene, onComplete?: () => void)
       if (!scene.textures.exists(key)) {
         pendingPortraitKeys.add(key);
       }
-      scene.load.image(
-        key,
-        assetUrl(character.gallery.portraitAsset),
-      );
+      scene.load.image(key, assetUrl(character.gallery.portraitAsset));
     }
   }
 
@@ -87,11 +91,10 @@ export function queueBattleAssets(scene: Phaser.Scene): number {
     image(map.background.textureKey, assetUrl(map.background.assetPath));
   }
   if (!scene.cache.json.exists("sfx")) {
-    scene.load.audioSprite(
-      "sfx",
-      assetUrl("assets/audio/th_sfx.json"),
-      [assetUrl("assets/audio/th_sfx.ogg"), assetUrl("assets/audio/th_sfx.m4a")],
-    );
+    scene.load.audioSprite("sfx", assetUrl("assets/audio/th_sfx.json"), [
+      assetUrl("assets/audio/th_sfx.ogg"),
+      assetUrl("assets/audio/th_sfx.m4a"),
+    ]);
     queued += 1;
   }
 
@@ -110,15 +113,38 @@ export function queueBattleAssets(scene: Phaser.Scene): number {
     image(texture, assetUrl(`assets/enemy/${texture}.png`));
   }
   for (const character of getAllCharacterDefinitions()) {
-    spritesheet(`character-combat-${character.id}`, assetUrl(character.gallery.combatAsset), {
+    spritesheet(
+      `character-combat-${character.id}`,
+      assetUrl(character.gallery.combatAsset),
+      {
+        frameWidth: 512,
+        frameHeight: 512,
+      },
+    );
+  }
+  spritesheet(
+    "character-ran-combat",
+    assetUrl("assets/characters/ran/combat.png"),
+    {
       frameWidth: 512,
       frameHeight: 512,
-    });
-  }
+    },
+  );
+  spritesheet(
+    "character-ran-roll",
+    assetUrl("assets/characters/ran/roll.png"),
+    {
+      frameWidth: 512,
+      frameHeight: 512,
+    },
+  );
 
   for (const card of getAllAbilityCardDefinitions()) {
     if (hasResourceAsset(card.gallery.iconAsset)) {
-      image(abilityCardIconTextureKey(card.id), assetUrl(card.gallery.iconAsset));
+      image(
+        abilityCardIconTextureKey(card.id),
+        assetUrl(card.gallery.iconAsset),
+      );
     }
   }
 

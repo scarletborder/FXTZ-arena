@@ -37,7 +37,7 @@ import {
   type BattleCharacter,
   type CharacterActionContext,
 } from "@repo/content";
-import { fpClamp, fpMax, fpMin } from "@repo/content";
+import { fpAtan2, fpClamp, fpMax, fpMin } from "@repo/content";
 
 export class BattleFighter {
   readonly state: FighterState;
@@ -312,6 +312,8 @@ export class BattleFighter {
       this.activeCharacter.fireRate,
     );
     this.activeCharacter.shoot(ctx, this.state, aimX, aimY);
+    // Also fire companion bullets for the non-active character (e.g. Yukari's Ran).
+    fireRanCompanionBullets(ctx, this.state, aimX, aimY);
     for (const card of this.battleCards) {
       card.onAfterFire(ctx);
     }
@@ -349,6 +351,9 @@ export class BattleFighter {
 
   postUpdate(ctx: CharacterActionContext): void {
     this.activeCharacter.onPostUpdate(ctx, this.state);
+    // Also update the non-active character so companions (e.g. Yukari's Ran)
+    // stay alive and deal collision damage even after switching.
+    this.nonActiveCharacter.onPostUpdate(ctx, this.state);
     for (const card of this.battleCards) {
       card.onPostUpdate(ctx);
     }
@@ -389,6 +394,14 @@ export class BattleFighter {
 
   private get activeCharacter(): BattleCharacter {
     return this.characterFor(this.state.activeCharacter);
+  }
+
+  private get nonActiveCharacter(): BattleCharacter {
+    const nonActiveDef =
+      this.state.activeCharacter.id === this.state.primaryCharacter.id
+        ? this.state.alternateCharacter
+        : this.state.primaryCharacter;
+    return this.characterFor(nonActiveDef);
   }
 
   private applyActiveCharacter(character: CharacterDefinition): void {
@@ -521,4 +534,67 @@ export class BattleFighter {
     }
     return this.state.reloadStartedAmmo;
   }
+}
+
+const RAN_COMPANION_TEXTURE = "character_ran_companion";
+const RAN_BULLET_TEXTURE = "bullet_type_5_offset_13";
+const RAN_BULLET_HIT_SIZE = 6;
+const RAN_BULLET_DAMAGE_DEFAULT = 30;
+const RAN_BULLET_DAMAGE_TIER3 = 20;
+const RAN_SIDE_GAP = 48; // hitCircleUnits(3) ≈ 48
+
+function fireRanCompanionBullets(
+  ctx: CharacterActionContext,
+  fighter: FighterState,
+  aimX: number,
+  aimY: number,
+): void {
+  const ran = ctx.projectiles.find(
+    (p) =>
+      p.owner === fighter.key &&
+      p.textureKey === RAN_COMPANION_TEXTURE,
+  );
+  if (!ran) return;
+  // Only fire when the paired character is NOT active.
+  // When it IS active, its shoot() handles it.
+  if (!ran.followWhileActiveCharacterId) return;
+  if (ran.followWhileActiveCharacterId === fighter.activeCharacter.id) return;
+
+  const ranAngle = fpAtan2(
+    fp.fromFloat(aimY - ran.y),
+    fp.fromFloat(aimX - ran.x),
+  );
+  const tier = pointPowerTierFromCount(fighter.pointCount);
+  const sides: readonly number[] = tier >= 3 ? [-RAN_SIDE_GAP, RAN_SIDE_GAP] : [0];
+  for (const side of sides) {
+    const fpAngle = fp.fromFloat(ranAngle);
+    const fpCos = fp.cos(fpAngle);
+    const fpSin = fp.sin(fpAngle);
+    const fpX = fp.fromFloat(ran.x);
+    const fpY = fp.fromFloat(ran.y);
+    const fpSide = fp.fromFloat(side);
+    ctx.spawnBullet({
+      owner: fighter.key,
+      sourceCharacterId: ran.followWhileActiveCharacterId,
+      textureKey: RAN_BULLET_TEXTURE,
+      kind: "orb",
+      x: fp.toFloat(fp.add(fpX, fp.mul(fp.negate(fpSin), fpSide))),
+      y: fp.toFloat(fp.add(fpY, fp.mul(fpCos, fpSide))),
+      angle: ranAngle,
+      speedRank: "medium",
+      width: RAN_BULLET_HIT_SIZE,
+      height: RAN_BULLET_HIT_SIZE,
+      homingTicks: 0,
+      damage: tier >= 3 ? RAN_BULLET_DAMAGE_TIER3 : RAN_BULLET_DAMAGE_DEFAULT,
+      spawnOffset: 0,
+      couldClear: false,
+    });
+  }
+}
+
+function pointPowerTierFromCount(pointCount: number): 1 | 2 | 3 | 4 {
+  if (pointCount >= 300) return 4;
+  if (pointCount >= 200) return 3;
+  if (pointCount >= 100) return 2;
+  return 1;
 }

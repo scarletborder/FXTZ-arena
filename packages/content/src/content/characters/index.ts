@@ -15,6 +15,7 @@ import "./ellen";
 export * from "./kaguya";
 export * from "./reisen";
 import "./yuyuko";
+import "./yukari";
 
 import type { BattleCharacter } from "./base";
 import { characterLibrary } from "./character-library";

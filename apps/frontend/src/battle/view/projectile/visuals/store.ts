@@ -17,12 +17,22 @@ import { projectileFrameRenderSize } from "./projectileFrameRenderSize";
 import { drawYoumuSlashArc, type YoumuSlashArcGroup } from "./youmuSlashArc";
 import type { BattleRoomMode } from "@repo/types";
 
+const RAN_TWEEN_DURATION_FRAMES = 30; // 0.5s at 60fps
+const RAN_POSITION_JUMP_THRESHOLD = 50; // pixels
+
+interface RanCompanionTween {
+  fromX: number;
+  fromY: number;
+  until: number;
+}
+
 export class ProjectileVisualStore {
   private readonly visuals = new Map<number, ProjectileVisual>();
   private readonly youmuSlashArcs = new Map<
     string,
     Phaser.GameObjects.Graphics
   >();
+  private readonly ranCompanionTweens = new Map<number, RanCompanionTween>();
 
   constructor(private readonly scene: Phaser.Scene) {}
 
@@ -108,6 +118,90 @@ export class ProjectileVisualStore {
     }
   }
 
+  renderRanCompanion(
+    projectile: ProjectileState,
+    display: ProjectileDisplay,
+    localFighterKey: FighterKey,
+    battleMode: BattleRoomMode,
+    frame: number,
+    rollbackBlend = 1,
+  ): void {
+    const visual = this.ensureSpriteVisual(projectile.id, display.x, display.y);
+    const sprite = visual.sprite;
+    const rolling = frame < projectile.rollUntil;
+    const texture = rolling ? "character-ran-roll" : "character-ran-combat";
+    if (sprite.texture.key !== texture && this.scene.textures.exists(texture)) {
+      sprite.setTexture(texture);
+    }
+    if (this.scene.textures.exists(texture)) {
+      if (rolling) {
+        sprite.setFrame(Math.floor(frame / 4) % 2);
+      } else {
+        // Directional frames based on movement angle, matching the layout
+        // used by combatPoseForFacing: column 0=down, 1=up, 2=side,
+        // with two animation steps (column + step * 3).
+        const pose = combatPoseForFacing(projectile.angle);
+        const animStep = Math.floor(frame / 10) % 2;
+        sprite.setFrame(pose.column + animStep * 3);
+        sprite.setFlipX(pose.flipX);
+      }
+    }
+
+    // Position tween: when the Ran companion is reset (large position jump),
+    // interpolate the visual position over 0.5s so it doesn't blink.
+    const dx = projectile.x - projectile.previousX;
+    const dy = projectile.y - projectile.previousY;
+    const jumpDistance = Math.hypot(dx, dy);
+    const existingTween = this.ranCompanionTweens.get(projectile.id);
+
+    if (
+      jumpDistance > RAN_POSITION_JUMP_THRESHOLD &&
+      existingTween === undefined
+    ) {
+      this.ranCompanionTweens.set(projectile.id, {
+        fromX: sprite.x,
+        fromY: sprite.y,
+        until: frame + RAN_TWEEN_DURATION_FRAMES,
+      });
+    }
+
+    const activeTween = this.ranCompanionTweens.get(projectile.id);
+    let targetX = display.x;
+    let targetY = display.y;
+
+    if (activeTween !== undefined) {
+      if (frame < activeTween.until) {
+        const elapsed = RAN_TWEEN_DURATION_FRAMES - (activeTween.until - frame);
+        const t = Math.min(1, elapsed / RAN_TWEEN_DURATION_FRAMES);
+        // Ease-out quad for a smooth deceleration.
+        const ease = 1 - (1 - t) * (1 - t);
+        targetX = activeTween.fromX + (display.x - activeTween.fromX) * ease;
+        targetY = activeTween.fromY + (display.y - activeTween.fromY) * ease;
+      } else {
+        this.ranCompanionTweens.delete(projectile.id);
+      }
+    }
+
+    sprite.setPosition(
+      smoothValue(sprite.x, targetX, rollbackBlend),
+      smoothValue(sprite.y, targetY, rollbackBlend),
+    );
+    sprite.setDisplaySize(88, 88);
+    sprite.setRotation(
+      rolling
+        ? (frame - projectile.rollStartedAt) * 0.48
+        : projectile.angle + Math.PI / 2,
+    );
+    sprite.setAlpha(
+      smoothValue(
+        sprite.alpha,
+        projectileAlpha(projectile, localFighterKey, battleMode),
+        rollbackBlend,
+      ),
+    );
+    sprite.setVisible(true);
+  }
+
   renderYoumuSlashArcs(
     groups: readonly YoumuSlashArcGroup[],
     rollbackBlend = 1,
@@ -134,6 +228,7 @@ export class ProjectileVisualStore {
     if (!visual) return;
     destroyVisual(visual);
     this.visuals.delete(id);
+    this.ranCompanionTweens.delete(id);
   }
 
   prune(active: ReadonlySet<number>): void {
@@ -141,6 +236,7 @@ export class ProjectileVisualStore {
       if (!active.has(id)) {
         destroyVisual(visual);
         this.visuals.delete(id);
+        this.ranCompanionTweens.delete(id);
       }
     }
   }
@@ -175,6 +271,27 @@ export class ProjectileVisualStore {
     return visual;
   }
 
+  private ensureSpriteVisual(
+    id: number,
+    x: number,
+    y: number,
+  ): Extract<ProjectileVisual, { kind: "sprite" }> {
+    const existing = this.visuals.get(id);
+    if (existing?.kind === "sprite") {
+      return existing;
+    }
+    if (existing) {
+      destroyVisual(existing);
+    }
+    const sprite = this.scene.add
+      .sprite(x, y, "character-ran-combat")
+      .setOrigin(0.5)
+      .setDepth(Depth.Character + 0.15);
+    const visual = { kind: "sprite" as const, sprite };
+    this.visuals.set(id, visual);
+    return visual;
+  }
+
   private ensureLaserVisual(
     id: number,
     x: number,
@@ -202,6 +319,18 @@ export class ProjectileVisualStore {
     this.youmuSlashArcs.set(key, graphics);
     return graphics;
   }
+}
+
+function combatPoseForFacing(angle: number): {
+  readonly column: 0 | 1 | 2;
+  readonly flipX: boolean;
+} {
+  const x = Math.cos(angle);
+  const y = Math.sin(angle);
+  if (Math.abs(x) > Math.abs(y)) {
+    return x >= 0 ? { column: 2, flipX: true } : { column: 2, flipX: false };
+  }
+  return y >= 0 ? { column: 0, flipX: false } : { column: 1, flipX: false };
 }
 
 function addTiledLaserImages(

@@ -39,6 +39,9 @@ function textureKeyProjectileFrame(
   frames: ReadonlyMap<string, BulletFrame>,
 ): ProjectileSpec | undefined {
   if (!projectile.textureKey) return undefined;
+  if (projectile.textureKey === "character_ran_companion") {
+    return { kind: "ranCompanion" };
+  }
   if (projectile.textureKey === "effect_youmu_dash_path") {
     return {
       kind: "fallback",

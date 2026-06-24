@@ -7,7 +7,8 @@ export type CharacterId =
   | "ellen"
   | "kaguya"
   | "reisen"
-  | "yuyuko";
+  | "yuyuko"
+  | "yukari";
 export type AbilityCardId =
   | "extra_life"
   | "ember"

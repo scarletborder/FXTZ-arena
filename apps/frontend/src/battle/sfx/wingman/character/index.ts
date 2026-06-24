@@ -7,3 +7,4 @@ export { ReisenWingmanProfile } from "./reisen";
 export { SakuyaWingmanProfile } from "./sakuya";
 export { YoumuWingmanProfile } from "./youmu";
 export { YuyukoWingmanProfile } from "./yuyuko";
+export { YukariWingmanProfile } from "./yukari";

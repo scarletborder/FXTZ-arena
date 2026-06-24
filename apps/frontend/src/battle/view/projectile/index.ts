@@ -96,6 +96,15 @@ export class ProjectileView {
           battleMode,
           rollbackBlend,
         );
+      } else if (spec.kind === "ranCompanion") {
+        this.visuals.renderRanCompanion(
+          projectile,
+          display,
+          localFighterKey,
+          battleMode,
+          frame,
+          rollbackBlend,
+        );
       } else {
         this.visuals.renderImage(
           projectile,

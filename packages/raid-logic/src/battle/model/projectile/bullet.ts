@@ -50,6 +50,10 @@ export function createBulletProjectile(params: {
   readonly retargetX?: number;
   readonly retargetY?: number;
   readonly retargetAimOwner?: FighterKey;
+  readonly followAimOwner?: FighterKey;
+  readonly followWhileActiveCharacterId?: CharacterDefinition["id"];
+  readonly rollUntil?: number;
+  readonly rollStartedAt?: number;
   readonly couldClear?: boolean;
   readonly clearsProjectiles?: boolean;
   readonly piercesTargets?: boolean;
@@ -138,6 +142,10 @@ export function createBulletProjectile(params: {
     retargetX: params.retargetX,
     retargetY: params.retargetY,
     retargetAimOwner: params.retargetAimOwner,
+    followAimOwner: params.followAimOwner,
+    followWhileActiveCharacterId: params.followWhileActiveCharacterId,
+    rollUntil: params.rollUntil ?? 0,
+    rollStartedAt: params.rollStartedAt ?? 0,
     widthGrowthPerTick: 0,
     maxWidth: undefined,
     heightGrowthPerTick: 0,

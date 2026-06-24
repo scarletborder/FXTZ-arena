@@ -115,6 +115,10 @@ export function createLaserProjectile(params: {
     retargetX: undefined,
     retargetY: undefined,
     retargetAimOwner: undefined,
+    followAimOwner: undefined,
+    followWhileActiveCharacterId: undefined,
+    rollUntil: 0,
+    rollStartedAt: 0,
     widthGrowthPerTick: params.lengthGrowthPerTick ?? 0,
     maxWidth: params.maxLength,
     heightGrowthPerTick: params.heightGrowthPerTick ?? 0,
@@ -149,11 +153,15 @@ export function stepLaserProjectile(projectile: ProjectileState): void {
     projectile.width = fp.toFloat(newWidth);
   }
 
-  if (projectile.heightGrowthPerTick > 0 && Number.isFinite(projectile.height)) {
+  if (
+    projectile.heightGrowthPerTick > 0 &&
+    Number.isFinite(projectile.height)
+  ) {
     const fpHeight = fp.fromFloat(projectile.height);
     const fpGrowth = fp.fromFloat(projectile.heightGrowthPerTick);
     const fpMaxH =
-      projectile.maxHeight !== undefined && Number.isFinite(projectile.maxHeight)
+      projectile.maxHeight !== undefined &&
+      Number.isFinite(projectile.maxHeight)
         ? fp.fromFloat(projectile.maxHeight)
         : fp.fromInt(9999);
     projectile.height = fp.toFloat(fpMin(fpMaxH, fp.add(fpHeight, fpGrowth)));

@@ -397,6 +397,10 @@ function writeProjectiles(
     writeFixed(hasher, projectile.retargetX ?? 0);
     writeFixed(hasher, projectile.retargetY ?? 0);
     hasher.writeString(projectile.retargetAimOwner ?? "");
+    hasher.writeString(projectile.followAimOwner ?? "");
+    hasher.writeString(projectile.followWhileActiveCharacterId ?? "");
+    hasher.writeNumber(projectile.rollUntil);
+    hasher.writeNumber(projectile.rollStartedAt);
     writeFixed(hasher, projectile.widthGrowthPerTick);
     writeFixed(hasher, projectile.maxWidth ?? 0);
     writeFixed(hasher, projectile.heightGrowthPerTick);

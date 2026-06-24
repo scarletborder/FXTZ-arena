@@ -291,6 +291,13 @@ export class ProjectileSystem {
             victim,
             damage: projectile.damage,
           });
+          if (accepted && isRollingProjectile(projectile)) {
+            projectile.rollStartedAt = params.frame;
+            projectile.rollUntil = Math.max(
+              projectile.rollUntil,
+              params.frame + 20,
+            );
+          }
           // Bullets (orb/knife) are removed on hit; beams (laser/spark) survive and deal frame damage per tick.
           if (
             accepted &&
@@ -382,6 +389,8 @@ function syncOwnerBoundProjectile(
     readonly rules?: BattleRules;
   },
 ): void {
+  syncAimFollowingProjectile(projectile, params);
+
   if (projectile.polarFollowOwner !== undefined) {
     const owner =
       projectile.polarFollowOwner === "Player1" ? params.player : params.target;
@@ -415,6 +424,61 @@ function syncOwnerBoundProjectile(
     // deterministic once the retarget moment has passed.
     projectile.retargetAimOwner = undefined;
   }
+}
+
+function syncAimFollowingProjectile(
+  projectile: ProjectileState,
+  params: {
+    readonly player: FighterState;
+    readonly target: FighterState;
+    readonly aimByFighter?: ProjectileAimByFighter;
+    readonly aimConsumedRef?: { value: boolean };
+  },
+): void {
+  if (projectile.followAimOwner === undefined) {
+    return;
+  }
+
+  const owner =
+    projectile.followAimOwner === "Player1" ? params.player : params.target;
+  if (
+    projectile.followWhileActiveCharacterId !== undefined &&
+    owner.activeCharacter.id !== projectile.followWhileActiveCharacterId
+  ) {
+    // Keep the companion alive but stationary when the paired character
+    // is not active — it should still deal collision damage and roll.
+    projectile.vx = 0;
+    projectile.vy = 0;
+    return;
+  }
+
+  const aim = params.aimByFighter?.[projectile.followAimOwner];
+  if (!aim) {
+    projectile.vx = 0;
+    projectile.vy = 0;
+    return;
+  }
+
+  const speed = Math.hypot(projectile.vx, projectile.vy) || 2;
+  const dx = aim.x - projectile.x;
+  const dy = aim.y - projectile.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance <= 0.001) {
+    projectile.vx = 0;
+    projectile.vy = 0;
+    return;
+  }
+
+  projectile.vx = (dx / distance) * speed;
+  projectile.vy = (dy / distance) * speed;
+  projectile.angle = Math.atan2(projectile.vy, projectile.vx);
+  if (params.aimConsumedRef) {
+    params.aimConsumedRef.value = true;
+  }
+}
+
+function isRollingProjectile(projectile: ProjectileState): boolean {
+  return projectile.textureKey === "character_ran_companion";
 }
 
 function nearestNeutralTargetToPoint(

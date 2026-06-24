@@ -45,6 +45,10 @@ export interface BattleBulletSpawnParams {
   readonly retargetX?: number;
   readonly retargetY?: number;
   readonly retargetAimOwner?: FighterKey;
+  readonly followAimOwner?: FighterKey;
+  readonly followWhileActiveCharacterId?: CharacterDefinition["id"];
+  readonly rollUntil?: number;
+  readonly rollStartedAt?: number;
   readonly frame?: number;
   readonly couldClear?: boolean;
   readonly clearsProjectiles?: boolean;

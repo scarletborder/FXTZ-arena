@@ -14,6 +14,8 @@ describe("bullet asset sizing", () => {
       rectHeight: 16,
       hitWidth: 10,
       hitHeight: 12,
+      CenterOffsetX: 0,
+      CenterOffsetY: 0,
     };
 
     const size = normalizeBulletHitSize({ width: 5, height: 8 }, metrics);
@@ -28,6 +30,8 @@ describe("bullet asset sizing", () => {
       rectHeight: 16,
       hitWidth: 10,
       hitHeight: 10,
+      CenterOffsetX: 0,
+      CenterOffsetY: 0,
     };
 
     const size = bulletRenderSizeForHitSize({ width: 10, height: 10 }, metrics);
