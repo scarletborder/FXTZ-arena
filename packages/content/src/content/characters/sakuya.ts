@@ -245,8 +245,9 @@ export class SakuyaBattleCharacter extends BattleCharacter {
       );
       const knifeAngle = fighter.facing + side * (Math.PI / 6);
       const perpAngle = knifeAngle + Math.PI / 2;
-      const perpCos = Math.cos(perpAngle);
-      const perpSin = Math.sin(perpAngle);
+      const fpPerp = fp.fromFloat(perpAngle);
+      const perpCos = fp.toFloat(fp.cos(fpPerp));
+      const perpSin = fp.toFloat(fp.sin(fpPerp));
       for (let i = 0; i < countPerSide; i++) {
         const offset = (i - (countPerSide - 1) / 2) * halfGap;
         this.spawnKnife(

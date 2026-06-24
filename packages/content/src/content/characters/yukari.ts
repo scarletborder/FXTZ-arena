@@ -328,8 +328,14 @@ export class YukariBattleCharacter extends BattleCharacter {
   ): void {
     const midX = (from.x + to.x) / 2;
     const midY = (from.y + to.y) / 2;
-    const angleToFrom = Math.atan2(from.y - midY, from.x - midX);
-    const angleToTo = Math.atan2(to.y - midY, to.x - midX);
+    const angleToFrom = fpAtan2(
+      fp.fromFloat(from.y - midY),
+      fp.fromFloat(from.x - midX),
+    );
+    const angleToTo = fpAtan2(
+      fp.fromFloat(to.y - midY),
+      fp.fromFloat(to.x - midX),
+    );
 
     const visibleFrom =
       ctx.frame + YUKARI_BOMB_WARNING_TICKS;
@@ -339,14 +345,19 @@ export class YukariBattleCharacter extends BattleCharacter {
       startMovingAt + YUKARI_BOMB_INWARD_TICKS;
 
     const offsetCount = BOMB_BULLET_OFFSET_MAX - BOMB_BULLET_OFFSET_MIN + 1;
+    const fpFar = fp.fromFloat(1000);
 
     // Place bullets from edge centre toward each vertex.
     let dirIdx = 0;
     for (const direction of [angleToFrom, angleToTo]) {
+      const fpDir = fp.fromFloat(direction);
+      const fpCosDir = fp.cos(fpDir);
+      const fpSinDir = fp.sin(fpDir);
+
       for (let k = 1; k <= YUKARI_BOMB_BULLETS_PER_HALF_SIDE; k += 1) {
-        const dist = k * YUKARI_BOMB_BULLET_SPACING;
-        const bx = midX + Math.cos(direction) * dist;
-        const by = midY + Math.sin(direction) * dist;
+        const fpDist = fp.fromFloat(k * YUKARI_BOMB_BULLET_SPACING);
+        const bx = midX + fp.toFloat(fp.mul(fpCosDir, fpDist));
+        const by = midY + fp.toFloat(fp.mul(fpSinDir, fpDist));
 
         // Cycle through offsets 2–6 in a cascading gradient along each edge.
         const offset =
@@ -354,9 +365,16 @@ export class YukariBattleCharacter extends BattleCharacter {
         const textureKey = `${BOMB_BULLET_TEXTURE_PREFIX}_offset_${offset}`;
 
         // Inward phase: move toward the hexagon centre.
-        const towardCenter = Math.atan2(centerY - by, centerX - bx);
+        const towardCenter = fpAtan2(
+          fp.fromFloat(centerY - by),
+          fp.fromFloat(centerX - bx),
+        );
         // Outward phase: reverse direction.
         const awayFromCenter = towardCenter + Math.PI;
+
+        const fpAway = fp.fromFloat(awayFromCenter);
+        const fpCosAway = fp.cos(fpAway);
+        const fpSinAway = fp.sin(fpAway);
 
         ctx.spawnBullet({
           owner: fighter.key,
@@ -375,8 +393,8 @@ export class YukariBattleCharacter extends BattleCharacter {
           frame: visibleFrom,
           pausedUntil: startMovingAt,
           retargetAt: switchToOutwardAt,
-          retargetX: bx + Math.cos(awayFromCenter) * 1000,
-          retargetY: by + Math.sin(awayFromCenter) * 1000,
+          retargetX: bx + fp.toFloat(fp.mul(fpCosAway, fpFar)),
+          retargetY: by + fp.toFloat(fp.mul(fpSinAway, fpFar)),
           retargetSpeed: YUKARI_BOMB_RETARGET_SPEED,
           couldClear: true,
         });
@@ -439,12 +457,13 @@ function regularHexagonVertices(
   sideLength: number,
 ): readonly [HexPoint, HexPoint, HexPoint, HexPoint, HexPoint, HexPoint] {
   // Circumradius of a regular hexagon equals its side length.
-  const radius = sideLength;
+  const fpRadius = fp.fromFloat(sideLength);
   return Array.from({ length: 6 }, (_, index) => {
     const angle = -Math.PI / 2 + (FULL_CIRCLE * index) / 6;
+    const fpAngle = fp.fromFloat(angle);
     return {
-      x: centerX + Math.cos(angle) * radius,
-      y: centerY + Math.sin(angle) * radius,
+      x: centerX + fp.toFloat(fp.mul(fp.cos(fpAngle), fpRadius)),
+      y: centerY + fp.toFloat(fp.mul(fp.sin(fpAngle), fpRadius)),
     };
   }) as [HexPoint, HexPoint, HexPoint, HexPoint, HexPoint, HexPoint];
 }

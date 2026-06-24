@@ -1,4 +1,5 @@
 import { bulletSpeedRankToPixelsPerTick } from "@repo/types";
+import { fp } from "@shaisrc/fixed-point";
 
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 
@@ -13,6 +14,7 @@ import {
   type PointPowerTier,
 } from "./base";
 import { Vanilla } from "../decorators";
+import { fpAtan2 } from "../fp";
 
 export const REISEN_COST = 5;
 export const REISEN_AMMO_CAPACITY = 8;
@@ -211,12 +213,12 @@ export class ReisenBattleCharacter extends BattleCharacter {
     frameDelay: number,
   ): void {
     const speed = bulletSpeedRankToPixelsPerTick(REISEN_NORMAL_DIAGONAL_SPEED);
+    const fpSrcAngle = fp.fromFloat(sourceAngle);
+    const fpDist = fp.fromFloat(speed * REISEN_NORMAL_SPLIT_DELAY_TICKS);
     const splitX =
-      fighter.x +
-      Math.cos(sourceAngle) * speed * REISEN_NORMAL_SPLIT_DELAY_TICKS;
+      fighter.x + fp.toFloat(fp.mul(fp.cos(fpSrcAngle), fpDist));
     const splitY =
-      fighter.y +
-      Math.sin(sourceAngle) * speed * REISEN_NORMAL_SPLIT_DELAY_TICKS;
+      fighter.y + fp.toFloat(fp.mul(fp.sin(fpSrcAngle), fpDist));
     for (const side of [-1, 1]) {
       this.spawnOrb(ctx, fighter, {
         x: splitX,
@@ -273,5 +275,7 @@ function degreesToRadians(degrees: number): number {
 
 function normalizeAngle(angle: number): number {
   const fullCircle = degreesToRadians(FULL_CIRCLE_DEGREES);
-  return Math.atan2(Math.sin(angle), Math.cos(angle)) % fullCircle;
+  const fpAngle = fp.fromFloat(angle);
+  const result = fpAtan2(fp.sin(fpAngle), fp.cos(fpAngle));
+  return result % fullCircle;
 }

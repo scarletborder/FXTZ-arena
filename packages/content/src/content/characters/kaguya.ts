@@ -1,5 +1,7 @@
 import { bulletSpeedRankToPixelsPerTick } from "@repo/types";
 import { HIT_CIRCLE_DIAMETER } from "@repo/constants";
+import { fp } from "@shaisrc/fixed-point";
+import { fpAtan2 } from "../fp";
 
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 
@@ -154,8 +156,10 @@ export class KaguyaBattleCharacter extends BattleCharacter {
     aimY: number,
     damage: number,
   ): void {
-    const x = fighter.x + Math.cos(polarAngle) * KAGUYA_NORMAL_ORBIT_RADIUS;
-    const y = fighter.y + Math.sin(polarAngle) * KAGUYA_NORMAL_ORBIT_RADIUS;
+    const fpPolar = fp.fromFloat(polarAngle);
+    const fpRadius = fp.fromFloat(KAGUYA_NORMAL_ORBIT_RADIUS);
+    const x = fighter.x + fp.toFloat(fp.mul(fp.cos(fpPolar), fpRadius));
+    const y = fighter.y + fp.toFloat(fp.mul(fp.sin(fpPolar), fpRadius));
     ctx.spawnBullet({
       owner: fighter.key,
       kind: "orb",
@@ -190,10 +194,15 @@ export class KaguyaBattleCharacter extends BattleCharacter {
     from: Point,
     to: Point,
   ): void {
-    const angle = Math.atan2(to.y - from.y, to.x - from.x);
+    const angle = fpAtan2(
+      fp.fromFloat(to.y - from.y),
+      fp.fromFloat(to.x - from.x),
+    );
     const extension = hitCircleUnits(KAGUYA_BOMB_EXTENSION_HIT_CIRCLE_MULTIPLIER);
-    const x = to.x + Math.cos(angle) * extension;
-    const y = to.y + Math.sin(angle) * extension;
+    const fpAngle = fp.fromFloat(angle);
+    const fpExt = fp.fromFloat(extension);
+    const x = to.x + fp.toFloat(fp.mul(fp.cos(fpAngle), fpExt));
+    const y = to.y + fp.toFloat(fp.mul(fp.sin(fpAngle), fpExt));
     const fireAngle = angle + Math.PI;
 
     for (let shot = 0; shot < KAGUYA_BOMB_SHOTS_PER_POINT; shot += 1) {
@@ -232,11 +241,13 @@ function equilateralTriangleVertices(
   sideLength: number,
 ): readonly [Point, Point, Point] {
   const radius = sideLength / EQUILATERAL_CIRCUMRADIUS_DIVISOR;
+  const fpRadius = fp.fromFloat(radius);
   return [0, 1, 2].map((index) => {
     const angle = -Math.PI / 2 + (FULL_CIRCLE * index) / 3;
+    const fpAngle = fp.fromFloat(angle);
     return {
-      x: centerX + Math.cos(angle) * radius,
-      y: centerY + Math.sin(angle) * radius,
+      x: centerX + fp.toFloat(fp.mul(fp.cos(fpAngle), fpRadius)),
+      y: centerY + fp.toFloat(fp.mul(fp.sin(fpAngle), fpRadius)),
     };
   }) as [Point, Point, Point];
 }

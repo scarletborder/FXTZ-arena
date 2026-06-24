@@ -4,6 +4,7 @@ import {
   PLAYER_CORE_RADIUS,
   YOUMU_BOMB_DASH_DISTANCE,
 } from "@repo/constants";
+import { fp } from "@shaisrc/fixed-point";
 
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 
@@ -17,6 +18,7 @@ import {
   type CharacterActionContext,
 } from "./base";
 import { Vanilla } from "../decorators";
+import { fpAtan2 } from "../fp";
 
 const ARC_SEGMENTS = 8;
 const CLEAR_DAMAGE = 0;
@@ -240,21 +242,25 @@ export class YoumuBattleCharacter extends BattleCharacter {
         ? params.baseAngle
         : params.baseAngle + Math.PI;
     const ringCenterAngle = slashAngle + Math.PI;
+    const fpRingCenter = fp.fromFloat(ringCenterAngle);
+    const fpRingDist = fp.fromFloat(ringCenterDistance);
     const ringCenterX =
-      fighter.x + Math.cos(ringCenterAngle) * ringCenterDistance;
+      fighter.x + fp.toFloat(fp.mul(fp.cos(fpRingCenter), fpRingDist));
     const ringCenterY =
-      fighter.y + Math.sin(ringCenterAngle) * ringCenterDistance;
+      fighter.y + fp.toFloat(fp.mul(fp.sin(fpRingCenter), fpRingDist));
     const centerlineRadius = (SLASH_MIN_RADIUS + SLASH_MAX_RADIUS) / 2;
     const ringWidth = SLASH_MAX_RADIUS - SLASH_MIN_RADIUS;
     const step = (params.endOffset - params.startOffset) / ARC_SEGMENTS;
     for (let index = 0; index < ARC_SEGMENTS; index += 1) {
       const offset = params.startOffset + step * (index + 0.5);
       const segmentAngle = slashAngle + offset;
+      const fpSegAngle = fp.fromFloat(segmentAngle);
+      const fpCLRadius = fp.fromFloat(centerlineRadius);
       ctx.spawnLaser({
         owner: fighter.key,
         textureKey: `${SLASH_TEXTURE_KEY}:${params.slashIndex}:${index}:${ARC_SEGMENTS}`,
-        x: ringCenterX + Math.cos(segmentAngle) * centerlineRadius,
-        y: ringCenterY + Math.sin(segmentAngle) * centerlineRadius,
+        x: ringCenterX + fp.toFloat(fp.mul(fp.cos(fpSegAngle), fpCLRadius)),
+        y: ringCenterY + fp.toFloat(fp.mul(fp.sin(fpSegAngle), fpCLRadius)),
         angle: segmentAngle + Math.PI / 2,
         initialLength: Math.max(ringWidth, Math.abs(step) * centerlineRadius),
         maxLength: Math.max(ringWidth, Math.abs(step) * centerlineRadius),
@@ -315,7 +321,10 @@ export class YoumuBattleCharacter extends BattleCharacter {
       kind: "orb",
       x,
       y,
-      angle: Math.atan2(ctx.opponent.y - y, ctx.opponent.x - x),
+      angle: fpAtan2(
+        fp.fromFloat(ctx.opponent.y - y),
+        fp.fromFloat(ctx.opponent.x - x),
+      ),
       speedRank: "high",
       width: REAR_BULLET_SIZE,
       height: REAR_BULLET_SIZE,
