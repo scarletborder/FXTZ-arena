@@ -6,7 +6,7 @@ import type { BattleInputState } from "@repo/raid-logic";
 import type { FighterLoadout } from "../battle/loadout";
 import type { PeerConnection, P2pStatus } from "../network/p2p";
 import type { DebugCooperateJumpTarget } from "./shared";
-import { uiSettings } from "../store/settings";
+import { settingsRepository } from "../store/settings";
 
 export const DEBUG_COOPERATE_LIVES = 999;
 
@@ -89,7 +89,7 @@ export function createDebugCooperateBattleConfig(params: {
     players: [
       {
         playerId: "Player1",
-        username: uiSettings.username,
+        username: settingsRepository.get().username,
         loadout: toPlayerLoadout(params.playerLoadout),
         spawnPointId: leftSpawn,
       },

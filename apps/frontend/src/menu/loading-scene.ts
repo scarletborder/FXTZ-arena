@@ -7,7 +7,7 @@ import { loadPortraitAssets, queueBattleAssets } from "../battle/utils/assets";
 import type { FighterLoadout } from "../battle/loadout";
 import { P2pConnection, type PeerConnection, type P2pStatus } from "../network/p2p";
 import { connectionManager, getCardById, getCharacterById, type LoadingData, type SceneKey } from "./shared";
-import { uiSettings } from "../store/settings";
+import { settingsRepository } from "../store/settings";
 import { createFittedImage } from "../utils/image-fit";
 import { abilityCardIconTextureKey } from "../ability-card-assets";
 import BgmCmd from "../commands/BgmCmd";
@@ -110,7 +110,7 @@ export class LoadingScene extends Phaser.Scene {
       this.p2p = data.p2p ?? new P2pConnection(connectionManager, {
         localPlayerId: data.localPlayerId ?? "Player1",
         enabled: data.mode === "local" ? true : data.battleConfig?.p2pEnabled === true,
-        stunServer: uiSettings.stunServer,
+        stunServer: settingsRepository.get().stunServer,
         onStatus: (status) => this.handleP2pStatus(status),
         onMessage: (message) => this.handleP2pMessage(message),
       });
@@ -423,7 +423,7 @@ export class LoadingScene extends Phaser.Scene {
 
     const player = loadouts.player as DisplayFighterLoadout;
     const target = loadouts.target as DisplayFighterLoadout;
-    const localName = this.loadingData.playerName ?? uiSettings.username;
+    const localName = this.loadingData.playerName ?? settingsRepository.get().username;
     const opponentName = this.loadingData.opponentName ?? t("select.opponent");
     if (this.loadingData.localPlayerId === "Player2") {
       return {

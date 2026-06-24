@@ -12,7 +12,7 @@ import {
 import {
   setDebug,
   setLogPath,
-  uiSettings,
+  settingsRepository
 } from "../../store/settings";
 import type { SettingsScene } from "./index";
 import { selectLogDirectory } from "../../platform/desktop-log-path";
@@ -31,13 +31,13 @@ export function renderDebugTab(scene: SettingsScene, layer: Phaser.GameObjects.C
 
   const debugText = scene.add.text(36, 86, " ", bodyStyle("#d7e3ef", 18));
   const updateDebugLabel = () => {
-    debugText.setText(uiSettings.debug ? t("settings.debug.toggle.on") : t("settings.debug.toggle.off"));
+    debugText.setText(settingsRepository.get().debug ? t("settings.debug.toggle.on") : t("settings.debug.toggle.off"));
   };
   updateDebugLabel();
   layer.add(debugText);
 
   layer.add(createFightButton(scene, 161, 150, 250, 54, t("settings.debug.toggle.button"), () => {
-    setDebug(!uiSettings.debug);
+    setDebug(!settingsRepository.get().debug);
     updateDebugLabel();
   }, { accent: 0xf7b733 }).container);
 
@@ -48,7 +48,7 @@ export function renderDebugTab(scene: SettingsScene, layer: Phaser.GameObjects.C
     const pathText = scene.add.text(
       36,
       262,
-      t("settings.debug.log_path.desktop_path", { path: uiSettings.logPath || "D:/" }),
+      t("settings.debug.log_path.desktop_path", { path: settingsRepository.get().logPath || "D:/" }),
       bodyStyle("#9fd8ff", 18),
     ).setWordWrapWidth(500);
 

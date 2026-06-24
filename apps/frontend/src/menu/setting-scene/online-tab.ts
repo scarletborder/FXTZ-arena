@@ -17,7 +17,7 @@ import {
   setP2pEnabled,
   setStunServer,
   setStunServers,
-  uiSettings,
+  settingsRepository
 } from "../../store/settings";
 import { showPublicServerConnectivityDialog } from "../ui/dialogs/public-server-connectivity-dialog";
 import type { SettingsScene } from "./index";
@@ -62,7 +62,7 @@ export function renderOnlineTab(scene: SettingsScene, layer: Phaser.GameObjects.
     key: "username" | "serverAddress",
   ): TextFieldControl => {
     const field = createTextField(scene, x, y, width, {
-      value: uiSettings[key],
+      value: settingsRepository.get()[key],
       maxLength: 160,
       onFocus: activateField,
       onChange: (value) => {
@@ -135,7 +135,7 @@ export function renderOnlineTab(scene: SettingsScene, layer: Phaser.GameObjects.
     if (connectionManager.status === "connected") {
       connectionManager.disconnect();
     } else {
-      connectionManager.connect(uiSettings.serverAddress, uiSettings.username);
+      connectionManager.connect(settingsRepository.get().serverAddress, settingsRepository.get().username);
     }
   }, { accent: 0x34d399 });
 
@@ -181,7 +181,7 @@ export function renderOnlineTab(scene: SettingsScene, layer: Phaser.GameObjects.
     latestTrustUrl = "";
     setTrustButtonVisible(false);
     probeStatusText.setText(t("settings.online.probe_testing")).setColor("#f7b733");
-    pendingProbeDispose = probeCustomServer(uiSettings.serverAddress, (result, trustUrl) => {
+    pendingProbeDispose = probeCustomServer(settingsRepository.get().serverAddress, (result, trustUrl) => {
       pendingProbeDispose = undefined;
       setProbeResult(result, trustUrl);
     });
@@ -228,12 +228,12 @@ export function renderOnlineTab(scene: SettingsScene, layer: Phaser.GameObjects.
 function renderP2pSection(scene: SettingsScene, layer: Phaser.GameObjects.Container, x: number, y: number): void {
   let stunDialog: Phaser.GameObjects.Container | undefined;
   const p2pText = scene.add.text(x, y + 52, t("settings.online.p2p_enabled"), bodyStyle("#d7e3ef", 18));
-  const p2pCheckbox = createCheckbox(scene, x + 100, y + 62, uiSettings.p2pEnabled, {
+  const p2pCheckbox = createCheckbox(scene, x + 100, y + 62, settingsRepository.get().p2pEnabled, {
     onChange: (nextEnabled) => {
       setP2pEnabled(nextEnabled);
     },
   });
-  const stunText = scene.add.text(x, y + 130, uiSettings.stunServer, bodyStyle("#9fd8ff", 16)).setWordWrapWidth(410);
+  const stunText = scene.add.text(x, y + 130, settingsRepository.get().stunServer, bodyStyle("#9fd8ff", 16)).setWordWrapWidth(410);
   const closeStunDialog = () => {
     stunDialog?.destroy();
     stunDialog = undefined;
@@ -248,11 +248,11 @@ function renderP2pSection(scene: SettingsScene, layer: Phaser.GameObjects.Contai
     });
   };
   const addStun = () => {
-    const raw = window.prompt(t("settings.online.add_stun"), uiSettings.stunServer);
+    const raw = window.prompt(t("settings.online.add_stun"), settingsRepository.get().stunServer);
     if (!raw) return;
     setStunServer(raw);
-    setStunServers([uiSettings.stunServer, ...uiSettings.stunServers]);
-    stunText.setText(uiSettings.stunServer);
+    setStunServers([settingsRepository.get().stunServer, ...settingsRepository.get().stunServers]);
+    stunText.setText(settingsRepository.get().stunServer);
   };
 
   layer.add(sectionTitle(scene, x, y, t("settings.online.p2p")));
@@ -335,7 +335,7 @@ function createStunServerDialog(
   stunText: Phaser.GameObjects.Text,
   onClose: () => void,
 ): Phaser.GameObjects.Container {
-  const servers = uiSettings.stunServers;
+  const servers = settingsRepository.get().stunServers;
   const rowHeight = 52;
   const dialogWidth = 520;
   const dialogHeight = 112 + Math.max(1, servers.length) * rowHeight;
@@ -380,7 +380,7 @@ function createStunOptionRow(
   onPick: () => void,
 ): Phaser.GameObjects.Container {
   let hovering = false;
-  const selected = server === uiSettings.stunServer;
+  const selected = server === settingsRepository.get().stunServer;
   const container = scene.add.container(x, y);
   const background = scene.add.graphics();
   const label = scene.add.text(18, 12, server, bodyStyle(selected ? "#ffcf6e" : "#f6f1e6", 16)).setWordWrapWidth(width - 36);
@@ -405,7 +405,7 @@ function createStunOptionRow(
   hitArea.on("pointerup", (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
     event.stopPropagation();
     setStunServer(server);
-    stunText.setText(uiSettings.stunServer);
+    stunText.setText(settingsRepository.get().stunServer);
     onPick();
   });
 
@@ -459,7 +459,7 @@ function createServerOptionRow(
   onPick: () => void,
 ): Phaser.GameObjects.Container {
   let hovering = false;
-  const selected = server.addr === uiSettings.serverAddress;
+  const selected = server.addr === settingsRepository.get().serverAddress;
   const container = scene.add.container(x, y);
   const background = scene.add.graphics();
   const label = scene.add.text(18, 8, server.name || t("dialog.public_server_index", { index: index + 1 }), bodyStyle(selected ? "#ffcf6e" : "#f6f1e6", 17));

@@ -8,7 +8,7 @@ import {
   drawAngledPanel,
 } from "../ui";
 import {
-  uiSettings,
+  settingsRepository,
   setKeybinds,
 } from "../../store/settings";
 import type { SettingsScene } from "./index";
@@ -85,7 +85,7 @@ function findDuplicates(keybinds: KeybindSettings) {
 
 export function renderKeyboardTab(scene: SettingsScene, layer: Phaser.GameObjects.Container): void {
   // 1. 声明编辑时的临时键位对象
-  let tempKeybinds: KeybindSettings = { ...uiSettings.keybinds };
+  let tempKeybinds: KeybindSettings = { ...settingsRepository.get().keybinds };
 
   let listeningAction: keyof KeybindSettings | null = null;
   let activeCaptureCleanup: (() => void) | undefined = undefined;

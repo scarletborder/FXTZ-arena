@@ -5,14 +5,14 @@ import { MAX_PLAYER_NAME_LENGTH } from "@repo/constants";
 import { bodyStyle, createFightButton, createTextField } from "../ui";
 import { createMapDropdown } from "../map-dialog";
 import { InputProfileId } from "../../battle/input-controller";
-import { setAccountSettings, uiSettings } from "../../store/settings";
+import { setAccountSettings, settingsRepository } from "../../store/settings";
 import type { TextFieldControl } from "../shared";
 import type { SettingsScene } from "./index";
 
 type BattleProfile = "Player1" | "Player2";
 
 export function renderAccountTab(scene: SettingsScene, layer: Phaser.GameObjects.Container): void {
-  let tempSettings = { ...uiSettings.account };
+  let tempSettings = { ...settingsRepository.get().account };
   let activeField: TextFieldControl | undefined;
   const statusText = scene.add.text(36, 430, "", bodyStyle("#34d399", 16));
   let profileRows = scene.add.container(0, 0);

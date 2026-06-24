@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { getCombatMapDefinition } from "@repo/content";
 
-import { uiSettings } from "../store/settings";
+import { settingsRepository } from "../store/settings";
 import { assetUrl } from "../utils/assets";
 
 export interface BgmConfigEntry {
@@ -136,7 +136,7 @@ export default BgmCmd;
 
 function resolveMusicVolume(baseVolume: number | undefined): number {
   const normalizedBase = clampVolume(baseVolume ?? 1);
-  const settingScale = clampVolume(uiSettings.music / 100);
+  const settingScale = clampVolume(settingsRepository.get().music / 100);
   return clampVolume(normalizedBase * settingScale);
 }
 

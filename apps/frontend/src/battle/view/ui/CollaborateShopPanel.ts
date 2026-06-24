@@ -11,7 +11,7 @@ import type { AbilityCardDefinition, FighterState } from "@repo/content";
 
 import { abilityCardIconTextureKey } from "../../../ability-card-assets";
 import { Depth } from "../../../utils/depth";
-import { uiSettings } from "../../../store/settings";
+import { settingsRepository } from "../../../store/settings";
 import type { CanonicalFighterKey } from "../../../network/combat/types";
 
 interface ShopPanelCallbacks {
@@ -478,7 +478,7 @@ export class CollaborateShopPanel {
       this.preview?.setVisible(true);
       return;
     }
-    const text = itemPreview(item, getKeyDisplayName(uiSettings.keybinds.activeCard));
+    const text = itemPreview(item, getKeyDisplayName(settingsRepository.get().keybinds.activeCard));
     this.previewText?.setText(text);
     this.previewBg?.setSize(250, 324);
     this.preview?.setVisible(true);

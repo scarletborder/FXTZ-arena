@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import type { BattleSceneData, BattleLoadouts } from "./loadout";
 import type { PlayerId } from "@repo/types";
 import { BattleEvents } from "@repo/constants";
-import { uiSettings } from "../store/settings";
+import { settingsRepository } from "../store/settings";
 import {
   resolveDisplayedBattleResult,
   resolveResultWinnerName,
@@ -157,7 +157,7 @@ export class BattleResultHandler {
 
   private createResultData(winnerPlayerId: PlayerId | null) {
     const localPlayerName =
-      this.sceneData.playerName ?? uiSettings.username ?? "Player";
+      this.sceneData.playerName ?? settingsRepository.get().username ?? "Player";
     const opponentName =
       this.sceneData.opponentName ??
       (this.sceneData.mode === "online" || this.sceneData.mode === "local"
@@ -236,7 +236,7 @@ export class BattleResultHandler {
       title: `${storyCtx.story.title} - ${stage?.title ?? "Stage"}`,
       mode: "story",
       difficulty: storyCtx.state.difficulty,
-      player1Id: this.sceneData.playerName ?? uiSettings.username ?? "Player",
+      player1Id: this.sceneData.playerName ?? settingsRepository.get().username ?? "Player",
       player2Id: this.sceneData.opponentName ?? "CPU",
       winnerPlayerId: this.resolveReplayWinnerPlayerId(null),
       finalGlobalInputHash:

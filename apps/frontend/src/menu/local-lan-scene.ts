@@ -5,7 +5,7 @@ import type { MapId, PlayerLoadout } from "@repo/types";
 
 import type { ConnectionManager } from "../network/client";
 import { P2pConnection } from "../network/p2p";
-import { uiSettings } from "../store/settings";
+import { settingsRepository } from "../store/settings";
 import {
   createBackButton,
   drawAngledPanel,
@@ -89,7 +89,7 @@ export class LocalLanScene extends Phaser.Scene {
       },
     });
 
-    void this.session.connect(uiSettings.username).catch(() => {
+    void this.session.connect(settingsRepository.get().username).catch(() => {
       this.statusLabel.setText(t("local_lan.error")).setColor("#ff5c66");
     });
 
@@ -195,7 +195,7 @@ export class LocalLanScene extends Phaser.Scene {
     const p2p = new P2pConnection(p2pTransport as unknown as ConnectionManager, {
       localPlayerId: this.localPlayerId,
       enabled: true,
-      stunServer: uiSettings.stunServer,
+      stunServer: settingsRepository.get().stunServer,
       onStatus: () => undefined,
       onMessage: () => undefined,
     });
@@ -218,10 +218,10 @@ export class LocalLanScene extends Phaser.Scene {
     // active behind the selection screen.
     this.scene.switch("select", {
       mode: "local",
-      playerName: uiSettings.username,
+      playerName: settingsRepository.get().username,
       opponentName: peer.alias,
       returnScene: "local-lan",
-      debug: uiSettings.debug,
+      debug: settingsRepository.get().debug,
       onLocalConfirm: (loadout: PlayerLoadout) => {
         this.localLoadout = loadout;
         this.session?.sendBattleReady(peer.id, loadout);
@@ -248,12 +248,12 @@ export class LocalLanScene extends Phaser.Scene {
     this.loadingToast?.setText(t("local_lan.loading", { name: peer.alias }));
     this.scene.launch("loading", {
       mode: "local",
-      playerName: uiSettings.username,
+      playerName: settingsRepository.get().username,
       opponentName: peer.alias,
       returnScene: "local-lan",
       loadouts,
       mapId: this.selectedMapId,
-      debug: uiSettings.debug,
+      debug: settingsRepository.get().debug,
       localPlayerId: this.localPlayerId,
       p2p: this.currentP2p,
     });

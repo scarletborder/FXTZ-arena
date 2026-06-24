@@ -1,5 +1,5 @@
 import { IS_DESKTOP_APP } from "@repo/constants";
-import { uiSettings } from "../store/settings";
+import { settingsRepository } from "../store/settings";
 
 type LogLevel = "INFO" | "WARN" | "ERROR" | "DEBUG";
 
@@ -22,7 +22,7 @@ const formatLogValue = (value: unknown): string => {
 };
 
 const getLogPath = (): string => {
-  const dir = uiSettings.logPath || "D:/";
+  const dir = settingsRepository.get().logPath || "D:/";
   return `${dir.replace(/\\+$/, "").replace(/\/+$/, "")}/arena.log`;
 };
 
@@ -54,7 +54,7 @@ export const installDesktopConsoleLogger = (): void => {
   };
 
   const write = (level: LogLevel, args: unknown[]): void => {
-    if (!uiSettings.debug) {
+    if (!settingsRepository.get().debug) {
       // Only write to file when debug mode is enabled.
       return;
     }

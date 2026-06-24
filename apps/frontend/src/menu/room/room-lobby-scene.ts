@@ -7,7 +7,7 @@ import {
   drawFightingBackdrop,
 } from "../ui";
 import { connectionManager, type SceneKey, type SelectionData } from "../shared";
-import { uiSettings } from "../../store/settings";
+import { settingsRepository } from "../../store/settings";
 
 export class RoomLobbyScene extends Phaser.Scene {
   private contentContainer!: Phaser.GameObjects.Container;
@@ -112,7 +112,7 @@ export class RoomLobbyScene extends Phaser.Scene {
 
     const isHost = connectionManager.playerId === "Player1";
     const opponentName = connectionManager.opponentUsername;
-    const myName = uiSettings.username;
+    const myName = settingsRepository.get().username;
 
     // ── Left panel: room info ──────────────────────────────
     this.drawPanelToContainer(72, 176, 400, 300, t("room_lobby.room_info"));

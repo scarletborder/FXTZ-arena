@@ -30,7 +30,7 @@ import {
   type SceneKey,
   type SelectionData,
 } from "./shared";
-import { getProfileUsername, uiSettings } from "../store/settings";
+import { getProfileUsername, settingsRepository } from "../store/settings";
 import { Depth } from "../utils/depth";
 import { queueMenuAssets } from "./assets";
 import {
@@ -204,7 +204,7 @@ export class SelectScene extends Phaser.Scene {
 
         this.scene.start("loading", {
           mode: "online",
-          playerName: me?.username ?? uiSettings.username,
+          playerName: me?.username ?? settingsRepository.get().username,
           opponentName: opponent?.username ?? t("select.opponent"),
           returnScene: "battle-start",
           loadouts: {
@@ -221,7 +221,7 @@ export class SelectScene extends Phaser.Scene {
               activeCardId: targetCfg.loadout.activeAbilityCardId ?? undefined,
             },
           },
-          debug: uiSettings.debug,
+          debug: settingsRepository.get().debug,
           battleConfig: config,
           localPlayerId: this.playerId,
         } satisfies Record<string, unknown>);
@@ -894,7 +894,7 @@ export class SelectScene extends Phaser.Scene {
       });
       this.scene.start("loading", {
         mode: "local",
-        playerName: uiSettings.username,
+        playerName: settingsRepository.get().username,
         opponentName: t("settings.debug.cooperate.bot_name"),
         returnScene: "settings",
         loadouts: { player, target },
@@ -946,7 +946,7 @@ export class SelectScene extends Phaser.Scene {
           target: player,
         },
         mapId: this.selectedMapId ?? "hakurei_shrine",
-        debug: uiSettings.debug,
+        debug: settingsRepository.get().debug,
       });
       return;
     }
@@ -959,12 +959,12 @@ export class SelectScene extends Phaser.Scene {
     };
     this.scene.start("loading", {
       mode: this.mode,
-      playerName: uiSettings.username,
+      playerName: settingsRepository.get().username,
       opponentName: this.mode === "training" ? t("select.dummy") : t("select.cpu"),
       returnScene: "battle-start",
       loadouts,
       mapId: this.mode === "training" ? "shoot_range" : this.selectedMapId ?? "hakurei_shrine",
-      debug: uiSettings.debug,
+      debug: settingsRepository.get().debug,
     });
   }
 

@@ -11,7 +11,7 @@ import { BattleSceneData } from "../loadout";
 import { BattleMobileControls, shouldEnableMobileBattleControls } from "./mobile";
 import { BattleKeybinds, createBattleKeybinds } from "./pc";
 import { BattleJoystickController, InputProfileId } from "./gamepad";
-import { uiSettings } from "../../store/settings";
+import { settingsRepository } from "../../store/settings";
 
 export class BattleInputController {
   private keybinds!: BattleKeybinds;
@@ -47,7 +47,7 @@ export class BattleInputController {
       scene.scale.autoCenter = Phaser.Scale.CENTER_HORIZONTALLY;
     }
 
-    const keybinds = uiSettings.keybinds;
+    const keybinds = settingsRepository.get().keybinds;
     this.activeProfile = resolveActiveProfile(sceneData);
     this.p2Profile = sceneData.localSingleDevice ? resolveLocalSingleP2Profile() : undefined;
     this.keybinds = createBattleKeybinds(scene, keybinds);
@@ -283,15 +283,15 @@ export class BattleInputController {
 
 function resolveActiveProfile(sceneData: BattleSceneData): InputProfileId {
   if (sceneData.mode === "online" || sceneData.mode === "local" || sceneData.mode === "ai") {
-    return uiSettings.account.battleProfile === "Player2"
-      ? uiSettings.account.p2Profile
-      : uiSettings.account.p1Profile;
+    return settingsRepository.get().account.battleProfile === "Player2"
+      ? settingsRepository.get().account.p2Profile
+      : settingsRepository.get().account.p1Profile;
   }
-  return uiSettings.account.p1Profile;
+  return settingsRepository.get().account.p1Profile;
 }
 
 function resolveLocalSingleP2Profile(): InputProfileId {
-  return uiSettings.account.p2Profile === "mobile" ? "keyboard" : uiSettings.account.p2Profile;
+  return settingsRepository.get().account.p2Profile === "mobile" ? "keyboard" : settingsRepository.get().account.p2Profile;
 }
 
 function createJoystickController(
@@ -302,5 +302,5 @@ function createJoystickController(
     return undefined;
   }
   const padIndex = Math.max(0, Number(profile.slice("joystick:".length)) || 0);
-  return new BattleJoystickController(scene, uiSettings.joystick, padIndex);
+  return new BattleJoystickController(scene, settingsRepository.get().joystick, padIndex);
 }

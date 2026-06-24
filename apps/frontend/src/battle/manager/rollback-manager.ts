@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import type { BattleSceneData } from "../loadout";
-import { uiSettings } from "../../store/settings";
+import { settingsRepository } from "../../store/settings";
 import { BattleEvents } from "@repo/constants";
 import { BattleRollbackManager, BattleHashBundle } from "./hash-manager";
 
@@ -207,11 +207,11 @@ export class BattleRollbackFacade {
     try {
       return (
         Boolean(this.sceneData.debug) ||
-        uiSettings.debug ||
+        settingsRepository.get().debug ||
         this.getIsLiveHashEnabled()
       );
     } catch {
-      return Boolean(this.sceneData.debug) || uiSettings.debug;
+      return Boolean(this.sceneData.debug) || settingsRepository.get().debug;
     }
   }
 

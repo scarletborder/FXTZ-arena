@@ -5,7 +5,7 @@ import { GAME_HEIGHT } from "@repo/constants";
 import { createFightButton, drawFightingBackdrop, drawPanel, bodyStyle, headingStyle } from "./ui";
 import { type ResultData, type ResultPlayerSummary, type SceneKey } from "./shared";
 import { Depth } from "../utils/depth";
-import { uiSettings } from "../store/settings";
+import { settingsRepository } from "../store/settings";
 
 export class ResultScene extends Phaser.Scene {
   constructor() {
@@ -33,7 +33,7 @@ export class ResultScene extends Phaser.Scene {
     }, { accent: 0xe33d44 });
     createFightButton(this, 810, 588, 220, 58, t("result.rematch"), undefined, { enabled: false, subLabel: t("result.rematch_disabled") });
 
-    if (uiSettings.debug && data.debugHashes) {
+    if (settingsRepository.get().debug && data.debugHashes) {
       this.drawDebugHashPanel(data.debugHashes);
     }
   }
@@ -80,5 +80,5 @@ function resultLine(data: ResultData): string {
   if (data.battleResult === "collaborate_defeat") {
     return t("result.challenge_defeat");
   }
-  return t("result.winner", { name: data.winnerName ?? uiSettings.username });
+  return t("result.winner", { name: data.winnerName ?? settingsRepository.get().username });
 }

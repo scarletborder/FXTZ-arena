@@ -10,7 +10,7 @@ import {
   setBattleHoverResources,
   setMusicVolume,
   setSoundVolume,
-  uiSettings,
+  settingsRepository
 } from "../../store/settings";
 import type { SettingsScene } from "./index";
 import { showLanguageDialog } from "../ui/dialogs/language-dialog";
@@ -23,13 +23,13 @@ interface SliderControl {
 export function renderGeneralTab(scene: SettingsScene, layer: Phaser.GameObjects.Container): void {
   layer.add(sectionTitle(scene, 36, 34, t("settings.general")));
   layer.add(scene.add.text(36, 86, t("settings.general.music.title"), bodyStyle("#f6f1e6", 18)));
-  layer.add(createVolumeSlider(scene, 36, 124, 360, uiSettings.music, setMusicVolume).container);
+  layer.add(createVolumeSlider(scene, 36, 124, 360, settingsRepository.get().music, setMusicVolume).container);
   layer.add(scene.add.text(36, 178, t("settings.general.sound.title"), bodyStyle("#f6f1e6", 18)));
-  layer.add(createVolumeSlider(scene, 36, 216, 360, uiSettings.sound, setSoundVolume).container);
+  layer.add(createVolumeSlider(scene, 36, 216, 360, settingsRepository.get().sound, setSoundVolume).container);
 
   layer.add(sectionTitle(scene, 616, 178, t("settings.general.display.title")));
   layer.add(scene.add.text(616, 220, t("settings.general.display.subtitle"), bodyStyle("#b7c7d8", 15)).setWordWrapWidth(370));
-  layer.add(createCheckbox(scene, 616, 268, uiSettings.battleHoverResources, {
+  layer.add(createCheckbox(scene, 616, 268, settingsRepository.get().battleHoverResources, {
     label: t("settings.general.display.battleHoverResources"),
     onChange: setBattleHoverResources,
   }).container);

@@ -9,7 +9,7 @@ import {
 } from "@repo/constants";
 import type { FighterKey, FighterState } from "@repo/raid-logic";
 import { abilityCardIconTextureKey } from "../../ability-card-assets";
-import { uiSettings } from "../../store/settings";
+import { settingsRepository } from "../../store/settings";
 import { Depth } from "../../utils/depth";
 import { fitImageToBounds } from "../../utils/image-fit";
 import { smoothPointWithMaxStep, smoothValue } from "./smooth";
@@ -214,7 +214,7 @@ export class FighterView {
       fighter.statusVisibleUntil > frame ||
       fighter.deadUntil > 0;
     const hoverResourceVisible =
-      uiSettings.battleHoverResources &&
+      settingsRepository.get().battleHoverResources &&
       (visual.hoverVisible || visual.hoverHideTimer !== undefined);
     const shouldShowResource = baseResourceVisible || hoverResourceVisible;
     const resourceAlpha = baseResourceVisible ? 1 : hoverResourceVisible ? 0.92 : 0;

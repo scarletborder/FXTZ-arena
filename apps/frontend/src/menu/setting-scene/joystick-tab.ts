@@ -8,7 +8,7 @@ import {
 } from "../ui";
 import { createMapDropdown } from "../map-dialog";
 import { DEFAULT_JOYSTICK_SETTINGS, JoystickAxisSource, JoystickButtonInput, JoystickSettings } from "../../battle/input-controller";
-import { setJoystickSettings, uiSettings } from "../../store/settings";
+import { setJoystickSettings, settingsRepository } from "../../store/settings";
 import type { SettingsScene } from "./index";
 
 interface AxisRowConfig {
@@ -43,7 +43,7 @@ const RIGHT_BUTTON_ROWS: readonly ButtonRowConfig[] = [
 const BUTTON_OPTIONS: readonly JoystickButtonInput[] = ["A", "B", "X", "Y", "LB", "RB", "LT", "RT"];
 
 export function renderJoystickTab(scene: SettingsScene, layer: Phaser.GameObjects.Container): void {
-  let tempSettings: JoystickSettings = { ...uiSettings.joystick };
+  let tempSettings: JoystickSettings = { ...settingsRepository.get().joystick };
   const tabContent = scene.add.container(0, 0);
   const statusText = scene.add.text(36, 396, "", bodyStyle("#ffcf6e", 16));
 

@@ -7,7 +7,7 @@ import type { BattleRoomMode, MapId, PlayerId, RoomSummary, ServerMessage } from
 import { createCheckbox, createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop } from "../ui";
 import { createMapDropdown } from "../map-dialog";
 import { connectionManager, type SceneKey, type SelectionData, type TextFieldControl } from "../shared";
-import { uiSettings } from "../../store/settings";
+import { settingsRepository } from "../../store/settings";
 
 const PAGE_SIZE = 12;
 
@@ -121,7 +121,7 @@ export class RoomListScene extends Phaser.Scene {
   }
 
   private tryQuickMatch(): void {
-    connectionManager.send({ type: "quick_match", username: uiSettings.username, p2pEnabled: uiSettings.p2pEnabled, battleMode: this.battleMode });
+    connectionManager.send({ type: "quick_match", username: settingsRepository.get().username, p2pEnabled: settingsRepository.get().p2pEnabled, battleMode: this.battleMode });
   }
 
   private createModeButtons(): void {
@@ -203,7 +203,7 @@ export class RoomListScene extends Phaser.Scene {
     drawAngledPanel(bg, px, py, pw, ph, 0x111821, 0x5c7185, 0.98);
     c.add(bg);
     c.add(this.add.text(cx, py + 28, t("battle_start.create_room"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "22px", fontStyle: "700", color: "#ffcf6e" }).setOrigin(0.5));
-    let roomName = Array.from(t("battle_start.default_room_name", { name: uiSettings.username })).slice(0, MAX_ROOM_NAME_LENGTH).join("");
+    let roomName = Array.from(t("battle_start.default_room_name", { name: settingsRepository.get().username })).slice(0, MAX_ROOM_NAME_LENGTH).join("");
     let roomPassword = "";
     let allowSpectators = this.battleMode === "versus";
     const maps = this.battleMode === "collaborate" ? getAvailableCollaborateMaps() : getAvailableVersusMaps();
@@ -270,7 +270,7 @@ export class RoomListScene extends Phaser.Scene {
     });
     c.add(toggle);
     c.add(createFightButton(this, cx - 80, py + ph - 60, 140, 44, t("battle_start.create"), () => {
-      connectionManager.send({ type: "create_room", name: roomName, username: uiSettings.username, password: roomPassword || undefined, battleMode: this.battleMode, mapId: selectedMapId, lifeCount: parseInt(lifeLabel.text, 10), costLimit: 10, p2pEnabled: uiSettings.p2pEnabled, allowSpectators: this.battleMode === "versus" ? allowSpectators : false });
+      connectionManager.send({ type: "create_room", name: roomName, username: settingsRepository.get().username, password: roomPassword || undefined, battleMode: this.battleMode, mapId: selectedMapId, lifeCount: parseInt(lifeLabel.text, 10), costLimit: 10, p2pEnabled: settingsRepository.get().p2pEnabled, allowSpectators: this.battleMode === "versus" ? allowSpectators : false });
       c.destroy();
       this.createRoomDialog = null;
       this.activeField = null;
@@ -338,7 +338,7 @@ export class RoomListScene extends Phaser.Scene {
     this.pendingJoinRoomId = roomId;
     const normalizedSpectator = this.battleMode === "versus" && spectator;
     this.pendingJoinSpectator = normalizedSpectator;
-    connectionManager.send({ type: "join_room", roomId, username: uiSettings.username, password, p2pEnabled: uiSettings.p2pEnabled, spectator: normalizedSpectator });
+    connectionManager.send({ type: "join_room", roomId, username: settingsRepository.get().username, password, p2pEnabled: settingsRepository.get().p2pEnabled, spectator: normalizedSpectator });
   }
 
   private showPasswordDialog(roomId: string, spectator = false): void {

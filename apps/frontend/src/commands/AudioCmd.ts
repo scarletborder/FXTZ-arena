@@ -1,4 +1,4 @@
-import { uiSettings } from "../store/settings";
+import { settingsRepository } from "../store/settings";
 
 export interface AudioPlayOptions {
   readonly loop?: boolean;
@@ -75,7 +75,7 @@ export default AudioCmd;
 
 function resolveSoundVolume(baseVolume: number | undefined): number {
   const normalizedBase = clampVolume(baseVolume ?? 1);
-  const settingScale = clampVolume(uiSettings.sound / 100);
+  const settingScale = clampVolume(settingsRepository.get().sound / 100);
   return clampVolume(normalizedBase * settingScale);
 }
 

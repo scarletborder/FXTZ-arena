@@ -5,7 +5,7 @@ import { IS_DESKTOP_APP } from "@repo/constants";
 import { bodyStyle, createFightButton, createRectangleButton, drawBuildLabel, drawFightingBackdrop, drawTitleBlock } from "./ui";
 import { type SceneKey } from "./shared";
 import { showPublicServerConnectivityDialog } from "./ui/dialogs/public-server-connectivity-dialog";
-import { setSelfAuthed, uiSettings } from "../store/settings";
+import { setSelfAuthed, settingsRepository } from "../store/settings";
 import { installResourcePackFromCache, queueResourcePack } from "../utils/resource-pack";
 import { showLanguageDialog } from "./ui/dialogs/language-dialog";
 
@@ -65,7 +65,7 @@ export class HomeScene extends Phaser.Scene {
   }
 
   private showPublicServerConnectivityDialog(): void {
-    if (uiSettings.selfAuthed || this.publicServerConnectivityDialog) {
+    if (settingsRepository.get().selfAuthed || this.publicServerConnectivityDialog) {
       return;
     }
     this.publicServerConnectivityDialog = showPublicServerConnectivityDialog(this, {

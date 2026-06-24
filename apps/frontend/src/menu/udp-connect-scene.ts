@@ -5,7 +5,7 @@ import type { MapId, PlayerLoadout, ServerMessage } from "@repo/types";
 
 import type { PeerConnection } from "../network/p2p";
 import { type UdpDirectSession, UdpDirectSession as UdpSession } from "../network/udp-direct-session";
-import { uiSettings } from "../store/settings";
+import { settingsRepository } from "../store/settings";
 import { showMapDialog } from "./map-dialog";
 import { type SceneKey, type TextFieldControl } from "./shared";
 import { createBackButton, createCheckbox, createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop, drawPanel } from "./ui";
@@ -151,7 +151,7 @@ export class UdpConnectScene extends Phaser.Scene {
           this.tryLaunchLoading();
         },
       });
-      await this.session.host(port, uiSettings.username);
+      await this.session.host(port, settingsRepository.get().username);
       this.showWaitingDialog();
     } catch (error) {
       this.showToast(error instanceof Error ? error.message : String(error));
@@ -174,7 +174,7 @@ export class UdpConnectScene extends Phaser.Scene {
           this.tryLaunchLoading();
         },
       });
-      await this.session.connect(this.guestAddress, uiSettings.username);
+      await this.session.connect(this.guestAddress, settingsRepository.get().username);
       this.showToast(t("udp_connect.connect_sent"));
     } catch (error) {
       this.showToast(error instanceof Error ? error.message : String(error));
@@ -200,7 +200,7 @@ export class UdpConnectScene extends Phaser.Scene {
           });
         },
       });
-      await this.session.connect(this.guestAddress, uiSettings.username, true);
+      await this.session.connect(this.guestAddress, settingsRepository.get().username, true);
       this.showToast(t("udp_connect.spectate_sent"));
     } catch (error) {
       this.showToast(error instanceof Error ? error.message : String(error));
@@ -226,10 +226,10 @@ export class UdpConnectScene extends Phaser.Scene {
 
     this.scene.switch("select", {
       mode: "local",
-      playerName: uiSettings.username,
+      playerName: settingsRepository.get().username,
       opponentName: peerName,
       returnScene: "udp-connect",
-      debug: uiSettings.debug,
+      debug: settingsRepository.get().debug,
       onLocalConfirm: (loadout: PlayerLoadout) => {
         this.localLoadout = loadout;
         this.session?.sendBattleReady(loadout);
@@ -260,12 +260,12 @@ export class UdpConnectScene extends Phaser.Scene {
     this.scene.stop("select");
     this.scene.launch("loading", {
       mode: "local",
-      playerName: uiSettings.username,
+      playerName: settingsRepository.get().username,
       opponentName: this.matchedPeerName,
       returnScene: "udp-connect",
       loadouts,
       mapId: this.selectedMapId,
-      debug: uiSettings.debug,
+      debug: settingsRepository.get().debug,
       localPlayerId: this.localPlayerId,
       p2p: this.currentPeer,
       spectatorForward: (message: ServerMessage) => this.session?.sendToSpectators(message),
@@ -288,13 +288,13 @@ export class UdpConnectScene extends Phaser.Scene {
         players: [
           {
             playerId: "Player1",
-            username: this.localPlayerId === "Player1" ? uiSettings.username : this.matchedPeerName ?? "",
+            username: this.localPlayerId === "Player1" ? settingsRepository.get().username : this.matchedPeerName ?? "",
             loadout: playerOneLoadout,
             spawnPointId: "spawn-1",
           },
           {
             playerId: "Player2",
-            username: this.localPlayerId === "Player1" ? this.matchedPeerName ?? "" : uiSettings.username,
+            username: this.localPlayerId === "Player1" ? this.matchedPeerName ?? "" : settingsRepository.get().username,
             loadout: playerTwoLoadout,
             spawnPointId: "spawn-2",
           },

@@ -19,7 +19,7 @@ import type {
   StoryRuntimeState,
   StoryStage,
 } from "../../story/types";
-import { uiSettings } from "../../store/settings";
+import { settingsRepository } from "../../store/settings";
 import { createFittedImage } from "../../utils/image-fit";
 import {
   characterPreviewTextureKey,
@@ -573,14 +573,14 @@ export class StoryLoadoutScene extends Phaser.Scene {
     const loadouts: BattleLoadouts = { player, target };
     this.scene.start("loading", {
       mode: "ai",
-      playerName: uiSettings.username,
+      playerName: settingsRepository.get().username,
       opponentName: getCharacterById(stage.opponent.primaryCharacterId).name,
       returnScene: "story-loadout",
       loadouts,
       mapId: stage.mapId,
       playerInitPoint: 0,
       opponentInitPoint: stage.initEnemyPoint ?? 0,
-      debug: uiSettings.debug,
+      debug: settingsRepository.get().debug,
       ai: stage.ai,
       story: {
         story: this.story,

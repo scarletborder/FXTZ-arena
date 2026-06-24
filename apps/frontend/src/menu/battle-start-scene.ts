@@ -4,7 +4,7 @@ import { t } from "@repo/i18n";
 import type { BattleRoomMode, PlayerId } from "@repo/types";
 
 import type { ConnectionStatus } from "../network";
-import { uiSettings } from "../store/settings";
+import { settingsRepository } from "../store/settings";
 import { showMapDialog } from "./map-dialog";
 import { connectionManager, type SceneKey, type SelectionData } from "./shared";
 import { createBackButton, createFightButton, drawFightingBackdrop, drawPanel } from "./ui";
@@ -63,10 +63,10 @@ export class BattleStartScene extends Phaser.Scene {
     updateConnectionState(connectionManager.status);
     connectionManager.setMessageHandler((msg) => this.onServerMessage(msg));
     console.log("[FXTZ] Connecting to server", {
-      address: uiSettings.serverAddress,
-      username: uiSettings.username,
+      address: settingsRepository.get().serverAddress,
+      username: settingsRepository.get().username,
     });
-    connectionManager.connect(uiSettings.serverAddress, uiSettings.username);
+    connectionManager.connect(settingsRepository.get().serverAddress, settingsRepository.get().username);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       connectionManager.setMessageHandler(null);
