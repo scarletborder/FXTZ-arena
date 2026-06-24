@@ -16,11 +16,15 @@ import {
 import { Vanilla } from "../decorators";
 import { fp } from "@shaisrc/fixed-point";
 import { fpAtan2 } from "../fp";
+import { bulletSpeedRankToPixelsPerTick } from "@repo/types";
 
 const CENTER_TEXTURE = "bullet_type_5_offset_3";
 const SIDE_TEXTURE = "bullet_type_5_offset_6";
 const RAN_BULLET_TEXTURE = "bullet_type_5_offset_13";
 const RAN_COMPANION_TEXTURE = "character_ran_companion";
+const BOMB_BULLET_TEXTURE_PREFIX = "bullet_type_9";
+const BOMB_BULLET_OFFSET_MIN = 2;
+const BOMB_BULLET_OFFSET_MAX = 6;
 
 const BULLET_HIT_SIZE = 6;
 const CENTER_DAMAGE_BY_TIER = {
@@ -41,6 +45,23 @@ const CENTER_TIER4_GAP = hitCircleUnits(4);
 const WINGMAN_FORWARD_OFFSET = -hitCircleUnits(16);
 const WINGMAN_SIDE_OFFSET = hitCircleUnits(8);
 const RAN_DIRECTION_ALIGN_THRESHOLD = 0.05; // radians
+
+// Bomb — 弹幕结界
+const YUKARI_BOMB_WARNING_TICKS = secondsToTicks(0.8);
+const YUKARI_BOMB_HEX_SIDE_LENGTH = 328;
+const YUKARI_BOMB_BULLET_SPACING = 28;
+const YUKARI_BOMB_BULLETS_PER_HALF_SIDE = 6; // 6 per direction, 12 per edge
+const YUKARI_BOMB_BULLET_SIZE = 12;
+const YUKARI_BOMB_DAMAGE = 5;
+const YUKARI_BOMB_PAUSE_TICKS = secondsToTicks(1);
+const YUKARI_BOMB_INWARD_TICKS = secondsToTicks(1.1);
+const YUKARI_BOMB_WARNING_HALF_WIDTH = 3;
+const YUKARI_BOMB_LOCK_TICKS = secondsToTicks(4);
+const YUKARI_BOMB_CLEAR_MULTIPLIER = 24;
+const YUKARI_BOMB_CLEAR_DURATION = secondsToTicks(1);
+const YUKARI_BOMB_RETARGET_SPEED = bulletSpeedRankToPixelsPerTick("high");
+
+const FULL_CIRCLE = Math.PI * 2;
 
 export class YukariBattleCharacter extends BattleCharacter {
   readonly id = "yukari" as CharacterDefinition["id"];
@@ -123,10 +144,51 @@ export class YukariBattleCharacter extends BattleCharacter {
     this.fireRanBullets(ctx, fighter, ran, ranAngle, tier, angle);
   }
 
-  useBomb(ctx: CharacterActionContext, fighter: FighterState): void {
-    this.startBomb(ctx, fighter, secondsToTicks(4));
-    const radius = this.clearProjectiles(ctx, fighter, 24, secondsToTicks(1));
-    this.spawnClearRing(ctx, fighter, radius, 0xb88cff, secondsToTicks(1));
+  useBomb(
+    ctx: CharacterActionContext,
+    fighter: FighterState,
+    aimX: number,
+    aimY: number,
+  ): void {
+    this.startBomb(ctx, fighter, YUKARI_BOMB_LOCK_TICKS);
+    fighter.switchLockedUntil = Math.max(
+      fighter.switchLockedUntil,
+      YUKARI_BOMB_LOCK_TICKS,
+    );
+
+    const radius = this.clearProjectiles(
+      ctx,
+      fighter,
+      YUKARI_BOMB_CLEAR_MULTIPLIER,
+      YUKARI_BOMB_CLEAR_DURATION,
+    );
+    this.spawnClearRing(ctx, fighter, radius, 0xb88cff, YUKARI_BOMB_CLEAR_DURATION);
+
+    const vertices = regularHexagonVertices(
+      aimX,
+      aimY,
+      YUKARI_BOMB_HEX_SIDE_LENGTH,
+    );
+
+    // Spawn warning segments along each hexagon edge.
+    for (let index = 0; index < vertices.length; index += 1) {
+      const from = vertices[index]!;
+      const to = vertices[(index + 1) % vertices.length]!;
+      ctx.spawnSegment({
+        owner: fighter.key,
+        x1: from.x,
+        y1: from.y,
+        x2: to.x,
+        y2: to.y,
+        halfWidth: YUKARI_BOMB_WARNING_HALF_WIDTH,
+        renderHalfWidth: YUKARI_BOMB_WARNING_HALF_WIDTH,
+        damage: 0,
+        duration: YUKARI_BOMB_WARNING_TICKS,
+        frame: ctx.frame,
+        couldClear: false,
+      });
+      this.spawnBombEdgeBullets(ctx, fighter, from, to, aimX, aimY, index);
+    }
   }
 
   onHit(_ctx: BattleHitContext): void {
@@ -254,6 +316,74 @@ export class YukariBattleCharacter extends BattleCharacter {
         projectile.textureKey === RAN_COMPANION_TEXTURE,
     );
   }
+
+  private spawnBombEdgeBullets(
+    ctx: CharacterActionContext,
+    fighter: FighterState,
+    from: HexPoint,
+    to: HexPoint,
+    centerX: number,
+    centerY: number,
+    edgeIndex: number,
+  ): void {
+    const midX = (from.x + to.x) / 2;
+    const midY = (from.y + to.y) / 2;
+    const angleToFrom = Math.atan2(from.y - midY, from.x - midX);
+    const angleToTo = Math.atan2(to.y - midY, to.x - midX);
+
+    const visibleFrom =
+      ctx.frame + YUKARI_BOMB_WARNING_TICKS;
+    const startMovingAt =
+      visibleFrom + YUKARI_BOMB_PAUSE_TICKS;
+    const switchToOutwardAt =
+      startMovingAt + YUKARI_BOMB_INWARD_TICKS;
+
+    const offsetCount = BOMB_BULLET_OFFSET_MAX - BOMB_BULLET_OFFSET_MIN + 1;
+
+    // Place bullets from edge centre toward each vertex.
+    let dirIdx = 0;
+    for (const direction of [angleToFrom, angleToTo]) {
+      for (let k = 1; k <= YUKARI_BOMB_BULLETS_PER_HALF_SIDE; k += 1) {
+        const dist = k * YUKARI_BOMB_BULLET_SPACING;
+        const bx = midX + Math.cos(direction) * dist;
+        const by = midY + Math.sin(direction) * dist;
+
+        // Cycle through offsets 2–6 in a cascading gradient along each edge.
+        const offset =
+          ((edgeIndex * 2 + dirIdx + k - 1) % offsetCount) + BOMB_BULLET_OFFSET_MIN;
+        const textureKey = `${BOMB_BULLET_TEXTURE_PREFIX}_offset_${offset}`;
+
+        // Inward phase: move toward the hexagon centre.
+        const towardCenter = Math.atan2(centerY - by, centerX - bx);
+        // Outward phase: reverse direction.
+        const awayFromCenter = towardCenter + Math.PI;
+
+        ctx.spawnBullet({
+          owner: fighter.key,
+          sourceCharacterId: this.id,
+          textureKey,
+          kind: "orb",
+          x: bx,
+          y: by,
+          angle: towardCenter,
+          speedRank: "low",
+          width: YUKARI_BOMB_BULLET_SIZE,
+          height: YUKARI_BOMB_BULLET_SIZE,
+          homingTicks: 0,
+          damage: YUKARI_BOMB_DAMAGE,
+          spawnOffset: 0,
+          frame: visibleFrom,
+          pausedUntil: startMovingAt,
+          retargetAt: switchToOutwardAt,
+          retargetX: bx + Math.cos(awayFromCenter) * 1000,
+          retargetY: by + Math.sin(awayFromCenter) * 1000,
+          retargetSpeed: YUKARI_BOMB_RETARGET_SPEED,
+          couldClear: true,
+        });
+      }
+      dirIdx += 1;
+    }
+  }
 }
 
 function centerShotSides(tier: number): readonly number[] {
@@ -295,6 +425,28 @@ function resetRanCompanion(
     followAimOwner: fighter.key,
     followWhileActiveCharacterId: "yukari" as CharacterDefinition["id"],
   });
+}
+
+interface HexPoint {
+  readonly x: number;
+  readonly y: number;
+}
+
+/** Returns the 6 vertices of a regular hexagon, pointy-top orientation. */
+function regularHexagonVertices(
+  centerX: number,
+  centerY: number,
+  sideLength: number,
+): readonly [HexPoint, HexPoint, HexPoint, HexPoint, HexPoint, HexPoint] {
+  // Circumradius of a regular hexagon equals its side length.
+  const radius = sideLength;
+  return Array.from({ length: 6 }, (_, index) => {
+    const angle = -Math.PI / 2 + (FULL_CIRCLE * index) / 6;
+    return {
+      x: centerX + Math.cos(angle) * radius,
+      y: centerY + Math.sin(angle) * radius,
+    };
+  }) as [HexPoint, HexPoint, HexPoint, HexPoint, HexPoint, HexPoint];
 }
 
 Vanilla.registerCharacter("yukari")(YukariBattleCharacter);
