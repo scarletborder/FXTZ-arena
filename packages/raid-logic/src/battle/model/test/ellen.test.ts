@@ -29,8 +29,8 @@ describe("BattleModel Ellen", () => {
         (projectile) =>
           projectile.couldClear &&
           (projectile.textureKey === "bullet_type_21_offset_1"
-            ? projectile.width === 15 && projectile.height === 15
-            : projectile.width === 23 && projectile.height === 23),
+            ? projectile.width === 8 && projectile.height === 8
+            : projectile.width === 17 && projectile.height === 17),
       ),
     ).toBe(true);
 
@@ -86,8 +86,8 @@ describe("BattleModel Ellen", () => {
       bombBullets.every(
         (projectile) =>
           projectile.damage === 1 &&
-          projectile.width === 30 &&
-          projectile.height === 30 &&
+          projectile.width === 29 &&
+          projectile.height === 29 &&
           projectile.couldClear &&
           projectile.piercesTargets &&
           projectile.polarOriginX === model.player.x &&

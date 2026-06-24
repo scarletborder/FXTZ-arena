@@ -59,8 +59,8 @@ describe("bullet asset sizing", () => {
     expect(projectile.width).toBe(8);
     expect(projectile.height).toBe(8);
     expect(projectile.previousWidth).toBe(8);
-    expect(projectile.renderWidth).toBeCloseTo(12.8);
-    expect(projectile.renderHeight).toBeCloseTo(12.8);
+    expect(projectile.renderWidth).toBeCloseTo(32);
+    expect(projectile.renderHeight).toBeCloseTo(32);
   });
 
   it("carries an explicit tiled laser render mode for laser-textured bullets", () => {

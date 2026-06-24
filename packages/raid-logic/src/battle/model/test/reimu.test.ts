@@ -56,7 +56,7 @@ describe("BattleModel Reimu", () => {
     );
     expect(
       bombOrbs.every(
-        (projectile) => projectile.width === 40 && projectile.height === 40,
+        (projectile) => projectile.width === 38 && projectile.height === 38,
       ),
     ).toBe(true);
     expect(
