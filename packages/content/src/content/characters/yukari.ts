@@ -162,7 +162,13 @@ export class YukariBattleCharacter extends BattleCharacter {
       YUKARI_BOMB_CLEAR_MULTIPLIER,
       YUKARI_BOMB_CLEAR_DURATION,
     );
-    this.spawnClearRing(ctx, fighter, radius, 0xb88cff, YUKARI_BOMB_CLEAR_DURATION);
+    this.spawnClearRing(
+      ctx,
+      fighter,
+      radius,
+      0xb88cff,
+      YUKARI_BOMB_CLEAR_DURATION,
+    );
 
     const vertices = regularHexagonVertices(
       aimX,
@@ -239,6 +245,30 @@ export class YukariBattleCharacter extends BattleCharacter {
       followAimOwner: fighter.key,
       followWhileActiveCharacterId: this.id,
     });
+  }
+
+  onAfterFire(
+    ctx: CharacterActionContext,
+    fighter: FighterState,
+    aimX: number,
+    aimY: number,
+  ): void {
+    const ran = this.findRanCompanion(ctx, fighter.key);
+    if (!ran) {
+      return;
+    }
+
+    const ranAngle = fpAtan2(
+      fp.fromFloat(aimY - ran.y),
+      fp.fromFloat(aimX - ran.x),
+    );
+    this.fireRanBullets(
+      ctx,
+      fighter,
+      ran,
+      ranAngle,
+      this.pointPowerTier(fighter),
+    );
   }
 
   private fireRanBullets(
@@ -337,12 +367,9 @@ export class YukariBattleCharacter extends BattleCharacter {
       fp.fromFloat(to.x - midX),
     );
 
-    const visibleFrom =
-      ctx.frame + YUKARI_BOMB_WARNING_TICKS;
-    const startMovingAt =
-      visibleFrom + YUKARI_BOMB_PAUSE_TICKS;
-    const switchToOutwardAt =
-      startMovingAt + YUKARI_BOMB_INWARD_TICKS;
+    const visibleFrom = ctx.frame + YUKARI_BOMB_WARNING_TICKS;
+    const startMovingAt = visibleFrom + YUKARI_BOMB_PAUSE_TICKS;
+    const switchToOutwardAt = startMovingAt + YUKARI_BOMB_INWARD_TICKS;
 
     const offsetCount = BOMB_BULLET_OFFSET_MAX - BOMB_BULLET_OFFSET_MIN + 1;
     const fpFar = fp.fromFloat(1000);
@@ -361,7 +388,8 @@ export class YukariBattleCharacter extends BattleCharacter {
 
         // Cycle through offsets 2–6 in a cascading gradient along each edge.
         const offset =
-          ((edgeIndex * 2 + dirIdx + k - 1) % offsetCount) + BOMB_BULLET_OFFSET_MIN;
+          ((edgeIndex * 2 + dirIdx + k - 1) % offsetCount) +
+          BOMB_BULLET_OFFSET_MIN;
         const textureKey = `${BOMB_BULLET_TEXTURE_PREFIX}_offset_${offset}`;
 
         // Inward phase: move toward the hexagon centre.

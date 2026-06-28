@@ -85,6 +85,10 @@ export interface YoumuExtraFighterState {
   youmuBombDashAimY: number | undefined;
 }
 
+export interface YuyukoExtraFighterState {}
+
+export interface YukariExtraFighterState {}
+
 export interface FighterExtraState
   extends ReimuExtraFighterState,
     MarisaExtraFighterState,
@@ -93,7 +97,9 @@ export interface FighterExtraState
     EllenExtraFighterState,
     KaguyaExtraFighterState,
     ReisenExtraFighterState,
-    YoumuExtraFighterState {}
+    YoumuExtraFighterState,
+    YuyukoExtraFighterState,
+    YukariExtraFighterState {}
 
 export interface FighterExtensionState {
   invulnerableUntil: number;
