@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 
 import { t } from "@repo/i18n";
-import type { NeutralMobState } from "@repo/types";
+import type { MobState } from "@repo/types";
 import { Depth } from "../../utils/depth";
 
 interface SpellCardHudRow {
@@ -15,7 +15,7 @@ export class SpellCardHud {
 
   constructor(private readonly scene: Phaser.Scene) {}
 
-  render(neutralMobs: readonly NeutralMobState[]): void {
+  render(neutralMobs: readonly MobState[]): void {
     const specialMobs = neutralMobs
       .filter(
         (mob) =>

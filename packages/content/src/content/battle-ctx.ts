@@ -47,10 +47,12 @@ export interface BattleActionContext<
   TStats,
   TBulletParams,
   TLaserParams,
+  TMob = unknown,
 > {
   readonly frame: number;
   readonly stats: TStats;
   readonly projectiles: TProjectile[];
+  readonly mobs?: readonly TMob[];
   readonly effects: TEffect[];
   readonly self: TFighter;
   readonly opponent: TFighter;
@@ -58,6 +60,8 @@ export interface BattleActionContext<
   consumeAim?(): void;
   spawnBullet(params: TBulletParams): void;
   spawnLaser(params: TLaserParams): void;
+  allocateMobId?(): number;
+  spawnMob?(mob: TMob): void;
   clearProjectilesAround(params: ClearProjectilesAroundParams): number;
   spawnClearRingEntity(params: SpawnClearRingEntityParams): void;
   spawnClearRing(params: SpawnClearRingParams): void;

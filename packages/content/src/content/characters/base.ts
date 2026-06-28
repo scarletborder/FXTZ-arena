@@ -2,6 +2,7 @@ import { fp } from "@shaisrc/fixed-point";
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 import { HIT_CIRCLE_DIAMETER } from "@repo/constants";
 import type { BattleActionContext as StandardBattleActionContext } from "../battle-ctx";
+import type { BattleMob } from "../mob-spawner/base";
 import { secondsToTicks } from "../seconds-to-ticks";
 
 import type {
@@ -129,8 +130,10 @@ export interface CharacterActionContext
     EffectState,
     TrainingStats,
     BattleBulletSpawnParams,
-    BattleLaserSpawnParams
-  > {
+    BattleLaserSpawnParams,
+    BattleMob
+> {
+  readonly aim?: { readonly x: number; readonly y: number };
   spawnSegment(params: BattleSegmentSpawnParams): void;
   pauseProjectileTimeline(projectile: ProjectileState, ticks: number): void;
 }

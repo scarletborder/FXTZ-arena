@@ -2,7 +2,7 @@ import Phaser from "phaser";
 
 import type { ArenaBounds } from "@repo/constants";
 import type { FighterState } from "@repo/raid-logic";
-import type { NeutralMobState } from "@repo/types";
+import type { MobState } from "@repo/types";
 
 import { BossDirectionIndicatorView } from "./boss-direction-indicators";
 import { MobBreakEffectView } from "./break-effects";
@@ -27,7 +27,7 @@ export class MobView {
   }
 
   render(
-    neutralMobs: readonly NeutralMobState[],
+    neutralMobs: readonly MobState[],
     localFighter: FighterState,
     frame: number,
     arenaBounds: ArenaBounds,

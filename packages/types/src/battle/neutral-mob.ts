@@ -72,6 +72,9 @@ export interface MobState {
   active: boolean;
   ageTicks: number;
   physicalAttack?: boolean;
+  physicalAttackDamage?: number;
+  rollUntil?: number;
+  rollStartedAt?: number;
   /** Bitmask of SFX flags for the renderer. */
   sfxFlags: number;
   spellCard?: NeutralMobSpellCardState;

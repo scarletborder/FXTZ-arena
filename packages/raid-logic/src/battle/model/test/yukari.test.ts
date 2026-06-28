@@ -9,7 +9,7 @@ import type {
   NeutralMobSpawnerContext,
   NeutralMobSpawnerState,
 } from "@repo/content";
-import type { NeutralMobState } from "@repo/types";
+import type { MobState, NeutralMobState } from "@repo/types";
 
 describe("BattleModel Yukari", () => {
   it("exposes Yukari's base character definition and Marisa-style reload policy", async () => {
@@ -175,7 +175,7 @@ describe("BattleModel Yukari", () => {
     ).toBe(true);
   });
 
-  it("lets Ran deal piercing frame damage and enter roll state on neutral collision", async () => {
+  it("lets Ran deal physical frame damage and enter roll state on neutral collision", async () => {
     const spawner = new OneMobSpawner(190, 280);
     const model = new BattleModel(
       {
@@ -192,9 +192,23 @@ describe("BattleModel Yukari", () => {
     model.step(input({ aimX: 190, aimY: 280 }));
 
     const ran = ranCompanion(model);
-    expect(ran?.piercesTargets).toBe(true);
+    expect(ran?.physicalAttack).toBe(true);
+    expect(ran?.physicalAttackDamage).toBe(1);
     expect(ran?.rollUntil ?? 0).toBeGreaterThan(model.frame);
     expect(spawner.mob.damageTaken).toBeGreaterThanOrEqual(1);
+  });
+
+  it("keeps Ran at immortal-fairy style infinite health when hit", async () => {
+    const model = await createBattleModel("yukari", "reimu");
+
+    model.step(step({ aimX: 900, aimY: 280 }));
+
+    const ran = ranCompanionMob(model);
+    expect(ran?.onProjectileHit(999)).toBe("accepted");
+    expect(ran?.state.active).toBe(true);
+    expect(ran?.state.MaxHealth).toBe(Number.MAX_SAFE_INTEGER);
+    expect(ran?.state.CurrentHealth).toBe(Number.MAX_SAFE_INTEGER);
+    expect(ran?.state.damageTaken).toBe(999);
   });
 });
 
@@ -216,8 +230,22 @@ async function shootYukariAtPoint(pointCount: number): Promise<BattleModel> {
 }
 
 function ranCompanion(model: BattleModel) {
-  return model.projectiles.find(
-    (projectile) => projectile.textureKey === "character_ran_companion",
+  return ranCompanionMob(model)?.state as
+    | (MobState & {
+        readonly followAimOwner: string;
+        readonly followWhileActiveCharacterId: string;
+        vx: number;
+        vy: number;
+        rollUntil?: number;
+        physicalAttack?: boolean;
+        physicalAttackDamage?: number;
+      })
+    | undefined;
+}
+
+function ranCompanionMob(model: BattleModel) {
+  return model.neutralMobManager.mobs.find(
+    (mob) => mob.state.kind === "ran_familiar",
   );
 }
 

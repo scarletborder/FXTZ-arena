@@ -2,7 +2,7 @@ import Phaser from "phaser";
 
 import type { ArenaBounds } from "@repo/constants";
 import type { FighterState } from "@repo/raid-logic";
-import type { NeutralMobState } from "@repo/types";
+import type { MobState } from "@repo/types";
 
 import { Depth } from "../../../utils/depth";
 import { smoothValue } from "../smooth";
@@ -29,7 +29,7 @@ export class BossDirectionIndicatorView {
   }
 
   render(
-    neutralMobs: readonly NeutralMobState[],
+    neutralMobs: readonly MobState[],
     localFighter: FighterState,
     frame: number,
     arenaBounds: ArenaBounds,
@@ -68,7 +68,7 @@ export class BossDirectionIndicatorView {
   }
 
   private updateTargets(
-    neutralMobs: readonly NeutralMobState[],
+    neutralMobs: readonly MobState[],
     localFighter: FighterState,
     arenaBounds: ArenaBounds,
     alpha: number,
@@ -128,7 +128,7 @@ function isPointInsideArena(
 }
 
 function bossDirectionIndicatorPose(
-  mob: NeutralMobState,
+  mob: MobState,
   playerX: number,
   playerY: number,
   arenaBounds: ArenaBounds,

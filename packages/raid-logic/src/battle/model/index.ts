@@ -257,11 +257,15 @@ export class BattleModel {
       effectSystem: this.effectSystem,
       ticker: this.ticker,
       rules: this.rules,
+      neutralMobs: this.neutralMobManager.mobs,
       getFrame: () => this.frame,
       getPlayer: () => this.player,
       getTarget: () => this.target,
       getBattleMode: () => this.battleMode,
       getEnemyTargets: (owner) => this.currentEnemyTargetsFor(owner),
+      getAim: (owner) => this.currentAimByFighter[owner],
+      allocateMobId: () => this.neutralMobManager.allocateNeutralMobId(),
+      spawnMob: (mob) => this.neutralMobManager.addNeutralMob(mob),
       consumeAim: () => {
         this.aimConsumedThisFrame = true;
       },
@@ -976,6 +980,7 @@ export class BattleModel {
 
   private stepNeutralMobs(): void {
     this.neutralMobManager.stepMobs({
+      frame: this.frame,
       timeStopped:
         this.timeStopped() || this.collaborateExtra?.shop.open === true,
       player: this.player,
@@ -997,6 +1002,8 @@ export class BattleModel {
           damage: 1,
         });
       },
+      onPhysicalMobKilled: (mob, source) =>
+        this.handleNeutralMobKilled(mob, source),
     });
   }
 

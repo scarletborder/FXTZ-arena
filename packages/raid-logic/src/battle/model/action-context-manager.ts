@@ -40,11 +40,15 @@ export interface BattleActionContextManagerContext {
   readonly effectSystem: EffectSystem;
   readonly ticker: TickerManager;
   readonly rules: BattleRules;
+  readonly neutralMobs: readonly BattleNeutralMob[];
   getFrame(): number;
   getPlayer(): FighterState;
   getTarget(): FighterState;
   getBattleMode(): BattleRoomMode;
   getEnemyTargets(owner: FighterKey): readonly ProjectileHitTarget[];
+  getAim(owner: FighterKey): { readonly x: number; readonly y: number } | undefined;
+  allocateMobId(): number;
+  spawnMob(mob: BattleNeutralMob): void;
   consumeAim(): void;
   deferSpawn(spawn: () => void): void;
 }
@@ -66,9 +70,15 @@ export class BattleActionContextManager {
           ? this.context.getEnemyTargets(self.key)
           : undefined,
       projectiles: this.context.projectiles,
+      mobs: this.context.neutralMobs,
       effects: this.context.effects,
       stats: this.context.stats,
+      aim: this.context.getAim(self.key),
       consumeAim: () => this.context.consumeAim(),
+      allocateMobId: () => this.context.allocateMobId(),
+      spawnMob: (mob) => {
+        this.context.deferSpawn(() => this.context.spawnMob(mob));
+      },
       spawnBullet: (params) => {
         const spawnFrame = params.frame ?? this.context.getFrame();
         const owner =

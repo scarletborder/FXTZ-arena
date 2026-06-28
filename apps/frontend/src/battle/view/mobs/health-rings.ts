@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-import type { NeutralMobState } from "@repo/types";
+import type { MobState } from "@repo/types";
 
 import { Depth } from "../../../utils/depth";
 import { smoothValue } from "../smooth";
@@ -12,7 +12,7 @@ export class MobHealthRingView {
   constructor(private readonly scene: Phaser.Scene) {}
 
   render(
-    mob: NeutralMobState,
+    mob: MobState,
     x: number,
     y: number,
     mobWidth: number,

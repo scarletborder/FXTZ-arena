@@ -13,6 +13,7 @@ import type {
   BulletProjectileParams,
   LaserProjectileParams,
 } from "./projectile";
+import type { BattleNeutralMob } from "./manager/neutral-mob-manager";
 import type {
   EffectState,
   FighterKey,
@@ -35,11 +36,15 @@ type BattleModelContextBindings = {
     readonly mobId?: number;
   }[];
   readonly projectiles: readonly ProjectileState[];
+  readonly mobs: readonly BattleNeutralMob[];
   readonly effects: readonly EffectState[];
   readonly stats: TrainingStats;
+  readonly aim?: { readonly x: number; readonly y: number };
   spawnBullet(params: BattleBulletSpawnParams): void;
   spawnLaser(params: BattleLaserSpawnParams): void;
   spawnSegment(params: BattleSegmentSpawnParams): void;
+  allocateMobId(): number;
+  spawnMob(mob: BattleNeutralMob): void;
   clearProjectilesAround(params: {
     readonly x: number;
     readonly y: number;
@@ -74,11 +79,15 @@ export function createCharacterActionContext(
     consumeAim: bindings.consumeAim,
     projectiles:
       bindings.projectiles as unknown as CharacterActionContext["projectiles"],
+    mobs: bindings.mobs as unknown as CharacterActionContext["mobs"],
     effects: bindings.effects as unknown as CharacterActionContext["effects"],
     stats: bindings.stats,
+    aim: bindings.aim,
     spawnBullet: (params) => bindings.spawnBullet(params),
     spawnLaser: (params) => bindings.spawnLaser(params),
     spawnSegment: (params) => bindings.spawnSegment(params),
+    allocateMobId: () => bindings.allocateMobId(),
+    spawnMob: (mob) => bindings.spawnMob(mob as BattleNeutralMob),
     clearProjectilesAround: (params) => bindings.clearProjectilesAround(params),
     spawnClearRingEntity: (params) => bindings.spawnClearRingEntity(params),
     spawnClearRing: (params) => bindings.spawnClearRing(params),

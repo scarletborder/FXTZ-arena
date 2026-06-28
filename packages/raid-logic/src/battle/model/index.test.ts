@@ -342,18 +342,22 @@ describe("BattleModel rollback snapshots", () => {
 
   it("lets physical-attack mobs hit players without disappearing", async () => {
     const model = await createBattleModel();
+    const livesBefore = model.target.lives;
     const mob = new TestFamiliarMob({
       id: 201,
       owner: "Player1",
       x: model.target.x,
       y: model.target.y,
       physicalAttack: true,
+      physicalAttackDamage: 9,
     });
     model.neutralMobManager.addNeutralMob(mob);
 
     model.stepVersus(input(), input());
 
     expect(model.target.hitsTaken).toBe(1);
+    expect(model.target.lives).toBe(livesBefore - 1);
+    expect(model.target.damageTaken).toBe(1);
     expect(mob.state.active).toBe(true);
     expect(model.neutralMobManager.states()).toHaveLength(1);
   });
@@ -397,6 +401,7 @@ class TestFamiliarMob extends FamiliarMob<
     readonly y: number;
     readonly fires?: boolean;
     readonly physicalAttack?: boolean;
+    readonly physicalAttackDamage?: number;
   }) {
     super();
     this.fires = params.fires ?? false;
@@ -420,6 +425,7 @@ class TestFamiliarMob extends FamiliarMob<
       active: true,
       ageTicks: 0,
       physicalAttack: params.physicalAttack,
+      physicalAttackDamage: params.physicalAttackDamage,
       sfxFlags: 0,
     };
   }

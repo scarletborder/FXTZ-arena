@@ -1,23 +1,27 @@
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 import { t } from "@repo/i18n";
 
-import type {
-  FighterKey,
-  FighterState,
-  ProjectileState,
-} from "../battle-types";
+import type { FighterKey, FighterState } from "../battle-types";
 import type { BattleHitContext } from "../ability-cards/base";
 import {
   BattleCharacter,
   DEFAULT_POINT_COLLECT_RADIUS,
   hitCircleUnits,
   secondsToTicks,
+  type BattleBulletSpawnParams,
+  type BattleLaserSpawnParams,
   type CharacterActionContext,
 } from "./base";
 import { Vanilla } from "../decorators";
 import { fp } from "@shaisrc/fixed-point";
 import { fpAtan2 } from "../fp";
-import { bulletSpeedRankToPixelsPerTick } from "@repo/types";
+import {
+  FamiliarMob,
+  bulletSpeedRankToPixelsPerTick,
+  speedRankToPixelsPerTick,
+  type FamiliarMobState,
+  type NeutralMobDeathSource,
+} from "@repo/types";
 
 const CENTER_TEXTURE = "bullet_type_5_offset_3";
 const SIDE_TEXTURE = "bullet_type_5_offset_6";
@@ -36,10 +40,12 @@ const CENTER_DAMAGE_BY_TIER = {
 } as const;
 const SIDE_DAMAGE = 20;
 const RAN_COLLISION_DAMAGE = 1;
+const RAN_HEALTH = Number.MAX_SAFE_INTEGER;
 const RAN_BULLET_DAMAGE_DEFAULT = 30;
 const RAN_BULLET_DAMAGE_TIER3 = 20;
 const SNIPER_DAMAGE = 120;
 const RAN_SPEED = "low" as const;
+const RAN_KIND = "ran_familiar";
 const NORMAL_BULLET_SPEED = "medium" as const;
 const CENTER_SIDE_GAP = hitCircleUnits(3);
 const CENTER_TIER4_GAP = hitCircleUnits(4);
@@ -63,6 +69,7 @@ const YUKARI_BOMB_CLEAR_DURATION = secondsToTicks(1);
 const YUKARI_BOMB_RETARGET_SPEED = bulletSpeedRankToPixelsPerTick("high");
 
 const FULL_CIRCLE = Math.PI * 2;
+type PlayerFighterKey = Exclude<FighterKey, "Neutral">;
 
 export class YukariBattleCharacter extends BattleCharacter {
   readonly id = "yukari" as CharacterDefinition["id"];
@@ -205,46 +212,17 @@ export class YukariBattleCharacter extends BattleCharacter {
     const existing = this.findRanCompanion(ctx, fighter.key);
     const isActive = fighter.activeCharacter.id === this.id;
 
-    if (
-      existing &&
-      existing.followAimOwner === fighter.key &&
-      existing.followWhileActiveCharacterId === this.id
-    ) {
-      return;
-    }
-
     if (existing) {
-      if (isActive) {
-        resetRanCompanion(existing, ctx.frame, fighter);
-      } else {
-        // Ran companion exists but belongs to a different state.
-        // Keep it alive but stationary when Yukari is not active.
-        existing.followAimOwner = fighter.key;
-        existing.followWhileActiveCharacterId = this.id;
-        existing.vx = 0;
-        existing.vy = 0;
-      }
+      updateRanCompanion(existing, fighter, ctx.aim, isActive);
       return;
     }
 
-    ctx.spawnBullet({
-      owner: fighter.key,
-      textureKey: RAN_COMPANION_TEXTURE,
-      kind: "diamond",
-      x: fighter.x,
-      y: fighter.y,
-      angle: fighter.facing,
-      speedRank: RAN_SPEED,
-      width: BULLET_HIT_SIZE,
-      height: BULLET_HIT_SIZE,
-      homingTicks: 0,
-      damage: RAN_COLLISION_DAMAGE,
-      spawnOffset: 0,
-      couldClear: false,
-      piercesTargets: true,
-      followAimOwner: fighter.key,
-      followWhileActiveCharacterId: this.id,
-    });
+    if (!ctx.spawnMob) {
+      return;
+    }
+    ctx.spawnMob(
+      new RanFamiliar(ranFamiliarId(fighter.key), fighter),
+    );
   }
 
   onAfterFire(
@@ -274,7 +252,7 @@ export class YukariBattleCharacter extends BattleCharacter {
   private fireRanBullets(
     ctx: CharacterActionContext,
     fighter: FighterState,
-    ran: ProjectileState,
+    ran: RanFamiliarState,
     ranAngle: number,
     tier: number,
     fighterAngle?: number,
@@ -339,12 +317,16 @@ export class YukariBattleCharacter extends BattleCharacter {
   private findRanCompanion(
     ctx: CharacterActionContext,
     owner: FighterKey,
-  ): ProjectileState | undefined {
-    return ctx.projectiles.find(
-      (projectile) =>
-        projectile.owner === owner &&
-        projectile.textureKey === RAN_COMPANION_TEXTURE,
-    );
+  ): RanFamiliarState | undefined {
+    if (owner === "Neutral") {
+      return undefined;
+    }
+    return ctx.mobs
+      ?.map((mob) => mob.state)
+      .find(
+        (mob): mob is RanFamiliarState =>
+          mob.key === owner && mob.kind === RAN_KIND,
+      );
   }
 
   private spawnBombEdgeBullets(
@@ -445,32 +427,120 @@ function normalizeRadians(angle: number): number {
   return normalized;
 }
 
-function resetRanCompanion(
-  projectile: ProjectileState,
-  frame: number,
+interface RanFamiliarState extends FamiliarMobState {
+  readonly kind: typeof RAN_KIND;
+  readonly textureKey: typeof RAN_COMPANION_TEXTURE;
+  readonly followAimOwner: PlayerFighterKey;
+  readonly followWhileActiveCharacterId: "yukari";
+  damageTaken: number;
+  vx: number;
+  vy: number;
+  angle: number;
+}
+
+class RanFamiliar extends FamiliarMob<
+  RanFamiliarState,
+  BattleBulletSpawnParams,
+  BattleLaserSpawnParams
+> {
+  readonly state: RanFamiliarState;
+
+  constructor(id: number, fighter: FighterState) {
+    super();
+    this.state = {
+      id,
+      key: playerFighterKey(fighter.key),
+      mobKind: "familiar",
+      kind: RAN_KIND,
+      textureKey: RAN_COMPANION_TEXTURE,
+      x: fighter.x,
+      y: fighter.y,
+      previousX: fighter.x,
+      previousY: fighter.y,
+      hitRadius: BULLET_HIT_SIZE,
+      waveId: 0,
+      movementVariant: "follow_aim",
+      form: "default",
+      MaxHealth: RAN_HEALTH,
+      CurrentHealth: RAN_HEALTH,
+      damageTaken: 0,
+      active: true,
+      ageTicks: 0,
+      physicalAttack: true,
+      physicalAttackDamage: RAN_COLLISION_DAMAGE,
+      sfxFlags: 0,
+      rollUntil: 0,
+      rollStartedAt: 0,
+      followAimOwner: playerFighterKey(fighter.key),
+      followWhileActiveCharacterId: "yukari",
+      vx: 0,
+      vy: 0,
+      angle: fighter.facing,
+    };
+    updateRanCompanion(this.state, fighter, undefined, true);
+  }
+
+  move(): void {
+    this.state.x += this.state.vx;
+    this.state.y += this.state.vy;
+  }
+
+  fire(): void {}
+  switchForm(): void {}
+  die(): void {
+    this.state.active = true;
+    this.state.CurrentHealth = RAN_HEALTH;
+  }
+
+  onProjectileHit(damage: number): "accepted" | "ignored" {
+    if (!this.state.active || damage <= 0) {
+      return "ignored";
+    }
+    this.state.damageTaken += damage;
+    this.state.CurrentHealth = RAN_HEALTH;
+    return "accepted";
+  }
+
+  onDeath(_source: NeutralMobDeathSource): void {}
+}
+
+function playerFighterKey(key: FighterKey): PlayerFighterKey {
+  if (key === "Neutral") {
+    throw new Error("Ran familiar must belong to a player");
+  }
+  return key;
+}
+
+function ranFamiliarId(owner: FighterKey): number {
+  return playerFighterKey(owner) === "Player1" ? -1001 : -1002;
+}
+
+function updateRanCompanion(
+  ran: RanFamiliarState,
   fighter: FighterState,
+  aim: CharacterActionContext["aim"],
+  active: boolean,
 ): void {
-  const speed = 2;
-  const fpAngle = fp.fromFloat(fighter.facing);
-  const fpCos = fp.cos(fpAngle);
-  const fpSin = fp.sin(fpAngle);
-  const fpSpeed = fp.fromFloat(speed);
-  Object.assign(projectile, {
-    x: fighter.x,
-    y: fighter.y,
-    previousX: fighter.x,
-    previousY: fighter.y,
-    vx: fp.toFloat(fp.mul(fpCos, fpSpeed)),
-    vy: fp.toFloat(fp.mul(fpSin, fpSpeed)),
-    angle: fighter.facing,
-    visibleFrom: frame,
-    pausedUntil: frame,
-    expireAt: undefined,
-    rollUntil: 0,
-    rollStartedAt: 0,
-    followAimOwner: fighter.key,
-    followWhileActiveCharacterId: "yukari" as CharacterDefinition["id"],
-  });
+  ran.active = true;
+  if (!active || !aim) {
+    ran.vx = 0;
+    ran.vy = 0;
+    return;
+  }
+
+  const dx = aim.x - ran.x;
+  const dy = aim.y - ran.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance <= 0.001) {
+    ran.vx = 0;
+    ran.vy = 0;
+    return;
+  }
+
+  const speed = speedRankToPixelsPerTick(RAN_SPEED);
+  ran.vx = (dx / distance) * speed;
+  ran.vy = (dy / distance) * speed;
+  ran.angle = Math.atan2(ran.vy, ran.vx);
 }
 
 interface HexPoint {

@@ -122,6 +122,7 @@ export class NeutralMobManager {
   }
 
   stepMobs(params: {
+    readonly frame: number;
     readonly timeStopped: boolean;
     readonly player: FighterState;
     readonly target: FighterState;
@@ -133,7 +134,9 @@ export class NeutralMobManager {
     readonly onPhysicalHit?: (params: {
       readonly mob: MobState;
       readonly victim: FighterState;
+      readonly damage: number;
     }) => void;
+    readonly onPhysicalMobKilled?: (mob: MobState, source: FighterKey) => void;
   }): void {
     this.sortNeutralMobs();
     if (params.timeStopped) {
@@ -147,6 +150,7 @@ export class NeutralMobManager {
       const wasActive = mob.state.active;
       mob.step(params.createActionContext(mob));
       if (mob.state.active && mob.state.physicalAttack) {
+        const damage = mob.state.physicalAttackDamage ?? 1;
         for (const fighter of [params.player, params.target]) {
           if (
             canMobPhysicallyHit(mob.state, fighter, params.rules) &&
@@ -157,7 +161,27 @@ export class NeutralMobManager {
               mob.state,
             )
           ) {
-            params.onPhysicalHit?.({ mob: mob.state, victim: fighter });
+            markPhysicalContact(mob.state, params.frame);
+            params.onPhysicalHit?.({ mob: mob.state, victim: fighter, damage });
+          }
+        }
+        for (const target of this.mobs) {
+          if (
+            target.id !== mob.id &&
+            target.state.active &&
+            canMobPhysicallyDamageMob(mob.state, target.state, params.rules) &&
+            mobsIntersect(mob.state, target.state)
+          ) {
+            const targetWasActive = target.state.active;
+            const result = target.onProjectileHit(damage);
+            if (result === "accepted") {
+              markPhysicalContact(mob.state, params.frame);
+            }
+            if (result === "accepted" && targetWasActive && !target.state.active) {
+              target.onDeath(mob.state.key);
+              params.onPhysicalMobKilled?.(target.state, mob.state.key);
+              target.onDeathEffect();
+            }
           }
         }
       }
@@ -280,6 +304,14 @@ function canMobPhysicallyHit(
   return rules.canProjectileDamageTarget(mob.key, fighter.key);
 }
 
+function canMobPhysicallyDamageMob(
+  attacker: MobState,
+  target: MobState,
+  rules: BattleRules,
+): boolean {
+  return rules.canProjectileDamageTarget(attacker.key, target.key);
+}
+
 function fighterHitRadius(fighter: FighterState): number {
   return PLAYER_CORE_RADIUS * fighter.hitCircleRadiusMultiplier;
 }
@@ -304,4 +336,23 @@ function circleIntersectsMob(
     return (x - closestX) ** 2 + (y - closestY) ** 2 <= radius ** 2;
   }
   return (mob.x - x) ** 2 + (mob.y - y) ** 2 <= (mob.hitRadius + radius) ** 2;
+}
+
+function mobsIntersect(left: MobState, right: MobState): boolean {
+  if (left.hitWidth !== undefined && left.hitHeight !== undefined) {
+    return circleIntersectsMob(right.x, right.y, mobRadius(right), left);
+  }
+  return circleIntersectsMob(left.x, left.y, mobRadius(left), right);
+}
+
+function mobRadius(mob: MobState): number {
+  if (mob.hitWidth !== undefined && mob.hitHeight !== undefined) {
+    return Math.max(mob.hitWidth, mob.hitHeight) / 2;
+  }
+  return mob.hitRadius;
+}
+
+function markPhysicalContact(mob: MobState, frame: number): void {
+  mob.rollStartedAt = frame;
+  mob.rollUntil = Math.max(mob.rollUntil ?? 0, frame + 20);
 }

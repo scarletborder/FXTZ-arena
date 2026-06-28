@@ -1,8 +1,8 @@
-import type { NeutralMobState } from "@repo/types";
+import type { MobState } from "@repo/types";
 
 import type { CharacterMobMotionConfig, EnemyAnimationName } from "./types";
 
-export function mobMotionConfig(mob: NeutralMobState): {
+export function mobMotionConfig(mob: MobState): {
   readonly animation: EnemyAnimationName;
   readonly direction: -1 | 1;
 } {
@@ -16,7 +16,7 @@ export function mobMotionConfig(mob: NeutralMobState): {
 }
 
 export function characterMobMotionConfig(
-  mob: NeutralMobState,
+  mob: MobState,
   frame: number,
 ): CharacterMobMotionConfig {
   const dx = mob.x - mob.previousX;
@@ -31,7 +31,7 @@ export function characterMobMotionConfig(
   };
 }
 
-export function characterMobDisplaySize(mob: NeutralMobState): number {
+export function characterMobDisplaySize(mob: MobState): number {
   const hitboxWidth = mob.hitWidth ?? mob.hitRadius * 2;
   const hitboxHeight = mob.hitHeight ?? mob.hitRadius * 2;
   return Math.max(hitboxWidth, hitboxHeight) * 1.2;

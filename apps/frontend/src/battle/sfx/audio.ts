@@ -1,7 +1,7 @@
 import AudioCmd from "../../commands/AudioCmd";
 import type { BattleOutputState } from "@repo/raid-logic";
 import type { FighterKey, ProjectileState } from "@repo/content";
-import type { NeutralMobState } from "@repo/types";
+import type { MobState } from "@repo/types";
 
 interface BattleAudioSyncOptions {
   readonly eventTypes: readonly string[];
@@ -106,8 +106,8 @@ export class BattleAudioDirector {
   }
 
   private emitMobAudio(
-    previousMobs: readonly NeutralMobState[],
-    currentMobs: readonly NeutralMobState[],
+    previousMobs: readonly MobState[],
+    currentMobs: readonly MobState[],
   ): void {
     const previousById = new Map(previousMobs.map((mob) => [mob.id, mob] as const));
     const currentById = new Map(currentMobs.map((mob) => [mob.id, mob] as const));
@@ -258,7 +258,7 @@ function classifyProjectileSound(projectile: ProjectileState): string {
   return "se_tan00";
 }
 
-function mobDeathCue(mob: NeutralMobState): string | null {
+function mobDeathCue(mob: MobState): string | null {
   switch (mob.kind) {
     case "example_fairy":
       return "se_enep00";
