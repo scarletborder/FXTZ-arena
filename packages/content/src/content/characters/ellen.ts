@@ -4,6 +4,7 @@ import {
 } from "@repo/types";
 import { fp } from "@shaisrc/fixed-point";
 import { HIT_CIRCLE_DIAMETER } from "@repo/constants";
+import { t } from "@repo/i18n";
 
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 
@@ -58,7 +59,7 @@ const SIDE_RETARGET_SPEED = bulletSpeedRankToPixelsPerTick("high");
 
 export class EllenBattleCharacter extends BattleCharacter {
   readonly id = "ellen" as CharacterDefinition["id"];
-  readonly name = "Ellen";
+  readonly name = t("content.characters.ellen.name");
   readonly cost = 5;
   readonly roleClass = "sniper" as CharacterDefinition["roleClass"];
   readonly moveSpeed = "low" as CharacterDefinition["moveSpeed"];
@@ -70,8 +71,7 @@ export class EllenBattleCharacter extends BattleCharacter {
   readonly reloadCommitPolicy =
     "commit_per_ammo" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = "high" as CharacterDefinition["bulletSpeed"];
-  readonly description =
-    "· 沉入久远之爱的魔女\n· 倾斜大量高速狙击弹的广义上狙击型机体\n· bomb展开高速旋转弹幕\n· 普通射击逐个装填";
+  readonly description = t("content.characters.ellen.description");
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/ellen/portrait.png",
     attackPreviewAsset: "assets/characters/ellen/preview.png",

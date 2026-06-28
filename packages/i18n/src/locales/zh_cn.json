@@ -148,6 +148,14 @@
     "debug.cooperate.elite_wave": "elite 波次",
     "debug.cooperate.no_elite": "当前地图没有 elite",
     "debug.cooperate.bot_name": "Ready Bot",
+    "debug.volume": {
+      "title": "调试弹幕体积",
+      "banner": "调试弹幕体积 - Shift 切换暂停  ESC 退出",
+      "description": "查看弹幕类型及其判定体积。\nShift 切换暂停，ESC 返回。",
+      "button": "弹幕体积测试",
+      "paused": "⏸ 暂停中",
+      "playing": "▶ 播放中"
+    },
     "account.sectionProfiles": "输入设备 Profile",
     "account.sectionBattle": "出战设置",
     "account.p1Profile": "1P Profile",
@@ -195,24 +203,30 @@
     "about.credits": "Design / Code: scarletborder\nUI Scene: Phaser4\nPhysics: Rapier-2d",
     "about.project_url": "项目网址",
     "about.version": "版本",
-    "keyboard": "键盘映射",
-    "keyboard.sectionMovement": "键盘移动绑定 (Movement)",
-    "keyboard.sectionActions": "行动与交互绑定 (Actions)",
-    "keyboard.moveUp": "向上移动 (Move Up)",
-    "keyboard.moveLeft": "向左移动 (Move Left)",
-    "keyboard.moveDown": "向下移动 (Move Down)",
-    "keyboard.moveRight": "向右移动 (Move Right)",
-    "keyboard.reload": "手动装弹/商店准备 (Reload)",
-    "keyboard.active": "激活卡牌/激活道具 (Active)",
-    "keyboard.alt": "次要按键/切换商店 (Alt)",
-    "keyboard.info": "战局看板信息 (Info)",
-    "keyboard.enter": "确定按键 (Enter)",
-    "keyboard.confirm": "确认变动",
-    "keyboard.reset": "恢复默认",
-    "keyboard.pressKey": "请按下按键...",
-    "keyboard.conflictError": "检测到按键冲突 (标红项)！无法保存。",
-    "keyboard.saveSuccess": "键位保存成功！",
-    "keyboard.resetSuccess": "已载入默认，请点击 [确认变动] 进行保存",
+    "keyboard": {
+      "title": "键盘映射",
+      "sections": {
+        "movement": "键盘移动绑定 (Movement)",
+        "actions": "行动与交互绑定 (Actions)"
+      },
+      "actions": {
+        "move_up": "向上移动 (Move Up)",
+        "move_left": "向左移动 (Move Left)",
+        "move_down": "向下移动 (Move Down)",
+        "move_right": "向右移动 (Move Right)",
+        "reload": "手动装弹/商店准备 (Reload)",
+        "active": "激活卡牌/激活道具 (Active)",
+        "alt": "次要按键/切换商店 (Alt)",
+        "info": "战局看板信息 (Info)",
+        "enter": "确定按键 (Enter)"
+      },
+      "confirm": "确认变动",
+      "reset": "恢复默认",
+      "press_key": "请按下按键...",
+      "conflict_error": "检测到按键冲突 (标红项)！无法保存。",
+      "save_success": "键位保存成功！",
+      "reset_success": "已载入默认，请点击 [确认变动] 进行保存"
+    },
     "joystick.sectionAxes": "摇杆方向绑定",
     "joystick.sectionButtons": "按钮绑定",
     "joystick.move": "移动",
@@ -240,6 +254,90 @@
     "joystick.button.RB": "RB",
     "joystick.button.LT": "LT",
     "joystick.button.RT": "RT"
+  },
+  "content": {
+    "characters": {
+      "reimu": {
+        "name": "博丽灵梦",
+        "description": "· 传统的乐园巫女\n· 重视防御的平衡型角色，追踪性弹幕\n· bomb释放大玉消除沿途弹幕\n· 普通射击逐个装填"
+      },
+      "marisa": {
+        "name": "魔理沙",
+        "description": "· 路边的普通魔法使\n· 高速激光的狙击性机体，弹幕具有高额伤害\n· bomb可发射超大型魔炮"
+      },
+      "sakuya": {
+        "name": "咲夜",
+        "description": "· 过劳996女仆\n· 擅长近中距离压迫的突击性机体\n· bomb可让时间停止"
+      },
+      "cirno": {
+        "name": "琪露诺",
+        "description": "· 骄阳下的冰块妖精\n· 可瞬间发射大量侵略性弹幕的压制性机体\n· Bomb可将敌弹冻结为己方弹幕\n· Point释放Bomb花费较低"
+      },
+      "youmu": {
+        "name": "魂魄妖梦",
+        "description": "· 无敌的半灵剑客\n· 高速斩击具有高伤害和清除弹幕能力\n· bomb可进行高速冲刺"
+      },
+      "ellen": {
+        "name": "Ellen",
+        "description": "· 沉入久远之爱的魔女\n· 倾斜大量高速狙击弹的广义上狙击型机体\n· bomb展开高速旋转弹幕\n· 普通射击逐个装填"
+      },
+      "kaguya": {
+        "name": "蓬莱山辉夜",
+        "description": "· 永远与须臾的罪人\n此角色由“人鱼乳业”设计"
+      },
+      "reisen": {
+        "name": "铃仙",
+        "description": "· 狂气之月兔\n· 擅长中距离压制的突击角色\n· bomb展开消弹圈并获得两层护盾"
+      },
+      "yukari": {
+        "name": "八云紫",
+        "description": "· 境界的妖怪\n· 低速狙击机体，八云蓝会跟随准心并协同射击\n· 切换到八云紫时八云蓝会重新出现"
+      },
+      "yuyuko": {
+        "name": "西行寺幽幽子",
+        "description": "· 白玉楼家主\n· 广范围弹幕以压制空间\n· bomb释放大量弹幕"
+      }
+    },
+    "ability_cards": {
+      "backdoor": {
+        "name": "backdoor",
+        "description": "角色后方追加后门，消去背后的敌弹"
+      },
+      "ember": {
+        "name": "符咒卡牌",
+        "description": "默认 bomb 变为 4，死亡复活也恢复到 4。"
+      },
+      "extra_life": {
+        "name": "生命卡牌",
+        "description": "初始命数增加1"
+      },
+      "graze_lover": {
+        "name": "擦弹爱好者",
+        "description": "擦弹判定范围提升"
+      },
+      "multi_shot": {
+        "name": "阴阳玉",
+        "description": "为普通攻击额外追加低速诱导弹。"
+      },
+      "spirit_strike": {
+        "name": "灵击符",
+        "description": "清除周围小范围的弹幕"
+      },
+      "extension": {
+        "name": "河城荷包",
+        "description": "道具吸收范围小范围增加"
+      }
+    },
+    "maps": {
+      "hakurei_shrine": { "name": "博丽神社" },
+      "collaborate_test_arena": { "name": "合作测试竞技场" },
+      "collaborate_test_arena_2": { "name": "合作测试竞技场2" },
+      "mist_lake": { "name": "雾之湖" },
+      "bamboo_lost": { "name": "迷途竹林" },
+      "mana_forest": { "name": "魔力森林" },
+      "x_shoot_range": { "name": "X靶场" },
+      "shoot_range": { "name": "靶场" }
+    }
   },
   "dialog": {
     "close": "关闭",
@@ -631,7 +729,9 @@
     "character": "角色：{{name}}",
     "card": "卡片：{{name}}",
     "battle": "战斗{{n}}",
-    "map": "地图：{{id}}",
+    "map": {
+      "name": "地图：{{name}}"
+    },
     "import_local_replay": "导入本地回放",
     "open_replay_folder": "打开回放文件夹",
     "open_replay_folder_failed": "无法打开回放文件夹：{{error}}",

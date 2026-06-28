@@ -1,4 +1,5 @@
 import type { AbilityCardDefinition } from "./types";
+import { t } from "@repo/i18n";
 
 import { secondsToTicks } from "../seconds-to-ticks";
 import { BattleAbilityCard, type BattleCardContext, type BattleHitContext, type BattleInitializeContext } from "./base";
@@ -7,12 +8,12 @@ import { hitCircleUnits } from "../characters/base";
 
 export class SpiritStrikeBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "spirit_strike_card";
-  readonly name = "灵击符";
+  readonly name = t("content.ability_cards.spirit_strike.name");
   readonly cost = 1;
   readonly kind = "active" as AbilityCardDefinition["kind"];
   readonly useLimit: AbilityCardDefinition["useLimit"] = 3;
   readonly cooldownTicks = secondsToTicks(20);
-  readonly description = "清除周围小范围的弹幕";
+  readonly description = t("content.ability_cards.spirit_strike.description");
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/spirit-strike-card/icon.png",
   };

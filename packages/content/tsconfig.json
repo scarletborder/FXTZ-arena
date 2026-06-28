@@ -5,7 +5,8 @@
     "lib": [ "ES2020" ],
     "rootDir": "..",
     "paths": {
-      "@repo/constants": [ "../constants/src/index.ts" ]
+      "@repo/constants": [ "../constants/src/index.ts" ],
+      "@repo/i18n": [ "../i18n/src/index.ts" ]
     },
     "outDir": "./dist",
     "types": [ "node" ]

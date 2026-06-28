@@ -1,4 +1,5 @@
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
+import { t } from "@repo/i18n";
 
 import type { FighterState } from "../battle-types";
 import type { BattleHitContext } from "../ability-cards/base";
@@ -56,7 +57,7 @@ interface WingmanConfig {
 
 export class YuyukoBattleCharacter extends BattleCharacter {
   readonly id = "yuyuko" as CharacterDefinition["id"];
-  readonly name = "西行寺幽幽子";
+  readonly name = t("content.characters.yuyuko.name");
   readonly cost = 5;
   readonly roleClass = "suppress" as CharacterDefinition["roleClass"];
   readonly moveSpeed = "low" as CharacterDefinition["moveSpeed"];
@@ -68,8 +69,7 @@ export class YuyukoBattleCharacter extends BattleCharacter {
   readonly reloadCommitPolicy =
     "commit_per_ammo" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = "low" as CharacterDefinition["bulletSpeed"];
-  readonly description =
-    "· 白玉楼家主\n· 广范围弹幕以压制空间\n· bomb释放大量弹幕";
+  readonly description = t("content.characters.yuyuko.description");
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/yuyuko/portrait.png",
     attackPreviewAsset: "assets/characters/yuyuko/preview.png",

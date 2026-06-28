@@ -1,5 +1,6 @@
 import { secondsToTicks } from "../seconds-to-ticks";
 import type { AbilityCardDefinition } from "./types";
+import { t } from "@repo/i18n";
 
 import type { FighterState } from "../battle-types";
 import { BattleAbilityCard, type BattleCardContext, type BattleHitContext, type BattleInitializeContext } from "./base";
@@ -7,12 +8,12 @@ import { Vanilla } from "../decorators";
 
 export class MultiShotBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "multi_shot";
-  readonly name = "阴阳玉";
+  readonly name = t("content.ability_cards.multi_shot.name");
   readonly cost = 1;
   readonly kind = "passive" as AbilityCardDefinition["kind"];
   readonly useLimit: AbilityCardDefinition["useLimit"] = "infinite";
   readonly cooldownTicks = 0;
-  readonly description = "为普通攻击额外追加低速诱导弹。";
+  readonly description = t("content.ability_cards.multi_shot.description");
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/multi-shot/icon.png",
   };

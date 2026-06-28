@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { BULLET_ASSET_METRICS } from "@repo/content";
+import { t } from "@repo/i18n";
 import { assetUrl } from "../../utils/assets";
 
 interface BulletConfigEntry {
@@ -48,7 +49,7 @@ export class DebugBulletVolumeScene extends Phaser.Scene {
 
     // Title bar
     this.add
-      .text(640, 20, "调试弹幕体积 — Shift 切换暂停  ESC 退出", {
+      .text(640, 20, t("settings.debug.volume.banner"), {
         fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
         fontSize: "18px",
         color: "#ffcf6e",
@@ -56,7 +57,7 @@ export class DebugBulletVolumeScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.pauseText = this.add
-      .text(640, 48, "⏸ 暂停中", {
+      .text(640, 48, t("settings.debug.volume.paused"), {
         fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
         fontSize: "15px",
         color: "#ff6b6b",
@@ -72,7 +73,7 @@ export class DebugBulletVolumeScene extends Phaser.Scene {
     this.input.keyboard?.on("keydown-SHIFT", () => {
       this.paused = !this.paused;
       if (this.pauseText) {
-        this.pauseText.setText(this.paused ? "⏸ 暂停中" : "▶ 播放中");
+        this.pauseText.setText(this.paused ? t("settings.debug.volume.paused") : t("settings.debug.volume.playing"));
         this.pauseText.setColor(this.paused ? "#ff6b6b" : "#34d399");
       }
     });

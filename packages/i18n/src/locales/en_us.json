@@ -148,6 +148,38 @@
     "debug.cooperate.elite_wave": "Elite Wave",
     "debug.cooperate.no_elite": "No elite waves on this map",
     "debug.cooperate.bot_name": "Ready Bot",
+    "keyboard": {
+      "title": "Keyboard Mapping",
+      "sections": {
+        "movement": "Keyboard Movement Bindings (Movement)",
+        "actions": "Action and Interaction Bindings (Actions)"
+      },
+      "actions": {
+        "move_up": "Move Up (Move Up)",
+        "move_left": "Move Left (Move Left)",
+        "move_down": "Move Down (Move Down)",
+        "move_right": "Move Right (Move Right)",
+        "reload": "Reload / Shop Prep (Reload)",
+        "active": "Active Card / Item (Active)",
+        "alt": "Secondary Key / Toggle Shop (Alt)",
+        "info": "Battle HUD Info (Info)",
+        "enter": "Confirm Key (Enter)"
+      },
+      "confirm": "Save Changes",
+      "reset": "Restore Default",
+      "press_key": "Press a key...",
+      "conflict_error": "Key conflicts detected (highlighted items)! Cannot save.",
+      "save_success": "Key mapping saved!",
+      "reset_success": "Defaults loaded. Click [Save Changes] to apply."
+    },
+    "debug.volume": {
+      "title": "Debug Bullet Volume",
+      "banner": "Debug Bullet Volume - Shift to pause, ESC to exit",
+      "description": "Inspect bullet types and their hit volumes.\nPress Shift to pause, ESC to exit.",
+      "button": "Bullet Volume Test",
+      "paused": "⏸ Paused",
+      "playing": "▶ Playing"
+    },
     "account.sectionProfiles": "Input Profiles",
     "account.sectionBattle": "Battle Assignment",
     "account.p1Profile": "1P Profile",
@@ -222,6 +254,90 @@
     "joystick.button.RB": "RB",
     "joystick.button.LT": "LT",
     "joystick.button.RT": "RT"
+  },
+  "content": {
+    "characters": {
+      "reimu": {
+        "name": "Reimu",
+        "description": "· Traditional shrine maiden\n· A balanced character that focuses on defense and homing shots\n· Bomb releases a large orb that clears bullets along its path\n· Normal shots reload one by one"
+      },
+      "marisa": {
+        "name": "Marisa",
+        "description": "· An ordinary magician from the roadside\n· A sniper-like unit built around high-speed lasers with heavy damage\n· Bomb can fire an oversized master spark"
+      },
+      "sakuya": {
+        "name": "Sakuya",
+        "description": "· An overworked 996 maid\n· An assault unit that excels at close to mid-range pressure\n· Bomb can stop time"
+      },
+      "cirno": {
+        "name": "Cirno",
+        "description": "· An ice fairy under the blazing sun\n· A suppression unit that can unleash a barrage of aggressive bullets instantly\n· Bomb can freeze enemy bullets into allied bullets\n· Point-triggered Bombs are cheaper"
+      },
+      "youmu": {
+        "name": "Youmu",
+        "description": "· An invincible half-ghost swordswoman\n· Fast slashes deal high damage and clear bullets\n· Bomb allows a high-speed dash"
+      },
+      "ellen": {
+        "name": "Ellen",
+        "description": "· A witch who sank into a long-ago love\n· A broad sniper-type unit that leans into streams of fast precision shots\n· Bomb unleashes a high-speed spiral barrage\n· Normal shots reload one by one"
+      },
+      "kaguya": {
+        "name": "Kaguya",
+        "description": "· The sinner of eternity and the ephemeral\nThis character was designed by \"Merfolk Dairy\""
+      },
+      "reisen": {
+        "name": "Reisen",
+        "description": "· A lunatic moon rabbit\n· An assault character that excels at mid-range suppression\n· Bomb deploys a bullet-clearing ring and grants two layers of shield"
+      },
+      "yukari": {
+        "name": "Yukari",
+        "description": "· A youkai of boundaries\n· A slow sniper unit; Ran follows the crosshair and fires alongside her\n· When switching to Yukari, Ran appears again"
+      },
+      "yuyuko": {
+        "name": "Yuyuko",
+        "description": "· The mistress of the Netherworld mansion\n· Uses wide-area bullet patterns to suppress space\n· Bomb releases a large number of bullets"
+      }
+    },
+    "ability_cards": {
+      "backdoor": {
+        "name": "Backdoor",
+        "description": "Adds a rear shield behind the character to clear bullets from the back"
+      },
+      "ember": {
+        "name": "Spell Card",
+        "description": "Default bombs become 4, and respawns also restore to 4."
+      },
+      "extra_life": {
+        "name": "Life Card",
+        "description": "Start with +1 life"
+      },
+      "graze_lover": {
+        "name": "Graze Lover",
+        "description": "Increases the graze detection range"
+      },
+      "multi_shot": {
+        "name": "Yin-Yang Orb",
+        "description": "Adds extra slow homing shots to normal attacks."
+      },
+      "spirit_strike": {
+        "name": "Spirit Strike",
+        "description": "Clears a small area of bullets around you"
+      },
+      "extension": {
+        "name": "Kawashiro Pouch",
+        "description": "Slightly increases item pickup range"
+      }
+    },
+    "maps": {
+      "hakurei_shrine": { "name": "Hakurei Shrine" },
+      "collaborate_test_arena": { "name": "Co-op Test Arena" },
+      "collaborate_test_arena_2": { "name": "Co-op Test Arena 2" },
+      "mist_lake": { "name": "Mist Lake" },
+      "bamboo_lost": { "name": "Bamboo Forest of the Lost" },
+      "mana_forest": { "name": "Magic Forest" },
+      "x_shoot_range": { "name": "X Shooting Range" },
+      "shoot_range": { "name": "Practice Range" }
+    }
   },
   "dialog": {
     "close": "Close",
@@ -613,7 +729,9 @@
     "character": "Character: {{name}}",
     "card": "Card: {{name}}",
     "battle": "Battle {{n}}",
-    "map": "Map: {{id}}",
+    "map": {
+      "name": "Map: {{name}}"
+    },
     "import_local_replay": "Import Local Replay",
     "open_replay_folder": "Open Replay Folder",
     "open_replay_folder_failed": "Could not open replay folder: {{error}}",

@@ -20,18 +20,18 @@ interface KeyRowConfig {
 }
 
 const LEFT_COLUMN_KEYS: KeyRowConfig[] = [
-  { action: "moveUp", labelKey: "settings.keyboard.moveUp" },
-  { action: "moveLeft", labelKey: "settings.keyboard.moveLeft" },
-  { action: "moveDown", labelKey: "settings.keyboard.moveDown" },
-  { action: "moveRight", labelKey: "settings.keyboard.moveRight" },
-  { action: "reload", labelKey: "settings.keyboard.reload" },
+  { action: "moveUp", labelKey: "settings.keyboard.actions.move_up" },
+  { action: "moveLeft", labelKey: "settings.keyboard.actions.move_left" },
+  { action: "moveDown", labelKey: "settings.keyboard.actions.move_down" },
+  { action: "moveRight", labelKey: "settings.keyboard.actions.move_right" },
+  { action: "reload", labelKey: "settings.keyboard.actions.reload" },
 ];
 
 const RIGHT_COLUMN_KEYS: KeyRowConfig[] = [
-  { action: "activeCard", labelKey: "settings.keyboard.active" },
-  { action: "alternate", labelKey: "settings.keyboard.alt" },
-  { action: "info", labelKey: "settings.keyboard.info" },
-  { action: "enter", labelKey: "settings.keyboard.enter" },
+  { action: "activeCard", labelKey: "settings.keyboard.actions.active" },
+  { action: "alternate", labelKey: "settings.keyboard.actions.alt" },
+  { action: "info", labelKey: "settings.keyboard.actions.info" },
+  { action: "enter", labelKey: "settings.keyboard.actions.enter" },
 ];
 
 function getKeyDisplayName(value: string | number): string {
@@ -112,8 +112,8 @@ export function renderKeyboardTab(scene: SettingsScene, layer: Phaser.GameObject
     tabContent.removeAll(true);
 
     // 重新绘制标题
-    tabContent.add(sectionTitle(scene, 36, 34, t("settings.keyboard.sectionMovement") ?? "键盘移动绑定 (Movement)"));
-    tabContent.add(sectionTitle(scene, 580, 34, t("settings.keyboard.sectionActions") ?? "行动与交互绑定 (Actions)"));
+    tabContent.add(sectionTitle(scene, 36, 34, t("settings.keyboard.sections.movement")));
+    tabContent.add(sectionTitle(scene, 580, 34, t("settings.keyboard.sections.actions")));
 
     // 执行冲突检测
     const dupCheck = findDuplicates(tempKeybinds);
@@ -165,17 +165,17 @@ export function renderKeyboardTab(scene: SettingsScene, layer: Phaser.GameObject
       366,
       160,
       42,
-      t("settings.keyboard.confirm") ?? "确认变动",
+      t("settings.keyboard.confirm"),
       () => {
         cleanupKeyCapture();
         const checkResult = findDuplicates(tempKeybinds);
 
         if (checkResult.duplicated) {
-          statusText.setText(t("settings.keyboard.conflictError") ?? "检测到按键冲突 (标红项)！无法保存。").setColor("#ff5c66");
+          statusText.setText(t("settings.keyboard.conflict_error")).setColor("#ff5c66");
           drawTabContent(); // 刷新以重绘红色冲突边框
         } else {
           setKeybinds(tempKeybinds); // 持久化到全局 store 与 LocalStorage
-          statusText.setText(t("settings.keyboard.saveSuccess") ?? "键位保存成功！").setColor("#34d399");
+          statusText.setText(t("settings.keyboard.save_success")).setColor("#34d399");
           drawTabContent();
         }
       },
@@ -190,11 +190,11 @@ export function renderKeyboardTab(scene: SettingsScene, layer: Phaser.GameObject
       366,
       160,
       42,
-      t("settings.keyboard.reset") ?? "恢复默认",
+      t("settings.keyboard.reset"),
       () => {
         cleanupKeyCapture();
         tempKeybinds = { ...DEFAULT_KEYBINDS };
-        statusText.setText(t("settings.keyboard.resetSuccess") ?? "已载入默认，请点击 [确认变动] 进行保存").setColor("#ffcf6e");
+        statusText.setText(t("settings.keyboard.reset_success")).setColor("#ffcf6e");
         drawTabContent();
       },
       { accent: 0x5c7185 }
@@ -256,7 +256,7 @@ function createKeybindRow(
   const textColor = isDuplicated ? "#ff8890" : "#f6f1e6";
   const labelText = scene.add.text(18, Math.round(height / 2 - 10), actionLabel, bodyStyle(textColor, 16));
 
-  const btnLabel = isBinding ? (t("settings.keyboard.pressKey") ?? "请按下按键...") : `[ ${getKeyDisplayName(currentValue)} ]`;
+  const btnLabel = isBinding ? t("settings.keyboard.press_key") : `[ ${getKeyDisplayName(currentValue)} ]`;
 
   // 键位按钮的 Y 坐标由 6 下移至 9，整体重心下移且维持与单元格下框的边界填充
   const keyBtn = createRectangleButton(

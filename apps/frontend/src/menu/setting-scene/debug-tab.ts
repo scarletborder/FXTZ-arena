@@ -72,16 +72,16 @@ export function renderDebugTab(scene: SettingsScene, layer: Phaser.GameObjects.C
 
   // ── Debug bullet volume section ──
   const margin = 300;
-  layer.add(sectionTitle(scene, margin + 31, 34, "调试弹幕体积"));
+  layer.add(sectionTitle(scene, margin + 31, 34, t("settings.debug.volume.title")));
 
   layer.add(scene.add.text(
     margin + 36,
     72,
-    "查看弹幕类型及其判定体积。\nShift 切换暂停，ESC 返回。",
+    t("settings.debug.volume.description"),
     bodyStyle("#9fd8ff", 16),
   ));
 
-  layer.add(createFightButton(scene, margin + 161, 145, 230, 54, "弹幕体积测试", () => {
+  layer.add(createFightButton(scene, margin + 161, 145, 230, 54, t("settings.debug.volume.button"), () => {
     scene.scene.start("debug-bullet-volume");
   }, { accent: 0x9b59b6 }).container);
 

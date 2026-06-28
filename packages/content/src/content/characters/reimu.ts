@@ -1,4 +1,5 @@
 import { fp } from "@shaisrc/fixed-point";
+import { t } from "@repo/i18n";
 
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 
@@ -37,11 +38,10 @@ const BOMB_ORB_DAMAGE = 95;
 
 export class ReimuBattleCharacter extends BattleCharacter {
   readonly id = "reimu" as CharacterDefinition["id"];
-  readonly name = "博丽灵梦";
+  readonly name = t("content.characters.reimu.name");
   readonly cost = 4;
   readonly roleClass = "suppress" as CharacterDefinition["roleClass"];
-  readonly description =
-    "· 传统的乐园巫女\n· 重视防御的平衡型角色，追踪性弹幕\n· bomb释放大玉消除沿途弹幕\n· 普通射击逐个装填";
+  readonly description = t("content.characters.reimu.description");
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/reimu/portrait.png",
     attackPreviewAsset: "assets/characters/reimu/preview.png",

@@ -1,6 +1,7 @@
 import { fp } from "@shaisrc/fixed-point";
 
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
+import { t } from "@repo/i18n";
 
 import type { FighterState } from "../battle-types";
 import type { BattleHitContext } from "../ability-cards/base";
@@ -32,7 +33,7 @@ const BOMBSHOT_DAMAGE = 150;
 
 export class SakuyaBattleCharacter extends BattleCharacter {
   readonly id = "sakuya" as CharacterDefinition["id"];
-  readonly name = "咲夜";
+  readonly name = t("content.characters.sakuya.name");
   readonly cost = 4;
   readonly roleClass = "assault" as CharacterDefinition["roleClass"];
   readonly moveSpeed = "medium" as CharacterDefinition["moveSpeed"];
@@ -44,7 +45,7 @@ export class SakuyaBattleCharacter extends BattleCharacter {
   readonly reloadCommitPolicy =
     "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = "medium" as CharacterDefinition["bulletSpeed"];
-  readonly description = "· 过劳996女仆\n· 擅长近中距离压迫的突击性机体\n· bomb可让时间停止";
+  readonly description = t("content.characters.sakuya.description");
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/sakuya/portrait.png",
     attackPreviewAsset: "assets/characters/sakuya/preview.png",

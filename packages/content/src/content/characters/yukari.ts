@@ -1,4 +1,5 @@
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
+import { t } from "@repo/i18n";
 
 import type {
   FighterKey,
@@ -65,7 +66,7 @@ const FULL_CIRCLE = Math.PI * 2;
 
 export class YukariBattleCharacter extends BattleCharacter {
   readonly id = "yukari" as CharacterDefinition["id"];
-  readonly name = "八云紫";
+  readonly name = t("content.characters.yukari.name");
   readonly cost = 5;
   readonly roleClass = "sniper" as CharacterDefinition["roleClass"];
   readonly moveSpeed = "low" as CharacterDefinition["moveSpeed"];
@@ -77,8 +78,7 @@ export class YukariBattleCharacter extends BattleCharacter {
   readonly reloadCommitPolicy =
     "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = NORMAL_BULLET_SPEED;
-  readonly description =
-    "· 境界的妖怪\n· 低速狙击机体，八云蓝会跟随准心并协同射击\n· 切换到八云紫时八云蓝会重新出现";
+  readonly description = t("content.characters.yukari.description");
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/yukari/portrait.png",
     attackPreviewAsset: "assets/characters/yukari/preview.png",

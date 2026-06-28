@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { IS_DESKTOP_APP } from "@repo/constants";
 import { t } from "@repo/i18n";
-import { getCharacterDefinition, getAbilityCardDefinition } from "@repo/content";
+import { getCharacterDefinition, getAbilityCardDefinition, getCombatMapDefinition } from "@repo/content";
 import type { BattleLoadouts, FighterLoadout } from "@repo/raid-logic";
 import { EnumDifficulty } from "@repo/types";
 
@@ -495,7 +495,8 @@ export class ReplayPlaybackScene extends Phaser.Scene {
       infoContainer.add(titleText);
 
       // Info line: duration + map
-      const mapStr = battle.mapId ? `  |  ${t("replay.map", { id: battle.mapId })}` : "";
+      const mapName = battle.mapId ? getCombatMapDefinition(battle.mapId as import("@repo/types").MapId)?.name ?? battle.mapId : undefined;
+      const mapStr = mapName ? `  |  ${t("replay.map.name", { name: mapName })}` : "";
       const infoLine = this.add.text(x + 12, y + 30,
         `${t("replay.duration", { seconds: totalSecs })}${mapStr}`,
         bodyStyle("#b7c7d8", 13));

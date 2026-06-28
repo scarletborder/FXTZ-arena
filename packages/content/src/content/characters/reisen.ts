@@ -1,5 +1,6 @@
 import { bulletSpeedRankToPixelsPerTick } from "@repo/types";
 import { fp } from "@shaisrc/fixed-point";
+import { t } from "@repo/i18n";
 
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 
@@ -56,7 +57,7 @@ const FULL_CIRCLE_DEGREES = 360;
 
 export class ReisenBattleCharacter extends BattleCharacter {
   readonly id = "reisen" as CharacterDefinition["id"];
-  readonly name = "铃仙";
+  readonly name = t("content.characters.reisen.name");
   readonly cost = REISEN_COST;
   readonly roleClass = "assault" as CharacterDefinition["roleClass"];
   readonly moveSpeed = "medium" as CharacterDefinition["moveSpeed"];
@@ -68,8 +69,7 @@ export class ReisenBattleCharacter extends BattleCharacter {
   readonly reloadCommitPolicy =
     "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = "medium" as CharacterDefinition["bulletSpeed"];
-  readonly description =
-    "· 狂气之月兔\n· 擅长中距离压制的突击角色\n· bomb展开消弹圈并获得两层护盾";
+  readonly description = t("content.characters.reisen.description");
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/reisen/portrait.png",
     attackPreviewAsset: "assets/characters/reisen/preview.png",

@@ -23,7 +23,7 @@ const TAB_DEFINITIONS: readonly SettingsTabDefinition[] = [
   { key: "account", label: t("settings.account"), render: renderAccountTab },
   {
     key: "keyboard",
-    label: t("settings.keyboard") ?? "键盘控制",
+    label: t("settings.keyboard.title"),
     render: renderKeyboardTab,
     // 如果不是 PC 桌面设备，则禁用该 Tab
     disabled: (scene) => !scene.sys.game.device.os.desktop
