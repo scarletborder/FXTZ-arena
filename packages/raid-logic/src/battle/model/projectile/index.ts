@@ -211,7 +211,7 @@ export class ProjectileSystem {
       if (results) {
         rapierHitMap = new Map(
           results
-            .filter((r) => r.victimKey)
+            .filter((r) => r.victimKey && r.victimMobId === undefined)
             .map((r) => [r.projectileId, r.victimKey!]),
         );
         rapierMobHitMap = new Map(
@@ -489,7 +489,7 @@ function nearestNeutralTargetToPoint(
   let best: ProjectileHitTarget | undefined;
   let bestDistance = Number.POSITIVE_INFINITY;
   for (const target of targets) {
-    if (target.key !== "Neutral") {
+    if (target.mobId === undefined) {
       continue;
     }
     const distance = (target.x - x) ** 2 + (target.y - y) ** 2;
@@ -525,7 +525,7 @@ function physicsGrazeTargets(
   const keySet = new Set(grazedByKeys);
   return targets.filter(
     (target) =>
-      target.key !== "Neutral" &&
+      target.mobId === undefined &&
       canProjectileGrazeTarget(projectile, target, rules) &&
       target.hitWidth === undefined &&
       target.hitHeight === undefined &&
@@ -559,7 +559,7 @@ function firstHitTarget(
     if (projectile.piercesTargets) {
       isHit = hitTest(projectile, target);
     } else if (
-      target.key === "Neutral" &&
+      target.mobId !== undefined &&
       rapierHitMap !== undefined &&
       canUseRapierHitTest(projectile)
     ) {

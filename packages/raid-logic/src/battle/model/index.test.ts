@@ -32,7 +32,16 @@ import { createMoneyState, createPointState, createPowerState } from "./points";
 import { createRaidLogicRuntime } from "../runtime";
 import { stepBulletProjectile } from "./projectile/bullet";
 import { clearProjectilesAround } from "./projectile";
-import type { NeutralMobState } from "@repo/types";
+import {
+  FamiliarMob,
+  type FamiliarMobState,
+  type MobActionContext,
+  type NeutralMobState,
+} from "@repo/types";
+import type {
+  BulletProjectileParams,
+  LaserProjectileParams,
+} from "./projectile";
 import {
   createBattleModel,
   createBattleModelWithSpawner,
@@ -311,7 +320,158 @@ describe("BattleModel rollback snapshots", () => {
     ]);
     expect(model.neutralMobManager.states()).toHaveLength(0);
   });
+
+  it("spawns familiar bullets with the owning player's faction", async () => {
+    const model = await createBattleModel();
+    model.neutralMobManager.addNeutralMob(
+      new TestFamiliarMob({
+        id: 200,
+        owner: "Player1",
+        x: 320,
+        y: 240,
+        fires: true,
+      }),
+    );
+
+    model.stepVersus(input(), input());
+
+    expect(
+      model.projectiles.some((projectile) => projectile.owner === "Player1"),
+    ).toBe(true);
+  });
+
+  it("lets physical-attack mobs hit players without disappearing", async () => {
+    const model = await createBattleModel();
+    const mob = new TestFamiliarMob({
+      id: 201,
+      owner: "Player1",
+      x: model.target.x,
+      y: model.target.y,
+      physicalAttack: true,
+    });
+    model.neutralMobManager.addNeutralMob(mob);
+
+    model.stepVersus(input(), input());
+
+    expect(model.target.hitsTaken).toBe(1);
+    expect(mob.state.active).toBe(true);
+    expect(model.neutralMobManager.states()).toHaveLength(1);
+  });
+
+  it("treats familiars as allies for the other player in collaborate mode", async () => {
+    const model = await initializeBattleModel(
+      new BattleModel(undefined, { battleMode: "collaborate" }),
+    );
+    const mob = new TestFamiliarMob({
+      id: 202,
+      owner: "Player1",
+      x: model.target.x,
+      y: model.target.y,
+      physicalAttack: true,
+      fires: true,
+    });
+    model.neutralMobManager.addNeutralMob(mob);
+
+    model.stepVersus(input(), input());
+
+    expect(
+      model.projectiles.some((projectile) => projectile.owner === "Player1"),
+    ).toBe(true);
+    expect(model.target.hitsTaken).toBe(0);
+    expect(mob.state.active).toBe(true);
+  });
 });
+
+class TestFamiliarMob extends FamiliarMob<
+  FamiliarMobState,
+  BulletProjectileParams,
+  LaserProjectileParams
+> {
+  readonly state: FamiliarMobState;
+  private readonly fires: boolean;
+
+  constructor(params: {
+    readonly id: number;
+    readonly owner: "Player1" | "Player2";
+    readonly x: number;
+    readonly y: number;
+    readonly fires?: boolean;
+    readonly physicalAttack?: boolean;
+  }) {
+    super();
+    this.fires = params.fires ?? false;
+    this.state = {
+      id: params.id,
+      key: params.owner,
+      mobKind: "familiar",
+      kind: "test_familiar",
+      x: params.x,
+      y: params.y,
+      previousX: params.x,
+      previousY: params.y,
+      hitRadius: 16,
+      hitWidth: 32,
+      hitHeight: 32,
+      waveId: 0,
+      movementVariant: "static",
+      form: "idle",
+      MaxHealth: 10,
+      CurrentHealth: 10,
+      active: true,
+      ageTicks: 0,
+      physicalAttack: params.physicalAttack,
+      sfxFlags: 0,
+    };
+  }
+
+  move(): void {
+    this.state.previousX = this.state.x;
+    this.state.previousY = this.state.y;
+  }
+
+  fire(
+    ctx: MobActionContext<BulletProjectileParams, LaserProjectileParams>,
+  ): void {
+    if (!this.fires || this.state.ageTicks !== 1) {
+      return;
+    }
+    ctx.spawnBullet({
+      owner: ctx.owner,
+      kind: "orb",
+      x: this.state.x,
+      y: this.state.y,
+      angle: 0,
+      frame: 0,
+      speedRank: "low",
+      width: 8,
+      height: 8,
+      homingTicks: 0,
+      spawnOffset: 0,
+    });
+  }
+
+  switchForm(): void {
+    // Test familiar keeps a stable form.
+  }
+
+  die(): void {
+    if (this.state.CurrentHealth <= 0) {
+      this.state.active = false;
+    }
+  }
+
+  onProjectileHit(damage: number): "accepted" | "ignored" {
+    if (!this.state.active || damage <= 0) {
+      return "ignored";
+    }
+    this.state.CurrentHealth = Math.max(0, this.state.CurrentHealth - damage);
+    return "accepted";
+  }
+
+  onDeath(): void {
+    // Test familiar has no death side effects.
+  }
+}
 
 describe("BattleModel reload timing", () => {
   it("marisa discards current ammo and only restores at the end", async () => {
@@ -456,8 +616,12 @@ describe("BattleModel hit recovery", () => {
     expect(model.player.deadUntil).toBe(0);
     expect(model.player.x).toBe(321);
     expect(model.player.y).toBe(222);
-    expect(model.serialize().collaborateExtra?.shop.revivedByPlayerId.Player1).toBe(true);
-    expect(model.serialize().collaborateExtra?.shop.readyByPlayerId.Player1).toBe(false);
+    expect(
+      model.serialize().collaborateExtra?.shop.revivedByPlayerId.Player1,
+    ).toBe(true);
+    expect(
+      model.serialize().collaborateExtra?.shop.readyByPlayerId.Player1,
+    ).toBe(false);
   });
 
   it("clears neutral hazards only on the reconciled transition completion frame", async () => {
@@ -469,17 +633,25 @@ describe("BattleModel hit recovery", () => {
       testProjectile({ id: 2, owner: "Player1", x: 140, y: 120 }),
     );
     model.neutralMobManager.addNeutralMob(
-      new TestNeutralMob(model.neutralMobManager.allocateNeutralMobId(), 320, 240),
+      new TestNeutralMob(
+        model.neutralMobManager.allocateNeutralMobId(),
+        320,
+        240,
+      ),
     );
 
     model.beginCollaborateTransition("shop", "manual");
     model.stepVersus(input({ transitionReadyPressed: true }), input());
 
-    expect(model.projectiles.map((projectile) => projectile.id).sort()).toEqual([1, 2]);
+    expect(model.projectiles.map((projectile) => projectile.id).sort()).toEqual(
+      [1, 2],
+    );
     expect(model.neutralMobManager.states()).toHaveLength(1);
 
     model.stepVersus(input(), input({ transitionReadyPressed: true }));
-    expect(model.projectiles.map((projectile) => projectile.id).sort()).toEqual([1, 2]);
+    expect(model.projectiles.map((projectile) => projectile.id).sort()).toEqual(
+      [1, 2],
+    );
     expect(model.neutralMobManager.states()).toHaveLength(1);
 
     for (let frame = model.frame; frame < 30; frame += 1) {
@@ -1547,7 +1719,10 @@ describe("BattleModel collaborate money and scoring", () => {
       }),
     );
     model.player.activeCard = undefined;
-    model.player.abilityCards = [getAbilityCard("multi_shot"), getAbilityCard("spirit_strike_card")];
+    model.player.abilityCards = [
+      getAbilityCard("multi_shot"),
+      getAbilityCard("spirit_strike_card"),
+    ];
     model.player.activeCardUses = 0;
     model.player.activeCardCooldownUntil = 99;
 
@@ -1595,7 +1770,9 @@ describe("BattleModel collaborate money and scoring", () => {
     expect(updated.activeCardId).toBe("spirit_strike_card");
     expect(updated.activeCardUses).toBe(3);
     expect(updated.activeCardCooldownUntil).toBe(0);
-    expect(model.serialize().collaborateExtra?.moneyByPlayerId.Player1).toBe(54);
+    expect(model.serialize().collaborateExtra?.moneyByPlayerId.Player1).toBe(
+      54,
+    );
   });
 
   it("adds collaborate score when a player defeats a mob", async () => {

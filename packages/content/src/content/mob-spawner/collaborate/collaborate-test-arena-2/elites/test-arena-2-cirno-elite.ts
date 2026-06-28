@@ -152,15 +152,25 @@ export class TestArena2CirnoElite extends NeutralMob<
     const phase = local % cycle;
     this.state.pathIndex = index;
     if (phase <= moveTicks) {
-      const p = lerpPoint(points[index]!, points[index + 1]!, ratio(phase, moveTicks));
+      const p = lerpPoint(
+        points[index]!,
+        points[index + 1]!,
+        ratio(phase, moveTicks),
+      );
       this.state.x = p.x;
       this.state.y = p.y;
     }
     this.syncHealthFromSpellCard();
   }
 
-  fire(ctx: NeutralMobActionContext<BattleBulletSpawnParams, BattleLaserSpawnParams>): void {
-    if (!this.state.spellCard || this.state.ageTicks < this.state.nextFireAge) return;
+  fire(
+    ctx: NeutralMobActionContext<
+      BattleBulletSpawnParams,
+      BattleLaserSpawnParams
+    >,
+  ): void {
+    if (!this.state.spellCard || this.state.ageTicks < this.state.nextFireAge)
+      return;
     if (this.state.spellCard.phase === "spell_card") {
       this.fireIceFlight(ctx);
       this.state.nextFireAge = this.state.ageTicks + secondsToTicks(0.18);
@@ -184,11 +194,13 @@ export class TestArena2CirnoElite extends NeutralMob<
   }
 
   die(): void {
-    if (this.state.CurrentHealth <= 0 && !this.state.spellCard) this.state.active = false;
+    if (this.state.CurrentHealth <= 0 && !this.state.spellCard)
+      this.state.active = false;
   }
 
   onProjectileHit(damage: number): "accepted" | "ignored" {
-    if (!this.state.active || damage <= 0 || !this.state.spellCard) return "ignored";
+    if (!this.state.active || damage <= 0 || !this.state.spellCard)
+      return "ignored";
     const result = applySpellCardDamage(this.state.spellCard, damage);
     this.state.spellCard = result.state;
     this.syncHealthFromSpellCard();
@@ -196,34 +208,66 @@ export class TestArena2CirnoElite extends NeutralMob<
     return "accepted";
   }
 
-  private firePathStopPattern(ctx: NeutralMobActionContext<BattleBulletSpawnParams, BattleLaserSpawnParams>): void {
+  private firePathStopPattern(
+    ctx: NeutralMobActionContext<
+      BattleBulletSpawnParams,
+      BattleLaserSpawnParams
+    >,
+  ): void {
     const diagonalBase = Math.PI / 4;
     for (let d = 0; d < 4; d += 1) {
       const base = diagonalBase + d * (Math.PI / 2);
-      for (let i = -2; i <= 2; i += 1) this.spawnBullet(ctx, base + i * 0.08, "high", 12);
+      for (let i = -2; i <= 2; i += 1)
+        this.spawnBullet(ctx, base + i * 0.08, "high", 12);
       this.spawnBullet(ctx, base + 0.35, "low", 10);
     }
   }
 
-  private fireDirectionalCycle(ctx: NeutralMobActionContext<BattleBulletSpawnParams, BattleLaserSpawnParams>): void {
-    const base = Math.floor(this.state.fireSubphase / 2) % 4 * (Math.PI / 2);
-    for (let i = -5; i <= 5; i += 1) this.spawnBullet(ctx, base + i * 0.06, "medium", 12);
+  private fireDirectionalCycle(
+    ctx: NeutralMobActionContext<
+      BattleBulletSpawnParams,
+      BattleLaserSpawnParams
+    >,
+  ): void {
+    const base = (Math.floor(this.state.fireSubphase / 2) % 4) * (Math.PI / 2);
+    for (let i = -5; i <= 5; i += 1)
+      this.spawnBullet(ctx, base + i * 0.06, "medium", 12);
   }
 
-  private fireIceFlight(ctx: NeutralMobActionContext<BattleBulletSpawnParams, BattleLaserSpawnParams>): void {
+  private fireIceFlight(
+    ctx: NeutralMobActionContext<
+      BattleBulletSpawnParams,
+      BattleLaserSpawnParams
+    >,
+  ): void {
     for (const side of [-1, 1]) {
-      const angle = this.motionAngle() + side * (Math.PI / 2) + (this.nextUnit() - 0.5) * 0.8;
-      this.spawnBullet(ctx, angle, this.nextUnit() < 0.5 ? "low" : "medium", 10);
+      const angle =
+        this.motionAngle() +
+        side * (Math.PI / 2) +
+        (this.nextUnit() - 0.5) * 0.8;
+      this.spawnBullet(
+        ctx,
+        angle,
+        this.nextUnit() < 0.5 ? "low" : "medium",
+        10,
+      );
     }
     if (this.state.fireSubphase % 6 === 0) {
       for (let i = 0; i < 16; i += 1) {
-        this.spawnBullet(ctx, fp.toFloat(fp.mul(fp.fromInt(i), RING_16)), "low", 9);
+        this.spawnBullet(
+          ctx,
+          fp.toFloat(fp.mul(fp.fromInt(i), RING_16)),
+          "low",
+          9,
+        );
       }
     }
   }
 
   private moveIceFlight(b: ArenaBounds): void {
-    const local = this.state.spellCard ? PLAN.spellCards[0]!.durationTicks - this.state.spellCard.remainingTicks : 0;
+    const local = this.state.spellCard
+      ? PLAN.spellCards[0]!.durationTicks - this.state.spellCard.remainingTicks
+      : 0;
     const a = { x: b.width * 0.1, y: b.height * 0.1 };
     const c = { x: b.width * 0.9, y: b.height * 0.9 };
     const period = secondsToTicks(8);
@@ -231,28 +275,51 @@ export class TestArena2CirnoElite extends NeutralMob<
     const wait = secondsToTicks(1);
     const dash = secondsToTicks(1.2);
     if (phase < wait) {
-      this.state.x = a.x; this.state.y = a.y; return;
+      this.state.x = a.x;
+      this.state.y = a.y;
+      return;
     }
     if (phase < wait + dash) {
       const p = lerpPoint(a, c, ratio(phase - wait, dash));
-      this.state.x = p.x; this.state.y = p.y; return;
+      this.state.x = p.x;
+      this.state.y = p.y;
+      return;
     }
     if (phase < wait + dash + secondsToTicks(3)) {
-      this.state.x = c.x; this.state.y = c.y; return;
+      this.state.x = c.x;
+      this.state.y = c.y;
+      return;
     }
-    const p = lerpPoint(c, a, ratio(phase - wait - dash - secondsToTicks(3), dash));
-    this.state.x = p.x; this.state.y = p.y;
+    const p = lerpPoint(
+      c,
+      a,
+      ratio(phase - wait - dash - secondsToTicks(3), dash),
+    );
+    this.state.x = p.x;
+    this.state.y = p.y;
   }
 
   private motionAngle(): number {
-    return this.state.previousX === this.state.x && this.state.previousY === this.state.y
+    return this.state.previousX === this.state.x &&
+      this.state.previousY === this.state.y
       ? Math.PI / 4
-      : fpAtan2(fp.fromFloat(this.state.y - this.state.previousY), fp.fromFloat(this.state.x - this.state.previousX));
+      : fpAtan2(
+          fp.fromFloat(this.state.y - this.state.previousY),
+          fp.fromFloat(this.state.x - this.state.previousX),
+        );
   }
 
-  private spawnBullet(ctx: NeutralMobActionContext<BattleBulletSpawnParams, BattleLaserSpawnParams>, angle: number, speedRank: BattleBulletSpawnParams["speedRank"], size: number): void {
+  private spawnBullet(
+    ctx: NeutralMobActionContext<
+      BattleBulletSpawnParams,
+      BattleLaserSpawnParams
+    >,
+    angle: number,
+    speedRank: BattleBulletSpawnParams["speedRank"],
+    size: number,
+  ): void {
     ctx.spawnBullet({
-      owner: "Neutral",
+      owner: ctx.owner,
       textureKey: "bullet_type_3_offset_6",
       kind: "orb",
       x: this.state.x,
@@ -267,7 +334,8 @@ export class TestArena2CirnoElite extends NeutralMob<
   }
 
   private nextUnit(): number {
-    this.state.rngState = (Math.imul(this.state.rngState, 1664525) + 1013904223) >>> 0;
+    this.state.rngState =
+      (Math.imul(this.state.rngState, 1664525) + 1013904223) >>> 0;
     return (this.state.rngState & 0xffff) / 0x10000;
   }
 
@@ -279,14 +347,23 @@ export class TestArena2CirnoElite extends NeutralMob<
 }
 
 function ratio(ticks: number, duration: number): number {
-  return fp.div(fp.fromInt(Math.max(0, Math.min(ticks, duration))), fp.fromInt(duration));
+  return fp.div(
+    fp.fromInt(Math.max(0, Math.min(ticks, duration))),
+    fp.fromInt(duration),
+  );
 }
 
 function lerp(start: number, end: number, t: number): number {
-  return fp.toFloat(fp.add(fp.fromFloat(start), fp.mul(fp.fromFloat(end - start), t)));
+  return fp.toFloat(
+    fp.add(fp.fromFloat(start), fp.mul(fp.fromFloat(end - start), t)),
+  );
 }
 
-function lerpPoint(start: { readonly x: number; readonly y: number }, end: { readonly x: number; readonly y: number }, t: number) {
+function lerpPoint(
+  start: { readonly x: number; readonly y: number },
+  end: { readonly x: number; readonly y: number },
+  t: number,
+) {
   return { x: lerp(start.x, end.x, t), y: lerp(start.y, end.y, t) };
 }
 

@@ -1,8 +1,8 @@
 import {
   COLLABORATE_GRAZE_SCORE,
   ENEMY_PROJECTILE_GRAZE_POINT_REWARD,
+  type MobState,
   NEUTRAL_PROJECTILE_GRAZE_POINT_REWARD,
-  type NeutralMobState,
   type ProjectileCollisionContext,
 } from "@repo/types";
 import type {
@@ -34,7 +34,7 @@ export function resolveProjectileHit(params: {
   readonly stats: TrainingStats;
   readonly frame: number;
   createActionContext(fighter: FighterState): CharacterActionContext;
-  handleNeutralMobKilled(mob: NeutralMobState, source: FighterKey): void;
+  handleNeutralMobKilled(mob: MobState, source: FighterKey): void;
   cancelTimeStop(fighter: FighterState): void;
   handleFighterDefeated(fighter: FighterState): void;
 }): boolean {
@@ -42,7 +42,7 @@ export function resolveProjectileHit(params: {
   if (!params.rules.canProjectileDamageTarget(owner, victim.key)) {
     return false;
   }
-  if (victim.key === "Neutral") {
+  if (victim.mobId !== undefined) {
     return params.neutralMobManager.handleProjectileHit({
       target: victim,
       owner,
@@ -51,8 +51,7 @@ export function resolveProjectileHit(params: {
     });
   }
 
-  const fighterState =
-    victim.key === "Player1" ? params.player : params.target;
+  const fighterState = victim.key === "Player1" ? params.player : params.target;
   const victimFighter =
     victim.key === "Player1" ? params.playerFighter : params.targetFighter;
   const attackerCards =
@@ -110,10 +109,7 @@ export function resolveProjectileGraze(params: {
   ) {
     return;
   }
-  fighter.grazedProjectileIds = [
-    ...fighter.grazedProjectileIds,
-    projectile.id,
-  ];
+  fighter.grazedProjectileIds = [...fighter.grazedProjectileIds, projectile.id];
   fighter.pointCount = clampPointCount(
     fighter.pointCount +
       (owner === "Neutral"

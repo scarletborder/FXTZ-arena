@@ -1,6 +1,6 @@
 import { fp } from "@shaisrc/fixed-point";
 import type { BattleModel } from ".";
-import type { CollaborateExtraState, NeutralMobState } from "@repo/types";
+import type { CollaborateExtraState, MobState } from "@repo/types";
 import type { ClearRingState } from "./entities/clear-ring";
 import type {
   EffectState,
@@ -43,7 +43,7 @@ const NEUTRAL_MOB_HASHED_KEYS = new Set([
   "sfxFlags",
 ]);
 
-type NeutralMobStateWithRewardDrops = NeutralMobState & {
+type NeutralMobStateWithRewardDrops = MobState & {
   readonly pointRewardDrops?: readonly NeutralMobSpawnerStateValue[];
   readonly moneyRewardDrops?: readonly NeutralMobSpawnerStateValue[];
   readonly powerRewardDrops?: readonly NeutralMobSpawnerStateValue[];
@@ -156,7 +156,7 @@ export function hashBattleModelComponents(
 
 function writeNeutralMobs(
   hasher: DeterministicHasher,
-  neutralMobs: readonly NeutralMobState[],
+  neutralMobs: readonly MobState[],
 ): void {
   hasher.writeNumber(neutralMobs.length);
   for (const mob of [...neutralMobs].sort(
@@ -206,7 +206,7 @@ function writeNeutralMobs(
 
 function writeNeutralMobExtraState(
   hasher: DeterministicHasher,
-  mob: NeutralMobState,
+  mob: MobState,
 ): void {
   const entries = Object.entries(
     mob as unknown as Record<string, NeutralMobSpawnerStateValue | undefined>,

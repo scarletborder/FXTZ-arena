@@ -250,7 +250,7 @@ export class EliteFairy extends NeutralMob<
     for (let i = 0; i < 18; i++) {
       const angle = fp.toFloat(fp.mul(fp.fromInt(i), CIRCLE_STEP) as number);
       ctx.spawnBullet({
-        owner: "Neutral",
+        owner: ctx.owner,
         textureKey: "bullet_type_3_offset_12",
         kind: "orb",
         x: this.state.x,

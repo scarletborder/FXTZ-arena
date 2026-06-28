@@ -4,7 +4,11 @@ import type {
   BattleLaserSpawnParams,
   BattleSegmentSpawnParams,
 } from "@repo/content";
-import type { ArenaBounds, NeutralMobActionContext } from "@repo/types";
+import type {
+  ArenaBounds,
+  BattlePlayerId,
+  NeutralMobActionContext,
+} from "@repo/types";
 import type {
   BulletProjectileParams,
   LaserProjectileParams,
@@ -68,7 +72,8 @@ export function createCharacterActionContext(
     opponent: bindings.opponent,
     enemyTargets: bindings.enemyTargets,
     consumeAim: bindings.consumeAim,
-    projectiles: bindings.projectiles as unknown as CharacterActionContext["projectiles"],
+    projectiles:
+      bindings.projectiles as unknown as CharacterActionContext["projectiles"],
     effects: bindings.effects as unknown as CharacterActionContext["effects"],
     stats: bindings.stats,
     spawnBullet: (params) => bindings.spawnBullet(params),
@@ -82,25 +87,25 @@ export function createCharacterActionContext(
   };
 }
 
-export function createNeutralMobActionContext(
-  bindings: {
-    readonly frame: number;
-    readonly arenaBounds: ArenaBounds;
-    readonly player: { readonly x: number; readonly y: number };
-    readonly target: { readonly x: number; readonly y: number };
-    spawnBullet(params: BulletProjectileParams): void;
-    spawnLaser(params: LaserProjectileParams): void;
-  },
-): NeutralMobActionContext<BulletProjectileParams, LaserProjectileParams> {
+export function createNeutralMobActionContext(bindings: {
+  readonly frame: number;
+  readonly arenaBounds: ArenaBounds;
+  readonly owner: BattlePlayerId;
+  readonly player: { readonly x: number; readonly y: number };
+  readonly target: { readonly x: number; readonly y: number };
+  spawnBullet(params: BulletProjectileParams): void;
+  spawnLaser(params: LaserProjectileParams): void;
+}): NeutralMobActionContext<BulletProjectileParams, LaserProjectileParams> {
   return {
     frame: bindings.frame,
     arenaBounds: bindings.arenaBounds,
+    owner: bindings.owner,
     player: { x: bindings.player.x, y: bindings.player.y },
     target: { x: bindings.target.x, y: bindings.target.y },
     spawnBullet: (params) => {
       bindings.spawnBullet({
         ...params,
-        owner: "Neutral",
+        owner: bindings.owner,
         sourceCharacterId: undefined,
         frame: params.frame ?? bindings.frame,
       });
@@ -108,7 +113,7 @@ export function createNeutralMobActionContext(
     spawnLaser: (params) => {
       bindings.spawnLaser({
         ...params,
-        owner: "Neutral",
+        owner: bindings.owner,
         sourceCharacterId: undefined,
         frame: params.frame ?? bindings.frame,
       });

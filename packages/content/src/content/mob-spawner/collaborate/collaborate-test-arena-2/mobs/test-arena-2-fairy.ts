@@ -153,7 +153,11 @@ export class TestArena2Fairy extends NeutralMob<
 
   move(ctx: BoundedMobActionContext): void {
     const path = pathFor(this.state.movementVariant, ctx.arenaBounds);
-    const p = samplePolyline(path.points, this.state.ageTicks, path.segmentTicks);
+    const p = samplePolyline(
+      path.points,
+      this.state.ageTicks,
+      path.segmentTicks,
+    );
     this.state.x = p.x;
     this.state.y =
       this.state.movementVariant === "w6_left" ||
@@ -182,9 +186,10 @@ export class TestArena2Fairy extends NeutralMob<
       case "w3_left":
       case "w3_right":
         this.fireWideAimed(ctx, "high");
-        this.state.nextFireAge = this.state.fireSubphase === 0
-          ? this.state.ageTicks + secondsToTicks(2)
-          : Number.MAX_SAFE_INTEGER;
+        this.state.nextFireAge =
+          this.state.fireSubphase === 0
+            ? this.state.ageTicks + secondsToTicks(2)
+            : Number.MAX_SAFE_INTEGER;
         break;
       case "w4_top":
       case "w4_left":
@@ -210,7 +215,13 @@ export class TestArena2Fairy extends NeutralMob<
         break;
       case "w7_left":
       case "w7_right":
-        this.fireRing(ctx, 24, CIRCLE_24_STEP, "low", this.state.fireSubphase % 2 === 0 ? 0 : Math.PI / 24);
+        this.fireRing(
+          ctx,
+          24,
+          CIRCLE_24_STEP,
+          "low",
+          this.state.fireSubphase % 2 === 0 ? 0 : Math.PI / 24,
+        );
         this.state.nextFireAge = this.state.ageTicks + secondsToTicks(1.1);
         break;
       default:
@@ -226,7 +237,12 @@ export class TestArena2Fairy extends NeutralMob<
     }
   }
 
-  die(ctx: NeutralMobActionContext<BattleBulletSpawnParams, BattleLaserSpawnParams>): void {
+  die(
+    ctx: NeutralMobActionContext<
+      BattleBulletSpawnParams,
+      BattleLaserSpawnParams
+    >,
+  ): void {
     if (this.state.CurrentHealth <= 0) {
       this.fireDeathPattern(ctx);
       this.state.active = false;
@@ -251,10 +267,16 @@ export class TestArena2Fairy extends NeutralMob<
       BattleLaserSpawnParams
     >,
   ): void {
-    if (this.state.movementVariant === "w5_diag_left" || this.state.movementVariant === "w5_diag_right") {
+    if (
+      this.state.movementVariant === "w5_diag_left" ||
+      this.state.movementVariant === "w5_diag_right"
+    ) {
       this.fireRing(ctx, 16, CIRCLE_16_STEP, "low", 0);
     }
-    if (this.state.movementVariant === "w6_left" || this.state.movementVariant === "w6_right") {
+    if (
+      this.state.movementVariant === "w6_left" ||
+      this.state.movementVariant === "w6_right"
+    ) {
       this.fireDoubleAimedFans(ctx, 3, "high", FAN_10_DEG);
     }
   }
@@ -329,12 +351,12 @@ export class TestArena2Fairy extends NeutralMob<
     originalSize: number,
   ): void {
     const isFairy2 = this.state.species === "fairy2";
-    const size = isFairy2 ? Math.ceil(originalSize * 11 / 20) : originalSize;
+    const size = isFairy2 ? Math.ceil((originalSize * 11) / 20) : originalSize;
     ctx.spawnBullet({
-      owner: "Neutral",
+      owner: ctx.owner,
       textureKey: isFairy2
-          ? "bullet_type_21_offset_1"
-          : "bullet_type_3_offset_12",
+        ? "bullet_type_21_offset_1"
+        : "bullet_type_3_offset_12",
       kind: "orb",
       x: this.state.x,
       y: this.state.y,
@@ -388,28 +410,74 @@ function speciesStats(species: TestArena2FairySpecies): {
   }
 }
 
-function startPoint(variant: TestArena2FairyMovementVariant, bounds: ArenaBounds): Point {
+function startPoint(
+  variant: TestArena2FairyMovementVariant,
+  bounds: ArenaBounds,
+): Point {
   return pathFor(variant, bounds).points[0] ?? { x: 0, y: 0 };
 }
 
 function pathFor(
   variant: TestArena2FairyMovementVariant,
   b: ArenaBounds,
-): { readonly points: readonly Point[]; readonly segmentTicks: readonly number[] } {
+): {
+  readonly points: readonly Point[];
+  readonly segmentTicks: readonly number[];
+} {
   const out = 80;
   switch (variant) {
     case "w1_down":
-      return line({ x: b.width * 0.25, y: -out }, { x: b.width * 0.25, y: b.height + out }, secondsToTicks(7));
+      return line(
+        { x: b.width * 0.25, y: -out },
+        { x: b.width * 0.25, y: b.height + out },
+        secondsToTicks(7),
+      );
     case "w1_up":
-      return line({ x: b.width * 0.75, y: b.height + out }, { x: b.width * 0.75, y: -out }, secondsToTicks(7));
+      return line(
+        { x: b.width * 0.75, y: b.height + out },
+        { x: b.width * 0.75, y: -out },
+        secondsToTicks(7),
+      );
     case "w2_top":
-      return multi([{ x: b.width * 0.4, y: -out }, { x: b.width * 0.4, y: b.height * 0.9 }, { x: b.width * 0.15, y: b.height * 0.9 }, { x: b.width * 0.15, y: -out }], [secondsToTicks(2.2), secondsToTicks(1.2), secondsToTicks(3.2)]);
+      return multi(
+        [
+          { x: b.width * 0.4, y: -out },
+          { x: b.width * 0.4, y: b.height * 0.9 },
+          { x: b.width * 0.15, y: b.height * 0.9 },
+          { x: b.width * 0.15, y: -out },
+        ],
+        [secondsToTicks(2.2), secondsToTicks(1.2), secondsToTicks(3.2)],
+      );
     case "w2_bottom":
-      return multi([{ x: b.width * 0.6, y: b.height + out }, { x: b.width * 0.6, y: b.height * 0.1 }, { x: b.width * 0.85, y: b.height * 0.1 }, { x: b.width * 0.85, y: b.height + out }], [secondsToTicks(2.2), secondsToTicks(1.2), secondsToTicks(3.2)]);
+      return multi(
+        [
+          { x: b.width * 0.6, y: b.height + out },
+          { x: b.width * 0.6, y: b.height * 0.1 },
+          { x: b.width * 0.85, y: b.height * 0.1 },
+          { x: b.width * 0.85, y: b.height + out },
+        ],
+        [secondsToTicks(2.2), secondsToTicks(1.2), secondsToTicks(3.2)],
+      );
     case "w3_left":
-      return multi([{ x: -out, y: b.height * 0.3 }, { x: b.width * 0.5, y: b.height * 0.3 }, { x: b.width * 0.5, y: b.height * 0.3 }, { x: b.width + out, y: b.height * 0.3 }], [secondsToTicks(1.8), secondsToTicks(3), secondsToTicks(2.8)]);
+      return multi(
+        [
+          { x: -out, y: b.height * 0.3 },
+          { x: b.width * 0.5, y: b.height * 0.3 },
+          { x: b.width * 0.5, y: b.height * 0.3 },
+          { x: b.width + out, y: b.height * 0.3 },
+        ],
+        [secondsToTicks(1.8), secondsToTicks(3), secondsToTicks(2.8)],
+      );
     case "w3_right":
-      return multi([{ x: b.width + out, y: b.height * 0.7 }, { x: b.width * 0.5, y: b.height * 0.7 }, { x: b.width * 0.5, y: b.height * 0.7 }, { x: -out, y: b.height * 0.7 }], [secondsToTicks(1.8), secondsToTicks(3), secondsToTicks(2.8)]);
+      return multi(
+        [
+          { x: b.width + out, y: b.height * 0.7 },
+          { x: b.width * 0.5, y: b.height * 0.7 },
+          { x: b.width * 0.5, y: b.height * 0.7 },
+          { x: -out, y: b.height * 0.7 },
+        ],
+        [secondsToTicks(1.8), secondsToTicks(3), secondsToTicks(2.8)],
+      );
     case "w4_top":
       return centerAndBack({ x: b.width * 0.5, y: -out }, b);
     case "w4_left":
@@ -419,23 +487,65 @@ function pathFor(
     case "w4_bottom":
       return centerAndBack({ x: b.width * 0.5, y: b.height + out }, b);
     case "w5_drop_left":
-      return line({ x: b.width * 0.2, y: -out }, { x: b.width * 0.2, y: b.height + out }, secondsToTicks(6));
+      return line(
+        { x: b.width * 0.2, y: -out },
+        { x: b.width * 0.2, y: b.height + out },
+        secondsToTicks(6),
+      );
     case "w5_drop_center":
-      return line({ x: b.width * 0.5, y: -out }, { x: b.width * 0.5, y: b.height + out }, secondsToTicks(6));
+      return line(
+        { x: b.width * 0.5, y: -out },
+        { x: b.width * 0.5, y: b.height + out },
+        secondsToTicks(6),
+      );
     case "w5_drop_right":
-      return line({ x: b.width * 0.8, y: -out }, { x: b.width * 0.8, y: b.height + out }, secondsToTicks(6));
+      return line(
+        { x: b.width * 0.8, y: -out },
+        { x: b.width * 0.8, y: b.height + out },
+        secondsToTicks(6),
+      );
     case "w5_diag_left":
-      return line({ x: -out, y: b.height + out }, { x: b.width + out, y: -out }, secondsToTicks(7));
+      return line(
+        { x: -out, y: b.height + out },
+        { x: b.width + out, y: -out },
+        secondsToTicks(7),
+      );
     case "w5_diag_right":
-      return line({ x: b.width + out, y: b.height + out }, { x: -out, y: -out }, secondsToTicks(7));
+      return line(
+        { x: b.width + out, y: b.height + out },
+        { x: -out, y: -out },
+        secondsToTicks(7),
+      );
     case "w6_left":
-      return line({ x: -out, y: b.height * 0.5 }, { x: b.width + out, y: b.height * 0.5 }, secondsToTicks(4.5));
+      return line(
+        { x: -out, y: b.height * 0.5 },
+        { x: b.width + out, y: b.height * 0.5 },
+        secondsToTicks(4.5),
+      );
     case "w6_right":
-      return line({ x: b.width + out, y: b.height * 0.5 }, { x: -out, y: b.height * 0.5 }, secondsToTicks(4.5));
+      return line(
+        { x: b.width + out, y: b.height * 0.5 },
+        { x: -out, y: b.height * 0.5 },
+        secondsToTicks(4.5),
+      );
     case "w7_left":
-      return multi([{ x: b.width * 0.35, y: -out }, { x: b.width * 0.35, y: b.height * 0.5 }, { x: b.width * 0.35, y: b.height * 0.5 }], [secondsToTicks(2.5), secondsToTicks(18)]);
+      return multi(
+        [
+          { x: b.width * 0.35, y: -out },
+          { x: b.width * 0.35, y: b.height * 0.5 },
+          { x: b.width * 0.35, y: b.height * 0.5 },
+        ],
+        [secondsToTicks(2.5), secondsToTicks(18)],
+      );
     case "w7_right":
-      return multi([{ x: b.width * 0.65, y: -out }, { x: b.width * 0.65, y: b.height * 0.5 }, { x: b.width * 0.65, y: b.height * 0.5 }], [secondsToTicks(2.5), secondsToTicks(18)]);
+      return multi(
+        [
+          { x: b.width * 0.65, y: -out },
+          { x: b.width * 0.65, y: b.height * 0.5 },
+          { x: b.width * 0.65, y: b.height * 0.5 },
+        ],
+        [secondsToTicks(2.5), secondsToTicks(18)],
+      );
   }
 }
 
@@ -452,7 +562,10 @@ function centerAndBack(start: Point, b: ArenaBounds) {
     x: start.x + (b.width * 0.5 - start.x) * 0.95,
     y: start.y + (b.height * 0.5 - start.y) * 0.95,
   };
-  return multi([start, nearCenter, nearCenter, start], [secondsToTicks(1.7), secondsToTicks(6), secondsToTicks(3.2)]);
+  return multi(
+    [start, nearCenter, nearCenter, start],
+    [secondsToTicks(1.7), secondsToTicks(6), secondsToTicks(3.2)],
+  );
 }
 
 function samplePolyline(
@@ -464,7 +577,11 @@ function samplePolyline(
   for (let i = 0; i < segmentTicks.length; i += 1) {
     const duration = segmentTicks[i] ?? 1;
     if (remaining <= duration) {
-      return lerpPoint(points[i] ?? points[0], points[i + 1] ?? points[i] ?? points[0], ratio(remaining, duration));
+      return lerpPoint(
+        points[i] ?? points[0],
+        points[i + 1] ?? points[i] ?? points[0],
+        ratio(remaining, duration),
+      );
     }
     remaining -= duration;
   }
@@ -472,23 +589,34 @@ function samplePolyline(
 }
 
 function ratio(ticks: number, duration: number): number {
-  return fp.div(fp.fromInt(Math.max(0, Math.min(ticks, duration))), fp.fromInt(duration));
+  return fp.div(
+    fp.fromInt(Math.max(0, Math.min(ticks, duration))),
+    fp.fromInt(duration),
+  );
 }
 
 function lerpPoint(start: Point, end: Point, t: number): Point {
   return {
-    x: fp.toFloat(fp.add(fp.fromFloat(start.x), fp.mul(fp.fromFloat(end.x - start.x), t))),
-    y: fp.toFloat(fp.add(fp.fromFloat(start.y), fp.mul(fp.fromFloat(end.y - start.y), t))),
+    x: fp.toFloat(
+      fp.add(fp.fromFloat(start.x), fp.mul(fp.fromFloat(end.x - start.x), t)),
+    ),
+    y: fp.toFloat(
+      fp.add(fp.fromFloat(start.y), fp.mul(fp.fromFloat(end.y - start.y), t)),
+    ),
   };
 }
 
 function lifetimeFor(variant: TestArena2FairyMovementVariant): number {
   const path = pathFor(variant, DEFAULT_ARENA_BOUNDS);
-  return path.segmentTicks.reduce((sum, ticks) => sum + ticks, 0) + secondsToTicks(0.5);
+  return (
+    path.segmentTicks.reduce((sum, ticks) => sum + ticks, 0) +
+    secondsToTicks(0.5)
+  );
 }
 
 function firstFireAge(variant: TestArena2FairyMovementVariant): number {
-  if (variant === "w3_left" || variant === "w3_right") return secondsToTicks(2.8);
+  if (variant === "w3_left" || variant === "w3_right")
+    return secondsToTicks(2.8);
   if (variant.startsWith("w4_")) return secondsToTicks(1.8);
   if (variant.startsWith("w5_drop")) return secondsToTicks(2.7);
   if (variant.startsWith("w5_diag")) return secondsToTicks(1);
@@ -508,10 +636,25 @@ function normalizeSpecies(value: string): TestArena2FairySpecies {
 
 function normalizeVariant(value: string): TestArena2FairyMovementVariant {
   const variants: readonly TestArena2FairyMovementVariant[] = [
-    "w1_down", "w1_up", "w2_top", "w2_bottom", "w3_left", "w3_right",
-    "w4_top", "w4_left", "w4_right", "w4_bottom", "w5_drop_left",
-    "w5_drop_center", "w5_drop_right", "w5_diag_left", "w5_diag_right",
-    "w6_left", "w6_right", "w7_left", "w7_right",
+    "w1_down",
+    "w1_up",
+    "w2_top",
+    "w2_bottom",
+    "w3_left",
+    "w3_right",
+    "w4_top",
+    "w4_left",
+    "w4_right",
+    "w4_bottom",
+    "w5_drop_left",
+    "w5_drop_center",
+    "w5_drop_right",
+    "w5_diag_left",
+    "w5_diag_right",
+    "w6_left",
+    "w6_right",
+    "w7_left",
+    "w7_right",
   ];
   return variants.includes(value as TestArena2FairyMovementVariant)
     ? (value as TestArena2FairyMovementVariant)

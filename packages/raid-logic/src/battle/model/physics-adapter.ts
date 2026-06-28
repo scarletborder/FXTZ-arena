@@ -20,7 +20,7 @@ import type {
   ProjectileState,
   ShieldState,
 } from "@repo/content";
-import type { NeutralMobState } from "@repo/types";
+import type { MobState } from "@repo/types";
 
 /**
  * Result of a Rapier collision query — maps a projectile to the fighter
@@ -92,7 +92,7 @@ export class BattlePhysics {
     player: FighterState,
     target: FighterState,
     shields: readonly ShieldState[] = [],
-    neutralMobs: readonly NeutralMobState[] = [],
+    neutralMobs: readonly MobState[] = [],
     points: readonly PointState[] = [],
     grazeRadiusMultipliers: Readonly<Record<"Player1" | "Player2", number>> = {
       Player1: 1,
@@ -205,7 +205,7 @@ export class BattlePhysics {
     this.syncGrazeCircle("Player2", target, grazeRadiusMultipliers.Player2);
 
     // -- 3b. Add bodies for current-frame neutral mobs ----------------------
-    const mobMap = new Map<number, NeutralMobState>();
+    const mobMap = new Map<number, MobState>();
     for (const mob of neutralMobs) {
       if (!mob.active) continue;
       const bodyId = `mob:${mob.id}`;
@@ -374,7 +374,7 @@ function resolveCollision(
   idA: string,
   idB: string,
   projectileMap: Map<number, ProjectileState>,
-  mobMap?: Map<number, NeutralMobState>,
+  mobMap?: Map<number, MobState>,
 ): CollisionResult | null {
   const projectileA = parseProjectileCollisionId(idA);
   const projectileB = parseProjectileCollisionId(idB);
@@ -421,10 +421,11 @@ function resolveCollision(
 
   if (otherId.startsWith("mob:")) {
     const mobId = Number(otherId.slice("mob:".length));
-    if (mobMap?.has(mobId)) {
+    const mob = mobMap?.get(mobId);
+    if (mob) {
       return {
         projectileId: projectileNum,
-        victimKey: "Neutral",
+        victimKey: mob.key,
         victimMobId: mobId,
       };
     }

@@ -1,7 +1,7 @@
 import { fp } from "@shaisrc/fixed-point";
 
 import type { FighterState, PointState } from "@repo/content";
-import type { NeutralMobState } from "@repo/types";
+import type { MobState } from "@repo/types";
 import { DEFAULT_ARENA_BOUNDS, type ArenaBounds } from "@repo/types";
 import { fpHypotFp } from "@repo/content";
 import { POINT_COUNT_MAX } from "../../constants";
@@ -29,7 +29,7 @@ interface RewardDropState {
   readonly count?: number;
 }
 
-type NeutralMobStateWithRewardDrops = NeutralMobState & {
+type MobStateWithRewardDrops = MobState & {
   readonly pointRewardDrops?: readonly RewardDropState[];
   readonly moneyRewardDrops?: readonly RewardDropState[];
   readonly powerRewardDrops?: readonly RewardDropState[];
@@ -124,10 +124,13 @@ export class PointManager {
     );
   }
 
-  dropPointFromMob(frame: number, mob: NeutralMobState): void {
-    const rewardMob = mob as NeutralMobStateWithRewardDrops;
+  dropPointFromMob(frame: number, mob: MobState): void {
+    const rewardMob = mob as MobStateWithRewardDrops;
     let dropIndex = 0;
-    for (const drop of rewardDrops(rewardMob.pointRewardDrops, mob.pointRewardSize)) {
+    for (const drop of rewardDrops(
+      rewardMob.pointRewardDrops,
+      mob.pointRewardSize,
+    )) {
       const velocity = pointVelocityFromFrame(
         frame,
         "low",
@@ -144,7 +147,10 @@ export class PointManager {
         }),
       );
     }
-    for (const drop of rewardDrops(rewardMob.moneyRewardDrops, mob.moneyRewardSize)) {
+    for (const drop of rewardDrops(
+      rewardMob.moneyRewardDrops,
+      mob.moneyRewardSize,
+    )) {
       const moneyVelocity = pointVelocityFromFrame(
         frame,
         "low",
@@ -161,7 +167,10 @@ export class PointManager {
         }),
       );
     }
-    for (const drop of rewardDrops(rewardMob.powerRewardDrops, mob.powerRewardSize)) {
+    for (const drop of rewardDrops(
+      rewardMob.powerRewardDrops,
+      mob.powerRewardSize,
+    )) {
       const powerVelocity = pointVelocityFromFrame(
         frame,
         "low",
@@ -239,7 +248,9 @@ function rewardDrops<TSize extends string>(
 }
 
 function dropSeed(mobId: number, dropIndex: number): number {
-  return (Math.imul(mobId, 0x45d9f3b) + Math.imul(dropIndex + 1, 0x119de1f3)) >>> 0;
+  return (
+    (Math.imul(mobId, 0x45d9f3b) + Math.imul(dropIndex + 1, 0x119de1f3)) >>> 0
+  );
 }
 
 export function clampPointCount(pointCount: number): number {

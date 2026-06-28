@@ -1,4 +1,4 @@
-import type { CollaborateExtraState, NeutralMobState } from "@repo/types";
+import type { CollaborateExtraState, MobState } from "@repo/types";
 import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
 
 import { getAbilityCard, getCharacter } from "../content";
@@ -81,7 +81,7 @@ export type ClearRingSnapshot = Omit<ClearRingState, "expireAt"> & {
   readonly expireIn: number;
 };
 
-export type NeutralMobSnapshot = NeutralMobState;
+export type NeutralMobSnapshot = MobState;
 export type PointSnapshot = PointState;
 
 export function createBattleModelSnapshot(params: {
@@ -98,7 +98,7 @@ export function createBattleModelSnapshot(params: {
   readonly nextNeutralMobId: number;
   readonly nextPointId: number;
   readonly nextClearRingId: number;
-  readonly neutralMobs: readonly NeutralMobState[];
+  readonly neutralMobs: readonly MobState[];
   readonly points: readonly PointState[];
   readonly clearRings: readonly ClearRingState[];
   readonly mobSpawner: NeutralMobSpawnerState | undefined;

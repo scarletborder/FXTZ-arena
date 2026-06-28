@@ -1,4 +1,4 @@
-import type { NeutralMobState } from "@repo/types";
+import type { MobState, NeutralMobState } from "@repo/types";
 
 import { secondsToTicks } from "../../seconds-to-ticks";
 import {
@@ -145,8 +145,7 @@ export abstract class WaveMobSpawner<
       shop: {
         ...extra.shop,
         open: false,
-        rarityPulls:
-          nextNode?.kind === "shop" ? nextNode.rarityPulls : {},
+        rarityPulls: nextNode?.kind === "shop" ? nextNode.rarityPulls : {},
         goods: [],
         goodsByPlayerId: { Player1: [], Player2: [], Neutral: [] },
         purchasesByPlayerId: { Player1: [], Player2: [], Neutral: [] },
@@ -249,8 +248,8 @@ export abstract class WaveMobSpawner<
   }
 }
 
-function resolveMobClass(state: NeutralMobState): MobClass {
-  const maybeClass = (state as NeutralMobState & { class?: MobClass }).class;
+function resolveMobClass(state: MobState): MobClass {
+  const maybeClass = (state as MobState & { class?: MobClass }).class;
   if (maybeClass) {
     return maybeClass;
   }

@@ -7,10 +7,13 @@ import type {
 } from "@repo/constants";
 
 export type NeutralMobId = number;
+export type MobId = NeutralMobId;
+export type MobOwner = BattlePlayerId;
 export type NeutralMobBehavior = "move" | "fire" | "switch_form" | "die";
 export type NeutralMobDeathSource = BattlePlayerId | null;
 export type NeutralMobClass = "minion" | "elite" | "boss";
 export type NeutralMobSpellPhase = "non_spell" | "spell_card";
+export type MobKind = "neutral" | "familiar";
 
 export interface NeutralMobSpellCardDefinitionState {
   readonly id: string;
@@ -38,9 +41,10 @@ export interface NeutralMobRewardDropState {
   readonly count?: number;
 }
 
-export interface NeutralMobState {
+export interface MobState {
   readonly id: NeutralMobId;
-  readonly key: "Neutral";
+  readonly key: MobOwner;
+  readonly mobKind?: MobKind;
   readonly kind: string;
   readonly class?: NeutralMobClass;
   readonly displayName?: string;
@@ -67,9 +71,20 @@ export interface NeutralMobState {
   damageTaken?: number;
   active: boolean;
   ageTicks: number;
+  physicalAttack?: boolean;
   /** Bitmask of SFX flags for the renderer. */
   sfxFlags: number;
   spellCard?: NeutralMobSpellCardState;
+}
+
+export interface NeutralMobState extends MobState {
+  readonly key: "Neutral";
+  readonly mobKind?: "neutral";
+}
+
+export interface FamiliarMobState extends MobState {
+  readonly key: Exclude<BattlePlayerId, "Neutral">;
+  readonly mobKind: "familiar";
 }
 
 export interface NeutralMobTargetState {
@@ -77,17 +92,21 @@ export interface NeutralMobTargetState {
   readonly y: number;
 }
 
-export interface NeutralMobActionContext<TBulletParams, TLaserParams> {
+export interface MobActionContext<TBulletParams, TLaserParams> {
   readonly frame: number;
   readonly arenaBounds: ArenaBounds;
+  readonly owner: MobOwner;
   readonly player: NeutralMobTargetState;
   readonly target: NeutralMobTargetState;
   spawnBullet(params: TBulletParams): void;
   spawnLaser(params: TLaserParams): void;
 }
 
-export abstract class NeutralMob<
-  TState extends NeutralMobState = NeutralMobState,
+export type NeutralMobActionContext<TBulletParams, TLaserParams> =
+  MobActionContext<TBulletParams, TLaserParams>;
+
+export abstract class Mob<
+  TState extends MobState = MobState,
   TBulletParams = unknown,
   TLaserParams = unknown,
 > {
@@ -97,16 +116,10 @@ export abstract class NeutralMob<
     return this.state.id;
   }
 
-  abstract move(
-    ctx: NeutralMobActionContext<TBulletParams, TLaserParams>,
-  ): void;
-  abstract fire(
-    ctx: NeutralMobActionContext<TBulletParams, TLaserParams>,
-  ): void;
-  abstract switchForm(
-    ctx: NeutralMobActionContext<TBulletParams, TLaserParams>,
-  ): void;
-  abstract die(ctx: NeutralMobActionContext<TBulletParams, TLaserParams>): void;
+  abstract move(ctx: MobActionContext<TBulletParams, TLaserParams>): void;
+  abstract fire(ctx: MobActionContext<TBulletParams, TLaserParams>): void;
+  abstract switchForm(ctx: MobActionContext<TBulletParams, TLaserParams>): void;
+  abstract die(ctx: MobActionContext<TBulletParams, TLaserParams>): void;
   abstract onProjectileHit(damage: number): "accepted" | "ignored";
   abstract onDeath(source: NeutralMobDeathSource): void;
 
@@ -137,3 +150,15 @@ export abstract class NeutralMob<
     Object.assign(this.state, snapshot);
   }
 }
+
+export abstract class NeutralMob<
+  TState extends NeutralMobState = NeutralMobState,
+  TBulletParams = unknown,
+  TLaserParams = unknown,
+> extends Mob<TState, TBulletParams, TLaserParams> {}
+
+export abstract class FamiliarMob<
+  TState extends FamiliarMobState = FamiliarMobState,
+  TBulletParams = unknown,
+  TLaserParams = unknown,
+> extends Mob<TState, TBulletParams, TLaserParams> {}

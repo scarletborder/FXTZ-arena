@@ -1,7 +1,11 @@
 import { fp } from "@shaisrc/fixed-point";
 
 import { PLAYER_CORE_RADIUS } from "@repo/types";
-import type { BattleInputState, ArenaBounds } from "@repo/types";
+import type {
+  BattleInputState,
+  ArenaBounds,
+  NeutralMobState,
+} from "@repo/types";
 import type {
   CharacterActionContext,
   FighterKey,
@@ -91,7 +95,9 @@ function stepTargetAi(bindings: FighterControllerBindings): void {
     self: fighter,
     opponent: bindings.player,
     projectiles: bindings.projectiles,
-    neutralMobs: bindings.neutralMobManager.states(),
+    neutralMobs: bindings.neutralMobManager
+      .states()
+      .filter((mob): mob is NeutralMobState => mob.key === "Neutral"),
     points: bindings.points,
   });
 

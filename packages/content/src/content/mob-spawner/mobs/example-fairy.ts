@@ -226,7 +226,7 @@ export class ExampleFairy extends NeutralMob<
     targetY: number,
   ): void {
     ctx.spawnBullet({
-      owner: "Neutral",
+      owner: ctx.owner,
       textureKey: "bullet_type_3_offset_6",
       kind: "orb",
       x: this.state.x,

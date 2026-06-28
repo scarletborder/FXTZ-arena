@@ -28,6 +28,7 @@ import type {
   ProjectileSystem,
 } from "./projectile";
 import type { TickerManager } from "./ticker-manager";
+import type { BattleNeutralMob } from "./manager/neutral-mob-manager";
 
 export interface BattleActionContextManagerContext {
   readonly arenaBounds: ArenaBounds;
@@ -91,10 +92,7 @@ export class BattleActionContextManager {
           );
           const projectile = this.context.projectiles[startIndex];
           if (projectile) {
-            this.context.ticker.pauseProjectileTimeline(
-              projectile,
-              pauseTicks,
-            );
+            this.context.ticker.pauseProjectileTimeline(projectile, pauseTicks);
           }
         });
       },
@@ -121,10 +119,7 @@ export class BattleActionContextManager {
           );
           const projectile = this.context.projectiles[startIndex];
           if (projectile) {
-            this.context.ticker.pauseProjectileTimeline(
-              projectile,
-              pauseTicks,
-            );
+            this.context.ticker.pauseProjectileTimeline(projectile, pauseTicks);
           }
         });
       },
@@ -151,10 +146,7 @@ export class BattleActionContextManager {
           );
           const projectile = this.context.projectiles[startIndex];
           if (projectile) {
-            this.context.ticker.pauseProjectileTimeline(
-              projectile,
-              pauseTicks,
-            );
+            this.context.ticker.pauseProjectileTimeline(projectile, pauseTicks);
           }
         });
       },
@@ -192,13 +184,13 @@ export class BattleActionContextManager {
     });
   }
 
-  createNeutralMobActionContext(): NeutralMobActionContext<
-    BulletProjectileParams,
-    LaserProjectileParams
-  > {
+  createNeutralMobActionContext(
+    mob: BattleNeutralMob,
+  ): NeutralMobActionContext<BulletProjectileParams, LaserProjectileParams> {
     return buildNeutralMobActionContext({
       frame: this.context.getFrame(),
       arenaBounds: this.context.arenaBounds,
+      owner: mob.state.key,
       player: {
         x: this.context.getPlayer().x,
         y: this.context.getPlayer().y,

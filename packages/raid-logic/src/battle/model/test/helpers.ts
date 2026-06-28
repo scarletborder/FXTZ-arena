@@ -1,4 +1,8 @@
-import type { BattleInputState, NeutralMobState } from "@repo/types";
+import type {
+  BattleInputState,
+  MobActionContext,
+  NeutralMobState,
+} from "@repo/types";
 import { NeutralMob } from "@repo/types";
 import {
   NeutralMobSpawner,
@@ -215,9 +219,11 @@ export class TestNeutralMob extends NeutralMob<
     this.state.x += 1;
   }
 
-  fire(ctx: { spawnBullet(params: BulletProjectileParams): void }): void {
+  fire(
+    ctx: MobActionContext<BulletProjectileParams, LaserProjectileParams>,
+  ): void {
     ctx.spawnBullet({
-      owner: "Neutral",
+      owner: ctx.owner,
       kind: "orb",
       x: this.state.x,
       y: this.state.y,

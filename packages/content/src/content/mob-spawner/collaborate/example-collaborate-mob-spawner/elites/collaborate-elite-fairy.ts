@@ -169,7 +169,11 @@ export class CollaborateEliteFairy extends NeutralMob<
     if (this.state.ageTicks <= ENTER_TICKS) {
       const t = ratio(this.state.ageTicks, ENTER_TICKS);
       this.state.x = sideX(this.state.side, ctx.arenaBounds);
-      this.state.y = lerp(-HIT_RADIUS, anchorY(this.state.side, ctx.arenaBounds), t);
+      this.state.y = lerp(
+        -HIT_RADIUS,
+        anchorY(this.state.side, ctx.arenaBounds),
+        t,
+      );
       this.state.form = "entering";
       return;
     }
@@ -264,9 +268,8 @@ export class CollaborateEliteFairy extends NeutralMob<
       BattleLaserSpawnParams
     >,
   ): void {
-    const spellId = this.state.spellCard?.spellCards[
-      this.state.spellCard.spellCardIndex
-    ]?.id;
+    const spellId =
+      this.state.spellCard?.spellCards[this.state.spellCard.spellCardIndex]?.id;
     switch (spellId) {
       case "ice-crystal-joke":
         this.fireOffsetRing(ctx, 18, CIRCLE_18_STEP, "medium", 0.2);
@@ -275,7 +278,8 @@ export class CollaborateEliteFairy extends NeutralMob<
       case "frozen-stardust":
         this.fireStar(ctx);
         this.state.nextFireAge =
-          this.state.ageTicks + Math.max(12, secondsToTicks(0.5) - this.state.fireSubphase);
+          this.state.ageTicks +
+          Math.max(12, secondsToTicks(0.5) - this.state.fireSubphase);
         return;
       case "orderly-barrage":
         this.fireOffsetRing(ctx, 24, CIRCLE_24_STEP, "medium", 0.13);
@@ -302,7 +306,13 @@ export class CollaborateEliteFairy extends NeutralMob<
       fp.fromFloat(target.x - this.state.x),
     );
     for (let i = -2; i <= 2; i += 1) {
-      this.spawnBullet(ctx, baseAngle + i * 0.14, "low", "bullet_type_3_offset_12", 12);
+      this.spawnBullet(
+        ctx,
+        baseAngle + i * 0.14,
+        "low",
+        "bullet_type_3_offset_12",
+        12,
+      );
     }
   }
 
@@ -314,7 +324,13 @@ export class CollaborateEliteFairy extends NeutralMob<
   ): void {
     const base = Math.PI / 2 + (this.state.fireSubphase % 2) * 0.22;
     for (const offset of [-0.32, 0, 0.32]) {
-      this.spawnBullet(ctx, base + offset, "medium", "bullet_type_21_offset_1", 8);
+      this.spawnBullet(
+        ctx,
+        base + offset,
+        "medium",
+        "bullet_type_21_offset_1",
+        8,
+      );
     }
   }
 
@@ -392,7 +408,7 @@ export class CollaborateEliteFairy extends NeutralMob<
     size: number,
   ): void {
     ctx.spawnBullet({
-      owner: "Neutral",
+      owner: ctx.owner,
       textureKey,
       kind: "orb",
       x: this.state.x,

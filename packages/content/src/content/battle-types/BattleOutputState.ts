@@ -1,4 +1,4 @@
-import type { NeutralMobState } from "@repo/types";
+import type { MobState } from "@repo/types";
 import type { EffectState } from "./EffectState";
 import type { FighterState } from "./FighterState";
 import type { PointState } from "./PointState";
@@ -21,7 +21,7 @@ export interface BattleOutputState {
   readonly player: FighterState;
   readonly target: FighterState;
   readonly points: readonly PointState[];
-  readonly neutralMobs: readonly NeutralMobState[];
+  readonly neutralMobs: readonly MobState[];
   readonly projectiles: readonly ProjectileState[];
   readonly effects: readonly EffectState[];
   readonly shields: readonly ShieldState[];

@@ -149,7 +149,9 @@ export class CollaborateBossFairy extends NeutralMob<
       return;
     }
 
-    const swayPhase = Math.floor((this.state.ageTicks - ENTER_TICKS) / secondsToTicks(1));
+    const swayPhase = Math.floor(
+      (this.state.ageTicks - ENTER_TICKS) / secondsToTicks(1),
+    );
     const sway = (swayPhase % 5) - 2;
     this.state.x = anchorX + sway * 24;
     this.state.y = anchorY;
@@ -227,7 +229,13 @@ export class CollaborateBossFairy extends NeutralMob<
   ): void {
     const base = Math.PI / 2 - 0.72 + (this.state.fireSubphase % 2) * 0.08;
     for (let i = 0; i < 9; i += 1) {
-      this.spawnBullet(ctx, base + i * 0.18, "low", "bullet_type_3_offset_12", 14);
+      this.spawnBullet(
+        ctx,
+        base + i * 0.18,
+        "low",
+        "bullet_type_3_offset_12",
+        14,
+      );
     }
   }
 
@@ -243,7 +251,13 @@ export class CollaborateBossFairy extends NeutralMob<
       fp.fromFloat(target.x - this.state.x),
     );
     for (const offset of [-0.08, 0, 0.08]) {
-      this.spawnBullet(ctx, angle + offset, "high", "bullet_type_21_offset_1", 7);
+      this.spawnBullet(
+        ctx,
+        angle + offset,
+        "high",
+        "bullet_type_21_offset_1",
+        7,
+      );
     }
   }
 
@@ -253,9 +267,8 @@ export class CollaborateBossFairy extends NeutralMob<
       BattleLaserSpawnParams
     >,
   ): void {
-    const spellId = this.state.spellCard?.spellCards[
-      this.state.spellCard.spellCardIndex
-    ]?.id;
+    const spellId =
+      this.state.spellCard?.spellCards[this.state.spellCard.spellCardIndex]?.id;
     switch (spellId) {
       case "mad-opening":
         this.fireRotatingRings(ctx);
@@ -345,7 +358,7 @@ export class CollaborateBossFairy extends NeutralMob<
     const yOffset = (this.state.fireSubphase % 5) * 34;
     for (const direction of [0, Math.PI] as const) {
       ctx.spawnBullet({
-        owner: "Neutral",
+        owner: ctx.owner,
         textureKey: "bullet_type_3_offset_6",
         kind: "orb",
         x: this.state.x + (direction === 0 ? -220 : 220),
@@ -371,7 +384,7 @@ export class CollaborateBossFairy extends NeutralMob<
     size: number,
   ): void {
     ctx.spawnBullet({
-      owner: "Neutral",
+      owner: ctx.owner,
       textureKey,
       kind: "orb",
       x: this.state.x,

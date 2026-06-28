@@ -7,7 +7,7 @@ import {
   COLLABORATE_MONEY_PICKUP_SCORE_VALUES,
   COLLABORATE_POINT_PICKUP_SCORE_VALUES,
   createDefaultCollaborateExtraState,
-  type NeutralMobState,
+  type MobState,
   type ProjectileCollisionContext,
   type ArenaBounds,
   type CollaborateExtraState,
@@ -36,10 +36,7 @@ import { EffectSystem } from "./effects";
 import type { ClearRingState } from "./entities/clear-ring";
 import { hashBattleModel, hashBattleModelComponents, hashToHex } from "./hash";
 import { BattlePhysics } from "./physics-adapter";
-import {
-  ProjectileSystem,
-  type ProjectileHitTarget,
-} from "./projectile";
+import { ProjectileSystem, type ProjectileHitTarget } from "./projectile";
 import {
   createBattleModelSnapshot,
   cloneCollaborateExtra,
@@ -64,10 +61,7 @@ import {
   resetCollaborateShopActiveCards as resetCollaborateShopActiveCardState,
 } from "./collaborate-shop";
 import { processFighterActions as processFighterControllerActions } from "./controller";
-import {
-  resolveProjectileGraze,
-  resolveProjectileHit,
-} from "./referee";
+import { resolveProjectileGraze, resolveProjectileHit } from "./referee";
 import {
   BattleFramePipeline,
   type BattleFrameContext,
@@ -941,8 +935,7 @@ export class BattleModel {
       rules: this.rules,
       player: this.player,
       target: this.target,
-      addCollaborateScore: (key, value) =>
-        this.addCollaborateScore(key, value),
+      addCollaborateScore: (key, value) => this.addCollaborateScore(key, value),
     });
   }
 
@@ -985,9 +978,25 @@ export class BattleModel {
     this.neutralMobManager.stepMobs({
       timeStopped:
         this.timeStopped() || this.collaborateExtra?.shop.open === true,
-      createActionContext: () =>
-        this.actionContextManager.createNeutralMobActionContext(),
+      player: this.player,
+      target: this.target,
+      rules: this.rules,
+      createActionContext: (mob) =>
+        this.actionContextManager.createNeutralMobActionContext(mob),
       onSpecialMobDefeated: (mob) => this.handleNeutralMobKilled(mob),
+      onPhysicalHit: ({ mob, victim }) => {
+        this.onProjectileHit({
+          projectile: { damage: 1 } as ProjectileState,
+          owner: mob.key,
+          victim: {
+            key: victim.key,
+            x: victim.x,
+            y: victim.y,
+            hitRadius: fighterHitRadius(victim),
+          },
+          damage: 1,
+        });
+      },
     });
   }
 
@@ -1004,12 +1013,12 @@ export class BattleModel {
     });
   }
 
-  private dropPointFromMob(mob: NeutralMobState): void {
+  private dropPointFromMob(mob: MobState): void {
     this.pointManager.dropPointFromMob(this.frame, mob);
   }
 
   private handleNeutralMobKilled(
-    mob: NeutralMobState,
+    mob: MobState,
     source?: FighterKey | null,
   ): void {
     this.dropPointFromMob(mob);
@@ -1155,7 +1164,9 @@ export class BattleModel {
     ];
   }
 
-  private currentEnemyTargetsFor(owner: FighterKey): readonly ProjectileHitTarget[] {
+  private currentEnemyTargetsFor(
+    owner: FighterKey,
+  ): readonly ProjectileHitTarget[] {
     return this.currentHitTargets().filter((target) =>
       this.rules.canProjectileDamageTarget(owner, target.key),
     );

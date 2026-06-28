@@ -1,4 +1,4 @@
-import type { NeutralMob, NeutralMobState } from "@repo/types";
+import type { Mob, MobState, NeutralMobState } from "@repo/types";
 
 import type { FighterState } from "../battle-types";
 import type {
@@ -21,24 +21,25 @@ export interface NeutralMobSpawnerState {
   readonly [key: string]: NeutralMobSpawnerStateValue;
 }
 
-export type BattleNeutralMob = NeutralMob<
-  NeutralMobState,
+export type BattleMob = Mob<
+  MobState,
   BattleBulletSpawnParams,
   BattleLaserSpawnParams
 >;
+export type BattleNeutralMob = BattleMob;
 
 export interface NeutralMobSpawnerContext {
   readonly frame: number;
   readonly arenaBounds: ArenaBounds;
   readonly player: FighterState;
   readonly target: FighterState;
-  readonly neutralMobs: readonly BattleNeutralMob[];
+  readonly neutralMobs: readonly BattleMob[];
   readonly collaborateExtra?: CollaborateExtraState;
   allocateMobId(params?: {
     readonly waveId: number;
     readonly waveMemberIndex: number;
   }): number;
-  spawnMob(mob: BattleNeutralMob): void;
+  spawnMob(mob: BattleMob): void;
   updateCollaborateExtra(
     updater: (state: CollaborateExtraState) => CollaborateExtraState,
   ): void;
@@ -57,7 +58,5 @@ export abstract class NeutralMobSpawner<
   abstract snapshot(): TState;
   abstract restore(snapshot: TState): void;
   abstract reset(): void;
-  abstract createMobFromSnapshot(
-    snapshot: NeutralMobState,
-  ): BattleNeutralMob | undefined;
+  abstract createMobFromSnapshot(snapshot: MobState): BattleMob | undefined;
 }

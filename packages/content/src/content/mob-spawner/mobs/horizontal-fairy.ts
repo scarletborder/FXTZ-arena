@@ -159,7 +159,7 @@ export class HorizontalFairy extends NeutralMob<
 
     for (const angle of angles) {
       ctx.spawnBullet({
-        owner: "Neutral",
+        owner: ctx.owner,
         textureKey: "bullet_type_21_offset_1",
         kind: "orb",
         x: this.state.x,

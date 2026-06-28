@@ -1,12 +1,17 @@
 import type {
-  NeutralMob,
+  Mob,
+  MobState,
   NeutralMobActionContext,
   CollaborateExtraState,
-  NeutralMobState,
 } from "@repo/types";
-import { DEFAULT_ARENA_BOUNDS, type ArenaBounds } from "@repo/types";
+import {
+  DEFAULT_ARENA_BOUNDS,
+  PLAYER_CORE_RADIUS,
+  type ArenaBounds,
+} from "@repo/types";
 import type { FighterKey, FighterState } from "@repo/content";
 import type { NeutralMobSpawner, NeutralMobSpawnerState } from "@repo/content";
+import type { BattleRules } from "../battle-rules";
 
 import type {
   BulletProjectileParams,
@@ -14,8 +19,8 @@ import type {
   ProjectileHitTarget,
 } from "../projectile";
 
-export type BattleNeutralMob = NeutralMob<
-  NeutralMobState,
+export type BattleNeutralMob = Mob<
+  MobState,
   BulletProjectileParams,
   LaserProjectileParams
 >;
@@ -60,7 +65,7 @@ export class NeutralMobManager {
     this.sortNeutralMobs();
   }
 
-  states(): readonly NeutralMobState[] {
+  states(): readonly MobState[] {
     return this.mobs.map((mob) => mob.snapshot());
   }
 
@@ -118,11 +123,17 @@ export class NeutralMobManager {
 
   stepMobs(params: {
     readonly timeStopped: boolean;
-    readonly createActionContext: () => NeutralMobActionContext<
-      BulletProjectileParams,
-      LaserProjectileParams
-    >;
-    readonly onSpecialMobDefeated?: (mob: NeutralMobState) => void;
+    readonly player: FighterState;
+    readonly target: FighterState;
+    readonly rules: BattleRules;
+    readonly createActionContext: (
+      mob: BattleNeutralMob,
+    ) => NeutralMobActionContext<BulletProjectileParams, LaserProjectileParams>;
+    readonly onSpecialMobDefeated?: (mob: MobState) => void;
+    readonly onPhysicalHit?: (params: {
+      readonly mob: MobState;
+      readonly victim: FighterState;
+    }) => void;
   }): void {
     this.sortNeutralMobs();
     if (params.timeStopped) {
@@ -134,7 +145,22 @@ export class NeutralMobManager {
     }
     for (const mob of this.mobs) {
       const wasActive = mob.state.active;
-      mob.step(params.createActionContext());
+      mob.step(params.createActionContext(mob));
+      if (mob.state.active && mob.state.physicalAttack) {
+        for (const fighter of [params.player, params.target]) {
+          if (
+            canMobPhysicallyHit(mob.state, fighter, params.rules) &&
+            circleIntersectsMob(
+              fighter.x,
+              fighter.y,
+              fighterHitRadius(fighter),
+              mob.state,
+            )
+          ) {
+            params.onPhysicalHit?.({ mob: mob.state, victim: fighter });
+          }
+        }
+      }
       if (wasActive && !mob.state.active) {
         mob.onDeath(null);
         if (isSpecialSpellMob(mob.state)) {
@@ -150,7 +176,7 @@ export class NeutralMobManager {
     readonly target: ProjectileHitTarget;
     readonly owner: FighterKey;
     readonly damage: number;
-    readonly onKilled: (mob: NeutralMobState, source: FighterKey) => void;
+    readonly onKilled: (mob: MobState, source: FighterKey) => void;
   }): boolean {
     const mob = this.mobs.find(
       (candidate) => candidate.id === params.target.mobId,
@@ -183,7 +209,7 @@ export class NeutralMobManager {
     this.mobs.length = 0;
   }
 
-  restoreSnapshots(snapshots: readonly NeutralMobState[]): void {
+  restoreSnapshots(snapshots: readonly MobState[]): void {
     const ids = new Set(snapshots.map((snapshot) => snapshot.id));
     this.mobs.splice(
       0,
@@ -212,7 +238,7 @@ export class NeutralMobManager {
 
   restoreNextId(
     nextNeutralMobId: number,
-    snapshots: readonly NeutralMobState[],
+    snapshots: readonly MobState[],
   ): void {
     this.nextNeutralMobId = Math.max(
       nextNeutralMobId,
@@ -237,8 +263,45 @@ function stableNeutralMobId(waveId: number, waveMemberIndex: number): number {
   return normalizedWaveId * 1000 + normalizedMemberIndex + 1;
 }
 
-function isSpecialSpellMob(state: NeutralMobState): boolean {
+function isSpecialSpellMob(state: MobState): boolean {
   return (
     !!state.spellCard && (state.class === "elite" || state.class === "boss")
   );
+}
+
+function canMobPhysicallyHit(
+  mob: MobState,
+  fighter: FighterState,
+  rules: BattleRules,
+): boolean {
+  if (fighter.deadUntil > 0) {
+    return false;
+  }
+  return rules.canProjectileDamageTarget(mob.key, fighter.key);
+}
+
+function fighterHitRadius(fighter: FighterState): number {
+  return PLAYER_CORE_RADIUS * fighter.hitCircleRadiusMultiplier;
+}
+
+function circleIntersectsMob(
+  x: number,
+  y: number,
+  radius: number,
+  mob: MobState,
+): boolean {
+  if (mob.hitWidth !== undefined && mob.hitHeight !== undefined) {
+    const halfWidth = mob.hitWidth / 2;
+    const halfHeight = mob.hitHeight / 2;
+    const closestX = Math.max(
+      mob.x - halfWidth,
+      Math.min(x, mob.x + halfWidth),
+    );
+    const closestY = Math.max(
+      mob.y - halfHeight,
+      Math.min(y, mob.y + halfHeight),
+    );
+    return (x - closestX) ** 2 + (y - closestY) ** 2 <= radius ** 2;
+  }
+  return (mob.x - x) ** 2 + (mob.y - y) ** 2 <= (mob.hitRadius + radius) ** 2;
 }
