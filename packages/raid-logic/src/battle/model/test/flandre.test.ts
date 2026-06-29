@@ -113,4 +113,23 @@ describe("BattleModel Flandre", () => {
     expect(projectile.y - model.player.y).toBeCloseTo(offsetY);
     expect(projectile.angle).toBeCloseTo(projectile.followOwnerAngle!);
   });
+
+  it("spawns familiars with 30 health instead of infinite health", async () => {
+    const model = await createBattleModel("flandre", "reimu");
+
+    model.step(
+      input({
+        bombPressed: true,
+        aimX: model.target.x,
+        aimY: model.target.y,
+      }),
+    );
+
+    const familiar = model.neutralMobManager.mobs.find(
+      (mob) => mob.state.kind === "flandre_familiar",
+    );
+
+    expect(familiar?.state.MaxHealth).toBe(30);
+    expect(familiar?.state.CurrentHealth).toBe(30);
+  });
 });

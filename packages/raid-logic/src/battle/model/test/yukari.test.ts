@@ -175,6 +175,24 @@ describe("BattleModel Yukari", () => {
     ).toBe(true);
   });
 
+  it("spawns a reduced but evenly distributed boundary bomb volley", async () => {
+    const model = await createBattleModel("yukari", "reimu");
+
+    model.step(step({ bombPressed: true, aimX: 640, aimY: 300 }));
+
+    const bombBullets = model.projectiles.filter(
+      (projectile) =>
+        projectile.sourceCharacterId === "yukari" &&
+        projectile.damage === 5 &&
+        projectile.kind === "orb",
+    );
+
+    expect(bombBullets).toHaveLength(24);
+    expect(
+      bombBullets.every((projectile) => projectile.visibleFrom > model.frame),
+    ).toBe(true);
+  });
+
   it("lets Ran deal physical frame damage and enter roll state on neutral collision", async () => {
     const spawner = new OneMobSpawner(190, 280);
     const model = new BattleModel(

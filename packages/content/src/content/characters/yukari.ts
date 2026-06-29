@@ -55,8 +55,7 @@ const RAN_DIRECTION_ALIGN_THRESHOLD = 0.05; // radians
 // Bomb — 弹幕结界
 const YUKARI_BOMB_WARNING_TICKS = secondsToTicks(0.8);
 const YUKARI_BOMB_HEX_SIDE_LENGTH = 328;
-const YUKARI_BOMB_BULLET_SPACING = 28;
-const YUKARI_BOMB_BULLETS_PER_HALF_SIDE = 6; // 6 per direction, 12 per edge
+const YUKARI_BOMB_BULLETS_PER_HALF_SIDE = 2; // 2 per direction, 4 per edge
 const YUKARI_BOMB_BULLET_SIZE = 12;
 const YUKARI_BOMB_DAMAGE = 5;
 const YUKARI_BOMB_PAUSE_TICKS = secondsToTicks(1);
@@ -347,6 +346,9 @@ export class YukariBattleCharacter extends BattleCharacter {
       fp.fromFloat(to.y - midY),
       fp.fromFloat(to.x - midX),
     );
+    const halfEdgeLength = Math.hypot(from.x - midX, from.y - midY);
+    const bulletSpacing =
+      halfEdgeLength / (YUKARI_BOMB_BULLETS_PER_HALF_SIDE + 1);
 
     const visibleFrom = ctx.frame + YUKARI_BOMB_WARNING_TICKS;
     const startMovingAt = visibleFrom + YUKARI_BOMB_PAUSE_TICKS;
@@ -363,7 +365,7 @@ export class YukariBattleCharacter extends BattleCharacter {
       const fpSinDir = fp.sin(fpDir);
 
       for (let k = 1; k <= YUKARI_BOMB_BULLETS_PER_HALF_SIDE; k += 1) {
-        const fpDist = fp.fromFloat(k * YUKARI_BOMB_BULLET_SPACING);
+        const fpDist = fp.fromFloat(k * bulletSpacing);
         const bx = midX + fp.toFloat(fp.mul(fpCosDir, fpDist));
         const by = midY + fp.toFloat(fp.mul(fpSinDir, fpDist));
 

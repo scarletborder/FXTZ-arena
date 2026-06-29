@@ -40,7 +40,7 @@ export const FLANDRE_NORMAL_TEXTURE_KEY = "effect_flandre_laevatein";
 const BOMB_CLEAR_MULTIPLIER = 24;
 const BOMB_CLEAR_DURATION = secondsToTicks(1);
 const FAMILIAR_KIND = "flandre_familiar";
-const FAMILIAR_HEALTH = Number.MAX_SAFE_INTEGER;
+const FAMILIAR_HEALTH = 30;
 const FAMILIAR_HIT_RADIUS = 16;
 const FAMILIAR_DISPLAY_SIZE = 87; // COMBAT_DISPLAY_SIZE=104, 104/1.2≈87
 const FAMILIAR_COLLISION_DAMAGE = 1;
