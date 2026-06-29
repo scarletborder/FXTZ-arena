@@ -210,6 +210,14 @@ function projectileCue(
     };
   }
 
+  if (characterId === "flandre") {
+    return {
+      key: "se_slash",
+      groupKey: `fire:${projectile.owner}:flandre`,
+      holdMs: 700,
+    };
+  }
+
   if (characterId === "youmu" || characterId === "cirno" || characterId === "sakuya" || characterId === "kaguya") {
     return {
       key: "se_tan00",

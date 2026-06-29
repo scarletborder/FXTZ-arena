@@ -48,6 +48,9 @@ export interface ProjectileState {
   retargetAimOwner: FighterKey | undefined;
   followAimOwner: FighterKey | undefined;
   followWhileActiveCharacterId: CharacterDefinition["id"] | undefined;
+  followOwner: FighterKey | undefined;
+  followOwnerDistance: number | undefined;
+  followOwnerAngle: number | undefined;
   rollUntil: number;
   rollStartedAt: number;
   widthGrowthPerTick: number;

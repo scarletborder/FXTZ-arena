@@ -14,8 +14,10 @@ import "./youmu";
 import "./ellen";
 export * from "./kaguya";
 export * from "./reisen";
+export * from "./flandre";
 import "./yuyuko";
 import "./yukari";
+import "./flandre";
 
 import type { BattleCharacter } from "./base";
 import { characterLibrary } from "./character-library";

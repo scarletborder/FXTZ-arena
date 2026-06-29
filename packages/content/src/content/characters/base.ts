@@ -48,6 +48,9 @@ export interface BattleBulletSpawnParams {
   readonly retargetAimOwner?: FighterKey;
   readonly followAimOwner?: FighterKey;
   readonly followWhileActiveCharacterId?: CharacterDefinition["id"];
+  readonly followOwner?: FighterKey;
+  readonly followOwnerDistance?: number;
+  readonly followOwnerAngle?: number;
   readonly rollUntil?: number;
   readonly rollStartedAt?: number;
   readonly frame?: number;
@@ -97,6 +100,9 @@ export interface BattleLaserSpawnParams {
   readonly pausedUntil?: number;
   readonly damageFrom?: number;
   readonly damageUntil?: number;
+  readonly followOwner?: FighterKey;
+  readonly followOwnerDistance?: number;
+  readonly followOwnerAngle?: number;
   readonly frame?: number;
   readonly couldClear?: boolean;
   readonly clearsProjectiles?: boolean;

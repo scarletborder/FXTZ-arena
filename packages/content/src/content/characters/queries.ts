@@ -1,9 +1,8 @@
-import type { CharacterId } from "../ids";
 import { characterLibrary } from "./character-library";
 import type { CharacterDefinition } from "./types";
 
 export function getCharacterDefinition(
-  id: CharacterId,
+  id: CharacterDefinition["id"],
 ): CharacterDefinition | undefined {
   if (characterLibrary.has(id)) {
     return characterLibrary.create(id).definition;

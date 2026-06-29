@@ -105,6 +105,14 @@ export class ProjectileView {
           frame,
           rollbackBlend,
         );
+      } else if (spec.kind === "flandreBlade") {
+        this.visuals.renderFlandreBlade(
+          projectile,
+          display,
+          localFighterKey,
+          battleMode,
+          rollbackBlend,
+        );
       } else {
         this.visuals.renderImage(
           projectile,

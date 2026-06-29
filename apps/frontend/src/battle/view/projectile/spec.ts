@@ -39,6 +39,9 @@ function textureKeyProjectileFrame(
   frames: ReadonlyMap<string, BulletFrame>,
 ): ProjectileSpec | undefined {
   if (!projectile.textureKey) return undefined;
+  if (projectile.textureKey === "effect_flandre_laevatein") {
+    return { kind: "flandreBlade" };
+  }
   if (projectile.textureKey === "character_ran_companion") {
     return { kind: "ranCompanion" };
   }
@@ -115,11 +118,22 @@ function mappedProjectileFrame(
       return youmuProjectileFrame(projectile, frames);
     case "kaguya":
       return kaguyaProjectileFrame(projectile, frames);
+    case "flandre":
+      return flandreProjectileFrame(projectile);
     case "yuyuko":
       return yuyukoProjectileFrame(projectile, frames);
     default:
       return undefined;
   }
+}
+
+function flandreProjectileFrame(
+  projectile: ProjectileState,
+): ProjectileSpec | undefined {
+  if (projectile.textureKey !== "effect_flandre_laevatein") {
+    return undefined;
+  }
+  return { kind: "flandreBlade" };
 }
 
 function reimuProjectileFrame(

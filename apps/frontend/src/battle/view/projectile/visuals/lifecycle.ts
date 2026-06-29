@@ -5,6 +5,8 @@ export function destroyVisual(visual: ProjectileVisual): void {
     visual.image.destroy();
   } else if (visual.kind === "sprite") {
     visual.sprite.destroy();
+  } else if (visual.kind === "graphics") {
+    visual.graphics.destroy();
   } else {
     visual.container.destroy(true);
   }

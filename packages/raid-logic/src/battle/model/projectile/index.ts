@@ -190,10 +190,10 @@ export class ProjectileSystem {
       projectile.previousRenderHeight = projectile.renderHeight;
       const paused = params.frame < projectile.pausedUntil;
       if (!paused) {
+        syncOwnerBoundProjectile(projectile, params);
         if (projectile.kind === "laser" || projectile.kind === "spark") {
           stepLaserProjectile(projectile);
         } else {
-          syncOwnerBoundProjectile(projectile, params);
           stepBulletProjectile(
             projectile,
             params.frame,
@@ -389,6 +389,7 @@ function syncOwnerBoundProjectile(
     readonly rules?: BattleRules;
   },
 ): void {
+  syncOwnerFollowingProjectile(projectile, params);
   syncAimFollowingProjectile(projectile, params);
 
   if (projectile.polarFollowOwner !== undefined) {
@@ -424,6 +425,34 @@ function syncOwnerBoundProjectile(
     // deterministic once the retarget moment has passed.
     projectile.retargetAimOwner = undefined;
   }
+}
+
+function syncOwnerFollowingProjectile(
+  projectile: ProjectileState,
+  params: {
+    readonly player: FighterState;
+    readonly target: FighterState;
+  },
+): void {
+  if (
+    projectile.followOwner === undefined ||
+    projectile.followOwnerDistance === undefined ||
+    projectile.followOwnerAngle === undefined
+  ) {
+    return;
+  }
+
+  const owner =
+    projectile.followOwner === "Player1" ? params.player : params.target;
+  const fpAngle = fp.fromFloat(projectile.followOwnerAngle);
+  const fpDistance = fp.fromFloat(projectile.followOwnerDistance);
+  projectile.x =
+    owner.x + fp.toFloat(fp.mul(fp.cos(fpAngle), fpDistance));
+  projectile.y =
+    owner.y + fp.toFloat(fp.mul(fp.sin(fpAngle), fpDistance));
+  projectile.vx = 0;
+  projectile.vy = 0;
+  projectile.angle = projectile.followOwnerAngle;
 }
 
 function syncAimFollowingProjectile(

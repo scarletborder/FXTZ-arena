@@ -202,6 +202,47 @@ export class ProjectileVisualStore {
     sprite.setVisible(true);
   }
 
+  renderFlandreBlade(
+    projectile: ProjectileState,
+    display: ProjectileDisplay,
+    localFighterKey: FighterKey,
+    battleMode: BattleRoomMode,
+    rollbackBlend = 1,
+  ): void {
+    const visual = this.ensureGraphicsVisual(projectile.id);
+    const graphics = visual.graphics;
+    graphics.clear();
+    graphics.setPosition(
+      smoothValue(graphics.x, display.x, rollbackBlend),
+      smoothValue(graphics.y, display.y, rollbackBlend),
+    );
+    graphics.setRotation(projectile.angle);
+    graphics.setAlpha(
+      smoothValue(
+        graphics.alpha,
+        projectileAlpha(projectile, localFighterKey, battleMode),
+        rollbackBlend,
+      ),
+    );
+    graphics.setVisible(true);
+
+    const halfLength = display.width / 2;
+    const halfHeight = display.height / 2;
+    const glowHeight = Math.max(halfHeight + 6, halfHeight * 1.5);
+
+    graphics.fillStyle(0xffd4d4, 0.35);
+    graphics.fillRoundedRect(-halfLength, -glowHeight, display.width, glowHeight * 2, glowHeight);
+
+    graphics.fillStyle(0xff4d5f, 0.85);
+    graphics.fillRoundedRect(-halfLength, -halfHeight - 2, display.width, display.height + 4, halfHeight + 2);
+
+    graphics.fillStyle(0x0b0909, 1);
+    graphics.fillRoundedRect(-halfLength + 2, -halfHeight + 2, Math.max(4, display.width - 4), Math.max(4, display.height - 4), Math.max(2, halfHeight - 1));
+
+    graphics.lineStyle(2, 0xffffff, 0.8);
+    graphics.strokeRoundedRect(-halfLength + 0.5, -halfHeight + 0.5, display.width - 1, display.height - 1, Math.max(2, halfHeight - 1));
+  }
+
   renderYoumuSlashArcs(
     groups: readonly YoumuSlashArcGroup[],
     rollbackBlend = 1,
@@ -306,6 +347,22 @@ export class ProjectileVisualStore {
     }
     const container = this.scene.add.container(x, y).setDepth(Depth.Projectile);
     const visual = { kind: "laser" as const, container };
+    this.visuals.set(id, visual);
+    return visual;
+  }
+
+  private ensureGraphicsVisual(
+    id: number,
+  ): Extract<ProjectileVisual, { kind: "graphics" }> {
+    const existing = this.visuals.get(id);
+    if (existing?.kind === "graphics") {
+      return existing;
+    }
+    if (existing) {
+      destroyVisual(existing);
+    }
+    const graphics = this.scene.add.graphics().setDepth(Depth.Projectile + 0.05);
+    const visual = { kind: "graphics" as const, graphics };
     this.visuals.set(id, visual);
     return visual;
   }

@@ -46,6 +46,9 @@ export function createLaserProjectile(params: {
   readonly pausedUntil?: number;
   readonly damageFrom?: number;
   readonly damageUntil?: number;
+  readonly followOwner?: FighterKey;
+  readonly followOwnerDistance?: number;
+  readonly followOwnerAngle?: number;
   readonly couldClear?: boolean;
   readonly clearsProjectiles?: boolean;
   readonly piercesTargets?: boolean;
@@ -117,6 +120,9 @@ export function createLaserProjectile(params: {
     retargetAimOwner: undefined,
     followAimOwner: undefined,
     followWhileActiveCharacterId: undefined,
+    followOwner: params.followOwner,
+    followOwnerDistance: params.followOwnerDistance,
+    followOwnerAngle: params.followOwnerAngle,
     rollUntil: 0,
     rollStartedAt: 0,
     widthGrowthPerTick: params.lengthGrowthPerTick ?? 0,

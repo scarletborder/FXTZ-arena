@@ -50,6 +50,9 @@ export type ProjectileSpec =
       readonly kind: "ranCompanion";
     }
   | {
+      readonly kind: "flandreBlade";
+    }
+  | {
       readonly kind: "fallback";
       readonly texture: string;
       readonly tint: number;
@@ -67,6 +70,10 @@ export type ProjectileVisual =
   | {
       readonly kind: "laser";
       readonly container: Phaser.GameObjects.Container;
+    }
+  | {
+      readonly kind: "graphics";
+      readonly graphics: Phaser.GameObjects.Graphics;
     };
 
 export interface ProjectileFighters {

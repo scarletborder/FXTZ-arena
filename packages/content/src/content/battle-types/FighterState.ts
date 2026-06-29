@@ -89,6 +89,8 @@ export interface YuyukoExtraFighterState {}
 
 export interface YukariExtraFighterState {}
 
+export interface FlandreExtraFighterState {}
+
 export interface FighterExtraState
   extends ReimuExtraFighterState,
     MarisaExtraFighterState,
@@ -99,7 +101,8 @@ export interface FighterExtraState
     ReisenExtraFighterState,
     YoumuExtraFighterState,
     YuyukoExtraFighterState,
-    YukariExtraFighterState {}
+    YukariExtraFighterState,
+    FlandreExtraFighterState {}
 
 export interface FighterExtensionState {
   invulnerableUntil: number;
