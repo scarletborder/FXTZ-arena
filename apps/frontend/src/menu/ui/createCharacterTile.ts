@@ -3,7 +3,7 @@ import Phaser from "phaser";
 import type { CharacterDefinition } from "@repo/content";
 
 import type { CharacterTileControl } from "../shared";
-import { roleLabel } from "../shared";
+import { characterName, roleLabel } from "../shared";
 
 import { createEntryTile } from "./entryTile";
 import { drawCharacterPreviewIcon } from "./drawCharacterIcon";
@@ -19,7 +19,7 @@ export function createCharacterTile(
   return createEntryTile(scene, x, y, {
     width: 112,
     height: 152,
-    title: character.name,
+    title: characterName(character),
     subtitle: `cost${character.cost}`,
     badge: roleLabel(character.roleClass),
     selected,

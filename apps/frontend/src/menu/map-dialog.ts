@@ -4,7 +4,7 @@ import { t } from "@repo/i18n";
 import type { MapId } from "@repo/types";
 
 import { createFightButton, drawAngledPanel } from "./ui";
-import type { CpuLoadoutPresetId } from "./shared";
+import { contentName, type CpuLoadoutPresetId } from "./shared";
 
 interface CpuLoadoutOption {
   readonly id: CpuLoadoutPresetId;
@@ -28,7 +28,10 @@ export function showMapDialog(
   } = {},
 ): void {
   currentContainer?.destroy();
-  const maps = getAvailableCombatMaps();
+  const maps = getAvailableCombatMaps().map((map) => ({
+    id: map.id,
+    name: contentName(map),
+  }));
   let selectedMapId: MapId = maps[0]?.id ?? "hakurei_shrine";
   const cpuLoadouts = cpuLoadoutOptions();
   let selectedCpuLoadoutId: CpuLoadoutPresetId = cpuLoadouts[0]!.id;

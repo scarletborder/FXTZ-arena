@@ -1,5 +1,4 @@
 import { DEFAULT_BOMBS } from "@repo/constants";
-import { t } from "@repo/i18n";
 import type { AbilityCardDefinition } from "./types";
 
 import type { FighterState } from "../battle-types";
@@ -8,12 +7,12 @@ import { Vanilla } from "../decorators";
 
 export class EmberBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "ember";
-  readonly name = t("content.ability_cards.ember.name");
+  readonly name = "content.ability_cards.ember.name";
   readonly cost = 2;
   readonly kind = "passive" as AbilityCardDefinition["kind"];
   readonly useLimit: AbilityCardDefinition["useLimit"] = "infinite";
   readonly cooldownTicks = 0;
-  readonly description = t("content.ability_cards.ember.description");
+  readonly description = "content.ability_cards.ember.description";
   readonly gallery: AbilityCardDefinition["gallery"] = {
     iconAsset: "assets/ability-cards/ember/icon.png",
   };

@@ -26,6 +26,7 @@ import {
   replayFileToJson,
 } from "./storage";
 import { validateReplayJson } from "./validation";
+import { cardName, characterName, contentName } from "../menu/shared";
 
 interface DialogState {
   readonly layer: Phaser.GameObjects.Container;
@@ -372,8 +373,8 @@ export class ReplayPlaybackScene extends Phaser.Scene {
 
     const priDef = getCharacterDefinition(loadout.primaryCharacterId);
     const altDef = getCharacterDefinition(loadout.alternateCharacterId);
-    const priName = priDef?.name ?? loadout.primaryCharacterId;
-    const altName = altDef?.name ?? loadout.alternateCharacterId;
+    const priName = priDef ? characterName(priDef) : loadout.primaryCharacterId;
+    const altName = altDef ? characterName(altDef) : loadout.alternateCharacterId;
 
     this.addDialogText(layer, x, y, `${t("replay.character", { name: `${priName} / ${altName}` })}`, "#d7e3ef", 14);
     y += lineH;
@@ -382,7 +383,7 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     if (cardIds.length > 0) {
       const cardNames = cardIds.map((cid) => {
         const def = getAbilityCardDefinition(cid);
-        return def?.name ?? cid;
+        return def ? cardName(def) : cid;
       });
       const cardStr = cardNames.join(", ");
       this.addDialogText(layer, x, y, `${t("replay.card", { name: cardStr })}`, "#b7c7d8", 13);
@@ -495,7 +496,10 @@ export class ReplayPlaybackScene extends Phaser.Scene {
       infoContainer.add(titleText);
 
       // Info line: duration + map
-      const mapName = battle.mapId ? getCombatMapDefinition(battle.mapId as import("@repo/types").MapId)?.name ?? battle.mapId : undefined;
+      const mapDefinition = battle.mapId
+        ? getCombatMapDefinition(battle.mapId as import("@repo/types").MapId)
+        : undefined;
+      const mapName = mapDefinition ? contentName(mapDefinition) : battle.mapId;
       const mapStr = mapName ? `  |  ${t("replay.map.name", { name: mapName })}` : "";
       const infoLine = this.add.text(x + 12, y + 30,
         `${t("replay.duration", { seconds: totalSecs })}${mapStr}`,
@@ -524,13 +528,13 @@ export class ReplayPlaybackScene extends Phaser.Scene {
 
       const priCharDef = getCharacterDefinition(lo.player.primaryCharacterId);
       const altCharDef = getCharacterDefinition(lo.player.alternateCharacterId);
-      const priName = priCharDef?.name ?? lo.player.primaryCharacterId;
-      const altName = altCharDef?.name ?? lo.player.alternateCharacterId;
+      const priName = priCharDef ? characterName(priCharDef) : lo.player.primaryCharacterId;
+      const altName = altCharDef ? characterName(altCharDef) : lo.player.alternateCharacterId;
 
       const oppPriDef = getCharacterDefinition(lo.target.primaryCharacterId);
       const oppAltDef = getCharacterDefinition(lo.target.alternateCharacterId);
-      const oppPriName = oppPriDef?.name ?? lo.target.primaryCharacterId;
-      const oppAltName = oppAltDef?.name ?? lo.target.alternateCharacterId;
+      const oppPriName = oppPriDef ? characterName(oppPriDef) : lo.target.primaryCharacterId;
+      const oppAltName = oppAltDef ? characterName(oppAltDef) : lo.target.alternateCharacterId;
 
       // Player
       const playerLoadoutLabel = this.add.text(x + 12, ly + 6,
@@ -540,7 +544,7 @@ export class ReplayPlaybackScene extends Phaser.Scene {
 
       const playerCards = (lo.player.cardIds ?? []).map((cid) => {
         const def = getAbilityCardDefinition(cid);
-        return def?.name ?? cid;
+        return def ? cardName(def) : cid;
       });
       if (playerCards.length > 0) {
         const cardText = this.add.text(x + 12, ly + 26,
@@ -557,7 +561,7 @@ export class ReplayPlaybackScene extends Phaser.Scene {
 
       const oppCards = (lo.target.cardIds ?? []).map((cid) => {
         const def = getAbilityCardDefinition(cid);
-        return def?.name ?? cid;
+        return def ? cardName(def) : cid;
       });
       if (oppCards.length > 0) {
         const cardText = this.add.text(x + 12, ly + 64,

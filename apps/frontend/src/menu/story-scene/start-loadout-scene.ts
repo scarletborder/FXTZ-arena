@@ -7,6 +7,7 @@ import { queueAllStoryJson } from "../../story/assets";
 import { createInitialStoryState } from "../../story/state";
 import type { StoryId, StoryProgressData } from "../../story/types";
 import {
+  characterName,
   getCharacterById,
   type SceneKey,
 } from "../shared";
@@ -139,7 +140,7 @@ export class StoryStartLoadoutScene extends Phaser.Scene {
           .text(
             110,
             24,
-            getCharacterById(id).name,
+            characterName(getCharacterById(id)),
             bodyStyle(isSelected ? "#ffffff" : "#b7c7d8", isSelected ? 22 : 18),
           )
           .setOrigin(0.5),

@@ -23,6 +23,10 @@ import {
   bodyStyle,
 } from "./ui";
 import {
+  cardDescription,
+  cardName,
+  characterDescription,
+  characterName,
   connectionManager,
   getCardById,
   getCharacterById,
@@ -647,9 +651,9 @@ export class SelectScene extends Phaser.Scene {
 
   private showCharacterTip(character: CharacterDefinition): void {
     this.showTip({
-      title: character.name,
+      title: characterName(character),
       meta: `${roleLabel(character.roleClass)}  cost${character.cost}`,
-      description: character.description,
+      description: characterDescription(character),
       detailLines: [
         `${t("select.ammo")}: ${character.ammoCapacity}`,
       ],
@@ -664,9 +668,9 @@ export class SelectScene extends Phaser.Scene {
   private showCardTip(card: AbilityCardDefinition): void {
     const cooldown = card.cooldownTicks === 0 ? t("codex.none") : t("codex.seconds", { seconds: (card.cooldownTicks / 60).toFixed(1) });
     this.showTip({
-      title: card.name,
+      title: cardName(card),
       meta: `${card.kind === "active" ? t("codex.active_use") : t("select.passive")}  cost${card.cost}`,
-      description: card.description,
+      description: cardDescription(card),
       detailLines: [
         `${t("select.uses")}: ${card.useLimit === "infinite" ? t("codex.infinite") : card.useLimit}`,
         `${t("select.cooldown")}: ${cooldown}`,

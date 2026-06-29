@@ -2,7 +2,6 @@ import { bulletSpeedRankToPixelsPerTick } from "@repo/types";
 import { HIT_CIRCLE_DIAMETER } from "@repo/constants";
 import { fp } from "@shaisrc/fixed-point";
 import { fpAtan2 } from "../fp";
-import { t } from "@repo/i18n";
 
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 
@@ -59,7 +58,7 @@ const EQUILATERAL_CIRCUMRADIUS_DIVISOR = Math.sqrt(3);
 
 export class KaguyaBattleCharacter extends BattleCharacter {
   readonly id = "kaguya" as CharacterDefinition["id"];
-  readonly name = t("content.characters.kaguya.name");
+  readonly name = "content.characters.kaguya.name";
   readonly cost = KAGUYA_COST;
   readonly roleClass = "scout" as CharacterDefinition["roleClass"];
   readonly moveSpeed = "medium" as CharacterDefinition["moveSpeed"];
@@ -71,7 +70,7 @@ export class KaguyaBattleCharacter extends BattleCharacter {
   readonly reloadCommitPolicy =
     "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = "high" as CharacterDefinition["bulletSpeed"];
-  readonly description = t("content.characters.kaguya.description");
+  readonly description = "content.characters.kaguya.description";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/kaguya/portrait.png",
     attackPreviewAsset: "assets/characters/kaguya/preview.png",

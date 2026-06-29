@@ -6,7 +6,7 @@ import type { BattleRoomMode, MapId, PlayerId, RoomSummary, ServerMessage } from
 
 import { createCheckbox, createFightButton, createTextField, drawAngledPanel, drawFightingBackdrop } from "../ui";
 import { createMapDropdown } from "../map-dialog";
-import { connectionManager, type SceneKey, type SelectionData, type TextFieldControl } from "../shared";
+import { connectionManager, contentName, type SceneKey, type SelectionData, type TextFieldControl } from "../shared";
 import { settingsRepository } from "../../store/settings";
 
 const PAGE_SIZE = 12;
@@ -206,7 +206,11 @@ export class RoomListScene extends Phaser.Scene {
     let roomName = Array.from(t("battle_start.default_room_name", { name: settingsRepository.get().username })).slice(0, MAX_ROOM_NAME_LENGTH).join("");
     let roomPassword = "";
     let allowSpectators = this.battleMode === "versus";
-    const maps = this.battleMode === "collaborate" ? getAvailableCollaborateMaps() : getAvailableVersusMaps();
+    const maps = (this.battleMode === "collaborate" ? getAvailableCollaborateMaps() : getAvailableVersusMaps())
+      .map((map) => ({
+        id: map.id,
+        name: contentName(map),
+      }));
     let selectedMapId: MapId = maps[0]?.id ?? (this.battleMode === "collaborate" ? "collaborate_test_arena" : "hakurei_shrine");
     c.add(this.add.text(cx - 140, py + 78, t("battle_start.room_name"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "16px", color: "#f6f1e6" }));
     const nameField = createTextField(this, cx - 140, py + 108, 280, {

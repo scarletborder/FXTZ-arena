@@ -6,7 +6,7 @@ import type { AbilityCardId, CharacterId, ServerMessage } from "@repo/types";
 import { loadPortraitAssets, queueBattleAssets } from "../battle/utils/assets";
 import type { FighterLoadout } from "../battle/loadout";
 import { P2pConnection, type PeerConnection, type P2pStatus } from "../network/p2p";
-import { connectionManager, getCardById, getCharacterById, type LoadingData, type SceneKey } from "./shared";
+import { cardName, connectionManager, getCardById, getCharacterById, type LoadingData, type SceneKey } from "./shared";
 import { settingsRepository } from "../store/settings";
 import { createFittedImage } from "../utils/image-fit";
 import { abilityCardIconTextureKey } from "../ability-card-assets";
@@ -538,7 +538,7 @@ export class LoadingScene extends Phaser.Scene {
         objects.push(preview);
       }
 
-      const label = this.add.text(cx + cardWidth / 2, cy + cardHeight - 11, compactName(card.name, 4), {
+      const label = this.add.text(cx + cardWidth / 2, cy + cardHeight - 11, compactName(cardName(card), 4), {
         fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
         fontSize: "10px",
         fontStyle: "700",

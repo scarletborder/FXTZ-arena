@@ -1,5 +1,4 @@
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
-import { t } from "@repo/i18n";
 
 import type { FighterKey, FighterState } from "../battle-types";
 import type { BattleHitContext } from "../ability-cards/base";
@@ -73,7 +72,7 @@ type PlayerFighterKey = Exclude<FighterKey, "Neutral">;
 
 export class YukariBattleCharacter extends BattleCharacter {
   readonly id = "yukari" as CharacterDefinition["id"];
-  readonly name = t("content.characters.yukari.name");
+  readonly name = "content.characters.yukari.name";
   readonly cost = 5;
   readonly roleClass = "sniper" as CharacterDefinition["roleClass"];
   readonly moveSpeed = "low" as CharacterDefinition["moveSpeed"];
@@ -85,7 +84,7 @@ export class YukariBattleCharacter extends BattleCharacter {
   readonly reloadCommitPolicy =
     "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = NORMAL_BULLET_SPEED;
-  readonly description = t("content.characters.yukari.description");
+  readonly description = "content.characters.yukari.description";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/yukari/portrait.png",
     attackPreviewAsset: "assets/characters/yukari/preview.png",

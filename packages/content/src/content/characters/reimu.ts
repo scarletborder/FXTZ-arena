@@ -1,5 +1,4 @@
 import { fp } from "@shaisrc/fixed-point";
-import { t } from "@repo/i18n";
 
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 
@@ -38,10 +37,10 @@ const BOMB_ORB_DAMAGE = 95;
 
 export class ReimuBattleCharacter extends BattleCharacter {
   readonly id = "reimu" as CharacterDefinition["id"];
-  readonly name = t("content.characters.reimu.name");
+  readonly name = "content.characters.reimu.name";
   readonly cost = 4;
   readonly roleClass = "suppress" as CharacterDefinition["roleClass"];
-  readonly description = t("content.characters.reimu.description");
+  readonly description = "content.characters.reimu.description";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/reimu/portrait.png",
     attackPreviewAsset: "assets/characters/reimu/preview.png",

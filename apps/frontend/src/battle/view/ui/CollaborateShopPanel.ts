@@ -13,6 +13,7 @@ import { abilityCardIconTextureKey } from "../../../ability-card-assets";
 import { Depth } from "../../../utils/depth";
 import { settingsRepository } from "../../../store/settings";
 import type { CanonicalFighterKey } from "../../../network/combat/types";
+import { cardDescription, cardName } from "../../../menu/shared";
 
 interface ShopPanelCallbacks {
   readonly onPurchase: (itemId: string) => void;
@@ -588,7 +589,7 @@ export class CollaborateShopPanel {
         selected ? 1 : active ? 0.95 : 0.75,
       );
       visual.icon.setTexture(abilityCardIconTextureKey(card.id)).setVisible(true);
-      visual.name.setText(card.name);
+      visual.name.setText(cardName(card));
       visual.activeMark.setText(active ? t("battle.shop_bag_active") : "");
       visual.cardId = card.id as AbilityCardId;
     }
@@ -715,6 +716,7 @@ function setItemIcon(visual: ShopItemVisual, item: CollaborateShopItemState): vo
 }
 
 function itemName(item: CollaborateShopItemState): string {
+  const card = abilityCard(item);
   switch (item.kind) {
     case "life":
       return t("battle.shop_item_life");
@@ -723,13 +725,14 @@ function itemName(item: CollaborateShopItemState): string {
     case "point":
       return t("battle.shop_item_point");
     case "ability_card":
-      return abilityCard(item)?.name ?? t("battle.shop_item_card");
+      return card ? cardName(card) : t("battle.shop_item_card");
     case "sold_out":
       return t("battle.shop_item_sold_out");
   }
 }
 
 function itemDescription(item: CollaborateShopItemState): string {
+  const card = abilityCard(item);
   switch (item.kind) {
     case "life":
       return t("battle.shop_item_life_desc");
@@ -738,7 +741,7 @@ function itemDescription(item: CollaborateShopItemState): string {
     case "point":
       return t("battle.shop_item_point_desc");
     case "ability_card":
-      return abilityCard(item)?.description ?? t("battle.shop_item_card_desc");
+      return card ? cardDescription(card) : t("battle.shop_item_card_desc");
     case "sold_out":
       return t("battle.shop_item_sold_out_desc");
   }

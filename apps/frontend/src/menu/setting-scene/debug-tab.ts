@@ -21,7 +21,7 @@ import {
   getDebugCooperateEliteOptions,
   type DebugCooperateJumpConfig,
 } from "../debug-cooperate";
-import type { DebugCooperateJumpTarget, SelectionData } from "../shared";
+import { contentName, type DebugCooperateJumpTarget, type SelectionData } from "../shared";
 
 export function renderDebugTab(scene: SettingsScene, layer: Phaser.GameObjects.Container): void {
   let debugCooperateDialog: Phaser.GameObjects.Container | null = null;
@@ -105,6 +105,10 @@ function showDebugCooperateDialog(
   currentContainer?.destroy();
 
   const maps = getAvailableCollaborateMaps();
+  const displayMaps = maps.map((map) => ({
+    id: map.id,
+    name: contentName(map),
+  }));
   let selectedMapId: MapId = maps[0]?.id ?? "collaborate_test_arena";
   let selectedTarget: DebugCooperateJumpTarget = "start";
   let selectedEliteIndex = 0;
@@ -123,7 +127,7 @@ function showDebugCooperateDialog(
   }).setOrigin(0.5));
 
   container.add(scene.add.text(456, 252, t("settings.debug.cooperate.map"), bodyStyle("#f6f1e6", 16)));
-  const mapDropdown = createMapDropdown(scene, 456, 280, 368, maps, selectedMapId, (mapId) => {
+  const mapDropdown = createMapDropdown(scene, 456, 280, 368, displayMaps, selectedMapId, (mapId) => {
     selectedMapId = mapId;
     selectedEliteIndex = 0;
     renderEliteDropdown();

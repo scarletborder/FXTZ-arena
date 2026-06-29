@@ -14,7 +14,7 @@ import {
   headingStyle,
 } from "./ui";
 import { queueMenuAssets } from "./assets";
-import { type CodexTab, type SceneKey } from "./shared";
+import { cardDescription, cardName, characterDescription, characterName, type CodexTab, type SceneKey } from "./shared";
 
 export class CodexScene extends Phaser.Scene {
   private tab: CodexTab = "characters";
@@ -185,7 +185,7 @@ export class CodexScene extends Phaser.Scene {
       const row = Math.floor(index / columns);
       const x = startX + col * (tileWidth + gapX);
       const y = startY + row * (tileHeight + gapY);
-      const item = createCodexTile(this, x, y, character.name, character.cost, roleLabel(character.roleClass), character.id === this.selectedCharacter.id, (target) => {
+      const item = createCodexTile(this, x, y, characterName(character), character.cost, roleLabel(character.roleClass), character.id === this.selectedCharacter.id, (target) => {
         drawCharacterPreviewIcon(this, target, 82, 54, 120, 78, character);
       }, () => {
         this.selectedCharacter = character;
@@ -236,7 +236,7 @@ export class CodexScene extends Phaser.Scene {
       const row = Math.floor(index / columns);
       const x = startX + col * (scaledWidth + gapX);
       const y = startY + row * (scaledHeight + gapY);
-      const item = createCodexTile(this, x, y, card.name, card.cost, card.kind === "active" ? t("codex.active_use") : t("codex.passive"), card.id === this.selectedCard.id, (target) => {
+      const item = createCodexTile(this, x, y, cardName(card), card.cost, card.kind === "active" ? t("codex.active_use") : t("codex.passive"), card.id === this.selectedCard.id, (target) => {
         drawCardIcon(this, target, 82, 48, card, 1.0);
       }, () => {
         this.selectedCard = card;
@@ -288,7 +288,7 @@ export class CodexScene extends Phaser.Scene {
     content.add(this.createCharacterStatCard(bounds.x + leftWidth + gap, bounds.y, rightWidth, cardHeight, character));
 
     const descriptionY = bounds.y + cardHeight + 18;
-    const description = this.add.text(bounds.x, descriptionY, t("codex.description", { description: character.description }), bodyStyle("#d7e3ef", 18))
+    const description = this.add.text(bounds.x, descriptionY, t("codex.description", { description: characterDescription(character) }), bodyStyle("#d7e3ef", 18))
       .setLineSpacing(8)
       .setWordWrapWidth(bounds.width);
     content.add(description);
@@ -316,7 +316,7 @@ export class CodexScene extends Phaser.Scene {
     card.add(graphics);
 
     const items = [
-      { label: t("codex.name_label"), value: character.name },
+      { label: t("codex.name_label"), value: characterName(character) },
       { label: t("codex.role_label"), value: roleLabel(character.roleClass) },
     ] as const;
     items.forEach((item, index) => {
@@ -386,11 +386,11 @@ export class CodexScene extends Phaser.Scene {
     const card = this.selectedCard;
     const cooldown = card.cooldownTicks === 0 ? t("codex.none") : t("codex.seconds", { seconds: (card.cooldownTicks / 60).toFixed(1) });
     const lines = [
-      t("codex.name", { name: card.name }),
+      t("codex.name", { name: cardName(card) }),
       t("codex.category", { kind: card.kind === "active" ? t("codex.active_use") : t("codex.passive") }),
       t("codex.use_limit", { limit: card.useLimit === "infinite" ? t("codex.infinite") : card.useLimit }),
       t("codex.cooldown", { cooldown }),
-      t("codex.description", { description: card.description }),
+      t("codex.description", { description: cardDescription(card) }),
     ];
     const bounds = new Phaser.Geom.Rectangle(
       DETAIL_PANEL.x + 18,

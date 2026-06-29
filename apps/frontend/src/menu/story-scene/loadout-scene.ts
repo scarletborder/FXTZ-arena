@@ -26,6 +26,10 @@ import {
   queueMenuCharacterPreviewAssets,
 } from "../assets";
 import {
+  cardDescription,
+  cardName,
+  characterDescription,
+  characterName,
   getCardById,
   getCharacterById,
   roleLabel,
@@ -99,7 +103,7 @@ export class StoryLoadoutScene extends Phaser.Scene {
     const primary = getCharacterById(this.state.primaryCharacterId);
     this.layer.add(
       this.add
-        .text(210, 134, primary.name, bodyStyle("#ffcf6e", 24))
+        .text(210, 134, characterName(primary), bodyStyle("#ffcf6e", 24))
         .setOrigin(0.5),
     );
     const portraitKey = `character-portrait-${primary.id}`;
@@ -226,7 +230,7 @@ export class StoryLoadoutScene extends Phaser.Scene {
     }
     container.add(
       this.add
-        .text(54, 76, compactText(character.name, 6), bodyStyle("#f6f1e6", 14))
+        .text(54, 76, compactText(characterName(character), 6), bodyStyle("#f6f1e6", 14))
         .setOrigin(0.5),
     );
     container.add(
@@ -320,9 +324,9 @@ export class StoryLoadoutScene extends Phaser.Scene {
 
   private showCharacterTip(character: CharacterDefinition): void {
     this.showTip({
-      title: character.name,
+      title: characterName(character),
       meta: `${roleLabel(character.roleClass)}  cost${character.cost}`,
-      description: character.description,
+      description: characterDescription(character),
       detailLines: [`${t("select.ammo")}: ${character.ammoCapacity}`],
       statBars: [
         { label: t("select.move"), value: character.moveSpeed },
@@ -338,9 +342,9 @@ export class StoryLoadoutScene extends Phaser.Scene {
         ? t("codex.none")
         : t("codex.seconds", { seconds: (card.cooldownTicks / 60).toFixed(1) });
     this.showTip({
-      title: card.name,
+      title: cardName(card),
       meta: `${card.kind === "active" ? t("codex.active_use") : t("select.passive")}  cost${card.cost}`,
-      description: card.description,
+      description: cardDescription(card),
       detailLines: [
         `${t("select.uses")}: ${card.useLimit === "infinite" ? t("codex.infinite") : card.useLimit}`,
         `${t("select.cooldown")}: ${cooldown}`,
@@ -574,7 +578,7 @@ export class StoryLoadoutScene extends Phaser.Scene {
     this.scene.start("loading", {
       mode: "ai",
       playerName: settingsRepository.get().username,
-      opponentName: getCharacterById(stage.opponent.primaryCharacterId).name,
+      opponentName: characterName(getCharacterById(stage.opponent.primaryCharacterId)),
       returnScene: "story-loadout",
       loadouts,
       mapId: stage.mapId,

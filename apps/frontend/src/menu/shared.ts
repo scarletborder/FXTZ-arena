@@ -138,6 +138,30 @@ export function speedLabel(speed: CharacterDefinition["moveSpeed"]): string {
   }[speed];
 }
 
+export function characterName(character: Pick<CharacterDefinition, "name">): string {
+  return t(character.name);
+}
+
+export function characterDescription(
+  character: Pick<CharacterDefinition, "description">,
+): string {
+  return t(character.description);
+}
+
+export function cardName(card: Pick<AbilityCardDefinition, "name">): string {
+  return t(card.name);
+}
+
+export function cardDescription(
+  card: Pick<AbilityCardDefinition, "description">,
+): string {
+  return t(card.description);
+}
+
+export function contentName(definition: { readonly name: string }): string {
+  return t(definition.name);
+}
+
 export function getCharacterById(id: CharacterDefinition["id"]): CharacterDefinition {
   const character = getCharacterDefinition(id);
   if (!character) {

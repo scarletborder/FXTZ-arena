@@ -5,7 +5,6 @@ import {
   YOUMU_BOMB_DASH_DISTANCE,
 } from "@repo/constants";
 import { fp } from "@shaisrc/fixed-point";
-import { t } from "@repo/i18n";
 
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 
@@ -46,7 +45,7 @@ const YOUMU_BOMB_STARTUP_TICKS = secondsToTicks(0.2);
 
 export class YoumuBattleCharacter extends BattleCharacter {
   readonly id = "youmu" as CharacterDefinition["id"];
-  readonly name = t("content.characters.youmu.name");
+  readonly name = "content.characters.youmu.name";
   readonly cost = 5;
   readonly roleClass = "scout" as CharacterDefinition["roleClass"];
   readonly moveSpeed = "high" as CharacterDefinition["moveSpeed"];
@@ -58,7 +57,7 @@ export class YoumuBattleCharacter extends BattleCharacter {
   readonly reloadCommitPolicy =
     "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = "high" as CharacterDefinition["bulletSpeed"];
-  readonly description = t("content.characters.youmu.description");
+  readonly description = "content.characters.youmu.description";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/youmu/portrait.png",
     attackPreviewAsset: "assets/characters/youmu/preview.png",

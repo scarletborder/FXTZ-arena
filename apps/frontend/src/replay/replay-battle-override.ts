@@ -18,6 +18,7 @@ import type { BattleSceneData } from "../battle/loadout";
 import type { ReplayFile } from "./types";
 import { FONT } from "../menu/ui/constants";
 import type { BattleBgmBridge } from "../sound";
+import { cardName } from "../menu/shared";
 
 // ---------------------------------------------------------------------------
 // Player info overlay panel
@@ -118,7 +119,7 @@ function updateInfoPanel(
     const uses = fighter.activeCardUses;
     const limit = fighter.activeCard.useLimit;
     const limitStr = limit === "infinite" ? "∞" : `${limit}`;
-    panel.lines[3].setText(`Card: ${fighter.activeCard.name} (${uses}/${limitStr})`);
+    panel.lines[3].setText(`Card: ${cardName(fighter.activeCard)} (${uses}/${limitStr})`);
   } else {
     panel.lines[3].setText("Card: ---");
   }

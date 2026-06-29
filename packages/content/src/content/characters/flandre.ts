@@ -4,7 +4,6 @@ import type {
   NeutralMobActionContext,
   NeutralMobDeathSource,
 } from "@repo/types";
-import { t } from "@repo/i18n";
 import { fp } from "@shaisrc/fixed-point";
 
 import type { FighterKey, FighterState } from "../battle-types";
@@ -55,7 +54,7 @@ type PlayerFighterKey = Exclude<FighterKey, "Neutral">;
 
 export class FlandreBattleCharacter extends BattleCharacter {
   readonly id = "flandre" as CharacterDefinition["id"];
-  readonly name = t("content.characters.flandre.name");
+  readonly name = "content.characters.flandre.name";
   readonly cost = 4;
   readonly roleClass = "scout" as CharacterDefinition["roleClass"];
   readonly moveSpeed = "medium" as CharacterDefinition["moveSpeed"];
@@ -67,7 +66,7 @@ export class FlandreBattleCharacter extends BattleCharacter {
   readonly reloadCommitPolicy =
     "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = "medium" as CharacterDefinition["bulletSpeed"];
-  readonly description = t("content.characters.flandre.description");
+  readonly description = "content.characters.flandre.description";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/flandre/portrait.png",
     attackPreviewAsset: "assets/characters/flandre/preview.png",

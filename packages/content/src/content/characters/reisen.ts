@@ -1,6 +1,5 @@
 import { bulletSpeedRankToPixelsPerTick } from "@repo/types";
 import { fp } from "@shaisrc/fixed-point";
-import { t } from "@repo/i18n";
 
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 
@@ -57,7 +56,7 @@ const FULL_CIRCLE_DEGREES = 360;
 
 export class ReisenBattleCharacter extends BattleCharacter {
   readonly id = "reisen" as CharacterDefinition["id"];
-  readonly name = t("content.characters.reisen.name");
+  readonly name = "content.characters.reisen.name";
   readonly cost = REISEN_COST;
   readonly roleClass = "assault" as CharacterDefinition["roleClass"];
   readonly moveSpeed = "medium" as CharacterDefinition["moveSpeed"];
@@ -69,7 +68,7 @@ export class ReisenBattleCharacter extends BattleCharacter {
   readonly reloadCommitPolicy =
     "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = "medium" as CharacterDefinition["bulletSpeed"];
-  readonly description = t("content.characters.reisen.description");
+  readonly description = "content.characters.reisen.description";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/reisen/portrait.png",
     attackPreviewAsset: "assets/characters/reisen/preview.png",

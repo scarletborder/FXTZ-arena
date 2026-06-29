@@ -9,7 +9,6 @@ import {
   type CharacterActionContext,
 } from "./base";
 import { Vanilla } from "../decorators";
-import { t } from "@repo/i18n";
 
 const REAR_BEAM_DIAGONAL_ANGLE = Math.PI / 18;
 const NORMAL_SHOT_LENGTH = hitCircleUnits(16);
@@ -36,7 +35,7 @@ const BOMB_SPARK_EXPAND_TICKS = 12;
 
 export class MarisaBattleCharacter extends BattleCharacter {
   readonly id = "marisa" as CharacterDefinition["id"];
-  readonly name = t("content.characters.marisa.name");
+  readonly name = "content.characters.marisa.name";
   readonly cost = 5;
   readonly roleClass = "sniper" as CharacterDefinition["roleClass"];
   readonly moveSpeed = "high" as CharacterDefinition["moveSpeed"];
@@ -48,7 +47,7 @@ export class MarisaBattleCharacter extends BattleCharacter {
   readonly reloadCommitPolicy =
     "commit_on_finish" as CharacterDefinition["reloadCommitPolicy"];
   readonly bulletSpeed = "high" as CharacterDefinition["bulletSpeed"];
-  readonly description = t("content.characters.marisa.description");
+  readonly description = "content.characters.marisa.description";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/marisa/portrait.png",
     attackPreviewAsset: "assets/characters/marisa/preview.png",

@@ -3,7 +3,7 @@ import { t } from "@repo/i18n";
 
 import type { AbilityCardDefinition } from "@repo/content";
 
-import type { CardTileControl } from "../shared";
+import { cardName, type CardTileControl } from "../shared";
 
 import { createEntryTile } from "./entryTile";
 import { drawCardIcon } from "./drawCardIcon";
@@ -19,7 +19,7 @@ export function createCardTile(
   return createEntryTile(scene, x, y, {
     width: 116,
     height: 104,
-    title: card.name,
+    title: cardName(card),
     subtitle: `${card.kind === "active" ? t("select.active") : t("select.passive")} cost${card.cost}`,
     badge: card.kind === "active" ? t("codex.active_use") : t("select.passive"),
     selected,

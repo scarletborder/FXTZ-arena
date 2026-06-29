@@ -1,5 +1,4 @@
 import { fp } from "@shaisrc/fixed-point";
-import { t } from "@repo/i18n";
 
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 
@@ -27,7 +26,7 @@ const NORMAL_BULLET_SIDE_DAMAGE = 25;
 
 export class CirnoBattleCharacter extends BattleCharacter {
   readonly id = "cirno" as CharacterDefinition["id"];
-  readonly name = t("content.characters.cirno.name");
+  readonly name = "content.characters.cirno.name";
   readonly cost = 4;
   readonly roleClass = "suppress" as CharacterDefinition["roleClass"];
   readonly moveSpeed = "medium" as CharacterDefinition["moveSpeed"];
@@ -42,7 +41,7 @@ export class CirnoBattleCharacter extends BattleCharacter {
   readonly pointBombThreshold: number = 250;
   readonly pointBombCost: number = 150;
   readonly pointCollectRadius = DEFAULT_POINT_COLLECT_RADIUS;
-  readonly description = t("content.characters.cirno.description");
+  readonly description = "content.characters.cirno.description";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/cirno/portrait.png",
     attackPreviewAsset: "assets/characters/cirno/preview.png",

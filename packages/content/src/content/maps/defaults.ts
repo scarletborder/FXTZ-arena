@@ -8,7 +8,6 @@ import {
   PLAYER_SPAWN,
   TARGET_SPAWN,
 } from "@repo/constants";
-import { t } from "@repo/i18n";
 import type { MapDefinition } from "./types";
 
 const STANDARD_SPAWN_POINTS = [
@@ -23,7 +22,7 @@ const STANDARD_SPAWN_POINTS = [
 
 const HAKUREI_SHRINE: MapDefinition = {
   id: "hakurei_shrine",
-  name: t("content.maps.hakurei_shrine.name"),
+  name: "content.maps.hakurei_shrine.name",
   width: ARENA_WIDTH,
   height: ARENA_HEIGHT,
   background: {
@@ -37,7 +36,7 @@ const HAKUREI_SHRINE: MapDefinition = {
 
 const COLLABORATE_TEST_ARENA: MapDefinition = {
   id: "collaborate_test_arena",
-  name: t("content.maps.collaborate_test_arena.name"),
+  name: "content.maps.collaborate_test_arena.name",
   width: COLLABORATE_ARENA_WIDTH,
   height: COLLABORATE_ARENA_HEIGHT,
   viewportWidth: COLLABORATE_VIEWPORT_WIDTH,
@@ -67,7 +66,7 @@ const COLLABORATE_TEST_ARENA: MapDefinition = {
 const COLLABORATE_TEST_ARENA_2: MapDefinition = {
   ...COLLABORATE_TEST_ARENA,
   id: "collaborate_test_arena_2",
-  name: t("content.maps.collaborate_test_arena_2.name"),
+  name: "content.maps.collaborate_test_arena_2.name",
   mobSpawnerId: "collaborate-test-arena-2-mob-spawner",
 };
 
@@ -76,7 +75,7 @@ export const DEFAULT_MAPS: readonly MapDefinition[] = [
   {
     ...HAKUREI_SHRINE,
     id: "mist_lake",
-    name: t("content.maps.mist_lake.name"),
+    name: "content.maps.mist_lake.name",
     background: {
       textureKey: "map-bg-mist-lake",
       assetPath: "assets/bg/mist_lake.png",
@@ -85,7 +84,7 @@ export const DEFAULT_MAPS: readonly MapDefinition[] = [
   {
     ...HAKUREI_SHRINE,
     id: "bamboo_lost",
-    name: t("content.maps.bamboo_lost.name"),
+    name: "content.maps.bamboo_lost.name",
     background: {
       textureKey: "map-bg-bamboo-lost",
       assetPath: "assets/bg/lostbamboo.png",
@@ -94,7 +93,7 @@ export const DEFAULT_MAPS: readonly MapDefinition[] = [
   {
     ...HAKUREI_SHRINE,
     id: "mana_forest",
-    name: t("content.maps.mana_forest.name"),
+    name: "content.maps.mana_forest.name",
     background: {
       textureKey: "map-bg-mana-forest",
       assetPath: "assets/bg/mana_forest.png",
@@ -103,7 +102,7 @@ export const DEFAULT_MAPS: readonly MapDefinition[] = [
   {
     ...HAKUREI_SHRINE,
     id: "x_shoot_range",
-    name: t("content.maps.x_shoot_range.name"),
+    name: "content.maps.x_shoot_range.name",
     background: {
       textureKey: "map-bg-x-shoot-range",
       assetPath: "assets/bg/shoot_range.png",
@@ -111,7 +110,7 @@ export const DEFAULT_MAPS: readonly MapDefinition[] = [
   },
   {
     id: "shoot_range",
-    name: t("content.maps.shoot_range.name"),
+    name: "content.maps.shoot_range.name",
     width: ARENA_WIDTH,
     height: ARENA_HEIGHT,
     background: {

@@ -29,7 +29,6 @@
   },
   "dependencies": {
     "@repo/constants": "workspace:*",
-    "@repo/i18n": "workspace:*",
     "@repo/types": "workspace:*",
     "@shaisrc/fixed-point": "^0.1.0"
   },
