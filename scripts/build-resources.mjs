@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 
@@ -6,44 +6,63 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 const frontendRoot = path.join(repoRoot, "apps", "frontend");
 const publicRoot = path.join(frontendRoot, "public");
 const resourcesRoot = path.join(frontendRoot, "resources");
-const outputPath = path.join(publicRoot, "resources.dat");
-const signaturePath = path.join(publicRoot, "resources.dat.sig");
-const magic = Buffer.from("FXTZRES1\n", "ascii");
+const outputRoot = path.join(publicRoot, "resource-assets");
+const manifestPath = path.join(publicRoot, "resource-manifest.json");
+const legacyPackPaths = [
+  path.join(publicRoot, "resources.dat"),
+  path.join(publicRoot, "resources.dat.sig"),
+];
 
-const files = new Map();
-
-// 直接从 resources 目录收集所有文件
+const files = [];
 await collectResources(resourcesRoot);
 
-const entries = [];
-const chunks = [];
-let offset = 0;
+const previousManifest = await readPreviousManifest(manifestPath);
+const previousOutputPaths = new Set(
+  previousManifest?.files
+    .map((file) => file.outputPath)
+    .filter((value) => typeof value === "string" && value.length > 0),
+);
 
-for (const [key, filePath] of [...files.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-  const data = await readFile(filePath);
-  entries.push({
-    key,
-    mime: mimeFromPath(key),
-    offset,
-    length: data.length,
+await mkdir(outputRoot, { recursive: true });
+
+const manifestFiles = [];
+for (const file of files.sort((a, b) => a.key.localeCompare(b.key))) {
+  const outputPath = path.join(outputRoot, file.relativePath);
+  await mkdir(path.dirname(outputPath), { recursive: true });
+  await cp(file.sourcePath, outputPath, { force: true });
+
+  const data = await readFile(file.sourcePath);
+  const hash = createHash("sha256").update(data).digest("hex");
+  const outputPathRelative = slash(path.relative(publicRoot, outputPath));
+  manifestFiles.push({
+    path: file.key,
+    outputPath: outputPathRelative,
+    hash,
+    size: data.length,
+    mime: mimeFromPath(file.key),
   });
-  chunks.push(data);
-  offset += data.length;
+  previousOutputPaths.delete(outputPathRelative);
 }
 
-const manifest = Buffer.from(JSON.stringify({ version: 1, files: entries }), "utf8");
-const manifestSize = Buffer.allocUnsafe(4);
-manifestSize.writeUInt32LE(manifest.length, 0);
+for (const stalePath of previousOutputPaths) {
+  await rm(path.join(publicRoot, stalePath), { force: true });
+}
 
-await mkdir(path.dirname(outputPath), { recursive: true });
-const output = Buffer.concat([magic, manifestSize, manifest, ...chunks]);
-await writeFile(outputPath, output);
-await writeFile(signaturePath, `${createHash("sha256").update(output).digest("hex")}\n`);
+for (const legacyPath of legacyPackPaths) {
+  await rm(legacyPath, { force: true });
+}
 
-console.log(`Built ${path.relative(repoRoot, outputPath)} with ${entries.length} resources.`);
-console.log(`Wrote ${path.relative(repoRoot, signaturePath)}.`);
+const manifest = {
+  version: 2,
+  generatedAt: new Date().toISOString(),
+  files: manifestFiles,
+};
 
-// 直接收集 resources 目录下的所有文件
+await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+console.log(`Built ${manifestFiles.length} resource files into ${path.relative(repoRoot, outputRoot)}.`);
+console.log(`Wrote ${path.relative(repoRoot, manifestPath)}.`);
+
 async function collectResources(root) {
   if (!(await exists(root))) {
     await mkdir(root, { recursive: true });
@@ -52,9 +71,12 @@ async function collectResources(root) {
   }
 
   await walk(root, async (filePath) => {
-    const relative = `assets/${slash(path.relative(root, filePath))}`;
-    // 所有文件都加入，不再有过滤规则
-    files.set(relative, filePath);
+    const relativePath = slash(path.relative(root, filePath));
+    files.push({
+      key: `assets/${relativePath}`,
+      relativePath,
+      sourcePath: filePath,
+    });
   });
 }
 
@@ -66,6 +88,15 @@ async function walk(root, onFile) {
     } else if (entry.isFile()) {
       await onFile(entryPath);
     }
+  }
+}
+
+async function readPreviousManifest(filePath) {
+  try {
+    const content = await readFile(filePath, "utf8");
+    return JSON.parse(content);
+  } catch {
+    return null;
   }
 }
 

@@ -1,23 +1,25 @@
+import { IS_DESKTOP_APP } from "@repo/constants";
 import Phaser from "phaser";
 
-const RESOURCE_PACK_KEY = "resource-pack";
-const RESOURCE_PACK_CACHE_NAME = "fxtz-resource-pack-v1";
-const MAGIC = "FXTZRES1\n";
+const RESOURCE_CACHE_NAME = "fxtz-resource-files-v2";
+const RESOURCE_MANIFEST_URL = "resource-manifest.json";
+const RESOURCE_SERVICE_WORKER_URL = "resource-cache-sw.js";
 
-type ResourceEntry = {
-  readonly key: string;
+export type ResourceManifestEntry = {
+  readonly path: string;
+  readonly outputPath: string;
+  readonly hash: string;
+  readonly size: number;
   readonly mime: string;
-  readonly offset: number;
-  readonly length: number;
 };
 
 type ResourceManifest = {
   readonly version: number;
-  readonly files: readonly ResourceEntry[];
+  readonly generatedAt?: string;
+  readonly files: readonly ResourceManifestEntry[];
 };
 
-const resourceUrls = new Map<string, string>();
-let preparedResourcePackUrl: string | undefined;
+const resourceEntries = new Map<string, ResourceManifestEntry>();
 
 export type ResourcePackPrepareStage = "checking" | "ready" | "downloading" | "fallback" | "error";
 
@@ -32,108 +34,282 @@ export type ResourcePackPrepareProgressHandler = (progress: ResourcePackPrepareP
 export async function prepareResourcePackSource(onProgress?: ResourcePackPrepareProgressHandler): Promise<void> {
   onProgress?.({ stage: "checking" });
 
-  if (isDesktopTarget()) {
-    preparedResourcePackUrl = assetUrlWithoutPack("resources.dat");
+  if (IS_DESKTOP_APP) {
+    const manifest = await loadRemoteManifest();
+    applyManifest(manifest);
     onProgress?.({ stage: "ready" });
     return;
   }
 
-  const datUrl = assetUrlWithoutPack("resources.dat");
-  const sigUrl = assetUrlWithoutPack("resources.dat.sig");
   if (!("caches" in window)) {
-    preparedResourcePackUrl = datUrl;
+    const manifest = await loadRemoteManifest();
+    applyManifest(manifest);
     onProgress?.({ stage: "ready" });
     return;
   }
 
-  const cache = await caches.open(RESOURCE_PACK_CACHE_NAME);
-  const remoteSignature = await fetchText(sigUrl, "no-cache");
-  const cachedSignature = await cache.match(sigUrl).then((response) => response?.text());
-  const cachedPack = await cache.match(datUrl);
+  const cache = await caches.open(RESOURCE_CACHE_NAME);
+  const cachedManifest = await readCachedManifest(cache);
 
-  if (cachedPack && remoteSignature && cachedSignature?.trim() === remoteSignature.trim()) {
-    preparedResourcePackUrl = URL.createObjectURL(await cachedPack.blob());
-    onProgress?.({ stage: "ready" });
-    return;
-  }
-
-  const response = await fetch(datUrl, { cache: "no-cache" });
-  if (!response.ok) {
-    if (cachedPack) {
-      preparedResourcePackUrl = URL.createObjectURL(await cachedPack.blob());
+  let remoteManifest;
+  try {
+    remoteManifest = await loadRemoteManifest();
+  } catch (error) {
+    if (cachedManifest && await isManifestCachedComplete(cache, cachedManifest)) {
+      applyManifest(cachedManifest);
       onProgress?.({ stage: "fallback" });
       return;
     }
     onProgress?.({ stage: "error" });
-    throw new Error(`Failed to fetch resources.dat: ${response.status}`);
+    throw error;
   }
 
-  const packBlob = await readResponseBlobWithProgress(response, onProgress);
-  await cache.put(datUrl, new Response(packBlob, { headers: { "content-type": "application/octet-stream" } }));
-  if (remoteSignature) {
-    await cache.put(sigUrl, new Response(remoteSignature, { headers: { "content-type": "text/plain" } }));
+  applyManifest(remoteManifest);
+
+  const serviceWorkerReady = await ensureResourceServiceWorker();
+  if (!serviceWorkerReady) {
+    onProgress?.({ stage: "ready" });
+    return;
   }
-  preparedResourcePackUrl = URL.createObjectURL(packBlob);
-  onProgress?.({ stage: "ready", downloadedBytes: packBlob.size, totalBytes: packBlob.size });
+
+  const downloads = await collectFilesToDownload(cache, remoteManifest, cachedManifest);
+  const totalBytes = downloads.reduce((sum, file) => sum + file.size, 0);
+  let downloadedBytes = 0;
+
+  if (downloads.length > 0) {
+    onProgress?.({ stage: "downloading", downloadedBytes, totalBytes });
+  }
+
+  try {
+    for (const file of downloads) {
+      const response = await fetch(resourcePublicUrl(file.outputPath), { cache: "no-cache" });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${file.outputPath}: ${response.status}`);
+      }
+
+      const cachedResponse = await readResponseWithProgress(response, (chunkBytes) => {
+        downloadedBytes += chunkBytes;
+        onProgress?.({ stage: "downloading", downloadedBytes, totalBytes });
+      });
+
+      await cache.put(resourcePublicUrl(file.outputPath), cachedResponse);
+    }
+
+    await deleteStaleEntries(cache, remoteManifest);
+    await cacheManifest(cache, remoteManifest);
+    onProgress?.({ stage: "ready", downloadedBytes, totalBytes });
+  } catch (error) {
+    if (cachedManifest && await isManifestCachedComplete(cache, cachedManifest)) {
+      applyManifest(cachedManifest);
+      onProgress?.({ stage: "fallback" });
+      return;
+    }
+    onProgress?.({ stage: "error" });
+    throw error;
+  }
 }
 
 export function queueResourcePack(scene: Phaser.Scene): void {
-  if (!scene.cache.binary.exists(RESOURCE_PACK_KEY)) {
-    scene.load.binary(RESOURCE_PACK_KEY, preparedResourcePackUrl ?? assetUrlWithoutPack("resources.dat"));
-  }
+  void scene;
+  // Resource files are served via URL + service worker now.
 }
 
 export function installResourcePackFromCache(scene: Phaser.Scene): void {
-  const cached = scene.cache.binary.get(RESOURCE_PACK_KEY) as ArrayBuffer | Uint8Array | undefined;
-  if (!cached || resourceUrls.size > 0) {
-    return;
-  }
-  const pack = cached instanceof Uint8Array
-    ? new Uint8Array(cached).buffer
-    : cached;
+  void scene;
+  // Resource files are served via URL + service worker now.
+}
 
-  const view = new DataView(pack);
-  const header = new TextDecoder().decode(pack.slice(0, MAGIC.length));
-  if (header !== MAGIC) {
-    throw new Error("Invalid resources.dat header.");
+export function resourceAssetUrl(filePath: string): string | undefined {
+  const entry = resourceEntries.get(normalizeResourceKey(filePath));
+  if (!entry) {
+    return undefined;
   }
+  return resourcePublicUrl(entry.outputPath);
+}
 
-  const manifestLength = view.getUint32(MAGIC.length, true);
-  const manifestStart = MAGIC.length + 4;
-  const manifestEnd = manifestStart + manifestLength;
-  const manifest = JSON.parse(new TextDecoder().decode(pack.slice(manifestStart, manifestEnd))) as ResourceManifest;
+export function hasResourceAsset(filePath: string): boolean {
+  return resourceEntries.has(normalizeResourceKey(filePath));
+}
+
+export function computeFilesNeedingDownload(
+  manifest: ResourceManifest,
+  cachedManifest?: ResourceManifest | null,
+  cachedOutputPaths: readonly string[] = [],
+): ResourceManifestEntry[] {
+  const cachedByPath = new Map((cachedManifest?.files ?? []).map((file) => [normalizeResourceKey(file.path), file]));
+  const cachedOutputs = new Set(cachedOutputPaths);
+
+  return manifest.files.filter((file) => {
+    const previous = cachedByPath.get(normalizeResourceKey(file.path));
+    if (!previous) {
+      return true;
+    }
+    if (previous.hash !== file.hash || previous.outputPath !== file.outputPath) {
+      return true;
+    }
+    return !cachedOutputs.has(file.outputPath);
+  });
+}
+
+function applyManifest(manifest: ResourceManifest): void {
+  resourceEntries.clear();
+  for (const file of manifest.files) {
+    resourceEntries.set(normalizeResourceKey(file.path), file);
+  }
+}
+
+async function loadRemoteManifest(): Promise<ResourceManifest> {
+  const response = await fetch(resourcePublicUrl(RESOURCE_MANIFEST_URL), { cache: "no-cache" });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch resource manifest: ${response.status}`);
+  }
+  return response.json() as Promise<ResourceManifest>;
+}
+
+async function readCachedManifest(cache: Cache): Promise<ResourceManifest | null> {
+  const response = await cache.match(resourcePublicUrl(RESOURCE_MANIFEST_URL), { ignoreVary: true });
+  if (!response) {
+    return null;
+  }
+  try {
+    return await response.json() as ResourceManifest;
+  } catch {
+    return null;
+  }
+}
+
+async function collectFilesToDownload(
+  cache: Cache,
+  manifest: ResourceManifest,
+  cachedManifest?: ResourceManifest | null,
+): Promise<ResourceManifestEntry[]> {
+  const cachedOutputPaths = [];
 
   for (const file of manifest.files) {
-    const start = manifestEnd + file.offset;
-    const bytes = new Uint8Array(pack, start, file.length);
-    const blob = new Blob([bytes], { type: file.mime });
-    resourceUrls.set(normalizeResourceKey(file.key), URL.createObjectURL(blob));
+    const cached = await cache.match(resourcePublicUrl(file.outputPath), { ignoreVary: true });
+    if (cached) {
+      cachedOutputPaths.push(file.outputPath);
+    }
+  }
+
+  return computeFilesNeedingDownload(manifest, cachedManifest, cachedOutputPaths);
+}
+
+async function isManifestCachedComplete(cache: Cache, manifest: ResourceManifest): Promise<boolean> {
+  for (const file of manifest.files) {
+    const cached = await cache.match(resourcePublicUrl(file.outputPath), { ignoreVary: true });
+    if (!cached) {
+      return false;
+    }
+  }
+  return true;
+}
+
+async function cacheManifest(cache: Cache, manifest: ResourceManifest): Promise<void> {
+  await cache.put(
+    resourcePublicUrl(RESOURCE_MANIFEST_URL),
+    new Response(JSON.stringify(manifest), {
+      headers: { "content-type": "application/json" },
+    }),
+  );
+}
+
+async function deleteStaleEntries(cache: Cache, manifest: ResourceManifest): Promise<void> {
+  const liveOutputPaths = new Set(manifest.files.map((file) => resourcePublicUrl(file.outputPath)));
+  const liveOutputPathnames = new Set(manifest.files.map((file) => new URL(resourcePublicUrl(file.outputPath), window.location.href).pathname));
+  const keys = await cache.keys();
+
+  await Promise.all(keys.map(async (request) => {
+    if (request.url === resourcePublicUrl(RESOURCE_MANIFEST_URL)) {
+      return;
+    }
+
+    const requestUrl = new URL(request.url);
+    if (!requestUrl.pathname.includes("/resource-assets/")) {
+      return;
+    }
+
+    if (!liveOutputPaths.has(request.url) && !liveOutputPathnames.has(requestUrl.pathname)) {
+      await cache.delete(request);
+    }
+  }));
+}
+
+async function readResponseWithProgress(
+  response: Response,
+  onChunk: (chunkBytes: number) => void,
+): Promise<Response> {
+  if (!response.body) {
+    const blob = await response.blob();
+    onChunk(blob.size);
+    return new Response(blob, {
+      headers: {
+        "content-type": response.headers.get("content-type") ?? "application/octet-stream",
+      },
+    });
+  }
+
+  const reader = response.body.getReader();
+  const chunks: ArrayBuffer[] = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    chunks.push(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength));
+    onChunk(value.byteLength);
+  }
+
+  return new Response(new Blob(chunks), {
+    headers: {
+      "content-type": response.headers.get("content-type") ?? "application/octet-stream",
+    },
+  });
+}
+
+async function ensureResourceServiceWorker(): Promise<boolean> {
+  if (!("serviceWorker" in navigator)) {
+    return false;
+  }
+
+  try {
+    await navigator.serviceWorker.register(resourcePublicUrl(RESOURCE_SERVICE_WORKER_URL), {
+      scope: baseUrlForPublicAssets(),
+    });
+    await navigator.serviceWorker.ready;
+    if (navigator.serviceWorker.controller) {
+      return true;
+    }
+
+    await new Promise<void>((resolve) => {
+      const timer = window.setTimeout(() => {
+        navigator.serviceWorker.removeEventListener("controllerchange", handleChange);
+        resolve();
+      }, 2000);
+
+      const handleChange = (): void => {
+        window.clearTimeout(timer);
+        navigator.serviceWorker.removeEventListener("controllerchange", handleChange);
+        resolve();
+      };
+
+      navigator.serviceWorker.addEventListener("controllerchange", handleChange);
+    });
+
+    return Boolean(navigator.serviceWorker.controller);
+  } catch (error) {
+    console.warn("Resource service worker unavailable:", error);
+    return false;
   }
 }
 
-export function resourceAssetUrl(path: string): string | undefined {
-  const key = normalizeResourceKey(path);
-  return resourceUrls.get(key) ?? resourceUrls.get(stripAssetsPrefix(key));
+function normalizeResourceKey(filePath: string): string {
+  return filePath.replace(/^\/+/, "").replace(/\\/g, "/");
 }
 
-export function hasResourceAsset(path: string): boolean {
-  const key = normalizeResourceKey(path);
-  return resourceUrls.has(key) || resourceUrls.has(stripAssetsPrefix(key));
-}
-
-function normalizeResourceKey(path: string): string {
-  return path.replace(/^\/+/, "").replace(/\\/g, "/");
-}
-
-function stripAssetsPrefix(path: string): string {
-  return path.startsWith("assets/") ? path.slice("assets/".length) : path;
-}
-
-function assetUrlWithoutPack(path: string): string {
-  const base = (import.meta as ImportMeta & {
-    readonly env: { readonly BASE_URL: string };
-  }).env.BASE_URL;
-  const normalizedPath = path.replace(/^\/+/, "");
+function resourcePublicUrl(filePath: string): string {
+  const base = baseUrlForPublicAssets();
+  const normalizedPath = filePath.replace(/^\/+/, "");
 
   if (base === "" || base.endsWith("/")) {
     return `${base}${normalizedPath}`;
@@ -142,47 +318,10 @@ function assetUrlWithoutPack(path: string): string {
   return `${base}/${normalizedPath}`;
 }
 
-async function fetchText(url: string, cache: RequestCache): Promise<string | undefined> {
-  const response = await fetch(url, { cache });
-  if (!response.ok) {
-    return undefined;
-  }
-  return response.text();
-}
+function baseUrlForPublicAssets(): string {
+  const base = (import.meta as ImportMeta & {
+    readonly env: { readonly BASE_URL: string };
+  }).env.BASE_URL;
 
-async function readResponseBlobWithProgress(
-  response: Response,
-  onProgress?: ResourcePackPrepareProgressHandler,
-): Promise<Blob> {
-  const totalBytes = Number(response.headers.get("content-length")) || undefined;
-  if (!response.body) {
-    const blob = await response.blob();
-    onProgress?.({ stage: "downloading", downloadedBytes: blob.size, totalBytes: blob.size });
-    return blob;
-  }
-
-  const reader = response.body.getReader();
-  const chunks: ArrayBuffer[] = [];
-  let downloadedBytes = 0;
-  onProgress?.({ stage: "downloading", downloadedBytes, totalBytes });
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) {
-      break;
-    }
-    chunks.push(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength));
-    downloadedBytes += value.byteLength;
-    onProgress?.({ stage: "downloading", downloadedBytes, totalBytes });
-  }
-
-  return new Blob(chunks, {
-    type: response.headers.get("content-type") ?? "application/octet-stream",
-  });
-}
-
-function isDesktopTarget(): boolean {
-  return (import.meta as ImportMeta & {
-    readonly env: { readonly VITE_APP_TARGET?: string };
-  }).env.VITE_APP_TARGET === "desktop";
+  return base.length > 0 ? base : "/";
 }

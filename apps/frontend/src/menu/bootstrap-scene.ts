@@ -1,7 +1,9 @@
 import Phaser from "phaser";
 import { t } from "@repo/i18n";
+import { IS_DESKTOP_APP } from "@repo/constants";
 
 import { prepareResourcePackSource, type ResourcePackPrepareProgress } from "../utils/resource-pack";
+import { updateDesktopAppIfNeeded } from "../platform/desktop-updater";
 import { bodyStyle, drawAngledPanel, drawFightingBackdrop, headingStyle } from "./ui";
 import type { SceneKey } from "./shared";
 
@@ -34,6 +36,19 @@ export class BootstrapScene extends Phaser.Scene {
 
   private async prepareResources(): Promise<void> {
     try {
+      if (IS_DESKTOP_APP) {
+        const updated = await updateDesktopAppIfNeeded((progress) => {
+          this.handleProgress({
+            stage: "downloading",
+            downloadedBytes: progress.downloadedBytes,
+            totalBytes: progress.totalBytes,
+          });
+        });
+        if (updated) {
+          return;
+        }
+      }
+
       await prepareResourcePackSource((progress) => this.handleProgress(progress));
       this.handleProgress({ stage: "ready" });
       this.showEnterPrompt();

@@ -20,7 +20,11 @@ pub struct WtState {
 }
 
 #[tauri::command]
-pub fn wt_connect(app: tauri::AppHandle, state: State<'_, WtState>, url: String) -> Result<(), String> {
+pub fn wt_connect(
+    app: tauri::AppHandle,
+    state: State<'_, WtState>,
+    url: String,
+) -> Result<(), String> {
     stop_wt(state.inner());
 
     let session = state.session.fetch_add(1, Ordering::SeqCst) + 1;
@@ -53,7 +57,9 @@ pub fn wt_connect(app: tauri::AppHandle, state: State<'_, WtState>, url: String)
 
             let mut buf = [0u8; 64 * 1024];
             loop {
-                if !running.load(Ordering::SeqCst) || session_state.load(Ordering::SeqCst) != session {
+                if !running.load(Ordering::SeqCst)
+                    || session_state.load(Ordering::SeqCst) != session
+                {
                     break;
                 }
 
@@ -93,7 +99,9 @@ pub fn wt_connect(app: tauri::AppHandle, state: State<'_, WtState>, url: String)
 #[tauri::command]
 pub fn wt_send(state: State<'_, WtState>, data: Vec<u8>) -> Result<(), String> {
     let sender = state.tx.lock().map_err(|error| error.to_string())?;
-    let sender = sender.as_ref().ok_or_else(|| "WT is not connected".to_string())?;
+    let sender = sender
+        .as_ref()
+        .ok_or_else(|| "WT is not connected".to_string())?;
     sender.send(data).map_err(|error| error.to_string())?;
     Ok(())
 }

@@ -1,5 +1,5 @@
 use std::{
-    fs,
+    env, fs,
     io::Write,
     net::UdpSocket,
     sync::{
@@ -11,6 +11,8 @@ use std::{
 };
 
 use tauri::{Emitter, State};
+use tauri_plugin_updater::UpdaterExt;
+use url::Url;
 
 mod link;
 
@@ -28,14 +30,21 @@ struct UdpState {
 }
 
 #[tauri::command]
-fn udp_listen(app: tauri::AppHandle, state: State<'_, UdpState>, port: u16) -> Result<String, String> {
+fn udp_listen(
+    app: tauri::AppHandle,
+    state: State<'_, UdpState>,
+    port: u16,
+) -> Result<String, String> {
     stop_udp_socket(state.inner())?;
 
     let socket = Arc::new(UdpSocket::bind(("0.0.0.0", port)).map_err(|error| error.to_string())?);
     socket
         .set_read_timeout(Some(Duration::from_millis(100)))
         .map_err(|error| error.to_string())?;
-    let local_addr = socket.local_addr().map_err(|error| error.to_string())?.to_string();
+    let local_addr = socket
+        .local_addr()
+        .map_err(|error| error.to_string())?
+        .to_string();
 
     let session = state.session.fetch_add(1, Ordering::SeqCst) + 1;
     state.running.store(true, Ordering::SeqCst);
@@ -76,7 +85,9 @@ fn udp_send(state: State<'_, UdpState>, addr: String, data: Vec<u8>) -> Result<(
     let socket = socket
         .as_ref()
         .ok_or_else(|| "UDP socket is not listening".to_string())?;
-    socket.send_to(&data, addr).map_err(|error| error.to_string())?;
+    socket
+        .send_to(&data, addr)
+        .map_err(|error| error.to_string())?;
     Ok(())
 }
 
@@ -152,6 +163,13 @@ struct ReplaySlotData {
     data: Option<Vec<u8>>,
 }
 
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DesktopUpdateProgressPayload {
+    downloaded_bytes: u64,
+    total_bytes: Option<u64>,
+}
+
 #[tauri::command]
 fn replay_save_slot(slot_index: u32, data: Vec<u8>) -> Result<(), String> {
     let dir = replay_dir()?;
@@ -223,6 +241,38 @@ fn replay_open_folder() -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+async fn desktop_update_and_install_if_available(app: tauri::AppHandle) -> Result<bool, String> {
+    let Some(updater) = build_updater(&app)? else {
+        return Ok(false);
+    };
+
+    let Some(update) = updater.check().await.map_err(|error| error.to_string())? else {
+        return Ok(false);
+    };
+
+    let progress_app = app.clone();
+    let mut downloaded_bytes = 0_u64;
+    update
+        .download_and_install(
+            move |chunk_length, content_length| {
+                downloaded_bytes += chunk_length as u64;
+                let _ = progress_app.emit(
+                    "desktop-update-progress",
+                    DesktopUpdateProgressPayload {
+                        downloaded_bytes,
+                        total_bytes: content_length,
+                    },
+                );
+            },
+            || {},
+        )
+        .await
+        .map_err(|error| error.to_string())?;
+
+    Ok(true)
+}
+
 fn stop_udp_socket(state: &UdpState) -> Result<(), String> {
     state.running.store(false, Ordering::SeqCst);
     state.session.fetch_add(1, Ordering::SeqCst);
@@ -232,9 +282,10 @@ fn stop_udp_socket(state: &UdpState) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .manage(UdpState::default())
         .manage(link::wt::WtState::default())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             udp_listen,
             udp_send,
@@ -247,10 +298,42 @@ pub fn run() {
             replay_delete_slot,
             replay_export_slot,
             replay_open_folder,
+            desktop_update_and_install_if_available,
             link::wt::wt_connect,
             link::wt::wt_send,
             link::wt::wt_close,
-        ])
+        ]);
+
+    builder
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+fn build_updater<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+) -> Result<Option<tauri_plugin_updater::Updater>, String> {
+    let endpoint = match env::var("TAURI_UPDATER_ENDPOINT")
+        .ok()
+        .filter(|value| !value.is_empty())
+    {
+        Some(value) => value,
+        None => return Ok(None),
+    };
+    let pubkey = match env::var("TAURI_UPDATER_PUBKEY")
+        .ok()
+        .filter(|value| !value.is_empty())
+    {
+        Some(value) => value,
+        None => return Ok(None),
+    };
+
+    let endpoint = endpoint.parse::<Url>().map_err(|error| error.to_string())?;
+
+    app.updater_builder()
+        .pubkey(pubkey)
+        .endpoints(vec![endpoint])
+        .map_err(|error| error.to_string())?
+        .build()
+        .map(Some)
+        .map_err(|error| error.to_string())
 }

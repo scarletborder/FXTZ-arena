@@ -21,6 +21,7 @@
     "@repo/raid-logic": "workspace:*",
     "@repo/types": "workspace:*",
     "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-process": "^2.0.0",
     "@shaisrc/fixed-point": "^0.1.0",
     "phaser": "^4.1.0"
   },

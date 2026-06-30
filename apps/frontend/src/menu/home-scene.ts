@@ -6,7 +6,6 @@ import { bodyStyle, createFightButton, createRectangleButton, drawBuildLabel, dr
 import { type SceneKey } from "./shared";
 import { showPublicServerConnectivityDialog } from "./ui/dialogs/public-server-connectivity-dialog";
 import { setSelfAuthed, settingsRepository } from "../store/settings";
-import { installResourcePackFromCache, queueResourcePack } from "../utils/resource-pack";
 import { showLanguageDialog } from "./ui/dialogs/language-dialog";
 
 export class HomeScene extends Phaser.Scene {
@@ -16,12 +15,7 @@ export class HomeScene extends Phaser.Scene {
     super("home" satisfies SceneKey);
   }
 
-  preload(): void {
-    queueResourcePack(this);
-  }
-
   create(): void {
-    installResourcePackFromCache(this);
     drawFightingBackdrop(this, "FXTZ ARENA", "LOCAL M5 BUILD");
     drawTitleBlock(this, "FXTZ ARENA", t("menu.subtitle"));
 

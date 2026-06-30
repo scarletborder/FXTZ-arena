@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly VITE_APP_BASE?: string;
   /** Optional override for the docs site origin. */
   readonly VITE_DOCS_URL?: string;
+  /** Optional desktop updater endpoint, enables Tauri updater checks when present. */
+  readonly VITE_DESKTOP_UPDATER_ENDPOINT?: string;
 }
 
 interface ImportMeta {

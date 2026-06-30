@@ -13,3 +13,7 @@ public/dist
 apps/dedicated-server/example-pems/
 apps/desktop/src-tauri/target/
 dist-desktop/
+apps/frontend/public/resource-assets/
+apps/frontend/public/resource-manifest.json
+apps/frontend/public/resources.dat
+apps/frontend/public/resources.dat.sig
