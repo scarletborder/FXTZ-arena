@@ -10,6 +10,11 @@ permissions:
   pages: write
   id-token: write
 
+env:
+  TAURI_UPDATER_ENDPOINT: ${{ vars.TAURI_UPDATER_ENDPOINT || 'https://github.com/scarletborder/FXTZ-arena/releases/latest/download/latest.json' }}
+  TAURI_UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY }}
+  VITE_DESKTOP_UPDATER_ENDPOINT: ${{ vars.VITE_DESKTOP_UPDATER_ENDPOINT || 'https://github.com/scarletborder/FXTZ-arena/releases/latest/download/latest.json' }}
+
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -150,6 +155,13 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
+
+      - name: Validate desktop updater config
+        shell: bash
+        run: |
+          : "${TAURI_UPDATER_ENDPOINT:?TAURI_UPDATER_ENDPOINT is required}"
+          : "${TAURI_UPDATER_PUBKEY:?TAURI_UPDATER_PUBKEY is required}"
+          : "${VITE_DESKTOP_UPDATER_ENDPOINT:?VITE_DESKTOP_UPDATER_ENDPOINT is required}"
 
       # ================== 替换的部分开始 ==================
       - name: Install cargo-binstall
