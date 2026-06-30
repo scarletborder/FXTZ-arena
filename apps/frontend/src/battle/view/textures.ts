@@ -137,4 +137,83 @@ export function createBattleTextures(scene: Phaser.Scene): void {
     // Lower wing: obtuse triangle extending down-right
     g.fillTriangle(112, 92, 112, 182, 192, 202);
   });
+
+  make("default-familiar-normal-static", (g) => {
+    drawDefaultFamiliarMagicCircle(g);
+    g.fillStyle(0xffffff, 1);
+    g.fillCircle(128, 128, 52);
+    g.lineStyle(4, 0xf8fbff, 0.95);
+    g.strokeCircle(128, 128, 52);
+  });
+  make("default-familiar-normal-moving", (g) => {
+    drawDefaultFamiliarMagicCircle(g);
+    g.fillStyle(0xffffff, 1);
+    g.fillPoints(
+      [
+        new Phaser.Math.Vector2(128, 54),
+        new Phaser.Math.Vector2(172, 122),
+        new Phaser.Math.Vector2(148, 196),
+        new Phaser.Math.Vector2(128, 222),
+        new Phaser.Math.Vector2(108, 196),
+        new Phaser.Math.Vector2(84, 122),
+      ],
+      true,
+    );
+    g.fillEllipse(128, 120, 108, 132);
+    g.lineStyle(4, 0xf8fbff, 0.95);
+    g.strokePoints(
+      [
+        new Phaser.Math.Vector2(128, 54),
+        new Phaser.Math.Vector2(172, 122),
+        new Phaser.Math.Vector2(148, 196),
+        new Phaser.Math.Vector2(128, 222),
+        new Phaser.Math.Vector2(108, 196),
+        new Phaser.Math.Vector2(84, 122),
+      ],
+      true,
+    );
+  });
+  make("default-familiar-invisible-static", (g) => {
+    drawDefaultFamiliarMagicCircle(g);
+  });
+  make("default-familiar-invisible-moving", (g) => {
+    drawDefaultFamiliarMagicCircle(g);
+  });
+}
+
+function drawDefaultFamiliarMagicCircle(
+  g: Phaser.GameObjects.Graphics,
+): void {
+  const outerRadius = 68;
+  const starRadius = 58;
+
+  g.lineStyle(6, 0xc94646, 0.95);
+  g.strokeCircle(128, 128, outerRadius);
+  g.lineStyle(3, 0xc94646, 0.55);
+  g.strokeCircle(128, 128, outerRadius - 12);
+
+  g.lineStyle(5, 0x8f5dff, 0.92);
+  g.strokePoints(
+    equilateralTrianglePoints(128, 128, starRadius, -Math.PI / 2),
+    true,
+  );
+  g.strokePoints(
+    equilateralTrianglePoints(128, 128, starRadius, -Math.PI / 6),
+    true,
+  );
+}
+
+function equilateralTrianglePoints(
+  centerX: number,
+  centerY: number,
+  radius: number,
+  startAngle: number,
+): Phaser.Math.Vector2[] {
+  return Array.from({ length: 3 }, (_, index) => {
+    const angle = startAngle + (Math.PI * 2 * index) / 3;
+    return new Phaser.Math.Vector2(
+      centerX + Math.cos(angle) * radius,
+      centerY + Math.sin(angle) * radius,
+    );
+  });
 }

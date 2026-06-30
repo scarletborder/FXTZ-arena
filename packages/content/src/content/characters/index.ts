@@ -3,6 +3,7 @@ export * from "./types";
 
 export * from "./character-library";
 export * from "./base";
+export * from "./default-familiar";
 export type { CharacterActionContext } from "./base";
 
 // Side-effect imports trigger @Vanilla.RegisterCharacter decorators

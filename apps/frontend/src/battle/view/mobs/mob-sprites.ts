@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 
 import type { MobState } from "@repo/types";
+import { DEFAULT_FAMILIAR_TEXTURE_KEY } from "@repo/content";
 
 import { Depth } from "../../../utils/depth";
 import { smoothValue } from "../smooth";
@@ -37,6 +38,9 @@ export class MobSpriteView {
     frame: number,
     rollbackBlend: number,
   ): RenderedMobSprite | undefined {
+    if (mob.textureKey === DEFAULT_FAMILIAR_TEXTURE_KEY) {
+      return this.renderDefaultFamiliarSprite(mob, x, y, rollbackBlend);
+    }
     if (mob.textureKey === "character_ran_companion") {
       return this.renderRanFamiliarSprite(mob, x, y, frame, rollbackBlend);
     }
@@ -209,6 +213,55 @@ export class MobSpriteView {
     return { sprite };
   }
 
+  private renderDefaultFamiliarSprite(
+    mob: MobState,
+    x: number,
+    y: number,
+    rollbackBlend: number,
+  ): RenderedMobSprite | undefined {
+    const textureKey = defaultFamiliarTextureKey(mob);
+    if (!this.scene.textures.exists(textureKey)) {
+      return undefined;
+    }
+
+    const angle = ranAngle(mob);
+    const hitWidth = mob.hitWidth ?? mob.hitRadius * 2;
+    const hitHeight = mob.hitHeight ?? mob.hitRadius * 2;
+    const displaySize = Math.max(hitWidth, hitHeight) * 1.7;
+
+    let sprite = this.sprites.get(mob.id);
+    if (!sprite) {
+      sprite = this.scene.add
+        .sprite(x, y, textureKey)
+        .setOrigin(0.5)
+        .setDepth(Depth.Character)
+        .setDisplaySize(displaySize, displaySize);
+      this.sprites.set(mob.id, sprite);
+    }
+    if (sprite.texture.key !== textureKey) {
+      sprite.setTexture(textureKey);
+    }
+
+    sprite.setPosition(
+      smoothValue(sprite.x, x, rollbackBlend),
+      smoothValue(sprite.y, y, rollbackBlend),
+    );
+    sprite.setAlpha(smoothValue(sprite.alpha, 1, rollbackBlend));
+    sprite.setDisplaySize(displaySize, displaySize);
+    sprite.setRotation(
+      defaultFamiliarNeedsRotation(mob) ? angle + Math.PI / 2 : 0,
+    );
+    sprite.setVisible(true);
+    this.animationStates.set(mob.id, {
+      textureKey,
+      visualKind: "character",
+      animation: "default",
+      characterFrame: 0,
+      direction: 1,
+    });
+    return { sprite };
+  }
+
   private playCharacterMobFrame(
     mobId: number,
     sprite: Phaser.GameObjects.Sprite,
@@ -286,6 +339,16 @@ export class MobSpriteView {
       direction: motion.direction,
     });
   }
+}
+
+function defaultFamiliarTextureKey(mob: MobState): string {
+  const form = mob.form === "invisible" ? "invisible" : "normal";
+  const motion = mob.movementVariant === "moving" ? "moving" : "static";
+  return `default-familiar-${form}-${motion}`;
+}
+
+function defaultFamiliarNeedsRotation(mob: MobState): boolean {
+  return mob.form === "normal" && mob.movementVariant === "moving";
 }
 
 function ranAngle(mob: MobState): number {

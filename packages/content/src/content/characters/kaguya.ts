@@ -1,20 +1,26 @@
 import { bulletSpeedRankToPixelsPerTick } from "@repo/types";
-import { HIT_CIRCLE_DIAMETER } from "@repo/constants";
 import { fp } from "@shaisrc/fixed-point";
 import { fpAtan2 } from "../fp";
 
 import type { CharacterDefinition, CharacterGalleryAssets } from "./types";
 
-import type { FighterState } from "../battle-types";
+import type { FighterKey, FighterState } from "../battle-types";
 import type { BattleHitContext } from "../ability-cards/base";
 import {
   BattleCharacter,
   DEFAULT_POINT_COLLECT_RADIUS,
+  type BattleBulletSpawnParams,
+  type BattleLaserSpawnParams,
   hitCircleUnits,
   secondsToTicks,
   type CharacterActionContext,
   type PointPowerTier,
 } from "./base";
+import {
+  createDefaultFamiliarClass,
+  createDefaultFamiliarState,
+  type DefaultFamiliarState,
+} from "./default-familiar";
 import { Vanilla } from "../decorators";
 
 export const KAGUYA_COST = 4;
@@ -52,9 +58,15 @@ export const KAGUYA_BOMB_LOCK_TICKS =
   KAGUYA_BOMB_SHOTS_PER_POINT * KAGUYA_BOMB_SHOT_INTERVAL_FRAMES;
 export const KAGUYA_BOMB_DAMAGE = 6;
 export const KAGUYA_BOMB_WARNING_HALF_WIDTH = 3;
+export const KAGUYA_BOMB_FAMILIAR_HEALTH = 180;
 
 const FULL_CIRCLE = Math.PI * 2;
 const EQUILATERAL_CIRCUMRADIUS_DIVISOR = Math.sqrt(3);
+const KAGUYA_BOMB_FAMILIAR_KIND = "kaguya_bomb_familiar";
+const KAGUYA_BOMB_FAMILIAR_RADIUS = 20;
+const KAGUYA_BOMB_FAMILIAR_BASE = createDefaultFamiliarClass(
+  KAGUYA_BOMB_FAMILIAR_RADIUS,
+);
 
 export class KaguyaBattleCharacter extends BattleCharacter {
   readonly id = "kaguya" as CharacterDefinition["id"];
@@ -77,7 +89,7 @@ export class KaguyaBattleCharacter extends BattleCharacter {
     combatAsset: "assets/characters/kaguya/combat.png",
   };
   readonly normalAttackId = "kaguya_orbit_snipe";
-  readonly bombId = "kaguya_triangle_bomb";
+  readonly bombId = "kaguya_familiar_triangle_bomb";
   readonly pointCollectRadius = DEFAULT_POINT_COLLECT_RADIUS;
 
   shoot(
@@ -139,7 +151,7 @@ export class KaguyaBattleCharacter extends BattleCharacter {
         frame: ctx.frame,
         couldClear: false,
       });
-      this.spawnBombLine(ctx, fighter, from, to);
+      this.spawnBombFamiliar(ctx, fighter, from, vertices[(index + 2) % 3]!);
     }
   }
 
@@ -187,22 +199,43 @@ export class KaguyaBattleCharacter extends BattleCharacter {
     });
   }
 
-  private spawnBombLine(
+  private spawnBombFamiliar(
     ctx: CharacterActionContext,
     fighter: FighterState,
-    from: Point,
-    to: Point,
+    source: Point,
+    target: Point,
+  ): void {
+    if (!ctx.spawnMob || !ctx.allocateMobId || fighter.key === "Neutral") {
+      this.spawnBombLineFallback(ctx, fighter, source, target);
+      return;
+    }
+    ctx.spawnMob(
+      new KaguyaBombFamiliar(
+        ctx.allocateMobId(),
+        playerFighterKey(fighter.key),
+        source,
+        target,
+        ctx.frame,
+      ),
+    );
+  }
+
+  private spawnBombLineFallback(
+    ctx: CharacterActionContext,
+    fighter: FighterState,
+    source: Point,
+    target: Point,
   ): void {
     const angle = fpAtan2(
-      fp.fromFloat(to.y - from.y),
-      fp.fromFloat(to.x - from.x),
+      fp.fromFloat(target.y - source.y),
+      fp.fromFloat(target.x - source.x),
     );
     const extension = hitCircleUnits(KAGUYA_BOMB_EXTENSION_HIT_CIRCLE_MULTIPLIER);
     const fpAngle = fp.fromFloat(angle);
     const fpExt = fp.fromFloat(extension);
-    const x = to.x + fp.toFloat(fp.mul(fp.cos(fpAngle), fpExt));
-    const y = to.y + fp.toFloat(fp.mul(fp.sin(fpAngle), fpExt));
-    const fireAngle = angle + Math.PI;
+    const x = source.x - fp.toFloat(fp.mul(fp.cos(fpAngle), fpExt));
+    const y = source.y - fp.toFloat(fp.mul(fp.sin(fpAngle), fpExt));
+    const fireAngle = angle;
 
     for (let shot = 0; shot < KAGUYA_BOMB_SHOTS_PER_POINT; shot += 1) {
       ctx.spawnBullet({
@@ -229,10 +262,120 @@ export class KaguyaBattleCharacter extends BattleCharacter {
 
 Vanilla.registerCharacter("kaguya")(KaguyaBattleCharacter);
 
+interface KaguyaBombFamiliarState
+  extends DefaultFamiliarState<typeof KAGUYA_BOMB_FAMILIAR_KIND> {
+  readonly sourceCharacterId: "kaguya";
+  readonly fireAngle: number;
+  readonly firstShotFrame: number;
+  readonly expiresAtFrame: number;
+  shotsFired: number;
+}
+
+class KaguyaBombFamiliar extends KAGUYA_BOMB_FAMILIAR_BASE<KaguyaBombFamiliarState> {
+  constructor(
+    id: number,
+    owner: PlayerFighterKey,
+    source: Point,
+    target: Point,
+    spawnFrame: number,
+  ) {
+    const fireAngle = fpAtan2(
+      fp.fromFloat(target.y - source.y),
+      fp.fromFloat(target.x - source.x),
+    );
+    super({
+      ...createDefaultFamiliarState({
+        id,
+        key: owner,
+        kind: KAGUYA_BOMB_FAMILIAR_KIND,
+        x: source.x,
+        y: source.y,
+        health: KAGUYA_BOMB_FAMILIAR_HEALTH,
+        radius: KAGUYA_BOMB_FAMILIAR_RADIUS,
+        angle: fireAngle,
+      }),
+      sourceCharacterId: "kaguya",
+      fireAngle,
+      firstShotFrame: spawnFrame + KAGUYA_BOMB_WARNING_TICKS,
+      expiresAtFrame:
+        spawnFrame +
+        KAGUYA_BOMB_WARNING_TICKS +
+        (KAGUYA_BOMB_SHOTS_PER_POINT - 1) * KAGUYA_BOMB_SHOT_INTERVAL_FRAMES,
+      shotsFired: 0,
+    });
+  }
+
+  fire(
+    ctx: import("@repo/types").NeutralMobActionContext<
+      BattleBulletSpawnParams,
+      BattleLaserSpawnParams
+    >,
+  ): void {
+    if (ctx.frame < this.state.firstShotFrame) {
+      return;
+    }
+    if (
+      (ctx.frame - this.state.firstShotFrame) %
+        KAGUYA_BOMB_SHOT_INTERVAL_FRAMES !==
+      0
+    ) {
+      return;
+    }
+    if (this.state.shotsFired >= KAGUYA_BOMB_SHOTS_PER_POINT) {
+      return;
+    }
+
+    const extension = hitCircleUnits(KAGUYA_BOMB_EXTENSION_HIT_CIRCLE_MULTIPLIER);
+    const fpAngle = fp.fromFloat(this.state.fireAngle);
+    const fpExt = fp.fromFloat(extension);
+    const x =
+      this.state.x - fp.toFloat(fp.mul(fp.cos(fpAngle), fpExt));
+    const y =
+      this.state.y - fp.toFloat(fp.mul(fp.sin(fpAngle), fpExt));
+
+    ctx.spawnBullet({
+      owner: this.state.key,
+      sourceCharacterId: this.state.sourceCharacterId,
+      kind: "orb",
+      x,
+      y,
+      angle: this.state.fireAngle,
+      speedRank: "high",
+      width: KAGUYA_BOMB_BULLET_SIZE,
+      height: KAGUYA_BOMB_BULLET_SIZE,
+      homingTicks: 0,
+      damage: KAGUYA_BOMB_DAMAGE,
+      spawnOffset: 0,
+      couldClear: true,
+    });
+    this.state.shotsFired += 1;
+  }
+
+  die(
+    ctx: import("@repo/types").NeutralMobActionContext<
+      BattleBulletSpawnParams,
+      BattleLaserSpawnParams
+    >,
+  ): void {
+    super.die(ctx);
+    if (!this.state.active) {
+      return;
+    }
+    if (
+      this.state.shotsFired >= KAGUYA_BOMB_SHOTS_PER_POINT &&
+      ctx.frame >= this.state.expiresAtFrame
+    ) {
+      this.state.active = false;
+    }
+  }
+}
+
 interface Point {
   readonly x: number;
   readonly y: number;
 }
+
+type PlayerFighterKey = Exclude<FighterKey, "Neutral">;
 
 function equilateralTriangleVertices(
   centerX: number,
@@ -253,4 +396,11 @@ function equilateralTriangleVertices(
 
 function degreesToRadians(degrees: number): number {
   return (degrees * Math.PI) / 180;
+}
+
+function playerFighterKey(key: FighterKey): PlayerFighterKey {
+  if (key === "Neutral") {
+    throw new Error("Kaguya bomb familiar must belong to a player");
+  }
+  return key;
 }

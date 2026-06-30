@@ -5,6 +5,7 @@ import {
   KAGUYA_BOMB_BULLET_SIZE,
   KAGUYA_BOMB_DAMAGE,
   KAGUYA_BOMB_EXTENSION_HIT_CIRCLE_MULTIPLIER,
+  KAGUYA_BOMB_FAMILIAR_HEALTH,
   KAGUYA_BOMB_LOCK_TICKS,
   KAGUYA_BOMB_SHOT_INTERVAL_FRAMES,
   KAGUYA_BOMB_SHOTS_PER_POINT,
@@ -109,7 +110,7 @@ describe("BattleModel Kaguya", () => {
     expect(projectile.vy).toBeGreaterThan(0);
   });
 
-  it("spawns Kaguya bomb warning triangle and delayed edge volleys", async () => {
+  it("spawns Kaguya bomb warning triangle and three firing familiars", async () => {
     const model = await createBattleModel("kaguya", "reimu");
     const aimX = model.player.x + hitCircleUnits(10);
     const aimY = model.player.y + hitCircleUnits(4);
@@ -128,11 +129,35 @@ describe("BattleModel Kaguya", () => {
       ),
     ).toBe(true);
 
+    const familiars = model.neutralMobManager.mobs.filter(
+      (mob) => mob.state.kind === "kaguya_bomb_familiar",
+    );
+    expect(familiars).toHaveLength(3);
+    expect(
+      familiars.every(
+        (mob) =>
+          mob.state.MaxHealth === KAGUYA_BOMB_FAMILIAR_HEALTH &&
+          mob.state.CurrentHealth === KAGUYA_BOMB_FAMILIAR_HEALTH,
+      ),
+    ).toBe(true);
+
+    const bombBulletIds = trackBombBulletIds(model);
+    for (
+      let tick = 0;
+      tick <=
+      KAGUYA_BOMB_WARNING_TICKS +
+        KAGUYA_BOMB_SHOT_INTERVAL_FRAMES * (KAGUYA_BOMB_SHOTS_PER_POINT - 1);
+      tick += 1
+    ) {
+      model.step(input({ aimX, aimY }));
+      collectBombBulletIds(model, bombBulletIds);
+    }
+
     const bombBullets = model.projectiles.filter(
       (projectile) =>
         projectile.kind === "orb" && projectile.damage === KAGUYA_BOMB_DAMAGE,
     );
-    expect(bombBullets).toHaveLength(3 * KAGUYA_BOMB_SHOTS_PER_POINT);
+    expect(bombBulletIds.size).toBe(3 * KAGUYA_BOMB_SHOTS_PER_POINT);
     expect(
       bombBullets.every(
         (projectile) =>
@@ -140,16 +165,46 @@ describe("BattleModel Kaguya", () => {
           projectile.height === KAGUYA_BOMB_BULLET_SIZE,
       ),
     ).toBe(true);
-    expect(bombBullets[0]!.visibleFrom).toBe(
-      model.frame + KAGUYA_BOMB_WARNING_TICKS,
-    );
-    expect(bombBullets[1]!.visibleFrom).toBe(
-      model.frame + KAGUYA_BOMB_WARNING_TICKS + KAGUYA_BOMB_SHOT_INTERVAL_FRAMES,
-    );
 
     const sideLength = hitCircleUnits(KAGUYA_BOMB_SIDE_HIT_CIRCLE_MULTIPLIER);
     const extension = hitCircleUnits(KAGUYA_BOMB_EXTENSION_HIT_CIRCLE_MULTIPLIER);
     expect(sideLength).toBeGreaterThan(extension);
+  });
+
+  it("stops one triangle side after its familiar is destroyed", async () => {
+    const model = await createBattleModel("kaguya", "reimu");
+    const aimX = model.player.x + hitCircleUnits(10);
+    const aimY = model.player.y + hitCircleUnits(4);
+
+    model.step(
+      input({
+        bombPressed: true,
+        aimX,
+        aimY,
+      }),
+    );
+
+    const familiar = model.neutralMobManager.mobs.find(
+      (mob) => mob.state.kind === "kaguya_bomb_familiar",
+    );
+    expect(familiar?.onProjectileHit(KAGUYA_BOMB_FAMILIAR_HEALTH)).toBe(
+      "accepted",
+    );
+    expect(familiar?.state.active).toBe(false);
+
+    const bombBulletIds = trackBombBulletIds(model);
+    for (
+      let tick = 0;
+      tick <=
+      KAGUYA_BOMB_WARNING_TICKS +
+        KAGUYA_BOMB_SHOT_INTERVAL_FRAMES * (KAGUYA_BOMB_SHOTS_PER_POINT - 1);
+      tick += 1
+    ) {
+      model.step(input({ aimX, aimY }));
+      collectBombBulletIds(model, bombBulletIds);
+    }
+
+    expect(bombBulletIds.size).toBe(2 * KAGUYA_BOMB_SHOTS_PER_POINT);
   });
 
   it("locks Kaguya switching and repeat bomb while bomb volleys continue but allows fire and reload", async () => {
@@ -188,3 +243,20 @@ describe("BattleModel Kaguya", () => {
     expect(model.player.activeCharacter.id).toBe("reimu");
   });
 });
+
+function trackBombBulletIds(model: Awaited<ReturnType<typeof createBattleModel>>): Set<number> {
+  const ids = new Set<number>();
+  collectBombBulletIds(model, ids);
+  return ids;
+}
+
+function collectBombBulletIds(
+  model: Awaited<ReturnType<typeof createBattleModel>>,
+  ids: Set<number>,
+): void {
+  for (const projectile of model.projectiles) {
+    if (projectile.kind === "orb" && projectile.damage === KAGUYA_BOMB_DAMAGE) {
+      ids.add(projectile.id);
+    }
+  }
+}
