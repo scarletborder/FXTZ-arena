@@ -1,5 +1,6 @@
 export { CirnoWingmanProfile } from "./cirno";
 export { EllenWingmanProfile } from "./ellen";
+export { IkuWingmanProfile } from "./iku";
 export { KaguyaWingmanProfile } from "./kaguya";
 export { MarisaWingmanProfile } from "./marisa";
 export { ReimuWingmanProfile } from "./reimu";

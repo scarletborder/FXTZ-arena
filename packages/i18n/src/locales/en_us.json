@@ -296,6 +296,10 @@
       "yuyuko": {
         "name": "Yuyuko",
         "description": "· The mistress of the Netherworld mansion\n· Uses wide-area bullet patterns to suppress space\n· Bomb releases a large number of bullets"
+      },
+      "iku": {
+        "name": "Iku",
+        "description": "· A messenger of the Dragon Palace\n· An assault character using familiars and lightning bullets\n· Normal familiars split into lightning when destroyed\n· Bomb summons orbiting familiars that turn and fire lightning"
       }
     },
     "ability_cards": {

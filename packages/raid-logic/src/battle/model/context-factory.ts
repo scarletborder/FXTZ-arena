@@ -115,7 +115,7 @@ export function createNeutralMobActionContext(bindings: {
       bindings.spawnBullet({
         ...params,
         owner: bindings.owner,
-        sourceCharacterId: undefined,
+        sourceCharacterId: params.sourceCharacterId,
         frame: params.frame ?? bindings.frame,
       });
     },
@@ -123,7 +123,7 @@ export function createNeutralMobActionContext(bindings: {
       bindings.spawnLaser({
         ...params,
         owner: bindings.owner,
-        sourceCharacterId: undefined,
+        sourceCharacterId: params.sourceCharacterId,
         frame: params.frame ?? bindings.frame,
       });
     },

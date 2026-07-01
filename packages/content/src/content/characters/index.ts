@@ -4,6 +4,7 @@ export * from "./types";
 export * from "./character-library";
 export * from "./base";
 export * from "./default-familiar";
+export * from "./familiar-snapshot";
 export type { CharacterActionContext } from "./base";
 
 // Side-effect imports trigger @Vanilla.RegisterCharacter decorators
@@ -19,6 +20,7 @@ export * from "./flandre";
 import "./yuyuko";
 import "./yukari";
 import "./flandre";
+export * from "./iku";
 
 import type { BattleCharacter } from "./base";
 import { characterLibrary } from "./character-library";

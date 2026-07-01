@@ -300,6 +300,10 @@
       "flandre": {
         "name": "Flandre",
         "description": "· "
+      },
+      "iku": {
+        "name": "永江衣玖",
+        "description": "· 龙宫使者\n· 操纵使魔与雷电弹幕的突击角色\n· 普通射击的使魔死亡时会裂解为雷电\n· bomb 召唤环绕转向的雷电使魔"
       }
     },
     "ability_cards": {

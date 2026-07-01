@@ -11,17 +11,18 @@
 
 ## 当前默认数据
 
-| 类型 | id | cost |
-| --- | --- | --- |
-| 角色 | `reimu` | 4 |
-| 角色 | `marisa` | 5 |
-| 角色 | `sakuya` | 4 |
-| 角色 | `youmu` | 5 |
-| 能力卡 | `spirit_strike_card` | 1 |
-| 能力卡 | `backdoor` | 1 |
-| 能力卡 | `multi_shot` | 1 |
-| 能力卡 | `ember` | 2 |
-| 能力卡 | `extra_life` | 3 |
+| 类型   | id                   | cost |
+| ------ | -------------------- | ---- |
+| 角色   | `reimu`              | 4    |
+| 角色   | `marisa`             | 5    |
+| 角色   | `iku`                | 4    |
+| 角色   | `sakuya`             | 4    |
+| 角色   | `youmu`              | 5    |
+| 能力卡 | `spirit_strike_card` | 1    |
+| 能力卡 | `backdoor`           | 1    |
+| 能力卡 | `multi_shot`         | 1    |
+| 能力卡 | `ember`              | 2    |
+| 能力卡 | `extra_life`         | 3    |
 
 ## 开发注意
 

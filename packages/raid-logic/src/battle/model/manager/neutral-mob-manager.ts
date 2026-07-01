@@ -11,6 +11,7 @@ import {
 } from "@repo/types";
 import type { FighterKey, FighterState } from "@repo/content";
 import type { NeutralMobSpawner, NeutralMobSpawnerState } from "@repo/content";
+import { createFamiliarFromSnapshot } from "@repo/content";
 import type { BattleRules } from "../battle-rules";
 
 import type {
@@ -177,7 +178,11 @@ export class NeutralMobManager {
             if (result === "accepted") {
               markPhysicalContact(mob.state, params.frame);
             }
-            if (result === "accepted" && targetWasActive && !target.state.active) {
+            if (
+              result === "accepted" &&
+              targetWasActive &&
+              !target.state.active
+            ) {
               target.onDeath(mob.state.key);
               params.onPhysicalMobKilled?.(target.state, mob.state.key);
               target.onDeathEffect();
@@ -246,8 +251,10 @@ export class NeutralMobManager {
       );
       if (existing) {
         existing.restore(snapshot);
-      } else if (this.mobSpawner) {
-        const created = this.mobSpawner.createMobFromSnapshot(snapshot);
+      } else {
+        const created =
+          this.mobSpawner?.createMobFromSnapshot(snapshot) ??
+          createFamiliarFromSnapshot(snapshot);
         if (created) {
           this.mobs.push(created);
         }

@@ -32,6 +32,41 @@ import AudioCmd, { type AudioCommand } from "../commands/AudioCmd";
 import { BattleAudioDirector } from "./sfx/audio";
 
 describe("BattleAudioDirector", () => {
+  it("plays a firing cue when Iku launches a normal familiar", () => {
+    const commands: AudioCommand[] = [];
+    const unsubscribe = AudioCmd.subscribe((command) => {
+      commands.push(command);
+    });
+
+    try {
+      const director = new BattleAudioDirector();
+      const previous = battleState({
+        frame: 20,
+        projectiles: [],
+        player: fighter("Player1", character("iku")),
+      });
+      const current = battleState({
+        frame: 21,
+        projectiles: [],
+        player: {
+          ...fighter("Player1", character("iku")),
+          shotsFired: 1,
+        },
+      });
+
+      director.sync(previous, { eventTypes: [] });
+      director.sync(current, { eventTypes: [] });
+
+      const playedKeys = commands
+        .filter((command) => command.type === "play")
+        .map((command) => command.key);
+
+      expect(playedKeys).toContain("se_tan00");
+    } finally {
+      unsubscribe();
+    }
+  });
+
   it("does not classify Neutral projectiles as Player2 character shots", () => {
     const commands: AudioCommand[] = [];
     const unsubscribe = AudioCmd.subscribe((command) => {
@@ -72,13 +107,15 @@ describe("BattleAudioDirector", () => {
 function battleState(params: {
   readonly frame: number;
   readonly projectiles: readonly ProjectileState[];
+  readonly player?: FighterState;
+  readonly target?: FighterState;
 }): BattleOutputState {
   return {
     frame: params.frame,
     gameOver: false,
     result: "running",
-    player: fighter("Player1", character("reimu")),
-    target: fighter("Player2", character("marisa")),
+    player: params.player ?? fighter("Player1", character("reimu")),
+    target: params.target ?? fighter("Player2", character("marisa")),
     points: [],
     neutralMobs: [],
     projectiles: params.projectiles,

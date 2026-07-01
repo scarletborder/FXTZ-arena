@@ -9,7 +9,8 @@ export type CharacterId =
   | "reisen"
   | "yuyuko"
   | "yukari"
-  | "flandre";
+  | "flandre"
+  | "iku";
 export type AbilityCardId =
   | "extra_life"
   | "ember"

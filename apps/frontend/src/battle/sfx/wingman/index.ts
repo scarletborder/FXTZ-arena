@@ -5,6 +5,7 @@ import { Depth } from "../../../utils/depth";
 import {
   CirnoWingmanProfile,
   EllenWingmanProfile,
+  IkuWingmanProfile,
   KaguyaWingmanProfile,
   MarisaWingmanProfile,
   ReimuWingmanProfile,
@@ -276,7 +277,10 @@ function drawMuzzleLine(
   graphics.lineStyle(2, color, alpha);
   graphics.beginPath();
   graphics.moveTo(x, y);
-  graphics.lineTo(x + Math.cos(shotAngle) * length, y + Math.sin(shotAngle) * length);
+  graphics.lineTo(
+    x + Math.cos(shotAngle) * length,
+    y + Math.sin(shotAngle) * length,
+  );
   graphics.strokePath();
 }
 
@@ -292,6 +296,7 @@ const PROFILES: ReadonlyMap<
   ["kaguya", new KaguyaWingmanProfile()],
   ["reisen", new ReisenWingmanProfile()],
   ["ellen", new EllenWingmanProfile()],
+  ["iku", new IkuWingmanProfile()],
   ["yuyuko", new YuyukoWingmanProfile()],
   ["yukari", new YukariWingmanProfile()],
 ]);
@@ -322,7 +327,10 @@ function sourcePosition(
   };
 }
 
-function sourceAngle(source: RelativeSource | OrbitSource, frame: number): number {
+function sourceAngle(
+  source: RelativeSource | OrbitSource,
+  frame: number,
+): number {
   if ("radius" in source) {
     return source.angleOffset + (source.angularSpeed ?? 0) * frame;
   }

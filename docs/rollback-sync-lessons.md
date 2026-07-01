@@ -111,6 +111,7 @@ Rapier 事件本身仍然需要被逻辑层规范化：
 
 - Reimu bomb 和 Sakuya bomb 使用固定点距离清弹。
 - Sakuya bomb 会暂停剩余投射物，`pausedUntil` 必须使用确定的 frame 值。
+- Yukari bomb 曾经在联机模式里因为一次性生成过多投射物，导致 rollback 重放时卡顿非常明显。即使逻辑结果正确，投射物爆发量也会把同步重放成本放大成肉眼可见的掉帧，所以这类技能不能只看单机表现，必须在联机 / rollback 路径下验证实际 replay 开销。
 - Backdoor 只应阻挡/清除已可见、有伤害、敌方、普通弹幕 `orb` / `knife`。不要影响己方弹、未可见预告弹、零伤害弹、`spark` / `laser` 等特殊投射物。碰撞范围由 Rapier shield body 表达，逻辑层只负责过滤作用域。
 - Marisa Master Spark 这类延迟生成不能在 `ctx.spawnLaser()` 后立刻修改 `projectiles[projectiles.length - 1]`，因为 spawn 是 deferred。需要把 `pausedUntil` 等参数直接传进 spawn params。
 

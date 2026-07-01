@@ -36,9 +36,24 @@ export class BattleAudioDirector {
     this.previous = currentSnapshot;
   }
 
-  private emitFrameAudio(previous: BattleOutputState, current: BattleOutputState): void {
-    this.emitFighterAudio(previous.player, current.player, "Player1", previous, current);
-    this.emitFighterAudio(previous.target, current.target, "Player2", previous, current);
+  private emitFrameAudio(
+    previous: BattleOutputState,
+    current: BattleOutputState,
+  ): void {
+    this.emitFighterAudio(
+      previous.player,
+      current.player,
+      "Player1",
+      previous,
+      current,
+    );
+    this.emitFighterAudio(
+      previous.target,
+      current.target,
+      "Player2",
+      previous,
+      current,
+    );
     this.emitMobAudio(previous.neutralMobs, current.neutralMobs);
     this.emitProjectileAudio(previous, current);
   }
@@ -54,7 +69,10 @@ export class BattleAudioDirector {
       if (pointPickupDetected(previous, current, fighterKey)) {
         AudioCmd.Play("se_item00");
       }
-      for (const threshold of crossedThresholds(previousFighter.pointCount, currentFighter.pointCount)) {
+      for (const threshold of crossedThresholds(
+        previousFighter.pointCount,
+        currentFighter.pointCount,
+      )) {
         void threshold;
         AudioCmd.Play("se_powerup");
       }
@@ -74,19 +92,25 @@ export class BattleAudioDirector {
       AudioCmd.Play("se_power01");
     }
 
-    if (currentFighter.hitsTaken > previousFighter.hitsTaken || currentFighter.lives < previousFighter.lives) {
+    if (
+      currentFighter.hitsTaken > previousFighter.hitsTaken ||
+      currentFighter.lives < previousFighter.lives
+    ) {
       const hits = Math.max(
         currentFighter.hitsTaken - previousFighter.hitsTaken,
         previousFighter.lives - currentFighter.lives,
         1,
       );
       for (let index = 0; index < hits; index += 1) {
-        console.log('pldead00')
+        console.log("pldead00");
         AudioCmd.Play("se_pldead00");
       }
     }
 
-    if (currentFighter.grazedProjectileIds.length > previousFighter.grazedProjectileIds.length) {
+    if (
+      currentFighter.grazedProjectileIds.length >
+      previousFighter.grazedProjectileIds.length
+    ) {
       AudioCmd.Play("se_graze", {
         loop: true,
         groupKey: `graze:${fighterKey}`,
@@ -103,14 +127,28 @@ export class BattleAudioDirector {
         holdMs: 1000,
       });
     }
+
+    if (
+      currentFighter.activeCharacter.id === "iku" &&
+      currentFighter.shotsFired > previousFighter.shotsFired
+    ) {
+      AudioCmd.Play("se_tan00", {
+        groupKey: `fire:${fighterKey}:iku`,
+        holdMs: 250,
+      });
+    }
   }
 
   private emitMobAudio(
     previousMobs: readonly MobState[],
     currentMobs: readonly MobState[],
   ): void {
-    const previousById = new Map(previousMobs.map((mob) => [mob.id, mob] as const));
-    const currentById = new Map(currentMobs.map((mob) => [mob.id, mob] as const));
+    const previousById = new Map(
+      previousMobs.map((mob) => [mob.id, mob] as const),
+    );
+    const currentById = new Map(
+      currentMobs.map((mob) => [mob.id, mob] as const),
+    );
     for (const currentMob of currentMobs) {
       const previousMob = previousById.get(currentMob.id);
       if (!previousMob) {
@@ -139,15 +177,26 @@ export class BattleAudioDirector {
     }
   }
 
-  private emitProjectileAudio(previous: BattleOutputState, current: BattleOutputState): void {
-    const previousById = new Map(previous.projectiles.map((projectile) => [projectile.id, projectile] as const));
+  private emitProjectileAudio(
+    previous: BattleOutputState,
+    current: BattleOutputState,
+  ): void {
+    const previousById = new Map(
+      previous.projectiles.map(
+        (projectile) => [projectile.id, projectile] as const,
+      ),
+    );
     const queued = new Map<string, AudioCue>();
 
     for (const projectile of current.projectiles) {
       const sourceCharacterId = sourceCharacterFor(projectile, current);
       const previousProjectile = previousById.get(projectile.id);
 
-      if (sourceCharacterId === "marisa" && projectile.kind === "spark" && projectile.damage > 0) {
+      if (
+        sourceCharacterId === "marisa" &&
+        projectile.kind === "spark" &&
+        projectile.damage > 0
+      ) {
         if (
           previousProjectile &&
           previous.frame < projectile.visibleFrom &&
@@ -204,7 +253,10 @@ function projectileCue(
 
   if (characterId === "reimu") {
     return {
-      key: projectile.damage >= 40 ? "se_tan02" : classifyProjectileSound(projectile),
+      key:
+        projectile.damage >= 40
+          ? "se_tan02"
+          : classifyProjectileSound(projectile),
       groupKey: `fire:${projectile.owner}:reimu`,
       holdMs: 900,
     };
@@ -218,7 +270,12 @@ function projectileCue(
     };
   }
 
-  if (characterId === "youmu" || characterId === "cirno" || characterId === "sakuya" || characterId === "kaguya") {
+  if (
+    characterId === "youmu" ||
+    characterId === "cirno" ||
+    characterId === "sakuya" ||
+    characterId === "kaguya"
+  ) {
     return {
       key: "se_tan00",
       groupKey: `fire:${projectile.owner}:${characterId}`,
@@ -287,11 +344,18 @@ function pointPickupDetected(
   );
 }
 
-function crossedThresholds(previousPointCount: number, currentPointCount: number): number[] {
+function crossedThresholds(
+  previousPointCount: number,
+  currentPointCount: number,
+): number[] {
   const thresholds: number[] = [];
   const start = Math.floor(previousPointCount / POWERUP_STEP) + 1;
   const end = Math.floor(currentPointCount / POWERUP_STEP);
-  for (let threshold = start * POWERUP_STEP; threshold <= end * POWERUP_STEP; threshold += POWERUP_STEP) {
+  for (
+    let threshold = start * POWERUP_STEP;
+    threshold <= end * POWERUP_STEP;
+    threshold += POWERUP_STEP
+  ) {
     thresholds.push(threshold);
   }
   return thresholds;
