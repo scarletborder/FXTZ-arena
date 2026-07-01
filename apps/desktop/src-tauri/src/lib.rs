@@ -312,16 +312,14 @@ pub fn run() {
 fn build_updater<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
 ) -> Result<Option<tauri_plugin_updater::Updater>, String> {
-    let endpoint = match env::var("TAURI_UPDATER_ENDPOINT")
-        .ok()
-        .filter(|value| !value.is_empty())
-    {
+    let endpoint = match configured_value(
+        "TAURI_UPDATER_ENDPOINT",
+        option_env!("TAURI_UPDATER_ENDPOINT"),
+    ) {
         Some(value) => value,
         None => return Ok(None),
     };
-    let pubkey = match env::var("TAURI_UPDATER_PUBKEY")
-        .ok()
-        .filter(|value| !value.is_empty())
+    let pubkey = match configured_value("TAURI_UPDATER_PUBKEY", option_env!("TAURI_UPDATER_PUBKEY"))
     {
         Some(value) => value,
         None => return Ok(None),
@@ -336,4 +334,15 @@ fn build_updater<R: tauri::Runtime>(
         .build()
         .map(Some)
         .map_err(|error| error.to_string())
+}
+
+fn configured_value(name: &str, build_time_value: Option<&'static str>) -> Option<String> {
+    env::var(name)
+        .ok()
+        .filter(|value| !value.is_empty())
+        .or_else(|| {
+            build_time_value
+                .filter(|value| !value.is_empty())
+                .map(str::to_owned)
+        })
 }

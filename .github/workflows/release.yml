@@ -158,10 +158,13 @@ jobs:
 
       - name: Validate desktop updater config
         shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           : "${TAURI_UPDATER_ENDPOINT:?TAURI_UPDATER_ENDPOINT is required}"
           : "${TAURI_UPDATER_PUBKEY:?TAURI_UPDATER_PUBKEY is required}"
           : "${VITE_DESKTOP_UPDATER_ENDPOINT:?VITE_DESKTOP_UPDATER_ENDPOINT is required}"
+          : "${TAURI_SIGNING_PRIVATE_KEY:?TAURI_SIGNING_PRIVATE_KEY secret is required}"
 
       # ================== 替换的部分开始 ==================
       - name: Install cargo-binstall
@@ -178,6 +181,8 @@ jobs:
           VITE_APP_VERSION: ${{ steps.meta.outputs.version }}
           VITE_APP_COMMIT: ${{ steps.meta.outputs.commit }}
           VITE_DOCS_URL: "https://mvz443-team.github.io/docs/"
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           BUILD_LABEL: ${{ steps.meta.outputs.build_label }} # 传递 build label 给脚本
         working-directory: apps/desktop
         run: pnpm run publish-desktop
@@ -218,6 +223,11 @@ jobs:
           tag_name: ${{ github.ref_name }}
           files: |
             release/fxtz-arena-desktop-${{ steps.meta.outputs.build_label }}.zip
+            apps/desktop/src-tauri/target/release/bundle/**/latest.json
+            apps/desktop/src-tauri/target/release/bundle/**/*.sig
+            apps/desktop/src-tauri/target/release/bundle/**/*.msi
+            apps/desktop/src-tauri/target/release/bundle/**/*.exe
+            apps/desktop/src-tauri/target/release/bundle/**/*.zip
 
   build-docker:
     needs: [build]
