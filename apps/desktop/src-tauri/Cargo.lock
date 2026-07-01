@@ -1322,6 +1322,7 @@ version = "0.0.0"
 dependencies = [
  "rfd",
  "serde",
+ "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-process",
