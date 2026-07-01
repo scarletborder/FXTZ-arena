@@ -1,15 +1,24 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { basename, join, relative, resolve, sep } from "node:path";
 import { execSync } from "node:child_process";
 
-const bundleDir = resolve("src-tauri/target/release/bundle");
 const releaseDir = resolve("src-tauri/target/release");
-const outputDir = resolve("../../dist-desktop");
+const frontendDistDir = resolve("../frontend/dist");
+const resourceAssetsDir = join(frontendDistDir, "resource-assets");
+const outputDir = resolve("../../release");
 const supplementalReadmeSource = resolve("docs/README.txt");
-const supplementalReadmeTarget = join(outputDir, "README.txt");
-const artifactPattern = /\.(msi|exe|dmg|deb|rpm|AppImage|sig|json|zip)$/;
-const portableBinaryName = "fxtz-arena-desktop";
-const collectedArtifacts = [];
+const portableBinaryBaseName = "fxtz-arena-desktop";
+const portableBinaryName = process.platform === "win32" ? `${portableBinaryBaseName}.exe` : portableBinaryBaseName;
+const portableBinarySource = join(releaseDir, portableBinaryName);
 const CRC_TABLE = Array.from({ length: 256 }, (_, index) => {
   let value = index;
   for (let bit = 0; bit < 8; bit += 1) {
@@ -18,106 +27,85 @@ const CRC_TABLE = Array.from({ length: 256 }, (_, index) => {
   return value >>> 0;
 });
 
-// Get version info from environment or git
-function getBuildLabel() {
-  // Try to get from environment variables first (GitHub Actions)
-  if (process.env.BUILD_LABEL) {
-    return process.env.BUILD_LABEL;
-  }
-  
-  // Try to get from git for local builds
-  try {
-    const tagName = execSync('git describe --tags --abbrev=0', { encoding: 'utf8' }).trim();
-    const commitCount = execSync('git rev-list --count HEAD', { encoding: 'utf8' }).trim();
-    return `${tagName}+${commitCount}`;
-  } catch (error) {
-    console.warn('[desktop] Could not determine build label from git, using default');
-    return 'dev';
-  }
+const buildLabel = getBuildLabel();
+const binaryArtifactName = `fxtz-arena-desktop-${buildLabel}${process.platform === "win32" ? ".exe" : ""}`;
+const binaryArtifactPath = join(outputDir, binaryArtifactName);
+const zipPath = join(outputDir, `fxtz-arena-desktop-portable-${buildLabel}.zip`);
+
+if (!existsSync(portableBinarySource)) {
+  throw new Error(`[desktop] Portable binary not found: ${portableBinarySource}`);
 }
 
 mkdirSync(outputDir, { recursive: true });
+copyArtifact(portableBinarySource, binaryArtifactPath);
+console.log(`[desktop] collected portable binary ${binaryArtifactPath}`);
 
-function collect(dir, options = { recursive: true }) {
-  if (!existsSync(dir)) return;
-  for (const entry of readdirSync(dir)) {
-    const fullPath = join(dir, entry);
-    const stat = statSync(fullPath);
-    if (stat.isDirectory()) {
-      if (options.recursive) {
-        collect(fullPath, options);
-      }
-      continue;
-    }
-    if (isArtifact(entry)) {
-      const destination = copyArtifact(fullPath, join(outputDir, basename(entry)));
-      collectedArtifacts.push(destination);
-      console.log(`[desktop] collected ${destination}`);
-    }
-  }
-}
-
-function copyArtifact(source, destination) {
-  let target = destination;
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    try {
-      if (existsSync(target)) {
-        rmSync(target, { force: true });
-      }
-      copyFileSync(source, target);
-      return target;
-    } catch (error) {
-      if (!["EBUSY", "EPERM", "EACCES"].includes(error?.code) || attempt === 11) {
-        target = withTimestamp(destination);
-        copyFileSync(source, target);
-        return target;
-      }
-      sleep(250);
-    }
-  }
-}
-
-function withTimestamp(filePath) {
-  const dotIndex = filePath.lastIndexOf(".");
-  const stamp = new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 14);
-  if (dotIndex < 0) {
-    return `${filePath}-${stamp}`;
-  }
-  return `${filePath.slice(0, dotIndex)}-${stamp}${filePath.slice(dotIndex)}`;
-}
-
-function sleep(ms) {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-}
-
-collect(releaseDir, { recursive: false });
-collect(bundleDir, { recursive: true });
+const zipEntries = [
+  {
+    name: portableBinaryName,
+    path: portableBinarySource,
+    mode: statSync(portableBinarySource).mode,
+  },
+];
 
 if (existsSync(supplementalReadmeSource)) {
-  const destination = copyArtifact(supplementalReadmeSource, supplementalReadmeTarget);
-  collectedArtifacts.push(destination);
-  console.log(`[desktop] collected supplemental README ${destination}`);
+  zipEntries.push({
+    name: basename(supplementalReadmeSource),
+    path: supplementalReadmeSource,
+    mode: statSync(supplementalReadmeSource).mode,
+  });
 } else {
   console.warn(`[desktop] Supplemental README not found: ${supplementalReadmeSource}`);
 }
 
-const buildLabel = getBuildLabel();
-const appVersion = getAppVersion(buildLabel);
-const updaterInstaller = prepareUpdaterInstaller(appVersion);
-if (updaterInstaller) {
-  writeLatestJson(appVersion, updaterInstaller);
+if (existsSync(resourceAssetsDir)) {
+  zipEntries.push(...collectFiles(resourceAssetsDir, "resource-assets"));
+} else {
+  console.warn(`[desktop] Resource assets not found: ${resourceAssetsDir}`);
 }
 
-const zipPath = join(outputDir, `fxtz-arena-desktop-${buildLabel}.zip`);
-const zipEntries = collectedArtifacts
-  .filter((path) => basename(path) !== portableBinaryName)
-  .map((path) => ({ name: basename(path), path, mode: statSync(path).mode }));
+writeFileSync(zipPath, createZip(zipEntries));
+console.log(`[desktop] collected portable package ${zipPath}`);
 
-if (zipEntries.length > 0) {
-  writeFileSync(zipPath, createZip(zipEntries));
-  console.log(`[desktop] zipped ${zipPath}`);
-} else {
-  console.warn('[desktop] No artifacts collected, zip not created');
+function getBuildLabel() {
+  if (process.env.BUILD_LABEL) {
+    return sanitizeArtifactLabel(process.env.BUILD_LABEL);
+  }
+
+  try {
+    const tagName = execSync("git describe --tags --abbrev=0", { encoding: "utf8" }).trim();
+    const commitCount = execSync("git rev-list --count HEAD", { encoding: "utf8" }).trim();
+    return sanitizeArtifactLabel(`${tagName}+${commitCount}`);
+  } catch (error) {
+    console.warn("[desktop] Could not determine build label from git, using default");
+    return "dev";
+  }
+}
+
+function sanitizeArtifactLabel(value) {
+  return value.replace(/[\\/:*?"<>|]/g, "-");
+}
+
+function collectFiles(root, zipRoot) {
+  const entries = [];
+  for (const entry of readdirSync(root)) {
+    const fullPath = join(root, entry);
+    const stat = statSync(fullPath);
+    if (stat.isDirectory()) {
+      entries.push(...collectFiles(fullPath, `${zipRoot}/${entry}`));
+      continue;
+    }
+    const entryName = `${zipRoot}/${relative(root, fullPath).split(sep).join("/")}`;
+    entries.push({ name: entryName, path: fullPath, mode: stat.mode });
+  }
+  return entries;
+}
+
+function copyArtifact(source, destination) {
+  if (existsSync(destination)) {
+    rmSync(destination, { force: true });
+  }
+  copyFileSync(source, destination);
 }
 
 function createZip(entries) {
@@ -181,86 +169,6 @@ function createZip(entries) {
   endRecord.writeUInt16LE(0, 20);
 
   return Buffer.concat([...chunks, ...centralDirectory, endRecord]);
-}
-
-function isArtifact(entry) {
-  return artifactPattern.test(entry) || entry === portableBinaryName;
-}
-
-function getAppVersion(buildLabel) {
-  const rawVersion = process.env.APP_VERSION || buildLabel.split("+")[0] || "v0.0.0";
-  const normalized = rawVersion.replace(/^v/i, "");
-  if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(normalized)) {
-    throw new Error(`[desktop] Cannot generate latest.json from invalid app version: ${rawVersion}`);
-  }
-  return normalized;
-}
-
-function prepareUpdaterInstaller(appVersion) {
-  const installer = findFirst(bundleDir, (entry) => entry.endsWith(".exe") && !entry.endsWith(".sig"));
-  if (!installer) {
-    throw new Error(`[desktop] Cannot generate latest.json: no NSIS installer found under ${bundleDir}`);
-  }
-
-  const signature = `${installer}.sig`;
-  if (!existsSync(signature)) {
-    throw new Error(`[desktop] Cannot generate latest.json: missing updater signature ${signature}`);
-  }
-
-  const installerName = `FXTZ.Arena_${appVersion}_x64-setup.exe`;
-  const signatureName = `${installerName}.sig`;
-  const installerTarget = copyArtifact(installer, join(outputDir, installerName));
-  const signatureTarget = copyArtifact(signature, join(outputDir, signatureName));
-  collectedArtifacts.push(installerTarget, signatureTarget);
-  console.log(`[desktop] prepared updater installer ${installerTarget}`);
-  console.log(`[desktop] prepared updater signature ${signatureTarget}`);
-  return {
-    installerName,
-    signature: readFileSync(signatureTarget, "utf8").trim(),
-  };
-}
-
-function writeLatestJson(appVersion, updaterInstaller) {
-  const tagName = process.env.GITHUB_REF_NAME || `v${appVersion}`;
-  const repository = process.env.GITHUB_REPOSITORY || "scarletborder/FXTZ-arena";
-  const installerUrl = `https://github.com/${repository}/releases/download/${encodeURIComponent(tagName)}/${encodeURIComponent(updaterInstaller.installerName)}`;
-  const latestJson = {
-    version: appVersion,
-    notes: `FXTZ Arena v${appVersion}`,
-    pub_date: new Date().toISOString(),
-    platforms: {
-      "windows-x86_64": {
-        signature: updaterInstaller.signature,
-        url: installerUrl,
-      },
-    },
-  };
-  const latestJsonPath = join(outputDir, "latest.json");
-  writeFileSync(latestJsonPath, `${JSON.stringify(latestJson, null, 2)}\n`);
-  collectedArtifacts.push(latestJsonPath);
-  console.log(`[desktop] generated updater manifest ${latestJsonPath}`);
-}
-
-function findFirst(dir, predicate) {
-  if (!existsSync(dir)) {
-    return null;
-  }
-
-  for (const entry of readdirSync(dir)) {
-    const fullPath = join(dir, entry);
-    const stat = statSync(fullPath);
-    if (stat.isDirectory()) {
-      const found = findFirst(fullPath, predicate);
-      if (found) {
-        return found;
-      }
-      continue;
-    }
-    if (predicate(entry, fullPath)) {
-      return fullPath;
-    }
-  }
-  return null;
 }
 
 function crc32(data) {

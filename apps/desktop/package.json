@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "",
     "build": "node ./scripts/build-frontend.mjs && node ./scripts/build-tauri.mjs",
-    "publish-desktop": "pnpm build && node ./scripts/collect-artifacts.js"
+    "build:portable": "node ./scripts/build-tauri.mjs",
+    "publish-desktop": "pnpm build && node ./scripts/collect-artifacts.js",
+    "publish-portable": "pnpm build:portable && node ./scripts/collect-artifacts.js"
   },
   "dependencies": {
     "frontend": "workspace:*"
