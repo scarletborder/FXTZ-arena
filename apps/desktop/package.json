@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "",
-    "build": "node ./scripts/build-frontend.mjs && tauri build --no-bundle",
+    "build": "node ./scripts/build-frontend.mjs && node ./scripts/build-tauri.mjs",
     "publish-desktop": "pnpm build && node ./scripts/collect-artifacts.js"
   },
   "dependencies": {

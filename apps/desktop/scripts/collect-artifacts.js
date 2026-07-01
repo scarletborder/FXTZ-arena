@@ -7,7 +7,7 @@ const releaseDir = resolve("src-tauri/target/release");
 const outputDir = resolve("../../dist-desktop");
 const supplementalReadmeSource = resolve("docs/README.txt");
 const supplementalReadmeTarget = join(outputDir, "README.txt");
-const artifactPattern = /\.(msi|exe|dmg|deb|rpm|AppImage)$/;
+const artifactPattern = /\.(msi|exe|dmg|deb|rpm|AppImage|sig|json|zip)$/;
 const portableBinaryName = "fxtz-arena-desktop";
 const collectedArtifacts = [];
 const CRC_TABLE = Array.from({ length: 256 }, (_, index) => {
