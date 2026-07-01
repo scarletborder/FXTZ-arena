@@ -4,11 +4,24 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 const appVersion = normalizeVersion(process.env.APP_VERSION);
+const updaterEndpoint = requiredEnv("TAURI_UPDATER_ENDPOINT");
+const updaterPubkey = requiredEnv("TAURI_UPDATER_PUBKEY");
 const tempDir = mkdtempSync(join(tmpdir(), "fxtz-tauri-config-"));
 const configPath = join(tempDir, "tauri.conf.json");
 
 try {
-  writeFileSync(configPath, JSON.stringify({ version: appVersion }));
+  writeFileSync(
+    configPath,
+    JSON.stringify({
+      version: appVersion,
+      plugins: {
+        updater: {
+          endpoints: [updaterEndpoint],
+          pubkey: updaterPubkey,
+        },
+      },
+    }),
+  );
 
   const result = spawnSync("tauri", ["build", "--config", configPath], {
     stdio: "inherit",
@@ -30,4 +43,12 @@ function normalizeVersion(version) {
     throw new Error(`APP_VERSION must be a SemVer value, got ${version}`);
   }
   return normalized;
+}
+
+function requiredEnv(name) {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} is required`);
+  }
+  return value;
 }
