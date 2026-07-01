@@ -9,6 +9,14 @@ interface ProcessApi {
   relaunch(): Promise<void>;
 }
 
+interface DesktopUpdaterDeps {
+  readonly invoke: <T>(command: string, args?: Record<string, unknown>) => Promise<T>;
+  readonly listen: <T>(event: string, handler: (event: { payload: T }) => void) => Promise<() => void>;
+  readonly relaunch: () => Promise<void>;
+}
+
+const DESKTOP_UPDATE_TIMEOUT_MS = 8_000;
+
 export async function updateDesktopAppIfNeeded(
   onProgress?: (progress: DesktopUpdateProgress) => void,
 ): Promise<boolean> {
@@ -22,19 +30,47 @@ export async function updateDesktopAppIfNeeded(
     import("@tauri-apps/plugin-process") as Promise<ProcessApi>,
   ]);
 
-  const unlisten = await event.listen<DesktopUpdateProgress>("desktop-update-progress", (event) => {
+  return updateDesktopAppIfNeededWithDeps({ invoke, listen: event.listen, relaunch }, onProgress);
+}
+
+export async function updateDesktopAppIfNeededWithDeps(
+  deps: DesktopUpdaterDeps,
+  onProgress?: (progress: DesktopUpdateProgress) => void,
+  timeoutMs = DESKTOP_UPDATE_TIMEOUT_MS,
+): Promise<boolean> {
+  const unlisten = await deps.listen<DesktopUpdateProgress>("desktop-update-progress", (event) => {
     onProgress?.(event.payload);
   });
 
   try {
-    const updated = await invoke<boolean>("desktop_update_and_install_if_available");
+    const updated = await withTimeout(
+      deps.invoke<boolean>("desktop_update_and_install_if_available"),
+      timeoutMs,
+      false,
+    );
     if (!updated) {
       return false;
     }
-    await relaunch();
+    await deps.relaunch();
     return true;
   } finally {
     unlisten();
+  }
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => {
+        timeout = setTimeout(() => resolve(fallback), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
   }
 }
 
