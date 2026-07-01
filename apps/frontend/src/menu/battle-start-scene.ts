@@ -27,7 +27,7 @@ export class BattleStartScene extends Phaser.Scene {
     this.add.text(90, 74, t("battle_start.title"), { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "42px", fontStyle: "900", color: "#f6f1e6" });
 
     this.indicator = this.add.graphics();
-    this.statusLabel = this.add.text(90, 130, "", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "14px", color: "#b7c7d8" });
+    this.statusLabel = this.add.text(105, 133, "", { fontFamily: "Arial, 'Microsoft YaHei', sans-serif", fontSize: "14px", color: "#b7c7d8" });
     this.drawIndicator("disconnected");
 
     drawPanel(this, 72, 176, 520, 432, t("battle_start.online"));
