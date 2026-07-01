@@ -15,6 +15,7 @@ try {
     JSON.stringify({
       version: appVersion,
       bundle: {
+        createUpdaterArtifacts: true,
         targets: ["nsis"],
       },
       plugins: {

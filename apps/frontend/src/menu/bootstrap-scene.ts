@@ -1,18 +1,21 @@
 import Phaser from "phaser";
 import { t } from "@repo/i18n";
-import { IS_DESKTOP_APP } from "@repo/constants";
+import { APP_VERSION, IS_DESKTOP_APP } from "@repo/constants";
 
 import { prepareResourcePackSource, type ResourcePackPrepareProgress } from "../utils/resource-pack";
-import { updateDesktopAppIfNeeded } from "../platform/desktop-updater";
+import { fetchDesktopRemoteVersion, updateDesktopAppIfNeeded } from "../platform/desktop-updater";
 import { bodyStyle, drawAngledPanel, drawFightingBackdrop, headingStyle } from "./ui";
 import type { SceneKey } from "./shared";
 
 const BAR_WIDTH = 520;
+const UNKNOWN_VERSION = "-";
 
 export class BootstrapScene extends Phaser.Scene {
   private progress = 0;
   private label: Phaser.GameObjects.Text | undefined;
   private sizeLabel: Phaser.GameObjects.Text | undefined;
+  private versionLabel: Phaser.GameObjects.Text | undefined;
+  private remoteVersion = UNKNOWN_VERSION;
   private enterPrompt: Phaser.GameObjects.Text | undefined;
   private bar: Phaser.GameObjects.Graphics | undefined;
   private finished = false;
@@ -27,6 +30,14 @@ export class BootstrapScene extends Phaser.Scene {
     this.add.text(380, 256, t("bootstrap.title"), headingStyle(34));
     this.label = this.add.text(392, 326, t("bootstrap.checking"), bodyStyle("#d7e3ef", 20));
     this.sizeLabel = this.add.text(392, 396, t("bootstrap.size_unknown"), bodyStyle("#9fb4c8", 16));
+    if (IS_DESKTOP_APP) {
+      this.versionLabel = this.add.text(1228, 648, "", {
+        ...bodyStyle("#9fb4c8", 15),
+        align: "right",
+        lineSpacing: 6,
+      }).setOrigin(1, 0);
+      this.updateVersionLabel();
+    }
     this.bar = this.add.graphics();
     this.renderProgress();
     this.input.once("pointerup", () => this.enterGame());
@@ -37,15 +48,29 @@ export class BootstrapScene extends Phaser.Scene {
   private async prepareResources(): Promise<void> {
     try {
       if (IS_DESKTOP_APP) {
-        const updated = await updateDesktopAppIfNeeded((progress) => {
-          this.handleProgress({
-            stage: "downloading",
-            downloadedBytes: progress.downloadedBytes,
-            totalBytes: progress.totalBytes,
-          });
+        this.setBootstrapStage(t("bootstrap.fetching_remote_version"), t("bootstrap.waiting_remote_version"), 0.04);
+        const remoteVersion = await fetchDesktopRemoteVersion();
+        if (remoteVersion.status === "available") {
+          this.remoteVersion = formatVersionForDisplay(remoteVersion.version);
+          this.updateVersionLabel();
+        } else {
+          this.remoteVersion = t("bootstrap.version_unknown");
+          this.updateVersionLabel();
+        }
+
+        this.setBootstrapStage(t("bootstrap.checking_desktop_update"), t("bootstrap.current_version", {
+          version: APP_VERSION,
+        }), 0.08);
+        const updateResult = await updateDesktopAppIfNeeded((progress) => {
+          this.handleDesktopUpdateProgress(progress.downloadedBytes, progress.totalBytes);
         });
-        if (updated) {
+        if (updateResult.status === "updated") {
           return;
+        }
+        if (updateResult.status === "failed") {
+          this.label?.setText(t("bootstrap.update_check_failed"));
+          this.sizeLabel?.setText(t("bootstrap.continue_without_update"));
+          await delay(1200);
         }
       }
 
@@ -68,13 +93,13 @@ export class BootstrapScene extends Phaser.Scene {
     }
 
     if (progress.stage === "checking") {
-      this.label?.setText(t("bootstrap.checking"));
+      this.label?.setText(t("bootstrap.fetching_resource_manifest"));
       this.sizeLabel?.setText(t("bootstrap.size_unknown"));
       this.progress = 0;
     } else if (progress.stage === "downloading") {
       const downloadedBytes = progress.downloadedBytes ?? 0;
       const totalBytes = progress.totalBytes;
-      this.label?.setText(t("bootstrap.downloading"));
+      this.label?.setText(t("bootstrap.updating_resources"));
       this.sizeLabel?.setText(t("bootstrap.download_size", {
         downloaded: formatBytes(downloadedBytes),
         total: totalBytes ? formatBytes(totalBytes) : t("bootstrap.unknown_total"),
@@ -99,6 +124,30 @@ export class BootstrapScene extends Phaser.Scene {
     }
 
     this.renderProgress();
+  }
+
+  private handleDesktopUpdateProgress(downloadedBytes = 0, totalBytes?: number): void {
+    this.label?.setText(t("bootstrap.updating_desktop_client"));
+    this.sizeLabel?.setText(t("bootstrap.download_size", {
+      downloaded: formatBytes(downloadedBytes),
+      total: totalBytes ? formatBytes(totalBytes) : t("bootstrap.unknown_total"),
+    }));
+    this.progress = totalBytes ? Math.min(1, downloadedBytes / totalBytes) : 0.12;
+    this.renderProgress();
+  }
+
+  private setBootstrapStage(label: string, detail: string, progress: number): void {
+    this.label?.setText(label);
+    this.sizeLabel?.setText(detail);
+    this.progress = progress;
+    this.renderProgress();
+  }
+
+  private updateVersionLabel(): void {
+    this.versionLabel?.setText(t("bootstrap.version_info", {
+      current: APP_VERSION,
+      latest: this.remoteVersion,
+    }));
   }
 
   private renderProgress(): void {
@@ -152,4 +201,12 @@ function formatBytes(bytes: number): string {
     unitIndex += 1;
   }
   return `${value.toFixed(value >= 10 ? 1 : 2)} ${units[unitIndex]}`;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function formatVersionForDisplay(version: string): string {
+  return version === "dev" || version.startsWith("v") ? version : `v${version}`;
 }
