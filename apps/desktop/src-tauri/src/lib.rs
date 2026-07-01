@@ -170,6 +170,12 @@ struct DesktopUpdateProgressPayload {
     total_bytes: Option<u64>,
 }
 
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DesktopRemoteUpdatePayload {
+    version: String,
+}
+
 #[tauri::command]
 fn replay_save_slot(slot_index: u32, data: Vec<u8>) -> Result<(), String> {
     let dir = replay_dir()?;
@@ -273,6 +279,20 @@ async fn desktop_update_and_install_if_available(app: tauri::AppHandle) -> Resul
     Ok(true)
 }
 
+#[tauri::command]
+async fn desktop_remote_update_version(
+    app: tauri::AppHandle,
+) -> Result<Option<DesktopRemoteUpdatePayload>, String> {
+    let Some(updater) = build_updater(&app)? else {
+        return Ok(None);
+    };
+
+    let update = updater.check().await.map_err(|error| error.to_string())?;
+    Ok(update.map(|update| DesktopRemoteUpdatePayload {
+        version: update.version,
+    }))
+}
+
 fn stop_udp_socket(state: &UdpState) -> Result<(), String> {
     state.running.store(false, Ordering::SeqCst);
     state.session.fetch_add(1, Ordering::SeqCst);
@@ -285,6 +305,7 @@ pub fn run() {
     let builder = tauri::Builder::default()
         .manage(UdpState::default())
         .manage(link::wt::WtState::default())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             udp_listen,
@@ -298,6 +319,7 @@ pub fn run() {
             replay_delete_slot,
             replay_export_slot,
             replay_open_folder,
+            desktop_remote_update_version,
             desktop_update_and_install_if_available,
             link::wt::wt_connect,
             link::wt::wt_send,
@@ -312,28 +334,18 @@ pub fn run() {
 fn build_updater<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
 ) -> Result<Option<tauri_plugin_updater::Updater>, String> {
-    let endpoint = match configured_value(
-        "TAURI_UPDATER_ENDPOINT",
-        option_env!("TAURI_UPDATER_ENDPOINT"),
-    ) {
-        Some(value) => value,
-        None => return Ok(None),
-    };
-    let pubkey = match configured_value("TAURI_UPDATER_PUBKEY", option_env!("TAURI_UPDATER_PUBKEY"))
-    {
-        Some(value) => value,
-        None => return Ok(None),
-    };
+    let mut builder = app.updater_builder();
+    if let Some(endpoint) = configured_value("TAURI_UPDATER_ENDPOINT", option_env!("TAURI_UPDATER_ENDPOINT")) {
+        let endpoint = endpoint.parse::<Url>().map_err(|error| error.to_string())?;
+        builder = builder
+            .endpoints(vec![endpoint])
+            .map_err(|error| error.to_string())?;
+    }
+    if let Some(pubkey) = configured_value("TAURI_UPDATER_PUBKEY", option_env!("TAURI_UPDATER_PUBKEY")) {
+        builder = builder.pubkey(pubkey);
+    }
 
-    let endpoint = endpoint.parse::<Url>().map_err(|error| error.to_string())?;
-
-    app.updater_builder()
-        .pubkey(pubkey)
-        .endpoints(vec![endpoint])
-        .map_err(|error| error.to_string())?
-        .build()
-        .map(Some)
-        .map_err(|error| error.to_string())
+    builder.build().map(Some).map_err(|error| error.to_string())
 }
 
 fn configured_value(name: &str, build_time_value: Option<&'static str>) -> Option<String> {

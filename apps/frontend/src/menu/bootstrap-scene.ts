@@ -53,6 +53,9 @@ export class BootstrapScene extends Phaser.Scene {
         if (remoteVersion.status === "available") {
           this.remoteVersion = formatVersionForDisplay(remoteVersion.version);
           this.updateVersionLabel();
+        } else if (remoteVersion.status === "not-available") {
+          this.remoteVersion = formatVersionForDisplay(APP_VERSION);
+          this.updateVersionLabel();
         } else {
           this.remoteVersion = t("bootstrap.version_unknown");
           this.updateVersionLabel();
