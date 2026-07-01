@@ -14,6 +14,9 @@ try {
     configPath,
     JSON.stringify({
       version: appVersion,
+      bundle: {
+        targets: ["nsis"],
+      },
       plugins: {
         updater: {
           endpoints: [updaterEndpoint],
