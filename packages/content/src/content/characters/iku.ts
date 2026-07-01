@@ -73,7 +73,7 @@ export class IkuBattleCharacter extends BattleCharacter {
   readonly description = "content.characters.iku.description";
   readonly gallery: CharacterGalleryAssets = {
     portraitAsset: "assets/characters/iku/portrait.png",
-    attackPreviewAsset: "assets/characters/iku/portrait.png",
+    attackPreviewAsset: "assets/characters/iku/preview.png",
     combatAsset: "assets/characters/iku/combat.png",
   };
   readonly normalAttackId = "iku_familiar_lightning";
