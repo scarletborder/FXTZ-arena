@@ -12,11 +12,16 @@ export type DesktopUpdateResult =
 
 export type DesktopRemoteVersionResult =
   | { readonly status: "available"; readonly version: string }
+  | { readonly status: "not-available" }
   | { readonly status: "not-configured" }
   | { readonly status: "failed" };
 
 interface ProcessApi {
   relaunch(): Promise<void>;
+}
+
+interface DesktopRemoteUpdatePayload {
+  readonly version: string;
 }
 
 interface DesktopUpdaterDeps {
@@ -28,22 +33,26 @@ interface DesktopUpdaterDeps {
 const DESKTOP_UPDATE_TIMEOUT_MS = 8_000;
 
 export async function fetchDesktopRemoteVersion(timeoutMs = DESKTOP_UPDATE_TIMEOUT_MS): Promise<DesktopRemoteVersionResult> {
-  const endpoint = getDesktopUpdaterEndpoint();
-  if (!endpoint) {
+  if (!IS_DESKTOP_APP) {
     return { status: "not-configured" };
   }
 
   try {
-    const response = await withTimeout(fetch(endpoint, { cache: "no-store" }), timeoutMs, UPDATE_TIMEOUT);
-    if (response === UPDATE_TIMEOUT || !response.ok) {
+    const { invoke } = await import("@tauri-apps/api/core") as {
+      invoke<T>(command: string, args?: Record<string, unknown>): Promise<T>;
+    };
+    const update = await withTimeout(
+      invoke<DesktopRemoteUpdatePayload | null>("desktop_remote_update_version"),
+      timeoutMs,
+      UPDATE_TIMEOUT,
+    );
+    if (update === UPDATE_TIMEOUT) {
       return { status: "failed" };
     }
 
-    const payload = await response.json() as unknown;
-    const version = readLatestVersion(payload);
-    return version ? { status: "available", version } : { status: "failed" };
+    return update ? { status: "available", version: update.version } : { status: "not-available" };
   } catch (error) {
-    console.warn("Desktop remote version fetch failed:", error);
+    console.warn("Desktop remote update version check failed:", error);
     return { status: "failed" };
   }
 }
@@ -51,7 +60,7 @@ export async function fetchDesktopRemoteVersion(timeoutMs = DESKTOP_UPDATE_TIMEO
 export async function updateDesktopAppIfNeeded(
   onProgress?: (progress: DesktopUpdateProgress) => void,
 ): Promise<DesktopUpdateResult> {
-  if (!IS_DESKTOP_APP || !getDesktopUpdaterEndpoint()) {
+  if (!IS_DESKTOP_APP) {
     return { status: "not-available" };
   }
 
@@ -111,23 +120,4 @@ async function withTimeout<T, F>(promise: Promise<T>, timeoutMs: number, fallbac
       clearTimeout(timeout);
     }
   }
-}
-
-export function readLatestVersion(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
-
-  const version = (payload as { readonly version?: unknown }).version;
-  return typeof version === "string" && version.length > 0 ? version : null;
-}
-
-function getDesktopUpdaterEndpoint(): string | null {
-  const env = (import.meta as ImportMeta & {
-    readonly env: { readonly VITE_DESKTOP_UPDATER_ENDPOINT?: string };
-  }).env;
-
-  return typeof env.VITE_DESKTOP_UPDATER_ENDPOINT === "string" && env.VITE_DESKTOP_UPDATER_ENDPOINT.length > 0
-    ? env.VITE_DESKTOP_UPDATER_ENDPOINT
-    : null;
 }

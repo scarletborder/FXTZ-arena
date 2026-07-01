@@ -1,17 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { readLatestVersion, updateDesktopAppIfNeededWithDeps } from "./desktop-updater";
-
-describe("readLatestVersion", () => {
-  it("reads the Tauri updater manifest version", () => {
-    expect(readLatestVersion({ version: "0.6.4", platforms: {} })).toBe("0.6.4");
-  });
-
-  it("rejects missing or invalid versions", () => {
-    expect(readLatestVersion({ platforms: {} })).toBeNull();
-    expect(readLatestVersion({ version: 604 })).toBeNull();
-  });
-});
+import { updateDesktopAppIfNeededWithDeps } from "./desktop-updater";
 
 describe("updateDesktopAppIfNeededWithDeps", () => {
   it("continues startup when the desktop updater command does not settle", async () => {
