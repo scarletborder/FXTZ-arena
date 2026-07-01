@@ -102,6 +102,12 @@ if (existsSync(supplementalReadmeSource)) {
 }
 
 const buildLabel = getBuildLabel();
+const appVersion = getAppVersion(buildLabel);
+const updaterInstaller = prepareUpdaterInstaller(appVersion);
+if (updaterInstaller) {
+  writeLatestJson(appVersion, updaterInstaller);
+}
+
 const zipPath = join(outputDir, `fxtz-arena-desktop-${buildLabel}.zip`);
 const zipEntries = collectedArtifacts.map((path) => ({ name: basename(path), path, mode: statSync(path).mode }));
 
@@ -177,6 +183,82 @@ function createZip(entries) {
 
 function isArtifact(entry) {
   return artifactPattern.test(entry) || entry === portableBinaryName;
+}
+
+function getAppVersion(buildLabel) {
+  const rawVersion = process.env.APP_VERSION || buildLabel.split("+")[0] || "v0.0.0";
+  const normalized = rawVersion.replace(/^v/i, "");
+  if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(normalized)) {
+    throw new Error(`[desktop] Cannot generate latest.json from invalid app version: ${rawVersion}`);
+  }
+  return normalized;
+}
+
+function prepareUpdaterInstaller(appVersion) {
+  const installer = findFirst(bundleDir, (entry) => entry.endsWith(".exe") && !entry.endsWith(".sig"));
+  if (!installer) {
+    throw new Error(`[desktop] Cannot generate latest.json: no NSIS installer found under ${bundleDir}`);
+  }
+
+  const signature = `${installer}.sig`;
+  if (!existsSync(signature)) {
+    throw new Error(`[desktop] Cannot generate latest.json: missing updater signature ${signature}`);
+  }
+
+  const installerName = `FXTZ.Arena_${appVersion}_x64-setup.exe`;
+  const signatureName = `${installerName}.sig`;
+  const installerTarget = copyArtifact(installer, join(outputDir, installerName));
+  const signatureTarget = copyArtifact(signature, join(outputDir, signatureName));
+  collectedArtifacts.push(installerTarget, signatureTarget);
+  console.log(`[desktop] prepared updater installer ${installerTarget}`);
+  console.log(`[desktop] prepared updater signature ${signatureTarget}`);
+  return {
+    installerName,
+    signature: readFileSync(signatureTarget, "utf8").trim(),
+  };
+}
+
+function writeLatestJson(appVersion, updaterInstaller) {
+  const tagName = process.env.GITHUB_REF_NAME || `v${appVersion}`;
+  const repository = process.env.GITHUB_REPOSITORY || "scarletborder/FXTZ-arena";
+  const installerUrl = `https://github.com/${repository}/releases/download/${encodeURIComponent(tagName)}/${encodeURIComponent(updaterInstaller.installerName)}`;
+  const latestJson = {
+    version: appVersion,
+    notes: `FXTZ Arena v${appVersion}`,
+    pub_date: new Date().toISOString(),
+    platforms: {
+      "windows-x86_64": {
+        signature: updaterInstaller.signature,
+        url: installerUrl,
+      },
+    },
+  };
+  const latestJsonPath = join(outputDir, "latest.json");
+  writeFileSync(latestJsonPath, `${JSON.stringify(latestJson, null, 2)}\n`);
+  collectedArtifacts.push(latestJsonPath);
+  console.log(`[desktop] generated updater manifest ${latestJsonPath}`);
+}
+
+function findFirst(dir, predicate) {
+  if (!existsSync(dir)) {
+    return null;
+  }
+
+  for (const entry of readdirSync(dir)) {
+    const fullPath = join(dir, entry);
+    const stat = statSync(fullPath);
+    if (stat.isDirectory()) {
+      const found = findFirst(fullPath, predicate);
+      if (found) {
+        return found;
+      }
+      continue;
+    }
+    if (predicate(entry, fullPath)) {
+      return fullPath;
+    }
+  }
+  return null;
 }
 
 function crc32(data) {

@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 const appVersion = normalizeVersion(process.env.APP_VERSION);
@@ -40,7 +40,6 @@ try {
     process.exit(result.status);
   }
 
-  assertLatestJsonCreated();
   process.exit(0);
 } finally {
   rmSync(tempDir, { recursive: true, force: true });
@@ -60,37 +59,4 @@ function requiredEnv(name) {
     throw new Error(`${name} is required`);
   }
   return value;
-}
-
-function assertLatestJsonCreated() {
-  const bundleDir = resolve("src-tauri/target/release/bundle");
-  const latestJson = findFile(bundleDir, "latest.json");
-  if (!latestJson) {
-    throw new Error(
-      `Tauri updater manifest was not generated. Expected latest.json under ${bundleDir}.`,
-    );
-  }
-  console.log(`[desktop] updater manifest generated: ${latestJson}`);
-}
-
-function findFile(dir, fileName) {
-  if (!existsSync(dir)) {
-    return null;
-  }
-
-  for (const entry of readdirSync(dir)) {
-    const fullPath = join(dir, entry);
-    const stat = statSync(fullPath);
-    if (stat.isDirectory()) {
-      const found = findFile(fullPath, fileName);
-      if (found) {
-        return found;
-      }
-      continue;
-    }
-    if (entry === fileName) {
-      return fullPath;
-    }
-  }
-  return null;
 }
