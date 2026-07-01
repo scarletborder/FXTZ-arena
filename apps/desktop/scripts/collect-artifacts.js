@@ -109,7 +109,9 @@ if (updaterInstaller) {
 }
 
 const zipPath = join(outputDir, `fxtz-arena-desktop-${buildLabel}.zip`);
-const zipEntries = collectedArtifacts.map((path) => ({ name: basename(path), path, mode: statSync(path).mode }));
+const zipEntries = collectedArtifacts
+  .filter((path) => basename(path) !== portableBinaryName)
+  .map((path) => ({ name: basename(path), path, mode: statSync(path).mode }));
 
 if (zipEntries.length > 0) {
   writeFileSync(zipPath, createZip(zipEntries));
