@@ -143,9 +143,9 @@ jobs:
         shell: bash # 强制使用 bash 而不是 PowerShell
         run: |
           TAG_NAME="${GITHUB_REF_NAME}"
-          APP_VERSION="${TAG_NAME}"
+          APP_VERSION="${TAG_NAME#v}"
           APP_COMMIT="$(git rev-list --count HEAD)"
-          BUILD_LABEL="${APP_VERSION}+${APP_COMMIT}"
+          BUILD_LABEL="${TAG_NAME}+${APP_COMMIT}"
 
           echo "version=${APP_VERSION}" >> "$GITHUB_OUTPUT"
           echo "commit=${APP_COMMIT}" >> "$GITHUB_OUTPUT"
@@ -172,26 +172,44 @@ jobs:
           : "${VITE_DESKTOP_UPDATER_ENDPOINT:?VITE_DESKTOP_UPDATER_ENDPOINT is required}"
           : "${TAURI_SIGNING_PRIVATE_KEY:?TAURI_SIGNING_PRIVATE_KEY secret is required}"
 
-      # ================== 替换的部分开始 ==================
-      - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@main
-
-      - name: Setup Tauri CLI
-        run: cargo binstall tauri-cli --version "^2.0.0" -y
-      # ================== 替换的部分结束 ==================
-
-      - name: Build desktop app
+      - name: Build desktop frontend
         env:
           APP_VERSION: ${{ steps.meta.outputs.version }}
           APP_COMMIT: ${{ steps.meta.outputs.commit }}
           VITE_APP_VERSION: ${{ steps.meta.outputs.version }}
           VITE_APP_COMMIT: ${{ steps.meta.outputs.commit }}
+          VITE_APP_TARGET: desktop
           VITE_DOCS_URL: "https://mvz443-team.github.io/docs/"
+        working-directory: apps/desktop
+        run: node ./scripts/build-frontend.mjs
+
+      - name: Build and upload Tauri updater bundles
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          BUILD_LABEL: ${{ steps.meta.outputs.build_label }} # 传递 build label 给脚本
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: FXTZ Arena ${{ steps.meta.outputs.build_label }}
+          releaseBody: |
+            Tauri desktop updater bundles for ${{ steps.meta.outputs.build_label }}.
+          releaseDraft: false
+          prerelease: false
+          args: --config '{"version":"${{ steps.meta.outputs.version }}","bundle":{"createUpdaterArtifacts":true,"targets":["nsis"]},"plugins":{"updater":{"endpoints":["${{ env.TAURI_UPDATER_ENDPOINT }}"],"pubkey":"${{ env.TAURI_UPDATER_PUBKEY }}"}}}'
+
+      - name: Build portable desktop artifacts
+        env:
+          APP_VERSION: ${{ steps.meta.outputs.version }}
+          APP_COMMIT: ${{ steps.meta.outputs.commit }}
+          VITE_APP_VERSION: ${{ steps.meta.outputs.version }}
+          VITE_APP_COMMIT: ${{ steps.meta.outputs.commit }}
+          VITE_APP_TARGET: desktop
+          VITE_DOCS_URL: "https://mvz443-team.github.io/docs/"
+          BUILD_LABEL: ${{ steps.meta.outputs.build_label }}
         working-directory: apps/desktop
-        run: pnpm run publish-desktop
+        run: pnpm run publish-portable
 
       - name: Prepare release artifacts
         shell: bash
@@ -199,50 +217,8 @@ jobs:
           BUILD_LABEL: ${{ steps.meta.outputs.build_label }}
         run: |
           mkdir -p release
-
-          # 1. 优先检查是否已存在带版本号的文件
-          if [ -f "dist-desktop/fxtz-arena-desktop-${BUILD_LABEL}.zip" ]; then
-            cp "dist-desktop/fxtz-arena-desktop-${BUILD_LABEL}.zip" "release/fxtz-arena-desktop-${BUILD_LABEL}.zip"
-            echo "Desktop artifact prepared (already versioned): fxtz-arena-desktop-${BUILD_LABEL}.zip"
-            
-          # 2. 其次检查是否存在未带版本号的文件并进行更名复制
-          elif [ -f "dist-desktop/fxtz-arena-desktop.zip" ]; then
-            cp "dist-desktop/fxtz-arena-desktop.zip" "release/fxtz-arena-desktop-${BUILD_LABEL}.zip"
-            echo "Desktop artifact prepared (renamed): fxtz-arena-desktop-${BUILD_LABEL}.zip"
-            
-          # 3. 备用兜底：若有其他命名的 zip 文件，直接将其复制并重命名
-          else
-            ZIP_FILE=$(find dist-desktop -maxdepth 1 -name "*.zip" | head -n 1)
-            if [ -n "$ZIP_FILE" ]; then
-              cp "$ZIP_FILE" "release/fxtz-arena-desktop-${BUILD_LABEL}.zip"
-              echo "Desktop artifact prepared (fallback zip found: $ZIP_FILE): fxtz-arena-desktop-${BUILD_LABEL}.zip"
-            else
-              echo "Error: No desktop zip artifact found in dist-desktop/"
-              ls -la dist-desktop/ || echo "dist-desktop directory not found"
-              exit 1 # 主动报错，终止后续无意义的发布步骤
-            fi
-          fi
-
-          APP_VERSION="${GITHUB_REF_NAME#v}"
-          INSTALLER_NAME="FXTZ.Arena_${APP_VERSION}_x64-setup.exe"
-          if [ ! -f "dist-desktop/${INSTALLER_NAME}" ]; then
-            echo "Error: Desktop installer not found: dist-desktop/${INSTALLER_NAME}"
-            ls -la dist-desktop/ || echo "dist-desktop directory not found"
-            exit 1
-          fi
-          if [ ! -f "dist-desktop/${INSTALLER_NAME}.sig" ]; then
-            echo "Error: Desktop installer signature not found: dist-desktop/${INSTALLER_NAME}.sig"
-            ls -la dist-desktop/ || echo "dist-desktop directory not found"
-            exit 1
-          fi
-          if [ ! -f "dist-desktop/latest.json" ]; then
-            echo "Error: Desktop updater manifest not found: dist-desktop/latest.json"
-            ls -la dist-desktop/ || echo "dist-desktop directory not found"
-            exit 1
-          fi
-          cp "dist-desktop/${INSTALLER_NAME}" "release/${INSTALLER_NAME}"
-          cp "dist-desktop/${INSTALLER_NAME}.sig" "release/${INSTALLER_NAME}.sig"
-          cp "dist-desktop/latest.json" "release/latest.json"
+          test -f "release/fxtz-arena-desktop-portable-${BUILD_LABEL}.zip"
+          test -f "release/fxtz-arena-desktop-${BUILD_LABEL}.exe"
 
       - name: Upload desktop artifact to release
         uses: softprops/action-gh-release@v2
