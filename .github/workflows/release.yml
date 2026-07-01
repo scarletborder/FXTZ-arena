@@ -223,17 +223,33 @@ jobs:
             fi
           fi
 
+          APP_VERSION="${GITHUB_REF_NAME#v}"
+          INSTALLER_NAME="FXTZ.Arena_${APP_VERSION}_x64-setup.exe"
+          if [ ! -f "dist-desktop/${INSTALLER_NAME}" ]; then
+            echo "Error: Desktop installer not found: dist-desktop/${INSTALLER_NAME}"
+            ls -la dist-desktop/ || echo "dist-desktop directory not found"
+            exit 1
+          fi
+          if [ ! -f "dist-desktop/${INSTALLER_NAME}.sig" ]; then
+            echo "Error: Desktop installer signature not found: dist-desktop/${INSTALLER_NAME}.sig"
+            ls -la dist-desktop/ || echo "dist-desktop directory not found"
+            exit 1
+          fi
+          if [ ! -f "dist-desktop/latest.json" ]; then
+            echo "Error: Desktop updater manifest not found: dist-desktop/latest.json"
+            ls -la dist-desktop/ || echo "dist-desktop directory not found"
+            exit 1
+          fi
+          cp "dist-desktop/${INSTALLER_NAME}" "release/${INSTALLER_NAME}"
+          cp "dist-desktop/${INSTALLER_NAME}.sig" "release/${INSTALLER_NAME}.sig"
+          cp "dist-desktop/latest.json" "release/latest.json"
+
       - name: Upload desktop artifact to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           files: |
-            release/fxtz-arena-desktop-${{ steps.meta.outputs.build_label }}.zip
-            apps/desktop/src-tauri/target/release/bundle/**/latest.json
-            apps/desktop/src-tauri/target/release/bundle/**/*.sig
-            apps/desktop/src-tauri/target/release/bundle/**/*.msi
-            apps/desktop/src-tauri/target/release/bundle/**/*.exe
-            apps/desktop/src-tauri/target/release/bundle/**/*.zip
+            release/*
 
   build-docker:
     needs: [build]
