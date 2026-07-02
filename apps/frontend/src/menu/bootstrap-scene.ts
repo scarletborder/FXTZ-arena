@@ -75,8 +75,18 @@ export class BootstrapScene extends Phaser.Scene {
           this.sizeLabel?.setText(t("bootstrap.continue_without_update"));
           await delay(1200);
         }
+
+        // 💡 1. 动态检测并解析本地 AppData 下的实际游戏资源 URL，并保存到全局注册表
+        const localAssetsUrl = await resolveGameAssetsUrl();
+        if (localAssetsUrl) {
+          console.log("[Bootstrap] 成功定位本地资源路径:", localAssetsUrl);
+          this.game.registry.set("assetsBaseUrl", localAssetsUrl);
+        }
       }
 
+      // 💡 2. 调用原有的资源检测及下载模块
+      // 如果是安装版：Rust 在启动时已将资源准备在 AppData 目录下，此方法检测到本地资源无误后将直接秒过
+      // 如果是免安装绿色版：此方法会检测到本地资源缺失，自动从 CDN 完整下载并解压到该位置
       await prepareResourcePackSource((progress) => this.handleProgress(progress));
       this.handleProgress({ stage: "ready" });
       this.showEnterPrompt();
@@ -212,4 +222,38 @@ function delay(ms: number): Promise<void> {
 
 function formatVersionForDisplay(version: string): string {
   return version === "dev" || version.startsWith("v") ? version : `v${version}`;
+}
+
+// 💡 3. 动态加载 Tauri V2 原生 API 的解析函数
+async function resolveGameAssetsUrl(): Promise<string | null> {
+  if (!IS_DESKTOP_APP) {
+    return null;
+  }
+
+  try {
+    const [
+      { BaseDirectory, exists },
+      { appLocalDataDir, join },
+      { convertFileSrc }
+    ] = await Promise.all([
+      import("@tauri-apps/plugin-fs") as Promise<any>,
+      import("@tauri-apps/api/path") as Promise<any>,
+      import("@tauri-apps/api/core") as Promise<any>,
+    ]);
+
+    const localDataDir = await appLocalDataDir();
+    // 对应本地 AppData/game_assets 物理路径
+    const localAssetsPath = await join(localDataDir, "game_assets");
+
+    const hasLocalAssets = await exists("game_assets", { baseDir: BaseDirectory.AppLocalData });
+
+    if (hasLocalAssets) {
+      // 转换为 Tauri 的安全 WebView 资源协议 URL
+      return convertFileSrc(localAssetsPath);
+    }
+  } catch (err) {
+    console.warn("[Tauri] 无法检测或解析本地 AppData 资源路径:", err);
+  }
+
+  return null;
 }

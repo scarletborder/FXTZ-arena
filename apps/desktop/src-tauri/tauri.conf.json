@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "identifier": "com.fxtz.arena.desktop",
   "build": {
-    "beforeDevCommand": "",
+    "beforeDevCommand": "pnpm --filter frontend dev:desktop",
+    "devUrl": "http://localhost:3000",
     "beforeBuildCommand": "",
     "frontendDist": "../../frontend/dist"
   },
@@ -19,20 +20,24 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self' ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost blob: data:; media-src 'self' asset: http://asset.localhost; connect-src 'self' ipc: http://ipc.localhost http://asset.localhost https://scarletborder.github.io https://gh-proxy.org", 
+      "assetProtocol": {
+        "enable": true,
+        "scope": [ "**/*" ]
+      }
     }
   },
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,
     "targets": "all",
-    "icon": ["icons/icon.ico"]
+    "icon": [ "icons/icon.ico" ]
   },
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENENTFBQUIyNzA1ODZEMzkKUldRNWJWaHdzcXBSemZzS3AyOHJPUXhEcmtSc21GcFBhSHdpYmJTNHF3VDJvUGlpcW14OGFhbzAK",
       "endpoints": [
-        "https://github.com/scarletborder/FXTZ-arena/releases/latest/download/latest.json"
+        "https://gh-proxy.org/https://github.com/scarletborder/FXTZ-arena/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"

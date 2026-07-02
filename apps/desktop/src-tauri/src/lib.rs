@@ -10,7 +10,7 @@ use std::{
     time::Duration,
 };
 
-use tauri::{Emitter, State};
+use tauri::{Emitter, Manager, State};
 use tauri_plugin_updater::UpdaterExt;
 use url::Url;
 
@@ -140,12 +140,13 @@ fn append_client_log(line: String, path: String) -> Result<(), String> {
 // Replay file storage  —  read/write/delete in a "replay/" dir next to the exe
 // ---------------------------------------------------------------------------
 
-fn replay_dir() -> Result<std::path::PathBuf, String> {
-    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-    let dir = exe
-        .parent()
-        .ok_or_else(|| "Cannot determine executable directory".to_string())?
+fn replay_dir(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    let dir = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| e.to_string())?
         .join("replay");
+
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     Ok(dir)
 }
@@ -177,8 +178,8 @@ struct DesktopRemoteUpdatePayload {
 }
 
 #[tauri::command]
-fn replay_save_slot(slot_index: u32, data: Vec<u8>) -> Result<(), String> {
-    let dir = replay_dir()?;
+fn replay_save_slot(app: tauri::AppHandle, slot_index: u32, data: Vec<u8>) -> Result<(), String> {
+    let dir = replay_dir(&app)?; // 💡 传入 app 句柄
     let data_path = dir.join(replay_data_filename(slot_index));
     std::fs::write(&data_path, data).map_err(|e| e.to_string())?;
     let _ = std::fs::remove_file(dir.join(legacy_replay_meta_filename(slot_index)));
@@ -186,8 +187,8 @@ fn replay_save_slot(slot_index: u32, data: Vec<u8>) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn replay_load_slot(slot_index: u32) -> Result<ReplaySlotData, String> {
-    let dir = replay_dir()?;
+fn replay_load_slot(app: tauri::AppHandle, slot_index: u32) -> Result<ReplaySlotData, String> {
+    let dir = replay_dir(&app)?; // 💡 传入 app 句柄
     let data_path = dir.join(replay_data_filename(slot_index));
     Ok(ReplaySlotData {
         data: if data_path.exists() {
@@ -199,8 +200,8 @@ fn replay_load_slot(slot_index: u32) -> Result<ReplaySlotData, String> {
 }
 
 #[tauri::command]
-fn replay_delete_slot(slot_index: u32) -> Result<(), String> {
-    let dir = replay_dir()?;
+fn replay_delete_slot(app: tauri::AppHandle, slot_index: u32) -> Result<(), String> {
+    let dir = replay_dir(&app)?; // 💡 传入 app 句柄
     let _ = std::fs::remove_file(dir.join(replay_data_filename(slot_index)));
     let _ = std::fs::remove_file(dir.join(legacy_replay_meta_filename(slot_index)));
     Ok(())
@@ -220,8 +221,8 @@ fn replay_export_slot(slot_index: u32, data: Vec<u8>) -> Result<Option<String>, 
 }
 
 #[tauri::command]
-fn replay_open_folder() -> Result<(), String> {
-    let dir = replay_dir()?; // creates dir if not exists
+fn replay_open_folder(app: tauri::AppHandle) -> Result<(), String> {
+    let dir = replay_dir(&app)?; // 💡 传入 app 句柄
     let path_str = dir.to_string_lossy().to_string();
     #[cfg(target_os = "windows")]
     {
@@ -300,13 +301,64 @@ fn stop_udp_socket(state: &UdpState) -> Result<(), String> {
     Ok(())
 }
 
+fn copy_dir_all(
+    src: impl AsRef<std::path::Path>,
+    dst: impl AsRef<std::path::Path>,
+) -> std::io::Result<()> {
+    fs::create_dir_all(&dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        if ty.is_dir() {
+            copy_dir_all(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        } else {
+            fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        }
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_http::init())
         .manage(UdpState::default())
         .manage(link::wt::WtState::default())
+        .plugin(tauri_plugin_log::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_http::init())
+        .setup(|app| {
+            let app_handle = app.handle();
+
+            // 💡 1. 动态定位到当前可用的 AppLocalData 目录
+            if let Ok(local_data_dir) = app_handle.path().app_local_data_dir() {
+                let local_assets_dir = local_data_dir.join("game_assets");
+
+                // 💡 2. 如果 AppLocalData 还没有资源文件夹（说明是首次启动）
+                if !local_assets_dir.exists() {
+                    // 💡 3. 尝试解析安装包附带的只读内置资源路径 (对应 setup.exe 安装场景)
+                    if let Ok(resource_assets_dir) = app_handle
+                        .path()
+                        .resolve("../resource-assets", tauri::path::BaseDirectory::Resource)
+                    {
+                        if resource_assets_dir.exists() {
+                            println!("检测到安装包内置资源，正在离线同步至 AppLocalData...");
+                            if let Err(err) = copy_dir_all(&resource_assets_dir, &local_assets_dir)
+                            {
+                                eprintln!("离线资源同步失败: {}", err);
+                            } else {
+                                println!("离线资源成功同步至 AppLocalData！");
+                            }
+                        } else {
+                            println!("未找到安装包内置资源（当前运行的可能是免安装绿色版）。");
+                        }
+                    }
+                }
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             udp_listen,
             udp_send,
@@ -335,13 +387,18 @@ fn build_updater<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
 ) -> Result<Option<tauri_plugin_updater::Updater>, String> {
     let mut builder = app.updater_builder();
-    if let Some(endpoint) = configured_value("TAURI_UPDATER_ENDPOINT", option_env!("TAURI_UPDATER_ENDPOINT")) {
+    if let Some(endpoint) = configured_value(
+        "TAURI_UPDATER_ENDPOINT",
+        option_env!("TAURI_UPDATER_ENDPOINT"),
+    ) {
         let endpoint = endpoint.parse::<Url>().map_err(|error| error.to_string())?;
         builder = builder
             .endpoints(vec![endpoint])
             .map_err(|error| error.to_string())?;
     }
-    if let Some(pubkey) = configured_value("TAURI_UPDATER_PUBKEY", option_env!("TAURI_UPDATER_PUBKEY")) {
+    if let Some(pubkey) =
+        configured_value("TAURI_UPDATER_PUBKEY", option_env!("TAURI_UPDATER_PUBKEY"))
+    {
         builder = builder.pubkey(pubkey);
     }
 

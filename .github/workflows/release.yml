@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 env:
-  TAURI_UPDATER_ENDPOINT: ${{ vars.TAURI_UPDATER_ENDPOINT || 'https://github.com/scarletborder/FXTZ-arena/releases/latest/download/latest.json' }}
+  TAURI_UPDATER_ENDPOINT: ${{ vars.TAURI_UPDATER_ENDPOINT || 'https://gh-proxy.org/https://github.com/scarletborder/FXTZ-arena/releases/latest/download/latest.json' }}
   TAURI_UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY || 'dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENENTFBQUIyNzA1ODZEMzkKUldRNWJWaHdzcXBSemZzS3AyOHJPUXhEcmtSc21GcFBhSHdpYmJTNHF3VDJvUGlpcW14OGFhbzAK' }}
 
 concurrency:
@@ -108,7 +108,6 @@ jobs:
             ...
 
           files: |
-            Release.md
             release/fxtz-arena-frontend-${{ steps.meta.outputs.build_label }}.zip
             release/fxtz-arena-dedicated-server-${{ steps.meta.outputs.build_label }}.tar.gz
 
@@ -181,6 +180,22 @@ jobs:
         working-directory: apps/desktop
         run: node ./scripts/build-frontend.mjs
 
+      # ==========================================================
+      # 1. 移动资源包至 desktop 目录，使其不被打包进二进制内
+      # ==========================================================
+      - name: Prepare external resources
+        shell: bash
+        run: |
+          mkdir -p apps/desktop/resource-assets
+          if [ -d "apps/frontend/dist/resource-assets" ]; then
+            mv apps/frontend/dist/resource-assets/* apps/desktop/resource-assets/
+            rm -rf apps/frontend/dist/resource-assets
+            echo "资源已移至桌面端外置目录。"
+          fi
+
+      # ==========================================================
+      # 2. 修改 tauri-action 参数，让安装包包含外部资源目录
+      # ==========================================================
       - name: Build and upload Tauri updater bundles
         uses: tauri-apps/tauri-action@v1
         env:
@@ -195,7 +210,70 @@ jobs:
             Tauri desktop updater bundles for ${{ steps.meta.outputs.build_label }}.
           releaseDraft: false
           prerelease: false
-          args: --config '{"version":"${{ steps.meta.outputs.version }}","bundle":{"createUpdaterArtifacts":true,"targets":["nsis"]},"plugins":{"updater":{"endpoints":["${{ env.TAURI_UPDATER_ENDPOINT }}"],"pubkey":"${{ env.TAURI_UPDATER_PUBKEY }}"}}}'
+          # 增加 "resources": ["../resource-assets/**/*"] 参数
+          args: --config '{"version":"${{ steps.meta.outputs.version }}","bundle":{"createUpdaterArtifacts":true,"targets":["nsis"],"resources":["../resource-assets/**/*"]},"plugins":{"updater":{"endpoints":["${{ env.TAURI_UPDATER_ENDPOINT }}"],"pubkey":"${{ env.TAURI_UPDATER_PUBKEY }}"}}}'
+
+      - name: Fix Tauri updater URLs in latest.json
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          node -e '
+          const fs = require("fs");
+          const { execSync } = require("child_process");
+
+          const tagName = process.env.TAG_NAME;
+          const repo = process.env.GITHUB_REPOSITORY;
+
+          console.log("正在从 Release 下载自动生成的 latest.json...");
+          execSync(`gh release download "${tagName}" --pattern "latest.json" --clobber`, { stdio: "inherit" });
+
+          console.log("正在查询当前 Release 的全部资产信息...");
+          const releaseInfoStr = execSync(`gh api repos/${repo}/releases/tags/${tagName}`).toString();
+          const releaseInfo = JSON.parse(releaseInfoStr);
+
+          // 建立 ID 与浏览器直链的映射
+          const assetMap = {};
+          releaseInfo.assets.forEach(asset => {
+            assetMap[asset.id.toString()] = asset.browser_download_url;
+          });
+
+          const latestJson = JSON.parse(fs.readFileSync("latest.json", "utf8"));
+          let modified = false;
+
+          for (const platform in latestJson.platforms) {
+            const platformData = latestJson.platforms[platform];
+            const url = platformData.url;
+            
+            // 使用 [0-9]+ 匹配资产 ID，避免 Bash 下反斜杠特殊字符逃逸
+            const match = url.match(/\/releases\/assets\/([0-9]+)/);
+            if (match) {
+              const assetId = match[1];
+              const directUrl = assetMap[assetId];
+              if (directUrl) {
+                // 拼接上你配置的国内代理 gh-proxy.org 保证下载速度
+                const proxiedUrl = `https://gh-proxy.org/${directUrl}`;
+                platformData.url = proxiedUrl;
+                modified = true;
+                console.log(`已成功替换 [${platform}] 地址为: ${proxiedUrl}`);
+              } else {
+                console.warn(`未能在 Release 中找到 ID 为 ${assetId} 的资产`);
+              }
+            }
+          }
+
+          if (modified) {
+            // 写回本地并覆盖上传
+            fs.writeFileSync("latest.json", JSON.stringify(latestJson, null, 2));
+            console.log("正在将修改后的 latest.json 覆盖上传到 GitHub Release...");
+            execSync(`gh release upload "${tagName}" latest.json --clobber`, { stdio: "inherit" });
+            console.log("覆盖上传成功！");
+          } else {
+            console.log("最新版本最新链接无需修改或无更改。");
+          }
+          '
 
       - name: Build portable desktop artifacts
         env:

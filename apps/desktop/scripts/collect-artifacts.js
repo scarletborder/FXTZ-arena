@@ -13,7 +13,7 @@ import { execSync } from "node:child_process";
 
 const releaseDir = resolve("src-tauri/target/release");
 const frontendDistDir = resolve("../frontend/dist");
-const resourceAssetsDir = join(frontendDistDir, "resource-assets");
+// const resourceAssetsDir = join(frontendDistDir, "resource-assets");
 const outputDir = resolve("../../release");
 const supplementalReadmeSource = resolve("docs/README.txt");
 const portableBinaryBaseName = "fxtz-arena-desktop";
@@ -58,11 +58,11 @@ if (existsSync(supplementalReadmeSource)) {
   console.warn(`[desktop] Supplemental README not found: ${supplementalReadmeSource}`);
 }
 
-if (existsSync(resourceAssetsDir)) {
-  zipEntries.push(...collectFiles(resourceAssetsDir, "resource-assets"));
-} else {
-  console.warn(`[desktop] Resource assets not found: ${resourceAssetsDir}`);
-}
+// if (existsSync(resourceAssetsDir)) {
+//   zipEntries.push(...collectFiles(resourceAssetsDir, "resource-assets"));
+// } else {
+//   console.warn(`[desktop] Resource assets not found: ${resourceAssetsDir}`);
+// }
 
 writeFileSync(zipPath, createZip(zipEntries));
 console.log(`[desktop] collected portable package ${zipPath}`);

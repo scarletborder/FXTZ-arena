@@ -30,7 +30,7 @@ interface DesktopUpdaterDeps {
   readonly relaunch: () => Promise<void>;
 }
 
-const DESKTOP_UPDATE_TIMEOUT_MS = 8_000;
+const DESKTOP_UPDATE_TIMEOUT_MS = 20_000;
 
 export async function fetchDesktopRemoteVersion(timeoutMs = DESKTOP_UPDATE_TIMEOUT_MS): Promise<DesktopRemoteVersionResult> {
   if (!IS_DESKTOP_APP) {
