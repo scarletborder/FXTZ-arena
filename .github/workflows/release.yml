@@ -95,16 +95,6 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: FXTZ Arena ${{ steps.meta.outputs.build_label }}
           body: |
-            ## 制品说明 Artifact：
-
-            - fxtz-arena-desktop-vx.x.x+xxx.zip : 桌面端应用，一般用户下载此文件即可游玩，Desktop client for Windows, which can be directly run after extraction.
-            - fxtz-arena-dedicated-server-image-vx.x.x+xxx.tar.gz : Docker image of the dedicated server, which can be loaded using "docker load" command.
-            - fxtz-arena-dedicated-server-vx.x.x+xxx.tar.gz : 独立服务器文件，包含运行独立服务器所需的所有文件和说明文档，适用于需要在本地或云服务器上部署独立服务器的用户。
-
-            ## What's New 新内容: 
-            ...
-
-            ## Fix and Modification 修复和调整:
             ...
 
           files: |
@@ -207,7 +197,19 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: FXTZ Arena ${{ steps.meta.outputs.build_label }}
           releaseBody: |
-            Tauri desktop updater bundles for ${{ steps.meta.outputs.build_label }}.
+            ## 制品说明 Artifact:
+            - fxtz-arena-dedicated-server-image-vx.x.x+xxx.tar.gz : Docker image of the dedicated server, which can be loaded using "docker load" command. 专用服务端镜像，一般用户无需下载
+            - fxtz-arena-dedicated-server-vx.x.x+xxx.tar.gz : 专用服务器文件，包含运行专用服务器所需的所有文件和说明文档，适用于需要在本地或云服务器上部署专用服务器的用户。一般用户无需下载
+            - fxtz-arena-desktop-portable-vx.x.x+xxx.zip : 免安装桌面端应用和附带文档，一般用户下载此文件解压后即可游玩，Desktop client for Windows, which can be directly run after extraction.
+            - fxtz-arena-desktop-vx.x.x+xxx.exe : 免安装桌面端应用，无附带文档，一般用户下载此文件即可游玩
+            - FXTZ.Arena_x.x.x_x64-setup.exe: 桌面端应用安装包
+
+            ## What's New 新内容:
+            ...
+
+            ## Fix and Modification 修复和调整:
+            ...
+
           releaseDraft: false
           prerelease: false
           # 增加 "resources": ["../resource-assets/**/*"] 参数
