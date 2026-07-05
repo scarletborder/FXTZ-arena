@@ -11,6 +11,7 @@ import { BattleSceneData } from "../loadout";
 import { BattleMobileControls, shouldEnableMobileBattleControls } from "./mobile";
 import { BattleKeybinds, createBattleKeybinds } from "./pc";
 import { BattleJoystickController, InputProfileId } from "./gamepad";
+import { resolveAccountBattleProfile } from "./profile";
 import { settingsRepository } from "../../store/settings";
 
 export class BattleInputController {
@@ -282,12 +283,7 @@ export class BattleInputController {
 }
 
 function resolveActiveProfile(sceneData: BattleSceneData): InputProfileId {
-  if (sceneData.mode === "online" || sceneData.mode === "local" || sceneData.mode === "ai") {
-    return settingsRepository.get().account.battleProfile === "Player2"
-      ? settingsRepository.get().account.p2Profile
-      : settingsRepository.get().account.p1Profile;
-  }
-  return settingsRepository.get().account.p1Profile;
+  return resolveAccountBattleProfile(settingsRepository.get().account, sceneData);
 }
 
 function resolveLocalSingleP2Profile(): InputProfileId {
