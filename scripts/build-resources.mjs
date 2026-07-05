@@ -16,13 +16,8 @@ const legacyPackPaths = [
 const files = [];
 await collectResources(resourcesRoot);
 
-const previousManifest = await readPreviousManifest(manifestPath);
-const previousOutputPaths = new Set(
-  previousManifest?.files
-    .map((file) => file.outputPath)
-    .filter((value) => typeof value === "string" && value.length > 0),
-);
-
+// Clean outputRoot with retries for Windows compatibility
+await deleteDirectoryWithRetry(outputRoot, 5);
 await mkdir(outputRoot, { recursive: true });
 
 const manifestFiles = [];
@@ -41,13 +36,9 @@ for (const file of files.sort((a, b) => a.key.localeCompare(b.key))) {
     size: data.length,
     mime: mimeFromPath(file.key),
   });
-  previousOutputPaths.delete(outputPathRelative);
 }
 
-for (const stalePath of previousOutputPaths) {
-  await rm(path.join(publicRoot, stalePath), { force: true });
-}
-
+// Delete legacy pack files
 for (const legacyPath of legacyPackPaths) {
   await rm(legacyPath, { force: true });
 }
@@ -62,6 +53,29 @@ await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
 console.log(`Built ${manifestFiles.length} resource files into ${path.relative(repoRoot, outputRoot)}.`);
 console.log(`Wrote ${path.relative(repoRoot, manifestPath)}.`);
+
+async function deleteDirectoryWithRetry(dirPath, maxRetries = 5, delayMs = 100) {
+  // Check if directory exists first
+  try {
+    await stat(dirPath);
+  } catch {
+    // Directory doesn't exist, nothing to delete
+    return;
+  }
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await rm(dirPath, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      if (attempt === maxRetries) {
+        throw new Error(`Failed to delete directory after ${maxRetries} attempts: ${error.message}`);
+      }
+      // Wait before retrying with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, delayMs * Math.pow(2, attempt - 1)));
+    }
+  }
+}
 
 async function collectResources(root) {
   if (!(await exists(root))) {
@@ -88,15 +102,6 @@ async function walk(root, onFile) {
     } else if (entry.isFile()) {
       await onFile(entryPath);
     }
-  }
-}
-
-async function readPreviousManifest(filePath) {
-  try {
-    const content = await readFile(filePath, "utf8");
-    return JSON.parse(content);
-  } catch {
-    return null;
   }
 }
 

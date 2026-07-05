@@ -16,6 +16,7 @@ import { renderDebugTab } from "./debug-tab";
 import { renderAccountTab } from "./account-tab";
 import { renderKeyboardTab } from "./keyboard-tab";
 import { renderJoystickTab } from "./joystick-tab";
+import { renderVirtualJoyTab } from "./virtual-joy-tab";
 
 const TAB_DEFINITIONS: readonly SettingsTabDefinition[] = [
   { key: "online", label: t("settings.online"), render: renderOnlineTab },
@@ -32,6 +33,11 @@ const TAB_DEFINITIONS: readonly SettingsTabDefinition[] = [
     key: "joystick",
     label: t("settings.joystick"),
     render: renderJoystickTab,
+  },
+  {
+    key: "virtualJoy",
+    label: t("settings.virtualJoy.tab"),
+    render: renderVirtualJoyTab,
   },
   { key: "debug", label: t("settings.debug"), render: renderDebugTab },
   { key: "about", label: t("settings.about"), render: renderAboutTab },
@@ -86,7 +92,7 @@ export class SettingsScene extends Phaser.Scene {
   private renderTabs(): void {
     this.tabLayer?.removeAll(true);
     TAB_DEFINITIONS.forEach((tab, index) => {
-      this.tabLayer?.add(this.createTabBookmark(index * 132, tab));
+      this.tabLayer?.add(this.createTabBookmark(index * 138, tab));
     });
   }
 
@@ -95,7 +101,7 @@ export class SettingsScene extends Phaser.Scene {
     const disabled = tab.disabled ? tab.disabled(this) : false; // 检测是否置灰
 
     let hovering = false;
-    const width = 118;
+    const width = 130;
     const height = 46;
     const container = this.add.container(x, 0);
     const background = this.add.graphics();

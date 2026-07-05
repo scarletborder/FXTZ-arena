@@ -14,6 +14,7 @@ export type SceneKey =
   | "room-list"
   | "lobby"
   | "settings"
+  | "configure-virtual-joy"
   | "codex"
   | "manual"
   | "select"

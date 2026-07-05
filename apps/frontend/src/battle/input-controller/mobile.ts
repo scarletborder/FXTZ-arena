@@ -3,10 +3,19 @@ import { t } from "@repo/i18n";
 
 import { ARENA_HEIGHT_PX, ARENA_WIDTH_PX } from "@repo/constants";
 import { Depth } from "../../utils/depth";
+import { settingsRepository } from "../../store/settings";
+import {
+  resolveVirtualJoyAlpha,
+  resolveVirtualJoyPosition,
+  resolveVirtualJoySize,
+  type VirtualJoyControlId,
+  type VirtualJoySettings,
+} from "./virtual-joy-settings";
 
 type ActionButton = "shoot" | "bomb" | "activeCard" | "reload" | "switch";
 
 interface ButtonConfig {
+  readonly id: VirtualJoyControlId;
   readonly action: ActionButton;
   readonly x: number;
   readonly y: number;
@@ -14,6 +23,7 @@ interface ButtonConfig {
   readonly label: string;
   readonly fill: number;
   readonly accent: number;
+  readonly alpha: number;
 }
 
 interface BattleMobileControlsState {
@@ -34,11 +44,14 @@ interface BattleMobileControlsLayout {
 }
 
 const JOYSTICK_RADIUS = 74;
+const JOYSTICK_KNOB_RADIUS = 26;
 const JOYSTICK_DEAD_ZONE = 16;
+const JOYSTICK_FOLLOW_LIMIT = 108;
 const AIM_JOYSTICK_RADIUS = 88;
 const AIM_KNOB_RADIUS = 30;
 const AIM_START_DISTANCE = 34;
-const AIM_SPEED_PX_PER_TICK = 13;
+const AIM_SPEED_PX_PER_TICK = 8;
+const AIM_FOLLOW_LIMIT = 118;
 
 export function shouldEnableMobileBattleControls(scene: Phaser.Scene): boolean {
   const touchSupported =
@@ -58,8 +71,11 @@ export class BattleMobileControls {
   private readonly heldButtons = new Set<ActionButton>();
   private readonly consumedButtons = new Set<ActionButton>();
   private joystickPointerId: number | null = null;
+  private readonly joystickOrigin = new Phaser.Math.Vector2(0, 0);
   private readonly joystickBase = new Phaser.Math.Vector2(0, 0);
   private readonly joystickKnob = new Phaser.Math.Vector2(0, 0);
+  private readonly aimOrigin = new Phaser.Math.Vector2(0, 0);
+  private readonly aimRest = new Phaser.Math.Vector2(0, 0);
   private readonly aimBase = new Phaser.Math.Vector2(0, 0);
   private readonly aimKnob = new Phaser.Math.Vector2(0, 0);
   private readonly aimVector = new Phaser.Math.Vector2(0, 0);
@@ -72,7 +88,11 @@ export class BattleMobileControls {
   private readonly layout: BattleMobileControlsLayout;
   private readonly joystickBaseView: Phaser.GameObjects.Arc;
   private readonly joystickKnobView: Phaser.GameObjects.Arc;
+  private aimBaseView!: Phaser.GameObjects.Arc;
   private aimKnobView!: Phaser.GameObjects.Arc;
+  private readonly virtualJoySettings: VirtualJoySettings;
+  private readonly moveJoystickScale: number;
+  private readonly moveJoystickAlpha: number;
 
   constructor(scene: Phaser.Scene, layout?: BattleMobileControlsLayout) {
     this.scene = scene;
@@ -80,24 +100,33 @@ export class BattleMobileControls {
       width: scene.scale.width,
       height: scene.scale.height,
     };
+    this.virtualJoySettings = settingsRepository.get().virtualJoy;
+    this.moveJoystickScale = resolveVirtualJoySize(this.virtualJoySettings, "moveJoystick");
+    this.moveJoystickAlpha = resolveVirtualJoyAlpha(this.virtualJoySettings, "moveJoystick");
     this.scene.input.addPointer(6);
 
     this.joystickBaseView = scene.add
-      .circle(0, 0, JOYSTICK_RADIUS, 0x102232, 0.34)
-      .setStrokeStyle(3, 0x8af7ff, 0.7)
+      .circle(0, 0, JOYSTICK_RADIUS * this.moveJoystickScale, 0x102232, 0.34 * this.moveJoystickAlpha)
+      .setStrokeStyle(Math.max(2, Math.round(3 * this.moveJoystickScale)), 0x8af7ff, 0.7 * this.moveJoystickAlpha)
       .setScrollFactor(0)
       .setDepth(Depth.MobileControls)
       .setVisible(false);
     this.joystickKnobView = scene.add
-      .circle(0, 0, 26, 0x8af7ff, 0.62)
-      .setStrokeStyle(2, 0xf6f1e6, 0.7)
+      .circle(0, 0, JOYSTICK_KNOB_RADIUS * this.moveJoystickScale, 0x8af7ff, 0.62 * this.moveJoystickAlpha)
+      .setStrokeStyle(Math.max(2, Math.round(2 * this.moveJoystickScale)), 0xf6f1e6, 0.7 * this.moveJoystickAlpha)
       .setScrollFactor(0)
       .setDepth(Depth.MobileControls + 1)
       .setVisible(false);
     this.displayObjects.push(this.joystickBaseView, this.joystickKnobView);
+    const movePosition = this.controlPosition("moveJoystick");
+    this.joystickOrigin.set(movePosition.x, movePosition.y);
+    this.joystickBase.set(movePosition.x, movePosition.y);
+    this.joystickKnob.set(movePosition.x, movePosition.y);
+    this.renderMoveJoystick(true);
 
-    this.createAimJoystick(this.layout.width - 112, this.layout.height * 0.5);
-    for (const config of buttonConfigs(this.layout)) {
+    const aimPosition = this.controlPosition("aimJoystick");
+    this.createAimJoystick(aimPosition.x, aimPosition.y);
+    for (const config of buttonConfigs(this.layout, this.virtualJoySettings)) {
       this.createButton(config);
     }
 
@@ -141,7 +170,7 @@ export class BattleMobileControls {
 
   private bindMoveJoystick(): void {
     const onPointerDown = (pointer: Phaser.Input.Pointer): void => {
-      if (this.tryStartMoveJoystick(pointer)) {
+      if (this.tryStartMoveJoystick(pointer) || this.tryStartAimJoystick(pointer)) {
         pointer.event?.preventDefault();
       }
     };
@@ -184,6 +213,7 @@ export class BattleMobileControls {
       return false;
     }
     this.joystickPointerId = pointer.id;
+    this.joystickOrigin.set(pointer.x, pointer.y);
     this.joystickBase.set(pointer.x, pointer.y);
     this.joystickKnob.set(pointer.x, pointer.y);
     this.moveX = 0;
@@ -193,17 +223,14 @@ export class BattleMobileControls {
   }
 
   private updateMoveJoystick(pointer: Phaser.Input.Pointer): void {
-    const dx = pointer.x - this.joystickBase.x;
-    const dy = pointer.y - this.joystickBase.y;
-    const distance = Math.hypot(dx, dy);
-    if (distance > JOYSTICK_RADIUS) {
-      const angle = Math.atan2(dy, dx);
-      this.joystickBase.set(
-        pointer.x - Math.cos(angle) * JOYSTICK_RADIUS,
-        pointer.y - Math.sin(angle) * JOYSTICK_RADIUS,
-      );
-    }
-    this.joystickKnob.set(pointer.x, pointer.y);
+    this.updateFollowBase(
+      this.joystickOrigin,
+      this.joystickBase,
+      pointer,
+      JOYSTICK_RADIUS,
+      JOYSTICK_FOLLOW_LIMIT,
+    );
+    clampPointToCircle(pointer, this.joystickBase, JOYSTICK_RADIUS, this.joystickKnob);
     this.moveX = axisToDigital(this.joystickKnob.x - this.joystickBase.x);
     this.moveY = axisToDigital(this.joystickKnob.y - this.joystickBase.y);
     this.renderMoveJoystick(true);
@@ -213,7 +240,11 @@ export class BattleMobileControls {
     this.joystickPointerId = null;
     this.moveX = 0;
     this.moveY = 0;
-    this.renderMoveJoystick(false);
+    const restPosition = this.controlPosition("moveJoystick");
+    this.joystickOrigin.set(restPosition.x, restPosition.y);
+    this.joystickBase.set(restPosition.x, restPosition.y);
+    this.joystickKnob.set(restPosition.x, restPosition.y);
+    this.renderMoveJoystick(true);
   }
 
   private renderMoveJoystick(visible: boolean): void {
@@ -226,73 +257,62 @@ export class BattleMobileControls {
   }
 
   private createAimJoystick(x: number, y: number): void {
+    const size = resolveVirtualJoySize(this.virtualJoySettings, "aimJoystick");
+    const alpha = resolveVirtualJoyAlpha(this.virtualJoySettings, "aimJoystick");
+    const baseRadius = AIM_JOYSTICK_RADIUS * size;
+    const knobRadius = AIM_KNOB_RADIUS * size;
+    this.aimRest.set(x, y);
+    this.aimOrigin.set(x, y);
     this.aimBase.set(x, y);
     this.aimKnob.set(x, y);
-    const base = this.scene.add
-      .circle(x, y, AIM_JOYSTICK_RADIUS, 0x19293b, 0.42)
-      .setStrokeStyle(4, 0x8af7ff, 0.72)
+    this.aimBaseView = this.scene.add
+      .circle(x, y, baseRadius, 0x19293b, 0.42 * alpha)
+      .setStrokeStyle(Math.max(2, Math.round(4 * size)), 0x8af7ff, 0.72 * alpha)
       .setScrollFactor(0)
       .setDepth(Depth.MobileControls);
     this.aimKnobView = this.scene.add
-      .circle(x, y, AIM_KNOB_RADIUS, 0xf6f1e6, 0.28)
-      .setStrokeStyle(3, 0x8af7ff, 0.8)
+      .circle(x, y, knobRadius, 0xf6f1e6, 0.28 * alpha)
+      .setStrokeStyle(Math.max(2, Math.round(3 * size)), 0x8af7ff, 0.8 * alpha)
       .setScrollFactor(0)
       .setDepth(Depth.MobileControls + 1);
     const label = this.scene.add
-      .text(x, y + AIM_JOYSTICK_RADIUS + 24, t("battle.mobile_aim"), {
+      .text(x, y - baseRadius - 24, t("battle.mobile_aim"), {
         fontFamily: "Arial",
-        fontSize: "22px",
+        fontSize: `${Math.max(18, Math.round(22 * size))}px`,
         color: "#f6f1e6",
       })
       .setOrigin(0.5)
+      .setAlpha(alpha)
       .setScrollFactor(0)
       .setDepth(Depth.MobileControls + 2);
-    const hitArea = this.scene.add
-      .zone(x, y, AIM_JOYSTICK_RADIUS * 2, AIM_JOYSTICK_RADIUS * 2)
-      .setInteractive(
-        new Phaser.Geom.Circle(
-          AIM_JOYSTICK_RADIUS,
-          AIM_JOYSTICK_RADIUS,
-          AIM_JOYSTICK_RADIUS,
-        ),
-        Phaser.Geom.Circle.Contains,
-      )
-      .setScrollFactor(0)
-      .setDepth(Depth.MobileControls + 3);
+    this.displayObjects.push(this.aimBaseView, this.aimKnobView, label);
+  }
 
-    const press = (
-      pointer: Phaser.Input.Pointer,
-      _localX: number,
-      _localY: number,
-      event: Phaser.Types.Input.EventData,
-    ): void => {
-      event.stopPropagation();
-      this.aimPointerId = pointer.id;
-      this.updateAimJoystick(pointer);
-      pointer.event?.preventDefault();
-    };
-    const release = (
-      pointer: Phaser.Input.Pointer,
-      _localX: number,
-      _localY: number,
-      event: Phaser.Types.Input.EventData,
-    ): void => {
-      event.stopPropagation();
-      if (pointer.id === this.aimPointerId) {
-        this.stopAimJoystick();
-      }
-    };
-
-    hitArea.on("pointerdown", press);
-    hitArea.on("pointerup", release);
-    this.disposables.push(() => {
-      hitArea.off("pointerdown", press);
-      hitArea.off("pointerup", release);
-    });
-    this.displayObjects.push(base, this.aimKnobView, label, hitArea);
+  private tryStartAimJoystick(pointer: Phaser.Input.Pointer): boolean {
+    if (
+      this.aimPointerId !== null ||
+      pointer.x < this.layout.width * 0.5 ||
+      pointer.y < this.layout.height * 0.34
+    ) {
+      return false;
+    }
+    this.aimPointerId = pointer.id;
+    this.aimOrigin.set(pointer.x, pointer.y);
+    this.aimBase.set(pointer.x, pointer.y);
+    this.aimKnob.set(pointer.x, pointer.y);
+    this.aimVector.set(0, 0);
+    this.renderAimJoystick();
+    return true;
   }
 
   private updateAimJoystick(pointer: Phaser.Input.Pointer): void {
+    this.updateFollowBase(
+      this.aimOrigin,
+      this.aimBase,
+      pointer,
+      AIM_JOYSTICK_RADIUS,
+      AIM_FOLLOW_LIMIT,
+    );
     const dx = pointer.x - this.aimBase.x;
     const dy = pointer.y - this.aimBase.y;
     const distance = Math.hypot(dx, dy);
@@ -317,12 +337,15 @@ export class BattleMobileControls {
 
   private stopAimJoystick(): void {
     this.aimPointerId = null;
-    this.aimKnob.set(this.aimBase.x, this.aimBase.y);
+    this.aimOrigin.copy(this.aimRest);
+    this.aimBase.copy(this.aimRest);
+    this.aimKnob.copy(this.aimRest);
     this.aimVector.set(0, 0);
     this.renderAimJoystick();
   }
 
   private renderAimJoystick(): void {
+    this.aimBaseView.setPosition(this.aimBase.x, this.aimBase.y);
     this.aimKnobView.setPosition(this.aimKnob.x, this.aimKnob.y);
   }
 
@@ -344,8 +367,8 @@ export class BattleMobileControls {
 
   private createButton(config: ButtonConfig): void {
     const ring = this.scene.add
-      .circle(config.x, config.y, config.radius, config.fill, 0.44)
-      .setStrokeStyle(3, config.accent, 0.76)
+      .circle(config.x, config.y, config.radius, config.fill, 0.44 * config.alpha)
+      .setStrokeStyle(Math.max(2, Math.round(3 * (config.radius / 58))), config.accent, 0.76 * config.alpha)
       .setScrollFactor(0)
       .setDepth(Depth.MobileControls);
     const gloss = this.scene.add
@@ -354,7 +377,7 @@ export class BattleMobileControls {
         config.y - config.radius * 0.28,
         config.radius * 0.28,
         0xffffff,
-        0.12,
+        0.12 * config.alpha,
       )
       .setScrollFactor(0)
       .setDepth(Depth.MobileControls + 1);
@@ -366,6 +389,7 @@ export class BattleMobileControls {
         align: "center",
       })
       .setOrigin(0.5)
+      .setAlpha(config.alpha)
       .setScrollFactor(0)
       .setDepth(Depth.MobileControls + 2);
     const hitArea = this.scene.add
@@ -443,59 +467,97 @@ export class BattleMobileControls {
     gloss: Phaser.GameObjects.Arc,
     pressed: boolean,
   ): void {
-    ring.setAlpha(pressed ? 0.78 : 1);
-    gloss.setAlpha(pressed ? 0.2 : 0.12);
+    const baseAlpha = ring.fillAlpha <= 0 ? 1 : Math.min(1, ring.fillAlpha / 0.44);
+    ring.setAlpha(pressed ? Math.min(1, baseAlpha * 1.35) : 1);
+    gloss.setAlpha(pressed ? Math.min(1, 0.2 * baseAlpha) : Math.min(1, 0.12 * baseAlpha));
+  }
+
+  private controlPosition(control: VirtualJoyControlId): { readonly x: number; readonly y: number } {
+    return resolveVirtualJoyPosition(this.virtualJoySettings, control, this.layout);
+  }
+
+  private updateFollowBase(
+    origin: Phaser.Math.Vector2,
+    base: Phaser.Math.Vector2,
+    pointer: Phaser.Input.Pointer,
+    knobRadius: number,
+    followLimit: number,
+  ): void {
+    const dx = pointer.x - base.x;
+    const dy = pointer.y - base.y;
+    const pointerDistance = Math.hypot(dx, dy);
+    if (pointerDistance > knobRadius) {
+      const overshoot = pointerDistance - knobRadius;
+      const originDx = pointer.x - origin.x;
+      const originDy = pointer.y - origin.y;
+      const originDistance = Math.hypot(originDx, originDy);
+      const baseTravel = Math.min(overshoot, followLimit);
+      if (originDistance > 0) {
+        base.set(
+          origin.x + (originDx / originDistance) * baseTravel,
+          origin.y + (originDy / originDistance) * baseTravel,
+        );
+        return;
+      }
+    }
+    base.copy(origin);
   }
 }
 
-function buttonConfigs(layout: BattleMobileControlsLayout): ButtonConfig[] {
-  const right = layout.width;
-  const bottom = layout.height;
+function buttonConfigs(
+  layout: BattleMobileControlsLayout,
+  settings: VirtualJoySettings,
+): ButtonConfig[] {
   return [
     {
+      id: "switch",
       action: "switch",
-      x: right - 112,
-      y: 76,
-      radius: 43,
+      ...resolveVirtualJoyPosition(settings, "switch", layout),
+      radius: 42 * resolveVirtualJoySize(settings, "switch"),
       label: t("battle.mobile_switch"),
       fill: 0x26384c,
       accent: 0xffcf6e,
+      alpha: resolveVirtualJoyAlpha(settings, "switch"),
     },
     {
+      id: "reload",
       action: "reload",
-      x: right - 112,
-      y: 176,
-      radius: 55,
+      ...resolveVirtualJoyPosition(settings, "reload", layout),
+      radius: 54 * resolveVirtualJoySize(settings, "reload"),
       label: t("battle.mobile_reload"),
       fill: 0x253346,
       accent: 0x8af7ff,
+      alpha: resolveVirtualJoyAlpha(settings, "reload"),
     },
     {
-      action: "shoot",
-      x: right - 104,
-      y: bottom - 96,
-      radius: 64,
-      label: t("battle.mobile_shoot"),
-      fill: 0x4b2734,
-      accent: 0xff6b8a,
-    },
-    {
-      action: "bomb",
-      x: right - 232,
-      y: bottom - 92,
-      radius: 48,
-      label: t("battle.mobile_bomb"),
-      fill: 0x382d4f,
-      accent: 0xc8a7ff,
-    },
-    {
+      id: "activeCard",
       action: "activeCard",
-      x: right - 332,
-      y: bottom - 92,
-      radius: 47,
+      ...resolveVirtualJoyPosition(settings, "activeCard", layout),
+      radius: 44 * resolveVirtualJoySize(settings, "activeCard"),
       label: t("battle.mobile_card"),
       fill: 0x233f3f,
       accent: 0x70f0c8,
+      alpha: resolveVirtualJoyAlpha(settings, "activeCard"),
+    },
+    {
+      id: "bomb",
+      action: "bomb",
+      ...resolveVirtualJoyPosition(settings, "bomb", layout),
+      radius: 46 * resolveVirtualJoySize(settings, "bomb"),
+      label: t("battle.mobile_bomb"),
+      fill: 0x382d4f,
+      accent: 0xc8a7ff,
+      alpha: resolveVirtualJoyAlpha(settings, "bomb"),
+    },
+    {
+      id: "shoot",
+      action: "shoot",
+      ...resolveVirtualJoyPosition(settings, "shoot", layout),
+      radius: 58 * resolveVirtualJoySize(settings, "shoot"),
+      label: t("battle.mobile_shoot"),
+      fill: 0x4b2734,
+      accent: 0xff6b8a,
+      alpha: resolveVirtualJoyAlpha(settings, "shoot"),
     },
   ];
 }
@@ -504,4 +566,23 @@ function axisToDigital(value: number): -1 | 0 | 1 {
   if (value > JOYSTICK_DEAD_ZONE) return 1;
   if (value < -JOYSTICK_DEAD_ZONE) return -1;
   return 0;
+}
+
+function clampPointToCircle(
+  pointer: Phaser.Input.Pointer,
+  center: Phaser.Math.Vector2,
+  radius: number,
+  target: Phaser.Math.Vector2,
+): void {
+  const dx = pointer.x - center.x;
+  const dy = pointer.y - center.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance <= radius || distance === 0) {
+    target.set(pointer.x, pointer.y);
+    return;
+  }
+  target.set(
+    center.x + (dx / distance) * radius,
+    center.y + (dy / distance) * radius,
+  );
 }

@@ -9,6 +9,7 @@ export * from "./room/room-lobby-scene";
 export * from "./local-lan-scene";
 export * from "./udp-connect-scene";
 export * from "./setting-scene";
+export * from "./configure-virtual-joy-scene";
 export { DebugBulletVolumeScene } from "./setting-scene/debug-bullet-volume-scene";
 export * from "./codex-scene";
 export * from "./select-scene";

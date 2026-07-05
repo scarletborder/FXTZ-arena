@@ -2,7 +2,7 @@ import type { SettingsScene } from "./index";
 
 import Phaser from "phaser";
 
-export type SettingsTabKey = "online" | "general" | "account" | "keyboard" | "joystick" | "about" | "debug";
+export type SettingsTabKey = "online" | "general" | "account" | "keyboard" | "joystick" | "virtualJoy" | "about" | "debug";
 
 export interface SettingsTabDefinition {
   readonly key: SettingsTabKey;

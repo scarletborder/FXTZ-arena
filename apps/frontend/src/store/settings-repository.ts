@@ -1,6 +1,11 @@
 import { MAX_PLAYER_NAME_LENGTH, PUBLIC_SERVER } from "@repo/constants";
 import { AccountSettings, DEFAULT_ACCOUNT_SETTINGS, DEFAULT_JOYSTICK_SETTINGS, JoystickSettings } from "../battle/input-controller/gamepad";
 import { DEFAULT_KEYBINDS, KeybindSettings } from "../battle/input-controller/pc";
+import {
+  DEFAULT_VIRTUAL_JOY_SETTINGS,
+  normalizeVirtualJoySettings,
+  VirtualJoySettings,
+} from "../battle/input-controller/virtual-joy-settings";
 
 export interface UiSettings {
   readonly username: string;
@@ -17,6 +22,7 @@ export interface UiSettings {
   keybinds: KeybindSettings; // 键位设定
   account: AccountSettings;
   joystick: JoystickSettings;
+  virtualJoy: VirtualJoySettings;
 }
 
 const STORAGE_KEYS = {
@@ -33,6 +39,7 @@ const STORAGE_KEYS = {
   selfAuthed: "selfAuthed",
   account: "fxtz_account",
   joystick: "fxtz_joystick",
+  virtualJoy: "fxtz_virtual_joy",
 } as const;
 
 const DEFAULT_SERVER_ADDRESS = PUBLIC_SERVER[0]?.addr ?? "ws://localhost:22334";
@@ -121,6 +128,21 @@ function readJoystickSettings(): JoystickSettings {
   }
 }
 
+function readVirtualJoySettings(): VirtualJoySettings {
+  if (!canUseLocalStorage()) {
+    return { ...DEFAULT_VIRTUAL_JOY_SETTINGS };
+  }
+  const raw = localStorage.getItem(STORAGE_KEYS.virtualJoy);
+  if (!raw) {
+    return { ...DEFAULT_VIRTUAL_JOY_SETTINGS };
+  }
+  try {
+    return normalizeVirtualJoySettings(JSON.parse(raw));
+  } catch {
+    return { ...DEFAULT_VIRTUAL_JOY_SETTINGS };
+  }
+}
+
 function readAccountSettings(): AccountSettings {
   const legacyUsername = normalizeUsername(readString(STORAGE_KEYS.username, DEFAULT_ACCOUNT_SETTINGS.p1Username));
   if (!canUseLocalStorage()) {
@@ -174,6 +196,12 @@ function writeJoystickSettings(value: JoystickSettings): void {
   }
 }
 
+function writeVirtualJoySettings(value: VirtualJoySettings): void {
+  if (canUseLocalStorage()) {
+    localStorage.setItem(STORAGE_KEYS.virtualJoy, JSON.stringify(value));
+  }
+}
+
 function writeAccountSettings(value: AccountSettings): void {
   if (canUseLocalStorage()) {
     localStorage.setItem(STORAGE_KEYS.account, JSON.stringify(value));
@@ -204,6 +232,7 @@ const settingsState: UiSettings = {
   keybinds: readKeybinds(),
   account: readAccountSettings(),
   joystick: readJoystickSettings(),
+  virtualJoy: readVirtualJoySettings(),
 };
 
 settingsState.stunServers = normalizeStunServers(readStringArray(STORAGE_KEYS.stunServers, [DEFAULT_STUN_SERVER]));
@@ -308,6 +337,16 @@ export function resetJoystickSettingsToDefault(): void {
   writeJoystickSettings(settingsState.joystick);
 }
 
+export function setVirtualJoySettings(virtualJoy: VirtualJoySettings): void {
+  settingsState.virtualJoy = normalizeVirtualJoySettings(virtualJoy);
+  writeVirtualJoySettings(settingsState.virtualJoy);
+}
+
+export function resetVirtualJoySettingsToDefault(): void {
+  settingsState.virtualJoy = { ...DEFAULT_VIRTUAL_JOY_SETTINGS };
+  writeVirtualJoySettings(settingsState.virtualJoy);
+}
+
 export function setAccountSettings(account: AccountSettings): void {
   settingsState.account = normalizeAccountSettings(account);
   writeAccountSettings(settingsState.account);
@@ -336,6 +375,8 @@ export interface SettingsRepository {
   resetKeybindsToDefault(): void;
   setJoystickSettings(joystick: JoystickSettings): void;
   resetJoystickSettingsToDefault(): void;
+  setVirtualJoySettings(virtualJoy: VirtualJoySettings): void;
+  resetVirtualJoySettingsToDefault(): void;
   setAccountSettings(account: AccountSettings): void;
   resetAccountSettingsToDefault(): void;
   getProfileUsername(player: "Player1" | "Player2"): string;
@@ -359,6 +400,8 @@ export const settingsRepository: SettingsRepository = {
   resetKeybindsToDefault,
   setJoystickSettings,
   resetJoystickSettingsToDefault,
+  setVirtualJoySettings,
+  resetVirtualJoySettingsToDefault,
   setAccountSettings,
   resetAccountSettingsToDefault,
   getProfileUsername,

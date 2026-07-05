@@ -3,6 +3,7 @@ export {
   getProfileUsername,
   resetAccountSettingsToDefault,
   resetJoystickSettingsToDefault,
+  resetVirtualJoySettingsToDefault,
   resetKeybindsToDefault,
   setAccountSettings,
   setBattleHoverResources,
@@ -19,6 +20,7 @@ export {
   setStunServer,
   setStunServers,
   setUsername,
+  setVirtualJoySettings,
   type SettingsRepository,
   type UiSettings,
 } from "./settings-repository";
