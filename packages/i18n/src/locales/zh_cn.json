@@ -288,6 +288,8 @@
     "joystick.button.RT": "RT",
     "account.localProfiles": "本地对战Profile",
     "account.manageProfiles": "管理Profile",
+    "account.profile": "Profile",
+    "account.inputDevice": "输入器",
     "profiles": {
       "title": "管理Profile",
       "create": "创建新Profile",

@@ -248,6 +248,69 @@ fn replay_open_folder(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+// ---------------------------------------------------------------------------
+// Profile file storage  —  one JSON file per Profile in "Profiles/"
+// ---------------------------------------------------------------------------
+
+fn profiles_dir(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    let dir = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("Profiles");
+
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
+}
+
+fn profile_filename(profile_id: &str) -> String {
+    let encoded = profile_id
+        .as_bytes()
+        .iter()
+        .map(|byte| format!("{:02x}", byte))
+        .collect::<String>();
+    format!("profile_{}.json", encoded)
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct ProfileFileData {
+    data: String,
+}
+
+#[tauri::command]
+fn profile_list_files(app: tauri::AppHandle) -> Result<Vec<ProfileFileData>, String> {
+    let dir = profiles_dir(&app)?;
+    let mut profiles = Vec::new();
+    for entry in std::fs::read_dir(&dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        if !path.is_file() || path.extension().and_then(|value| value.to_str()) != Some("json") {
+            continue;
+        }
+        let data = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        profiles.push(ProfileFileData { data });
+    }
+    Ok(profiles)
+}
+
+#[tauri::command]
+fn profile_save_file(
+    app: tauri::AppHandle,
+    profile_id: String,
+    data: String,
+) -> Result<(), String> {
+    let dir = profiles_dir(&app)?;
+    std::fs::write(dir.join(profile_filename(&profile_id)), data).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn profile_delete_file(app: tauri::AppHandle, profile_id: String) -> Result<(), String> {
+    let dir = profiles_dir(&app)?;
+    let _ = std::fs::remove_file(dir.join(profile_filename(&profile_id)));
+    Ok(())
+}
+
 #[tauri::command]
 async fn desktop_update_and_install_if_available(app: tauri::AppHandle) -> Result<bool, String> {
     let Some(updater) = build_updater(&app)? else {
@@ -371,6 +434,9 @@ pub fn run() {
             replay_delete_slot,
             replay_export_slot,
             replay_open_folder,
+            profile_list_files,
+            profile_save_file,
+            profile_delete_file,
             desktop_remote_update_version,
             desktop_update_and_install_if_available,
             link::wt::wt_connect,

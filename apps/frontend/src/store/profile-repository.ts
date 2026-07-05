@@ -1,3 +1,4 @@
+import { IS_DESKTOP_APP } from "@repo/constants";
 import { DEFAULT_JOYSTICK_SETTINGS, type JoystickSettings } from "../battle/input-controller/gamepad";
 import { DEFAULT_KEYBINDS, type KeybindSettings } from "../battle/input-controller/pc";
 import {
@@ -25,13 +26,48 @@ const DB_VERSION = 1;
 const STORE_NAME = "profiles";
 const DEFAULT_PROFILE_ID = "default";
 const PROFILE_FILE_VERSION = 1;
+const isDesktop = IS_DESKTOP_APP;
 
 let dbPromise: Promise<IDBDatabase | undefined> | undefined;
 let initialized = false;
 let profileCache: LocalInputProfile[] = [];
 
+interface TauriCoreApi {
+  invoke<T>(command: string, args?: Record<string, unknown>): Promise<T>;
+}
+
+interface DesktopProfileFileData {
+  readonly data: string;
+}
+
+let tauriCore: TauriCoreApi | null = null;
+
+async function ensureTauriCore(): Promise<TauriCoreApi> {
+  if (!tauriCore) {
+    tauriCore = await import("@tauri-apps/api/core") as TauriCoreApi;
+  }
+  return tauriCore;
+}
+
 export async function initializeProfileRepository(): Promise<void> {
   if (initialized) {
+    return;
+  }
+  if (isDesktop) {
+    profileCache = await readDesktopProfiles();
+    const db = await openProfilesDb();
+    if (db) {
+      const idbProfiles = await readAllProfiles(db);
+      await Promise.all(idbProfiles.map((profile) => persistDesktopProfile(profile)));
+      profileCache = [...profileCache, ...idbProfiles];
+    }
+    if (!profileCache.some((profile) => profile.id === DEFAULT_PROFILE_ID)) {
+      const migrated = await createDefaultProfileFromLegacy();
+      await persistDesktopProfile(migrated);
+      profileCache = [migrated, ...profileCache];
+    }
+    profileCache = sortProfiles(deduplicateProfiles(profileCache));
+    initialized = true;
     return;
   }
   const db = await openProfilesDb();
@@ -100,9 +136,13 @@ export async function deleteProfile(profileId: string): Promise<void> {
   if (profileId === DEFAULT_PROFILE_ID || profileCache.length <= 1) {
     return;
   }
-  const db = await openProfilesDb();
-  if (db) {
+  if (isDesktop) {
+    await deleteDesktopProfile(profileId);
+  } else {
+    const db = await openProfilesDb();
+    if (db) {
     await deleteProfileFromDb(db, profileId);
+    }
   }
   profileCache = profileCache.filter((profile) => profile.id !== profileId);
 }
@@ -187,10 +227,41 @@ function putProfile(db: IDBDatabase, profile: LocalInputProfile): Promise<void> 
 }
 
 async function persistProfile(profile: LocalInputProfile): Promise<void> {
+  if (isDesktop) {
+    await persistDesktopProfile(profile);
+    return;
+  }
   const db = await openProfilesDb();
   if (db) {
     await putProfile(db, profile);
   }
+}
+
+async function readDesktopProfiles(): Promise<LocalInputProfile[]> {
+  const core = await ensureTauriCore();
+  const files = await core.invoke<DesktopProfileFileData[]>("profile_list_files");
+  const profiles: LocalInputProfile[] = [];
+  for (const file of files) {
+    try {
+      profiles.push(await parseImportedProfile(file.data));
+    } catch (error) {
+      console.warn("Skipping invalid desktop profile file:", error);
+    }
+  }
+  return profiles;
+}
+
+async function persistDesktopProfile(profile: LocalInputProfile): Promise<void> {
+  const core = await ensureTauriCore();
+  await core.invoke("profile_save_file", {
+    profileId: profile.id,
+    data: serializeProfile(profile),
+  });
+}
+
+async function deleteDesktopProfile(profileId: string): Promise<void> {
+  const core = await ensureTauriCore();
+  await core.invoke("profile_delete_file", { profileId });
 }
 
 function deleteProfileFromDb(db: IDBDatabase, profileId: string): Promise<void> {
@@ -324,14 +395,14 @@ function sortProfiles(profiles: readonly LocalInputProfile[]): LocalInputProfile
 }
 
 function deduplicateProfiles(profiles: readonly LocalInputProfile[]): LocalInputProfile[] {
-  const seen = new Set<string>();
-  return profiles.filter((profile) => {
-    if (seen.has(profile.id)) {
-      return false;
+  const byId = new Map<string, LocalInputProfile>();
+  for (const profile of profiles) {
+    const current = byId.get(profile.id);
+    if (!current || profile.updatedAt.localeCompare(current.updatedAt) > 0) {
+      byId.set(profile.id, profile);
     }
-    seen.add(profile.id);
-    return true;
-  });
+  }
+  return Array.from(byId.values());
 }
 
 function stableStringify(value: unknown): string {

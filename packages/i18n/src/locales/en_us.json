@@ -288,6 +288,8 @@
     "joystick.button.RT": "RT",
     "account.localProfiles": "Local Versus Profiles",
     "account.manageProfiles": "Manage Profiles",
+    "account.profile": "Profile",
+    "account.inputDevice": "Input",
     "profiles": {
       "title": "Manage Profiles",
       "create": "Create New Profile",

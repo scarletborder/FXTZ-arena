@@ -1,5 +1,5 @@
 import { MAX_PLAYER_NAME_LENGTH, PUBLIC_SERVER } from "@repo/constants";
-import { AccountSettings, DEFAULT_ACCOUNT_SETTINGS, DEFAULT_JOYSTICK_SETTINGS, JoystickSettings } from "../battle/input-controller/gamepad";
+import { AccountSettings, DEFAULT_ACCOUNT_SETTINGS, DEFAULT_JOYSTICK_SETTINGS, InputProfileId, JoystickSettings } from "../battle/input-controller/gamepad";
 import { DEFAULT_KEYBINDS, KeybindSettings } from "../battle/input-controller/pc";
 import {
   DEFAULT_VIRTUAL_JOY_SETTINGS,
@@ -155,7 +155,10 @@ function readAccountSettings(): AccountSettings {
   }
   try {
     const parsed = JSON.parse(raw);
-    return normalizeAccountSettings({ ...DEFAULT_ACCOUNT_SETTINGS, p1Username: legacyUsername, ...parsed });
+    return normalizeAccountSettings(
+      { ...DEFAULT_ACCOUNT_SETTINGS, p1Username: legacyUsername, ...parsed },
+      parsed,
+    );
   } catch {
     return { ...DEFAULT_ACCOUNT_SETTINGS, p1Username: legacyUsername };
   }
@@ -419,22 +422,36 @@ function normalizeUsername(username: string): string {
   return Array.from(trimmed || "Player").slice(0, MAX_PLAYER_NAME_LENGTH).join("");
 }
 
-function normalizeAccountSettings(account: AccountSettings): AccountSettings {
-  const legacyAccount = account as AccountSettings & {
+function normalizeAccountSettings(account: AccountSettings, rawAccount?: unknown): AccountSettings {
+  const legacyAccount = (rawAccount ?? account) as Partial<AccountSettings> & {
     readonly p1Profile?: unknown;
     readonly p2Profile?: unknown;
   };
+  const p1ProfileId = normalizeProfileId(account.p1ProfileId);
+  const p2ProfileId = normalizeProfileId(account.p2ProfileId);
   return {
     ...account,
-    p1ProfileId: normalizeProfileId(account.p1ProfileId ?? legacyAccount.p1Profile),
-    p2ProfileId: normalizeProfileId(account.p2ProfileId ?? legacyAccount.p2Profile),
-    p1Username: getProfile(normalizeProfileId(account.p1ProfileId ?? legacyAccount.p1Profile)).username,
-    p2Username: getProfile(normalizeProfileId(account.p2ProfileId ?? legacyAccount.p2Profile)).username,
+    p1Input: normalizeInputProfileId(account.p1Input ?? legacyAccount.p1Profile, DEFAULT_ACCOUNT_SETTINGS.p1Input),
+    p2Input: normalizeInputProfileId(account.p2Input ?? legacyAccount.p2Profile, DEFAULT_ACCOUNT_SETTINGS.p2Input),
+    p1ProfileId,
+    p2ProfileId,
+    p1Username: getProfile(p1ProfileId).username,
+    p2Username: getProfile(p2ProfileId).username,
   };
 }
 
 function normalizeProfileId(profileId: unknown): string {
   return typeof profileId === "string" && profileId.trim() ? profileId : "default";
+}
+
+function normalizeInputProfileId(input: unknown, fallback: InputProfileId): InputProfileId {
+  if (input === "keyboard" || input === "mobile") {
+    return input;
+  }
+  if (typeof input === "string" && /^joystick:\d+$/.test(input)) {
+    return input as InputProfileId;
+  }
+  return fallback;
 }
 
 function resolveEditableProfileId(): string {
