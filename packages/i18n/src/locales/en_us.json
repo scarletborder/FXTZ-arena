@@ -1,5 +1,7 @@
 {
-  "language": { "display": "English" },
+  "language": {
+    "display": "English"
+  },
   "menu": {
     "start_game": "Start Game",
     "practice_range": "Practice Range",
@@ -36,7 +38,9 @@
     "size_unknown": "Reading resource information",
     "unknown_total": "unknown size",
     "download_size": "{{downloaded}} / {{total}}",
-    "tap_to_enter": "Click the screen to enter"
+    "tap_to_enter": "Click the screen to enter",
+    "loading_profiles": "Loading Local Profiles",
+    "loading_profiles_detail": "Migrating and validating input settings"
   },
   "manual": {
     "title": "manual",
@@ -281,7 +285,26 @@
     "joystick.button.LB": "LB",
     "joystick.button.RB": "RB",
     "joystick.button.LT": "LT",
-    "joystick.button.RT": "RT"
+    "joystick.button.RT": "RT",
+    "account.localProfiles": "Local Versus Profiles",
+    "account.manageProfiles": "Manage Profiles",
+    "profiles": {
+      "title": "Manage Profiles",
+      "create": "Create New Profile",
+      "newDefaultName": "default",
+      "import": "Import Profile",
+      "export": "Export This Profile",
+      "username": "username",
+      "editKeyboard": "Edit Keyboard Mapping",
+      "editJoystick": "Edit Joystick Mapping",
+      "editVirtualJoy": "Edit Virtual Joystick",
+      "save": "Save Changes",
+      "delete": "Delete Profile",
+      "saveSuccess": "Saved",
+      "importInvalid": "Profile file validation failed",
+      "deleteConfirm": "Delete this Profile? The list will refresh after deletion.",
+      "importSuccess": "Imported"
+    }
   },
   "content": {
     "characters": {
@@ -361,14 +384,30 @@
       }
     },
     "maps": {
-      "hakurei_shrine": { "name": "Hakurei Shrine" },
-      "collaborate_test_arena": { "name": "Co-op Test Arena" },
-      "collaborate_test_arena_2": { "name": "Co-op Test Arena 2" },
-      "mist_lake": { "name": "Mist Lake" },
-      "bamboo_lost": { "name": "Bamboo Forest of the Lost" },
-      "mana_forest": { "name": "Magic Forest" },
-      "x_shoot_range": { "name": "X Shooting Range" },
-      "shoot_range": { "name": "Practice Range" }
+      "hakurei_shrine": {
+        "name": "Hakurei Shrine"
+      },
+      "collaborate_test_arena": {
+        "name": "Co-op Test Arena"
+      },
+      "collaborate_test_arena_2": {
+        "name": "Co-op Test Arena 2"
+      },
+      "mist_lake": {
+        "name": "Mist Lake"
+      },
+      "bamboo_lost": {
+        "name": "Bamboo Forest of the Lost"
+      },
+      "mana_forest": {
+        "name": "Magic Forest"
+      },
+      "x_shoot_range": {
+        "name": "X Shooting Range"
+      },
+      "shoot_range": {
+        "name": "Practice Range"
+      }
     }
   },
   "dialog": {
@@ -612,7 +651,11 @@
     "scout": "Scout",
     "sniper": "Sniper"
   },
-  "speed": { "low": "Low", "medium": "Medium", "high": "High" },
+  "speed": {
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High"
+  },
   "loading": {
     "title": "Loading Battle Assets",
     "local_checking": "Checking local assets",

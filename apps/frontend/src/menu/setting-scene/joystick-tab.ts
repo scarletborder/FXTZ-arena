@@ -9,7 +9,11 @@ import {
 import { createMapDropdown } from "../map-dialog";
 import { DEFAULT_JOYSTICK_SETTINGS, JoystickAxisSource, JoystickButtonInput, JoystickSettings } from "../../battle/input-controller";
 import { setJoystickSettings, settingsRepository } from "../../store/settings";
-import type { SettingsScene } from "./index";
+
+interface JoystickTabOptions {
+  readonly initial?: JoystickSettings;
+  readonly onSave?: (settings: JoystickSettings) => void;
+}
 
 interface AxisRowConfig {
   readonly action: keyof Pick<JoystickSettings, "move" | "aim">;
@@ -42,8 +46,8 @@ const RIGHT_BUTTON_ROWS: readonly ButtonRowConfig[] = [
 
 const BUTTON_OPTIONS: readonly JoystickButtonInput[] = ["A", "B", "X", "Y", "LB", "RB", "LT", "RT"];
 
-export function renderJoystickTab(scene: SettingsScene, layer: Phaser.GameObjects.Container): void {
-  let tempSettings: JoystickSettings = { ...settingsRepository.get().joystick };
+export function renderJoystickTab(scene: Phaser.Scene, layer: Phaser.GameObjects.Container, options: JoystickTabOptions = {}): void {
+  let tempSettings: JoystickSettings = { ...(options.initial ?? settingsRepository.get().joystick) };
   const tabContent = scene.add.container(0, 0);
   const statusText = scene.add.text(36, 396, "", bodyStyle("#ffcf6e", 16));
 
@@ -129,7 +133,11 @@ export function renderJoystickTab(scene: SettingsScene, layer: Phaser.GameObject
           drawTabContent();
           return;
         }
-        setJoystickSettings(tempSettings);
+        if (options.onSave) {
+          options.onSave(tempSettings);
+        } else {
+          setJoystickSettings(tempSettings);
+        }
         statusText.setText(t("settings.joystick.saveSuccess")).setColor("#34d399");
         drawTabContent();
       },

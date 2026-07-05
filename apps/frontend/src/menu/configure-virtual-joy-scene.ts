@@ -20,6 +20,7 @@ import {
   type VirtualJoySettings,
 } from "../battle/input-controller/virtual-joy-settings";
 import { setVirtualJoySettings, settingsRepository } from "../store/settings";
+import { getProfile, saveProfile } from "../store/profile-repository";
 
 interface VirtualJoyHandle {
   readonly id: VirtualJoyControlId;
@@ -68,6 +69,7 @@ const EDITOR_SAVE_DEBOUNCE_MS = 220;
 
 export class ConfigureVirtualJoyScene extends Phaser.Scene {
   private controls: VirtualJoySettings = settingsRepository.get().virtualJoy;
+  private profileId: string | undefined;
   private readonly handles: VirtualJoyHandle[] = [];
   private battleLayout!: BattleLayout;
   private activeDrag: ActiveDrag | null = null;
@@ -84,8 +86,12 @@ export class ConfigureVirtualJoyScene extends Phaser.Scene {
     super("configure-virtual-joy" satisfies SceneKey);
   }
 
+  init(data?: { readonly profileId?: string }): void {
+    this.profileId = data?.profileId;
+  }
+
   create(): void {
-    this.controls = settingsRepository.get().virtualJoy;
+    this.controls = this.profileId ? getProfile(this.profileId).virtualJoy : settingsRepository.get().virtualJoy;
     this.handles.length = 0;
     this.battleLayout = createBattleLayout();
 
@@ -172,7 +178,7 @@ export class ConfigureVirtualJoyScene extends Phaser.Scene {
       176,
       46,
       t("menu.back"),
-      () => this.scene.start("settings"),
+      () => this.scene.start(this.profileId ? "profiles-manage" : "settings"),
       { accent: 0x5c7185 },
     );
   }
@@ -252,7 +258,7 @@ export class ConfigureVirtualJoyScene extends Phaser.Scene {
         ...toVirtualJoyPosition(clampedX, clampedY, this.battleLayout),
       },
     };
-    setVirtualJoySettings(this.controls);
+    this.saveControls();
     this.updateEditorsForSelection();
   }
 
@@ -351,7 +357,7 @@ export class ConfigureVirtualJoyScene extends Phaser.Scene {
     this.editorSaveTimer?.remove(false);
     this.editorSaveTimer = this.time.delayedCall(EDITOR_SAVE_DEBOUNCE_MS, () => {
       this.editorSaveTimer = null;
-      setVirtualJoySettings(this.controls);
+      this.saveControls();
     });
   }
 
@@ -361,6 +367,14 @@ export class ConfigureVirtualJoyScene extends Phaser.Scene {
     }
     this.editorSaveTimer.remove(false);
     this.editorSaveTimer = null;
+    this.saveControls();
+  }
+
+  private saveControls(): void {
+    if (this.profileId) {
+      void saveProfile(this.profileId, { virtualJoy: this.controls });
+      return;
+    }
     setVirtualJoySettings(this.controls);
   }
 

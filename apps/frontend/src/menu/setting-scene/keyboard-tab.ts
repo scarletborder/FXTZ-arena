@@ -11,8 +11,14 @@ import {
   settingsRepository,
   setKeybinds,
 } from "../../store/settings";
-import type { SettingsScene } from "./index";
 import { KeybindSettings, DEFAULT_KEYBINDS } from "../../battle/input-controller";
+
+type CleanupScene = Phaser.Scene & { addCleanup(cleanup: () => void): void };
+
+interface KeyboardTabOptions {
+  readonly initial?: KeybindSettings;
+  readonly onSave?: (settings: KeybindSettings) => void;
+}
 
 interface KeyRowConfig {
   action: keyof KeybindSettings;
@@ -83,9 +89,9 @@ function findDuplicates(keybinds: KeybindSettings) {
   };
 }
 
-export function renderKeyboardTab(scene: SettingsScene, layer: Phaser.GameObjects.Container): void {
+export function renderKeyboardTab(scene: CleanupScene, layer: Phaser.GameObjects.Container, options: KeyboardTabOptions = {}): void {
   // 1. 声明编辑时的临时键位对象
-  let tempKeybinds: KeybindSettings = { ...settingsRepository.get().keybinds };
+  let tempKeybinds: KeybindSettings = { ...(options.initial ?? settingsRepository.get().keybinds) };
 
   let listeningAction: keyof KeybindSettings | null = null;
   let activeCaptureCleanup: (() => void) | undefined = undefined;
@@ -174,7 +180,11 @@ export function renderKeyboardTab(scene: SettingsScene, layer: Phaser.GameObject
           statusText.setText(t("settings.keyboard.conflict_error")).setColor("#ff5c66");
           drawTabContent(); // 刷新以重绘红色冲突边框
         } else {
-          setKeybinds(tempKeybinds); // 持久化到全局 store 与 LocalStorage
+          if (options.onSave) {
+            options.onSave(tempKeybinds);
+          } else {
+            setKeybinds(tempKeybinds);
+          }
           statusText.setText(t("settings.keyboard.save_success")).setColor("#34d399");
           drawTabContent();
         }

@@ -14,31 +14,11 @@ import { renderGeneralTab } from "./general-tab";
 import { renderAboutTab } from "./about-tab";
 import { renderDebugTab } from "./debug-tab";
 import { renderAccountTab } from "./account-tab";
-import { renderKeyboardTab } from "./keyboard-tab";
-import { renderJoystickTab } from "./joystick-tab";
-import { renderVirtualJoyTab } from "./virtual-joy-tab";
 
 const TAB_DEFINITIONS: readonly SettingsTabDefinition[] = [
   { key: "online", label: t("settings.online"), render: renderOnlineTab },
   { key: "general", label: t("settings.general"), render: renderGeneralTab },
   { key: "account", label: t("settings.account"), render: renderAccountTab },
-  {
-    key: "keyboard",
-    label: t("settings.keyboard.title"),
-    render: renderKeyboardTab,
-    // 如果不是 PC 桌面设备，则禁用该 Tab
-    disabled: (scene) => !scene.sys.game.device.os.desktop
-  },
-  {
-    key: "joystick",
-    label: t("settings.joystick"),
-    render: renderJoystickTab,
-  },
-  {
-    key: "virtualJoy",
-    label: t("settings.virtualJoy.tab"),
-    render: renderVirtualJoyTab,
-  },
   { key: "debug", label: t("settings.debug"), render: renderDebugTab },
   { key: "about", label: t("settings.about"), render: renderAboutTab },
 ];

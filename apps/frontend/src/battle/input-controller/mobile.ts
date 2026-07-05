@@ -94,13 +94,13 @@ export class BattleMobileControls {
   private readonly moveJoystickScale: number;
   private readonly moveJoystickAlpha: number;
 
-  constructor(scene: Phaser.Scene, layout?: BattleMobileControlsLayout) {
+  constructor(scene: Phaser.Scene, layout?: BattleMobileControlsLayout, settings?: VirtualJoySettings) {
     this.scene = scene;
     this.layout = layout ?? {
       width: scene.scale.width,
       height: scene.scale.height,
     };
-    this.virtualJoySettings = settingsRepository.get().virtualJoy;
+    this.virtualJoySettings = settings ?? settingsRepository.get().virtualJoy;
     this.moveJoystickScale = resolveVirtualJoySize(this.virtualJoySettings, "moveJoystick");
     this.moveJoystickAlpha = resolveVirtualJoyAlpha(this.virtualJoySettings, "moveJoystick");
     this.scene.input.addPointer(6);

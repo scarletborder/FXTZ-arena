@@ -1,5 +1,7 @@
 {
-  "language": { "display": "简体中文" },
+  "language": {
+    "display": "简体中文"
+  },
   "menu": {
     "start_game": "开始战斗",
     "practice_range": "靶场",
@@ -36,7 +38,9 @@
     "size_unknown": "正在读取资源信息",
     "unknown_total": "未知大小",
     "download_size": "{{downloaded}} / {{total}}",
-    "tap_to_enter": "点击屏幕进入游戏"
+    "tap_to_enter": "点击屏幕进入游戏",
+    "loading_profiles": "加载本地 Profile",
+    "loading_profiles_detail": "正在迁移与校验输入配置"
   },
   "manual": {
     "title": "Manual",
@@ -281,7 +285,26 @@
     "joystick.button.LB": "LB",
     "joystick.button.RB": "RB",
     "joystick.button.LT": "LT",
-    "joystick.button.RT": "RT"
+    "joystick.button.RT": "RT",
+    "account.localProfiles": "本地对战Profile",
+    "account.manageProfiles": "管理Profile",
+    "profiles": {
+      "title": "管理Profile",
+      "create": "创建新Profile",
+      "newDefaultName": "default",
+      "import": "导入Profile",
+      "export": "导出此Profile",
+      "username": "username",
+      "editKeyboard": "修改键鼠映射",
+      "editJoystick": "修改手柄映射",
+      "editVirtualJoy": "修改虚拟摇杆配置",
+      "save": "保存修改",
+      "delete": "删除Profile",
+      "saveSuccess": "保存成功",
+      "importInvalid": "Profile文件校验失败",
+      "deleteConfirm": "确认删除此Profile吗？删除后会刷新列表。",
+      "importSuccess": "导入成功"
+    }
   },
   "content": {
     "characters": {
@@ -365,14 +388,30 @@
       }
     },
     "maps": {
-      "hakurei_shrine": { "name": "博丽神社" },
-      "collaborate_test_arena": { "name": "合作测试竞技场" },
-      "collaborate_test_arena_2": { "name": "合作测试竞技场2" },
-      "mist_lake": { "name": "雾之湖" },
-      "bamboo_lost": { "name": "迷途竹林" },
-      "mana_forest": { "name": "魔力森林" },
-      "x_shoot_range": { "name": "X靶场" },
-      "shoot_range": { "name": "靶场" }
+      "hakurei_shrine": {
+        "name": "博丽神社"
+      },
+      "collaborate_test_arena": {
+        "name": "合作测试竞技场"
+      },
+      "collaborate_test_arena_2": {
+        "name": "合作测试竞技场2"
+      },
+      "mist_lake": {
+        "name": "雾之湖"
+      },
+      "bamboo_lost": {
+        "name": "迷途竹林"
+      },
+      "mana_forest": {
+        "name": "魔力森林"
+      },
+      "x_shoot_range": {
+        "name": "X靶场"
+      },
+      "shoot_range": {
+        "name": "靶场"
+      }
     }
   },
   "dialog": {
@@ -616,7 +655,11 @@
     "scout": "侦察",
     "sniper": "狙击"
   },
-  "speed": { "low": "低", "medium": "中", "high": "高" },
+  "speed": {
+    "low": "低",
+    "medium": "中",
+    "high": "高"
+  },
   "loading": {
     "title": "加载战斗资源",
     "local_checking": "本地资源检查中",

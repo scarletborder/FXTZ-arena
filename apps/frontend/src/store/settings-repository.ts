@@ -6,6 +6,7 @@ import {
   normalizeVirtualJoySettings,
   VirtualJoySettings,
 } from "../battle/input-controller/virtual-joy-settings";
+import { getProfile, saveProfile } from "./profile-repository";
 
 export interface UiSettings {
   readonly username: string;
@@ -249,7 +250,8 @@ export function setUsername(username: string): void {
 }
 
 export function getProfileUsername(player: "Player1" | "Player2"): string {
-  return player === "Player2" ? settingsState.account.p2Username : settingsState.account.p1Username;
+  const profileId = player === "Player2" ? settingsState.account.p2ProfileId : settingsState.account.p1ProfileId;
+  return getProfile(profileId).username;
 }
 
 export function getBattleUsername(): string {
@@ -320,6 +322,7 @@ export function setSelfAuthed(selfAuthed: boolean): void {
 export function setKeybinds(keybinds: KeybindSettings): void {
   settingsState.keybinds = { ...keybinds };
   writeKeybinds(settingsState.keybinds);
+  void saveProfile(resolveEditableProfileId(), { keybinds: settingsState.keybinds });
 }
 
 export function resetKeybindsToDefault(): void {
@@ -330,6 +333,7 @@ export function resetKeybindsToDefault(): void {
 export function setJoystickSettings(joystick: JoystickSettings): void {
   settingsState.joystick = { ...joystick };
   writeJoystickSettings(settingsState.joystick);
+  void saveProfile(resolveEditableProfileId(), { joystick: settingsState.joystick });
 }
 
 export function resetJoystickSettingsToDefault(): void {
@@ -340,6 +344,7 @@ export function resetJoystickSettingsToDefault(): void {
 export function setVirtualJoySettings(virtualJoy: VirtualJoySettings): void {
   settingsState.virtualJoy = normalizeVirtualJoySettings(virtualJoy);
   writeVirtualJoySettings(settingsState.virtualJoy);
+  void saveProfile(resolveEditableProfileId(), { virtualJoy: settingsState.virtualJoy });
 }
 
 export function resetVirtualJoySettingsToDefault(): void {
@@ -349,8 +354,9 @@ export function resetVirtualJoySettingsToDefault(): void {
 
 export function setAccountSettings(account: AccountSettings): void {
   settingsState.account = normalizeAccountSettings(account);
+  applyActiveProfileSettings();
   writeAccountSettings(settingsState.account);
-  writeString(STORAGE_KEYS.username, settingsState.account.p1Username);
+  writeString(STORAGE_KEYS.username, getBattleUsername());
 }
 
 export function resetAccountSettingsToDefault(): void {
@@ -414,11 +420,42 @@ function normalizeUsername(username: string): string {
 }
 
 function normalizeAccountSettings(account: AccountSettings): AccountSettings {
+  const legacyAccount = account as AccountSettings & {
+    readonly p1Profile?: unknown;
+    readonly p2Profile?: unknown;
+  };
   return {
     ...account,
-    p1Username: normalizeUsername(account.p1Username),
-    p2Username: normalizeUsername(account.p2Username),
+    p1ProfileId: normalizeProfileId(account.p1ProfileId ?? legacyAccount.p1Profile),
+    p2ProfileId: normalizeProfileId(account.p2ProfileId ?? legacyAccount.p2Profile),
+    p1Username: getProfile(normalizeProfileId(account.p1ProfileId ?? legacyAccount.p1Profile)).username,
+    p2Username: getProfile(normalizeProfileId(account.p2ProfileId ?? legacyAccount.p2Profile)).username,
   };
+}
+
+function normalizeProfileId(profileId: unknown): string {
+  return typeof profileId === "string" && profileId.trim() ? profileId : "default";
+}
+
+function resolveEditableProfileId(): string {
+  return settingsState.account.battleProfile === "Player2"
+    ? settingsState.account.p2ProfileId
+    : settingsState.account.p1ProfileId;
+}
+
+function applyActiveProfileSettings(): void {
+  const profile = getProfile(resolveEditableProfileId());
+  settingsState.keybinds = { ...profile.keybinds };
+  settingsState.joystick = { ...profile.joystick };
+  settingsState.virtualJoy = normalizeVirtualJoySettings(profile.virtualJoy);
+  settingsState.account = {
+    ...settingsState.account,
+    p1Username: getProfile(settingsState.account.p1ProfileId).username,
+    p2Username: getProfile(settingsState.account.p2ProfileId).username,
+  };
+  writeKeybinds(settingsState.keybinds);
+  writeJoystickSettings(settingsState.joystick);
+  writeVirtualJoySettings(settingsState.virtualJoy);
 }
 
 function normalizeStunServer(server: string): string {

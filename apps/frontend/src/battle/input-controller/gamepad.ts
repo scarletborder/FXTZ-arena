@@ -42,16 +42,16 @@ export interface JoystickInputState {
 export type InputProfileId = "keyboard" | "mobile" | `joystick:${number}`;
 
 export interface AccountSettings {
-  p1Profile: InputProfileId;
-  p2Profile: InputProfileId;
+  p1ProfileId: string;
+  p2ProfileId: string;
   battleProfile: "Player1" | "Player2";
   p1Username: string;
   p2Username: string;
 }
 
 export const DEFAULT_ACCOUNT_SETTINGS: AccountSettings = {
-  p1Profile: "keyboard",
-  p2Profile: "mobile",
+  p1ProfileId: "default",
+  p2ProfileId: "default",
   battleProfile: "Player1",
   p1Username: "Player 1",
   p2Username: "Player 2",

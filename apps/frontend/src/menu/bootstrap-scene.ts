@@ -4,6 +4,8 @@ import { APP_VERSION, IS_DESKTOP_APP } from "@repo/constants";
 
 import { prepareResourcePackSource, type ResourcePackPrepareProgress } from "../utils/resource-pack";
 import { fetchDesktopRemoteVersion, updateDesktopAppIfNeeded } from "../platform/desktop-updater";
+import { initializeProfileRepository } from "../store/profile-repository";
+import { setAccountSettings, settingsRepository } from "../store/settings";
 import { bodyStyle, drawAngledPanel, drawFightingBackdrop, headingStyle } from "./ui";
 import type { SceneKey } from "./shared";
 
@@ -47,6 +49,9 @@ export class BootstrapScene extends Phaser.Scene {
 
   private async prepareResources(): Promise<void> {
     try {
+      this.setBootstrapStage(t("bootstrap.loading_profiles"), t("bootstrap.loading_profiles_detail"), 0.02);
+      await initializeProfileRepository();
+      setAccountSettings(settingsRepository.get().account);
       if (IS_DESKTOP_APP) {
         this.setBootstrapStage(t("bootstrap.fetching_remote_version"), t("bootstrap.waiting_remote_version"), 0.04);
         const remoteVersion = await fetchDesktopRemoteVersion();
