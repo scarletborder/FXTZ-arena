@@ -3,6 +3,9 @@ import { t } from "@repo/i18n";
 
 import AudioCmd from "../../../commands/AudioCmd";
 import { Depth } from "../../../utils/depth";
+import type { BattleKeyMap } from "../../input-controller";
+import type { BattleJoystickController } from "../../input-controller/gamepad";
+import type { BattleMobileControls } from "../../input-controller/mobile";
 
 const RESTART_HOLD_MS = 1100;
 const MENU_WIDTH = 360;
@@ -16,9 +19,11 @@ type PauseConfirmAction = "mainMenu" | "restart";
 interface PauseMenuButton {
   readonly key: "resume" | "mainMenu" | "restart" | "speed";
   readonly container: Phaser.GameObjects.Container;
+  readonly hover: Phaser.GameObjects.Rectangle;
   readonly label: Phaser.GameObjects.Text;
   readonly progressRing?: Phaser.GameObjects.Graphics;
   readonly enabled: boolean;
+  readonly onSelect: () => void;
 }
 
 interface PauseMenuState {
@@ -29,6 +34,16 @@ interface PauseMenuState {
   confirmAction?: PauseConfirmAction;
   restartHoldMs: number;
   restartTriggered: boolean;
+  selectedIndex: number;
+  confirmButtons?: readonly PauseConfirmButton[];
+  confirmSelectedIndex: number;
+}
+
+interface PauseConfirmButton {
+  readonly container: Phaser.GameObjects.Container;
+  readonly hit: Phaser.GameObjects.Rectangle;
+  readonly label: Phaser.GameObjects.Text;
+  readonly onSelect: () => void;
 }
 
 export interface BattlePauseMenuOptions {
@@ -46,6 +61,11 @@ export interface BattlePauseMenuOptions {
   readonly onSpeedChange?: (speed: number) => void;
   /** Spectator menu keeps the battle running and only exposes resume/exit. */
   readonly spectator?: boolean;
+  readonly getInputSources?: () => {
+    readonly keys: BattleKeyMap;
+    readonly mobileControls?: BattleMobileControls;
+    readonly joystickControls?: BattleJoystickController;
+  } | undefined;
 }
 
 const REPLAY_SPEEDS = [1, 2, 4, 8] as const;
@@ -53,6 +73,10 @@ const REPLAY_SPEEDS = [1, 2, 4, 8] as const;
 export class BattlePauseMenuController {
   private menu: PauseMenuState | undefined;
   private paused = false;
+  private lastPauseDown = false;
+  private lastUpDown = false;
+  private lastDownDown = false;
+  private lastConfirmDown = false;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -67,6 +91,7 @@ export class BattlePauseMenuController {
 
   update(delta: number): void {
     const menu = this.menu;
+    this.updateNavigation();
     if (!this.paused || !menu || menu.confirmLayer || !this.options.restartEnabled) {
       if (menu) {
         this.setRestartHoldProgress(menu, 0);
@@ -99,14 +124,12 @@ export class BattlePauseMenuController {
       return;
     }
     keyboard.addCapture("ESC,R");
-    keyboard.on("keydown-ESC", this.handleEscape, this);
     this.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      keyboard.off("keydown-ESC", this.handleEscape, this);
+      keyboard.removeCapture("ESC,R");
     });
   }
 
-  private handleEscape(event: KeyboardEvent): void {
-    event.preventDefault();
+  private handlePauseInput(): void {
     if (this.options.canOpen && !this.options.canOpen()) {
       return;
     }
@@ -131,6 +154,7 @@ export class BattlePauseMenuController {
     AudioCmd.Reset();
     this.options.onPauseOpened();
     this.menu = this.createMenu();
+    this.refreshSelection();
   }
 
   private resume(): void {
@@ -227,6 +251,8 @@ export class BattlePauseMenuController {
       rKey: this.scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.R, true, false),
       restartHoldMs: 0,
       restartTriggered: false,
+      selectedIndex: firstEnabledIndex(buttons),
+      confirmSelectedIndex: 0,
     };
   }
 
@@ -281,18 +307,21 @@ export class BattlePauseMenuController {
     if (enabled) {
       hover.setInteractive({ useHandCursor: true });
       hover.on("pointerover", () => {
-        label.setColor(key === "resume" || key === "speed" ? "#ffcf6e" : "#ff5c66");
-        hover.setFillStyle(0xffffff, 0.06);
+        const menu = this.menu;
+        const index = menu?.buttons.findIndex((button) => button.container === container) ?? -1;
+        if (menu && index >= 0) {
+          menu.selectedIndex = index;
+          this.refreshSelection();
+        }
       });
       hover.on("pointerout", () => {
-        label.setColor("#f6f1e6");
-        hover.setFillStyle(0xffffff, 0);
+        this.refreshSelection();
       });
       hover.on("pointerup", onClick);
     }
 
     layer.add(container);
-    return { key, container, label, progressRing, enabled };
+    return { key, container, hover, label, progressRing, enabled, onSelect: onClick };
   }
 
   private setRestartHoldProgress(menu: Pick<PauseMenuState, "buttons">, progress: number): void {
@@ -357,17 +386,22 @@ export class BattlePauseMenuController {
 
     confirmLayer.add(blocker);
     confirmLayer.add(message);
-    confirmLayer.add(this.createConfirmButton(width / 2 - 86, height / 2 + 32, t("pause.cancel"), "#d7e3ef", () => this.closeConfirm()));
-    confirmLayer.add(this.createConfirmButton(width / 2 + 86, height / 2 + 32, t("pause.confirm"), "#ff5c66", () => {
+    const cancelButton = this.createConfirmButton(width / 2 - 86, height / 2 + 32, t("pause.cancel"), "#d7e3ef", () => this.closeConfirm());
+    const confirmButton = this.createConfirmButton(width / 2 + 86, height / 2 + 32, t("pause.confirm"), "#ff5c66", () => {
       if (action === "mainMenu") {
         this.options.onMainMenu();
       } else {
         this.options.onRestart();
       }
-    }));
+    });
+    confirmLayer.add(cancelButton.container);
+    confirmLayer.add(confirmButton.container);
 
     menu.confirmLayer = confirmLayer;
     menu.confirmAction = action;
+    menu.confirmButtons = [cancelButton, confirmButton];
+    menu.confirmSelectedIndex = 0;
+    this.refreshSelection();
   }
 
   private createConfirmButton(
@@ -376,7 +410,7 @@ export class BattlePauseMenuController {
     text: string,
     color: string,
     onClick: () => void,
-  ): Phaser.GameObjects.Container {
+  ): PauseConfirmButton {
     const width = 132;
     const height = 40;
     const container = this.scene.add.container(centerX - width / 2, centerY - height / 2).setScrollFactor(0);
@@ -396,7 +430,7 @@ export class BattlePauseMenuController {
     hit.on("pointerout", () => hit.setFillStyle(0xffffff, 0));
     hit.on("pointerup", onClick);
     container.add([hit, label]);
-    return container;
+    return { container, hit, label, onSelect: onClick };
   }
 
   private closeConfirm(): void {
@@ -407,6 +441,9 @@ export class BattlePauseMenuController {
     menu.confirmLayer?.destroy(true);
     menu.confirmLayer = undefined;
     menu.confirmAction = undefined;
+    menu.confirmButtons = undefined;
+    menu.confirmSelectedIndex = 0;
+    this.refreshSelection();
   }
 
   private destroyMenu(): void {
@@ -414,6 +451,106 @@ export class BattlePauseMenuController {
     this.menu?.confirmLayer?.destroy(true);
     this.menu = undefined;
   }
+
+  private updateNavigation(): void {
+    const sources = this.options.getInputSources?.();
+    const menu = this.menu;
+    const joystickState = this.paused ? sources?.joystickControls?.readPauseMenuState() : undefined;
+    const mobileState = this.paused ? sources?.mobileControls?.readPauseMenuState() : undefined;
+    const pauseDown = Boolean(
+      sources?.keys.pause.isDown ||
+      (this.paused ? joystickState?.pausePressed : sources?.joystickControls?.readPausePressed()) ||
+      (this.paused ? mobileState?.pausePressed : sources?.mobileControls?.readPausePressed()),
+    );
+    if (pauseDown && !this.lastPauseDown) {
+      this.handlePauseInput();
+      this.lastPauseDown = pauseDown;
+      return;
+    }
+    this.lastPauseDown = pauseDown;
+
+    if (!this.paused || !menu) {
+      this.lastUpDown = false;
+      this.lastDownDown = false;
+      this.lastConfirmDown = false;
+      return;
+    }
+    const upDown = Boolean(
+      sources?.keys.moveUp.isDown ||
+      joystickState?.moveY === -1 ||
+      mobileState?.moveY === -1,
+    );
+    const downDown = Boolean(
+      sources?.keys.moveDown.isDown ||
+      joystickState?.moveY === 1 ||
+      mobileState?.moveY === 1,
+    );
+    if (upDown && !this.lastUpDown) {
+      this.moveSelection(-1);
+    }
+    if (downDown && !this.lastDownDown) {
+      this.moveSelection(1);
+    }
+    this.lastUpDown = upDown;
+    this.lastDownDown = downDown;
+
+    const confirmPressed = Boolean(
+      joystickState?.bombPressed ||
+      mobileState?.bombPressed,
+    );
+    if (confirmPressed && !this.lastConfirmDown) {
+      this.selectCurrent();
+    }
+    this.lastConfirmDown = confirmPressed;
+  }
+
+  private moveSelection(direction: -1 | 1): void {
+    const menu = this.menu;
+    if (!menu) return;
+    if (menu.confirmLayer && menu.confirmButtons) {
+      menu.confirmSelectedIndex = Phaser.Math.Wrap(menu.confirmSelectedIndex + direction, 0, menu.confirmButtons.length);
+      this.refreshSelection();
+      return;
+    }
+    const enabledIndices = menu.buttons
+      .map((button, index) => button.enabled ? index : -1)
+      .filter((index) => index >= 0);
+    if (enabledIndices.length === 0) return;
+    const currentEnabledIndex = enabledIndices.indexOf(menu.selectedIndex);
+    const nextIndex = enabledIndices[Phaser.Math.Wrap(currentEnabledIndex + direction, 0, enabledIndices.length)] ?? enabledIndices[0]!;
+    menu.selectedIndex = nextIndex;
+    this.refreshSelection();
+  }
+
+  private selectCurrent(): void {
+    const menu = this.menu;
+    if (!menu) return;
+    if (menu.confirmLayer && menu.confirmButtons) {
+      menu.confirmButtons[menu.confirmSelectedIndex]?.onSelect();
+      return;
+    }
+    menu.buttons[menu.selectedIndex]?.onSelect();
+  }
+
+  private refreshSelection(): void {
+    const menu = this.menu;
+    if (!menu) return;
+    menu.buttons.forEach((button, index) => {
+      const selected = index === menu.selectedIndex && button.enabled && !menu.confirmLayer;
+      button.hover.setFillStyle(0xffffff, selected ? 0.08 : 0);
+      button.label.setColor(selected ? (button.key === "resume" || button.key === "speed" ? "#ffcf6e" : "#ff5c66") : button.enabled ? "#f6f1e6" : "#6e8496");
+    });
+    menu.confirmButtons?.forEach((button, index) => {
+      const selected = index === menu.confirmSelectedIndex;
+      button.hit.setFillStyle(0xffffff, selected ? 0.09 : 0);
+      button.label.setScale(selected ? 1.04 : 1);
+    });
+  }
+}
+
+function firstEnabledIndex(buttons: readonly PauseMenuButton[]): number {
+  const index = buttons.findIndex((button) => button.enabled);
+  return index >= 0 ? index : 0;
 }
 
 function nextReplaySpeed(speed: number): number {

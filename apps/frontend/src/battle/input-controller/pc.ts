@@ -10,6 +10,7 @@ export interface BattleKeyMap {
   readonly info: Phaser.Input.Keyboard.Key;
   readonly enter: Phaser.Input.Keyboard.Key;
   readonly activeCard: Phaser.Input.Keyboard.Key;
+  readonly pause: Phaser.Input.Keyboard.Key;
 }
 
 export interface KeybindSettings {
@@ -22,6 +23,7 @@ export interface KeybindSettings {
   info: string | number;
   enter: string | number;
   activeCard: string | number;
+  pause: string | number;
 }
 
 export interface BattleKeybinds {
@@ -40,6 +42,7 @@ export const DEFAULT_KEYBINDS: KeybindSettings = {
   info: Phaser.Input.Keyboard.KeyCodes.TAB,         // 9
   enter: Phaser.Input.Keyboard.KeyCodes.ENTER,      // 13
   activeCard: Phaser.Input.Keyboard.KeyCodes.E,     // 69
+  pause: Phaser.Input.Keyboard.KeyCodes.ESC,        // 27
 };
 
 export function createBattleKeybinds(
@@ -63,6 +66,7 @@ export function createBattleKeybinds(
       info: settings.info,
       enter: settings.enter,
       activeCard: settings.activeCard,
+      pause: settings.pause,
     },
     true,
     false,

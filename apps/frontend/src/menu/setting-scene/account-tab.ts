@@ -22,10 +22,14 @@ export function renderAccountTab(scene: SettingsScene, layer: Phaser.GameObjects
 
   const renderPlayerRows = () => {
     rowsLayer.removeAll(true);
+
+    const p1TitleY = 120;
+    const p2TitleY = p1TitleY + 222 - 96;
+
     rowsLayer.add(createPlayerRows(
       scene,
       36,
-      96,
+      p1TitleY,
       t("settings.account.player1"),
       tempSettings.p1ProfileId,
       tempSettings.p1Input,
@@ -41,7 +45,7 @@ export function renderAccountTab(scene: SettingsScene, layer: Phaser.GameObjects
     rowsLayer.add(createPlayerRows(
       scene,
       36,
-      202,
+      p2TitleY,
       t("settings.account.player2"),
       tempSettings.p2ProfileId,
       tempSettings.p2Input,
@@ -60,8 +64,8 @@ export function renderAccountTab(scene: SettingsScene, layer: Phaser.GameObjects
   layer.add(rowsLayer);
   layer.add(createRectangleButton(
     scene,
-    226,
-    54,
+    116,
+    84,
     146,
     38,
     t("settings.account.refreshDevices"),
@@ -74,8 +78,8 @@ export function renderAccountTab(scene: SettingsScene, layer: Phaser.GameObjects
   ).container);
   layer.add(createRectangleButton(
     scene,
-    386,
-    54,
+    296,
+    84,
     176,
     38,
     t("settings.account.manageProfiles"),

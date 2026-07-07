@@ -11,7 +11,8 @@ export type JoystickButtonInput =
   | "LB"
   | "RB"
   | "LT"
-  | "RT";
+  | "RT"
+  | "MENU";
 
 export interface JoystickSettings {
   move: JoystickAxisSource;
@@ -23,6 +24,9 @@ export interface JoystickSettings {
   activeCard: JoystickButtonInput;
   info: JoystickButtonInput;
   enter: JoystickButtonInput;
+  pause: JoystickButtonInput;
+  leftStickSensitivity: number;
+  rightStickSensitivity: number;
 }
 
 export interface JoystickInputState {
@@ -37,6 +41,13 @@ export interface JoystickInputState {
   readonly alternateHeld: boolean;
   readonly infoHeld: boolean;
   readonly enterPressed: boolean;
+  readonly pausePressed: boolean;
+}
+
+export interface JoystickPauseMenuState {
+  readonly moveY: -1 | 0 | 1;
+  readonly bombPressed: boolean;
+  readonly pausePressed: boolean;
 }
 
 export type InputProfileId = "keyboard" | "mobile" | `joystick:${number}`;
@@ -71,6 +82,9 @@ export const DEFAULT_JOYSTICK_SETTINGS: JoystickSettings = {
   activeCard: "A",
   info: "B",
   enter: "X",
+  pause: "MENU",
+  leftStickSensitivity: 1,
+  rightStickSensitivity: 1,
 };
 
 const STICK_DEADZONE = 0.25;
@@ -79,6 +93,7 @@ const AIM_SPEED_PX_PER_TICK = 13;
 
 export class BattleJoystickController {
   private previousButtons = new Map<JoystickButtonInput, boolean>();
+  private menuPreviousButtons = new Map<JoystickButtonInput, boolean>();
   private aimX = ARENA_WIDTH_PX / 2;
   private aimY = ARENA_HEIGHT_PX / 2;
 
@@ -97,8 +112,8 @@ export class BattleJoystickController {
       return undefined;
     }
 
-    const moveVector = readAxis(pad, this.settings.move);
-    const aimVector = readAxis(pad, this.settings.aim);
+    const moveVector = readAxis(pad, this.settings.move, this.settings);
+    const aimVector = readAxis(pad, this.settings.aim, this.settings);
     const aimMagnitude = Math.hypot(aimVector.x, aimVector.y);
     if (aimMagnitude >= STICK_DEADZONE) {
       this.aimX = Phaser.Math.Clamp(
@@ -125,6 +140,30 @@ export class BattleJoystickController {
       alternateHeld: isButtonDown(pad, this.settings.alternate),
       infoHeld: isButtonDown(pad, this.settings.info),
       enterPressed: this.justPressed(pad, this.settings.enter),
+      pausePressed: this.justPressed(pad, this.settings.pause),
+    };
+  }
+
+  readPausePressed(): boolean {
+    const pad = this.getPad();
+    if (!pad) {
+      this.menuPreviousButtons.clear();
+      return false;
+    }
+    return this.justPressedForMenu(pad, this.settings.pause);
+  }
+
+  readPauseMenuState(): JoystickPauseMenuState | undefined {
+    const pad = this.getPad();
+    if (!pad) {
+      this.menuPreviousButtons.clear();
+      return undefined;
+    }
+    const moveVector = readAxis(pad, this.settings.move, this.settings);
+    return {
+      moveY: axisToDigital(moveVector.y),
+      bombPressed: this.justPressedForMenu(pad, this.settings.bomb),
+      pausePressed: this.justPressedForMenu(pad, this.settings.pause),
     };
   }
 
@@ -142,11 +181,19 @@ export class BattleJoystickController {
     this.previousButtons.set(input, down);
     return down && !wasDown;
   }
+
+  private justPressedForMenu(pad: Phaser.Input.Gamepad.Gamepad, input: JoystickButtonInput): boolean {
+    const down = isButtonDown(pad, input);
+    const wasDown = this.menuPreviousButtons.get(input) ?? false;
+    this.menuPreviousButtons.set(input, down);
+    return down && !wasDown;
+  }
 }
 
 function readAxis(
   pad: Phaser.Input.Gamepad.Gamepad,
   source: JoystickAxisSource,
+  settings: JoystickSettings,
 ): { readonly x: number; readonly y: number } {
   if (source === "dpad") {
     return {
@@ -159,10 +206,8 @@ function readAxis(
   const stick = source === "leftStick" ? pad.leftStick : pad.rightStick;
   const x = Number.isFinite(rawX) ? Number(rawX) : stick.x;
   const y = Number.isFinite(rawY) ? Number(rawY) : stick.y;
-  return {
-    x: Math.abs(x) >= STICK_DEADZONE ? x : 0,
-    y: Math.abs(y) >= STICK_DEADZONE ? y : 0,
-  };
+  const sensitivity = source === "leftStick" ? settings.leftStickSensitivity : settings.rightStickSensitivity;
+  return scaleStick(x, y, sensitivity);
 }
 
 function axisToDigital(value: number): -1 | 0 | 1 {
@@ -189,5 +234,30 @@ function isButtonDown(pad: Phaser.Input.Gamepad.Gamepad, input: JoystickButtonIn
       return Number(pad.L2) > TRIGGER_THRESHOLD;
     case "RT":
       return Number(pad.R2) > TRIGGER_THRESHOLD;
+    case "MENU":
+      return Boolean(pad.buttons?.[9]?.pressed ?? pad.getButtonValue?.(9));
   }
+}
+
+function scaleStick(x: number, y: number, sensitivity: number): { readonly x: number; readonly y: number } {
+  const normalizedSensitivity = normalizeSensitivity(sensitivity);
+  return {
+    x: Math.abs(x) >= STICK_DEADZONE ? Phaser.Math.Clamp(x * normalizedSensitivity, -1, 1) : 0,
+    y: Math.abs(y) >= STICK_DEADZONE ? Phaser.Math.Clamp(y * normalizedSensitivity, -1, 1) : 0,
+  };
+}
+
+export function normalizeJoystickSettings(value: Partial<JoystickSettings> | undefined): JoystickSettings {
+  return {
+    ...DEFAULT_JOYSTICK_SETTINGS,
+    ...(value ?? {}),
+    leftStickSensitivity: normalizeSensitivity(value?.leftStickSensitivity),
+    rightStickSensitivity: normalizeSensitivity(value?.rightStickSensitivity),
+  };
+}
+
+export function normalizeSensitivity(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Phaser.Math.Clamp(value, 0.4, 2)
+    : 1;
 }

@@ -1,5 +1,5 @@
 import { MAX_PLAYER_NAME_LENGTH, PUBLIC_SERVER } from "@repo/constants";
-import { AccountSettings, DEFAULT_ACCOUNT_SETTINGS, DEFAULT_JOYSTICK_SETTINGS, InputProfileId, JoystickSettings } from "../battle/input-controller/gamepad";
+import { AccountSettings, DEFAULT_ACCOUNT_SETTINGS, DEFAULT_JOYSTICK_SETTINGS, InputProfileId, JoystickSettings, normalizeJoystickSettings } from "../battle/input-controller/gamepad";
 import { DEFAULT_KEYBINDS, KeybindSettings } from "../battle/input-controller/pc";
 import {
   DEFAULT_VIRTUAL_JOY_SETTINGS,
@@ -115,17 +115,17 @@ function readKeybinds(): KeybindSettings {
 
 function readJoystickSettings(): JoystickSettings {
   if (!canUseLocalStorage()) {
-    return { ...DEFAULT_JOYSTICK_SETTINGS };
+    return normalizeJoystickSettings(undefined);
   }
   const raw = localStorage.getItem(STORAGE_KEYS.joystick);
   if (!raw) {
-    return { ...DEFAULT_JOYSTICK_SETTINGS };
+    return normalizeJoystickSettings(undefined);
   }
   try {
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_JOYSTICK_SETTINGS, ...parsed };
+    return normalizeJoystickSettings(parsed);
   } catch {
-    return { ...DEFAULT_JOYSTICK_SETTINGS };
+    return normalizeJoystickSettings(undefined);
   }
 }
 
@@ -334,13 +334,13 @@ export function resetKeybindsToDefault(): void {
 }
 
 export function setJoystickSettings(joystick: JoystickSettings): void {
-  settingsState.joystick = { ...joystick };
+  settingsState.joystick = normalizeJoystickSettings(joystick);
   writeJoystickSettings(settingsState.joystick);
   void saveProfile(resolveEditableProfileId(), { joystick: settingsState.joystick });
 }
 
 export function resetJoystickSettingsToDefault(): void {
-  settingsState.joystick = { ...DEFAULT_JOYSTICK_SETTINGS };
+  settingsState.joystick = normalizeJoystickSettings(DEFAULT_JOYSTICK_SETTINGS);
   writeJoystickSettings(settingsState.joystick);
 }
 
@@ -463,7 +463,7 @@ function resolveEditableProfileId(): string {
 function applyActiveProfileSettings(): void {
   const profile = getProfile(resolveEditableProfileId());
   settingsState.keybinds = { ...profile.keybinds };
-  settingsState.joystick = { ...profile.joystick };
+  settingsState.joystick = normalizeJoystickSettings(profile.joystick);
   settingsState.virtualJoy = normalizeVirtualJoySettings(profile.virtualJoy);
   settingsState.account = {
     ...settingsState.account,

@@ -146,7 +146,8 @@
       "size": "Size",
       "alpha": "Opacity",
       "dragAdjust": "Drag to adjust",
-      "confirm": "Confirm"
+      "confirm": "Confirm",
+      "sensitivity": "Sensitivity"
     },
     "general.username.title": "Username",
     "general.music.title": "Music",
@@ -195,7 +196,8 @@
         "active": "Active Card / Item (Active)",
         "alt": "Secondary Key / Toggle Shop (Alt)",
         "info": "Battle HUD Info (Info)",
-        "enter": "Confirm Key (Enter)"
+        "enter": "Confirm Key (Enter)",
+        "pause": "Pause Game (Pause)"
       },
       "confirm": "Save Changes",
       "reset": "Restore Default",
@@ -306,7 +308,12 @@
       "importInvalid": "Profile file validation failed",
       "deleteConfirm": "Delete this Profile? The list will refresh after deletion.",
       "importSuccess": "Imported"
-    }
+    },
+    "joystick.sectionSensitivity": "Stick Sensitivity",
+    "joystick.pause": "Pause Game",
+    "joystick.leftStickSensitivity": "Left Stick Sensitivity",
+    "joystick.rightStickSensitivity": "Right Stick Sensitivity",
+    "joystick.button.MENU": "Menu Button"
   },
   "content": {
     "characters": {
@@ -415,7 +422,9 @@
   "dialog": {
     "close": "Close",
     "public_server": "Select public server",
-    "public_server_index": "Public server {{index}}"
+    "public_server_index": "Public server {{index}}",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
   },
   "pause": {
     "title": "Paused",
@@ -754,7 +763,8 @@
     "shop_uses_infinite": "Infinite",
     "shop_cooldown_none": "None",
     "shop_cooldown_seconds": "{{seconds}}s",
-    "shop_buy_hint": "Press {{key}} to buy"
+    "shop_buy_hint": "Press {{key}} to buy",
+    "mobile_pause": "Pause"
   },
   "replay": {
     "save_title": "Save Replay",

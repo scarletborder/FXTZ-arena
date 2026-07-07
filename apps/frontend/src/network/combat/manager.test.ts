@@ -916,6 +916,7 @@ function inputFromFrontend(playerId: PlayerId, tick: number): BattleInputState {
       info: false,
       enter: false,
       activeCard: tick === 260,
+      pause: false,
     }),
   );
   return input;
@@ -948,5 +949,6 @@ function createKeys(state: Record<keyof BattleKeyMap, boolean>): BattleKeyMap {
     info: key(state.info),
     enter: key(state.enter),
     activeCard: key(state.activeCard),
+    pause: key(state.pause),
   } as unknown as BattleKeyMap;
 }

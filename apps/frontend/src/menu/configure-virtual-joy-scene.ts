@@ -13,6 +13,7 @@ import { createBattleLayout, type BattleLayout } from "../battle/manager/layout-
 import {
   resolveVirtualJoyAlpha,
   resolveVirtualJoyPosition,
+  resolveVirtualJoySensitivity,
   resolveVirtualJoySize,
   toVirtualJoyPosition,
   VIRTUAL_JOY_CONTROL_IDS,
@@ -32,7 +33,7 @@ interface VirtualJoyHandle {
   readonly baseRadius: number;
 }
 
-type EditorMode = "size" | "alpha";
+type EditorMode = "size" | "alpha" | "sensitivity";
 
 interface PendingTap {
   readonly pointerId: number;
@@ -65,6 +66,7 @@ const EDITOR_PANEL_HEIGHT = 88;
 const EDITOR_TRACK_WIDTH = 156;
 const SIZE_RANGE: readonly [number, number] = [0.6, 1.8];
 const ALPHA_RANGE: readonly [number, number] = [0.2, 1];
+const SENSITIVITY_RANGE: readonly [number, number] = [0.4, 2];
 const EDITOR_SAVE_DEBOUNCE_MS = 220;
 
 export class ConfigureVirtualJoyScene extends Phaser.Scene {
@@ -78,6 +80,7 @@ export class ConfigureVirtualJoyScene extends Phaser.Scene {
   private selectedHandle: VirtualJoyHandle | null = null;
   private sizeEditor: EditorWidgets | null = null;
   private alphaEditor: EditorWidgets | null = null;
+  private sensitivityEditor: EditorWidgets | null = null;
   private editorPointer: { mode: EditorMode; pointerId: number } | null = null;
   private pendingTap: PendingTap | null = null;
   private editorSaveTimer: Phaser.Time.TimerEvent | null = null;
@@ -199,8 +202,13 @@ export class ConfigureVirtualJoyScene extends Phaser.Scene {
     const hint = this.add.text(0, radius + 18, t("settings.virtualJoy.hold"), bodyStyle("#9fd8ff", 13))
       .setOrigin(0.5)
       .setAlpha(alpha);
-    const hitArea = this.add.circle(0, 0, radius + HANDLE_MARGIN, 0xffffff, 0.001)
-      .setInteractive({ useHandCursor: true });
+    const hitRadius = radius + HANDLE_MARGIN;
+    const hitArea = this.add.circle(0, 0, hitRadius, 0xffffff, 0.001)
+      .setInteractive(
+        new Phaser.Geom.Circle(hitRadius, hitRadius, hitRadius),
+        Phaser.Geom.Circle.Contains,
+        true,
+      );
     const handle: VirtualJoyHandle = {
       id,
       container,
@@ -289,9 +297,13 @@ export class ConfigureVirtualJoyScene extends Phaser.Scene {
   private rebuildEditors(handle: VirtualJoyHandle): void {
     this.sizeEditor?.layer.destroy(true);
     this.alphaEditor?.layer.destroy(true);
+    this.sensitivityEditor?.layer.destroy(true);
     const anchor = this.resolveEditorAnchor(handle);
     this.sizeEditor = this.createEditor(anchor.x, anchor.y, "size");
     this.alphaEditor = this.createEditor(anchor.x, anchor.y + EDITOR_SPACING, "alpha");
+    this.sensitivityEditor = isJoystickHandle(handle.id)
+      ? this.createEditor(anchor.x, anchor.y + EDITOR_SPACING * 2, "sensitivity")
+      : null;
     this.updateEditorsForSelection();
   }
 
@@ -299,12 +311,12 @@ export class ConfigureVirtualJoyScene extends Phaser.Scene {
     const layer = this.add.container(x, y).setDepth(20);
     const panel = this.add.graphics();
     panel.fillStyle(0x0f1620, 0.94).fillRoundedRect(0, 0, EDITOR_PANEL_WIDTH, EDITOR_PANEL_HEIGHT, 8);
-    panel.lineStyle(2, mode === "size" ? 0x8af7ff : 0xffcf6e, 0.9).strokeRoundedRect(0, 0, EDITOR_PANEL_WIDTH, EDITOR_PANEL_HEIGHT, 8);
-    const title = this.add.text(16, 12, t(mode === "size" ? "settings.virtualJoy.size" : "settings.virtualJoy.alpha"), bodyStyle("#f6f1e6", 14)).setOrigin(0, 0);
+    panel.lineStyle(2, editorAccent(mode), 0.9).strokeRoundedRect(0, 0, EDITOR_PANEL_WIDTH, EDITOR_PANEL_HEIGHT, 8);
+    const title = this.add.text(16, 12, t(editorTitleKey(mode)), bodyStyle("#f6f1e6", 14)).setOrigin(0, 0);
     const subtitle = this.add.text(16, 34, t("settings.virtualJoy.dragAdjust"), bodyStyle("#9fb4c8", 11)).setOrigin(0, 0);
     const track = this.add.rectangle(84, 64, EDITOR_TRACK_WIDTH, 10, 0x243547, 1).setOrigin(0, 0.5).setStrokeStyle(2, 0x5c7185, 0.75);
     const fill = this.add.rectangle(84, 64, 0, 10, 0x8af7ff, 0.88).setOrigin(0, 0.5);
-    const knob = this.add.circle(84, 64, 13, 0xf6f1e6, 1).setStrokeStyle(3, mode === "size" ? 0x8af7ff : 0xffcf6e, 0.85);
+    const knob = this.add.circle(84, 64, 13, 0xf6f1e6, 1).setStrokeStyle(3, editorAccent(mode), 0.85);
     const value = this.add.text(56, 64, "", bodyStyle("#ffcf6e", 13)).setOrigin(0.5, 0.5);
     const dragZone = this.add.rectangle(84 + EDITOR_TRACK_WIDTH / 2, 64, EDITOR_TRACK_WIDTH + 30, 42, 0xffffff, 0.001)
       .setInteractive({ useHandCursor: true });
@@ -332,14 +344,14 @@ export class ConfigureVirtualJoyScene extends Phaser.Scene {
     if (!this.selectedHandle) {
       return;
     }
-    const editor = mode === "size" ? this.sizeEditor : this.alphaEditor;
+    const editor = mode === "size" ? this.sizeEditor : mode === "alpha" ? this.alphaEditor : this.sensitivityEditor;
     if (!editor) {
       return;
     }
     const left = editor.layer.x + 84;
     const right = left + EDITOR_TRACK_WIDTH;
     const normalized = Phaser.Math.Clamp((pointerX - left) / Math.max(1, right - left), 0, 1);
-    const [min, max] = mode === "size" ? SIZE_RANGE : ALPHA_RANGE;
+    const [min, max] = editorRange(mode);
     const value = Phaser.Math.Linear(min, max, normalized);
     this.controls = {
       ...this.controls,
@@ -385,20 +397,23 @@ export class ConfigureVirtualJoyScene extends Phaser.Scene {
     this.refreshHandleView(this.selectedHandle);
     this.updateEditorWidgets("size", resolveVirtualJoySize(this.controls, this.selectedHandle.id));
     this.updateEditorWidgets("alpha", resolveVirtualJoyAlpha(this.controls, this.selectedHandle.id));
+    if (isJoystickHandle(this.selectedHandle.id)) {
+      this.updateEditorWidgets("sensitivity", resolveVirtualJoySensitivity(this.controls, this.selectedHandle.id));
+    }
   }
 
   private updateEditorWidgets(mode: EditorMode, currentValue: number): void {
-    const editor = mode === "size" ? this.sizeEditor : this.alphaEditor;
+    const editor = mode === "size" ? this.sizeEditor : mode === "alpha" ? this.alphaEditor : this.sensitivityEditor;
     if (!editor) {
       return;
     }
-    const [min, max] = mode === "size" ? SIZE_RANGE : ALPHA_RANGE;
+    const [min, max] = editorRange(mode);
     const ratio = Phaser.Math.Clamp((currentValue - min) / (max - min), 0, 1);
     const fillWidth = Math.max(1, ratio * EDITOR_TRACK_WIDTH);
     editor.knob.setPosition(84 + fillWidth, 64);
     editor.fill.setPosition(84, 64).setDisplaySize(fillWidth, 10);
-    editor.fill.setFillStyle(mode === "size" ? 0x8af7ff : 0xffcf6e, 0.88);
-    editor.value.setText(mode === "size" ? `${currentValue.toFixed(2)}x` : `${Math.round(currentValue * 100)}%`);
+    editor.fill.setFillStyle(editorAccent(mode), 0.88);
+    editor.value.setText(mode === "alpha" ? `${Math.round(currentValue * 100)}%` : `${currentValue.toFixed(2)}x`);
   }
 
   private refreshHandleView(handle: VirtualJoyHandle): void {
@@ -412,6 +427,7 @@ export class ConfigureVirtualJoyScene extends Phaser.Scene {
     handle.label.setAlpha(alpha);
     handle.hint.setPosition(0, radius + 18).setAlpha(alpha);
     handle.hitArea.setRadius(radius + HANDLE_MARGIN);
+    updateCircleHitArea(handle.hitArea, radius + HANDLE_MARGIN);
     const position = resolveVirtualJoyPosition(this.controls, handle.id, this.battleLayout);
     handle.container.setPosition(position.x, position.y);
   }
@@ -422,7 +438,8 @@ export class ConfigureVirtualJoyScene extends Phaser.Scene {
       handle.container.x <= this.battleLayout.width / 2
         ? Math.min(bounds.right - EDITOR_PANEL_WIDTH, handle.container.x + handle.baseRadius * resolveVirtualJoySize(this.controls, handle.id) + 34)
         : Math.max(bounds.left, handle.container.x - handle.baseRadius * resolveVirtualJoySize(this.controls, handle.id) - EDITOR_PANEL_WIDTH - 34);
-    const y = Phaser.Math.Clamp(handle.container.y - EDITOR_PANEL_HEIGHT / 2, bounds.top, bounds.bottom - EDITOR_SPACING - EDITOR_PANEL_HEIGHT);
+    const editorCount = isJoystickHandle(handle.id) ? 3 : 2;
+    const y = Phaser.Math.Clamp(handle.container.y - EDITOR_PANEL_HEIGHT / 2, bounds.top, bounds.bottom - EDITOR_SPACING * (editorCount - 1) - EDITOR_PANEL_HEIGHT);
     return { x, y };
   }
 
@@ -459,6 +476,7 @@ function controlLabel(id: VirtualJoyControlId): string {
   return {
     moveJoystick: t("settings.virtualJoy.moveJoystick"),
     aimJoystick: t("settings.virtualJoy.aimJoystick"),
+    pause: t("battle.mobile_pause"),
     switch: t("battle.mobile_switch"),
     reload: t("battle.mobile_reload"),
     activeCard: t("battle.mobile_card"),
@@ -471,6 +489,7 @@ function handleRadius(id: VirtualJoyControlId): number {
   return {
     moveJoystick: 74,
     aimJoystick: 88,
+    pause: 36,
     switch: 42,
     reload: 54,
     activeCard: 44,
@@ -483,6 +502,7 @@ function handleFill(id: VirtualJoyControlId): number {
   return {
     moveJoystick: 0x102232,
     aimJoystick: 0x19293b,
+    pause: 0x283446,
     switch: 0x26384c,
     reload: 0x253346,
     activeCard: 0x233f3f,
@@ -495,10 +515,42 @@ function handleAccent(id: VirtualJoyControlId): number {
   return {
     moveJoystick: 0x8af7ff,
     aimJoystick: 0x8af7ff,
+    pause: 0xffcf6e,
     switch: 0xffcf6e,
     reload: 0x8af7ff,
     activeCard: 0x70f0c8,
     bomb: 0xc8a7ff,
     shoot: 0xff6b8a,
   }[id];
+}
+
+function isJoystickHandle(id: VirtualJoyControlId): id is "moveJoystick" | "aimJoystick" {
+  return id === "moveJoystick" || id === "aimJoystick";
+}
+
+function editorRange(mode: EditorMode): readonly [number, number] {
+  if (mode === "size") return SIZE_RANGE;
+  if (mode === "alpha") return ALPHA_RANGE;
+  return SENSITIVITY_RANGE;
+}
+
+function editorAccent(mode: EditorMode): number {
+  if (mode === "size") return 0x8af7ff;
+  if (mode === "alpha") return 0xffcf6e;
+  return 0x70f0c8;
+}
+
+function editorTitleKey(mode: EditorMode): string {
+  if (mode === "size") return "settings.virtualJoy.size";
+  if (mode === "alpha") return "settings.virtualJoy.alpha";
+  return "settings.virtualJoy.sensitivity";
+}
+
+function updateCircleHitArea(object: Phaser.GameObjects.Arc, radius: number): void {
+  const input = object.input;
+  if (!input) {
+    return;
+  }
+  input.hitArea = new Phaser.Geom.Circle(radius, radius, radius);
+  input.hitAreaCallback = Phaser.Geom.Circle.Contains;
 }

@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import type { BattleSceneData } from "../../loadout";
 import { BattleEvents } from "@repo/constants";
 import { BattlePauseMenuController } from "../pause";
+import type { BattleInputController } from "../../input-controller";
 
 export class BattlePauseController {
   private pauseMenu: BattlePauseMenuController | undefined;
@@ -11,7 +12,8 @@ export class BattlePauseController {
     private sceneData: BattleSceneData,
     private getResultScheduled: () => boolean,
     private resetAccumulator: () => void,
-    private bgmBridge: any
+    private bgmBridge: any,
+    private inputController?: BattleInputController,
   ) {
     if (this.isPausableLocalMode()) {
       this.pauseMenu = new BattlePauseMenuController(scene, {
@@ -24,6 +26,7 @@ export class BattlePauseController {
         onResumed: () => this.bgmBridge?.resume(),
         onRestart: () => this.scene.events.emit(BattleEvents.RESTART_LOCAL),
         onMainMenu: () => this.scene.events.emit(BattleEvents.MAIN_MENU),
+        getInputSources: () => this.inputController?.getPauseInputSources(),
       });
     }
   }

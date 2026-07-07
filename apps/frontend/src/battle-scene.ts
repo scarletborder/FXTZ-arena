@@ -163,7 +163,8 @@ export class BattleScene extends Phaser.Scene {
       data,
       () => this.resultHandler.isResultScheduled(),
       () => this.events.emit(BattleEvents.RESET_ACCUMULATOR),
-      this.battleBgmBridge
+      this.battleBgmBridge,
+      this.inputCtrl
     );
 
     this.transitionCtrl = new CollaborateTransitionController(
@@ -238,8 +239,8 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    this.pauseCtrl.update(delta);
     if (this.pauseCtrl.isPaused()) {
-      this.pauseCtrl.update(delta);
       return;
     }
 

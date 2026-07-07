@@ -7,12 +7,13 @@ import { settingsRepository } from "../../store/settings";
 import {
   resolveVirtualJoyAlpha,
   resolveVirtualJoyPosition,
+  resolveVirtualJoySensitivity,
   resolveVirtualJoySize,
   type VirtualJoyControlId,
   type VirtualJoySettings,
 } from "./virtual-joy-settings";
 
-type ActionButton = "shoot" | "bomb" | "activeCard" | "reload" | "switch";
+type ActionButton = "shoot" | "bomb" | "activeCard" | "reload" | "switch" | "pause";
 
 interface ButtonConfig {
   readonly id: VirtualJoyControlId;
@@ -36,6 +37,13 @@ interface BattleMobileControlsState {
   readonly activeCardPressed: boolean;
   readonly reloadPressed: boolean;
   readonly alternateHeld: boolean;
+  readonly pausePressed: boolean;
+}
+
+interface BattleMobilePauseMenuState {
+  readonly moveY: -1 | 0 | 1;
+  readonly bombPressed: boolean;
+  readonly pausePressed: boolean;
 }
 
 interface BattleMobileControlsLayout {
@@ -93,6 +101,8 @@ export class BattleMobileControls {
   private readonly virtualJoySettings: VirtualJoySettings;
   private readonly moveJoystickScale: number;
   private readonly moveJoystickAlpha: number;
+  private readonly moveJoystickSensitivity: number;
+  private readonly aimJoystickSensitivity: number;
 
   constructor(scene: Phaser.Scene, layout?: BattleMobileControlsLayout, settings?: VirtualJoySettings) {
     this.scene = scene;
@@ -103,6 +113,8 @@ export class BattleMobileControls {
     this.virtualJoySettings = settings ?? settingsRepository.get().virtualJoy;
     this.moveJoystickScale = resolveVirtualJoySize(this.virtualJoySettings, "moveJoystick");
     this.moveJoystickAlpha = resolveVirtualJoyAlpha(this.virtualJoySettings, "moveJoystick");
+    this.moveJoystickSensitivity = resolveVirtualJoySensitivity(this.virtualJoySettings, "moveJoystick");
+    this.aimJoystickSensitivity = resolveVirtualJoySensitivity(this.virtualJoySettings, "aimJoystick");
     this.scene.input.addPointer(6);
 
     this.joystickBaseView = scene.add
@@ -145,6 +157,19 @@ export class BattleMobileControls {
       activeCardPressed: this.consumeButton("activeCard"),
       reloadPressed: this.heldButtons.has("reload"),
       alternateHeld: this.alternateHeld,
+      pausePressed: this.consumeButton("pause"),
+    };
+  }
+
+  readPausePressed(): boolean {
+    return this.consumeButton("pause");
+  }
+
+  readPauseMenuState(): BattleMobilePauseMenuState {
+    return {
+      moveY: this.moveY,
+      bombPressed: this.consumeButton("bomb"),
+      pausePressed: this.consumeButton("pause"),
     };
   }
 
@@ -231,8 +256,8 @@ export class BattleMobileControls {
       JOYSTICK_FOLLOW_LIMIT,
     );
     clampPointToCircle(pointer, this.joystickBase, JOYSTICK_RADIUS, this.joystickKnob);
-    this.moveX = axisToDigital(this.joystickKnob.x - this.joystickBase.x);
-    this.moveY = axisToDigital(this.joystickKnob.y - this.joystickBase.y);
+    this.moveX = axisToDigital(this.joystickKnob.x - this.joystickBase.x, this.moveJoystickSensitivity);
+    this.moveY = axisToDigital(this.joystickKnob.y - this.joystickBase.y, this.moveJoystickSensitivity);
     this.renderMoveJoystick(true);
   }
 
@@ -354,12 +379,12 @@ export class BattleMobileControls {
       return;
     }
     this.aimX = Phaser.Math.Clamp(
-      this.aimX + this.aimVector.x * AIM_SPEED_PX_PER_TICK,
+      this.aimX + this.aimVector.x * AIM_SPEED_PX_PER_TICK * this.aimJoystickSensitivity,
       0,
       ARENA_WIDTH_PX,
     );
     this.aimY = Phaser.Math.Clamp(
-      this.aimY + this.aimVector.y * AIM_SPEED_PX_PER_TICK,
+      this.aimY + this.aimVector.y * AIM_SPEED_PX_PER_TICK * this.aimJoystickSensitivity,
       0,
       ARENA_HEIGHT_PX,
     );
@@ -510,6 +535,16 @@ function buttonConfigs(
 ): ButtonConfig[] {
   return [
     {
+      id: "pause",
+      action: "pause",
+      ...resolveVirtualJoyPosition(settings, "pause", layout),
+      radius: 36 * resolveVirtualJoySize(settings, "pause"),
+      label: t("battle.mobile_pause"),
+      fill: 0x283446,
+      accent: 0xffcf6e,
+      alpha: resolveVirtualJoyAlpha(settings, "pause"),
+    },
+    {
       id: "switch",
       action: "switch",
       ...resolveVirtualJoyPosition(settings, "switch", layout),
@@ -562,9 +597,10 @@ function buttonConfigs(
   ];
 }
 
-function axisToDigital(value: number): -1 | 0 | 1 {
-  if (value > JOYSTICK_DEAD_ZONE) return 1;
-  if (value < -JOYSTICK_DEAD_ZONE) return -1;
+function axisToDigital(value: number, sensitivity: number): -1 | 0 | 1 {
+  const threshold = JOYSTICK_DEAD_ZONE / Math.max(0.4, sensitivity);
+  if (value > threshold) return 1;
+  if (value < -threshold) return -1;
   return 0;
 }
 

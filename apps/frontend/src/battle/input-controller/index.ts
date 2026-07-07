@@ -134,6 +134,18 @@ export class BattleInputController {
     return this.mobileControls;
   }
 
+  getPauseInputSources(): {
+    readonly keys: BattleKeyMap;
+    readonly mobileControls?: BattleMobileControls;
+    readonly joystickControls?: BattleJoystickController;
+  } {
+    return {
+      keys: this.keys,
+      mobileControls: this.mobileControlsFor("Player1"),
+      joystickControls: this.joystickControls,
+    };
+  }
+
   getPreviousScaleAutoCenter(): Phaser.Scale.CenterType | undefined {
     return this.previousScaleAutoCenter;
   }

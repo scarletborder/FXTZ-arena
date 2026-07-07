@@ -4,11 +4,13 @@ import { t } from "@repo/i18n";
 import {
   bodyStyle,
   createFightButton,
+  createRectangleButton,
   drawAngledPanel,
 } from "../ui";
 import { createMapDropdown } from "../map-dialog";
-import { DEFAULT_JOYSTICK_SETTINGS, JoystickAxisSource, JoystickButtonInput, JoystickSettings } from "../../battle/input-controller";
+import { DEFAULT_JOYSTICK_SETTINGS, JoystickAxisSource, JoystickButtonInput, JoystickSettings, normalizeSensitivity } from "../../battle/input-controller";
 import { setJoystickSettings, settingsRepository } from "../../store/settings";
+import { SettingsScene } from "./index";
 
 interface JoystickTabOptions {
   readonly initial?: JoystickSettings;
@@ -22,9 +24,11 @@ interface AxisRowConfig {
 }
 
 interface ButtonRowConfig {
-  readonly action: keyof Omit<JoystickSettings, "move" | "aim">;
+  readonly action: JoystickButtonAction;
   readonly labelKey: string;
 }
+
+type JoystickButtonAction = "shoot" | "bomb" | "alternate" | "reload" | "activeCard" | "info" | "enter" | "pause";
 
 const AXIS_ROWS: readonly AxisRowConfig[] = [
   { action: "move", labelKey: "settings.joystick.move", options: ["dpad", "leftStick", "rightStick"] },
@@ -42,22 +46,33 @@ const RIGHT_BUTTON_ROWS: readonly ButtonRowConfig[] = [
   { action: "activeCard", labelKey: "settings.joystick.active" },
   { action: "info", labelKey: "settings.joystick.info" },
   { action: "enter", labelKey: "settings.joystick.enter" },
+  { action: "pause", labelKey: "settings.joystick.pause" },
 ];
 
-const BUTTON_OPTIONS: readonly JoystickButtonInput[] = ["A", "B", "X", "Y", "LB", "RB", "LT", "RT"];
+const BUTTON_OPTIONS: readonly JoystickButtonInput[] = ["A", "B", "X", "Y", "LB", "RB", "LT", "RT", "MENU"];
+
+const AXIS_SECTION_Y = 36;
+const AXIS_ROW_Y = 82;
+const AXIS_ROW_GAP = 58;
+const BUTTON_SECTION_Y = 176;
+const BUTTON_ROW_Y = 220;
+const BUTTON_ROW_GAP = 54;
+const FOOTER_Y = 448;
 
 export function renderJoystickTab(scene: Phaser.Scene, layer: Phaser.GameObjects.Container, options: JoystickTabOptions = {}): void {
   let tempSettings: JoystickSettings = { ...(options.initial ?? settingsRepository.get().joystick) };
   const tabContent = scene.add.container(0, 0);
-  const statusText = scene.add.text(36, 396, "", bodyStyle("#ffcf6e", 16));
+  const sceneHeight = scene instanceof SettingsScene ? SettingsScene.CONTENT_HEIGHT : 500;
+  const statusText = scene.add.text(36, sceneHeight - 36, "", bodyStyle("#ffcf6e", 16));
 
   layer.add(tabContent);
   layer.add(statusText);
 
   const drawTabContent = () => {
     tabContent.removeAll(true);
-    tabContent.add(sectionTitle(scene, 36, 28, t("settings.joystick.sectionAxes")));
-    tabContent.add(sectionTitle(scene, 36, 156, t("settings.joystick.sectionButtons")));
+    tabContent.add(sectionTitle(scene, 36, AXIS_SECTION_Y, t("settings.joystick.sectionAxes")));
+    tabContent.add(sectionTitle(scene, 580, AXIS_SECTION_Y, t("settings.joystick.sectionSensitivity")));
+    tabContent.add(sectionTitle(scene, 36, BUTTON_SECTION_Y, t("settings.joystick.sectionButtons")));
 
     const duplicateAxes = findDuplicateAxes(tempSettings);
     const duplicateButtons = findDuplicateButtons(tempSettings);
@@ -66,7 +81,7 @@ export function renderJoystickTab(scene: Phaser.Scene, layer: Phaser.GameObjects
       tabContent.add(createJoystickDropdownRow(
         scene,
         36,
-        72 + index * 54,
+        AXIS_ROW_Y + index * AXIS_ROW_GAP,
         510,
         46,
         t(row.labelKey),
@@ -81,11 +96,40 @@ export function renderJoystickTab(scene: Phaser.Scene, layer: Phaser.GameObjects
       ));
     });
 
+    tabContent.add(createSensitivityRow(
+      scene,
+      580,
+      AXIS_ROW_Y,
+      510,
+      46,
+      t("settings.joystick.leftStickSensitivity"),
+      tempSettings.leftStickSensitivity,
+      (value) => {
+        tempSettings = { ...tempSettings, leftStickSensitivity: value };
+        statusText.setText("");
+        drawTabContent();
+      },
+    ));
+    tabContent.add(createSensitivityRow(
+      scene,
+      580,
+      AXIS_ROW_Y + AXIS_ROW_GAP,
+      510,
+      46,
+      t("settings.joystick.rightStickSensitivity"),
+      tempSettings.rightStickSensitivity,
+      (value) => {
+        tempSettings = { ...tempSettings, rightStickSensitivity: value };
+        statusText.setText("");
+        drawTabContent();
+      },
+    ));
+
     LEFT_BUTTON_ROWS.forEach((row, index) => {
       tabContent.add(createJoystickDropdownRow(
         scene,
         36,
-        198 + index * 50,
+        BUTTON_ROW_Y + index * BUTTON_ROW_GAP,
         510,
         42,
         t(row.labelKey),
@@ -104,7 +148,7 @@ export function renderJoystickTab(scene: Phaser.Scene, layer: Phaser.GameObjects
       tabContent.add(createJoystickDropdownRow(
         scene,
         580,
-        198 + index * 50,
+        BUTTON_ROW_Y + index * BUTTON_ROW_GAP,
         510,
         42,
         t(row.labelKey),
@@ -122,7 +166,7 @@ export function renderJoystickTab(scene: Phaser.Scene, layer: Phaser.GameObjects
     const confirmButton = createFightButton(
       scene,
       750,
-      366,
+      FOOTER_Y,
       160,
       42,
       t("settings.joystick.confirm"),
@@ -148,7 +192,7 @@ export function renderJoystickTab(scene: Phaser.Scene, layer: Phaser.GameObjects
     const resetButton = createFightButton(
       scene,
       930,
-      366,
+      FOOTER_Y,
       160,
       42,
       t("settings.joystick.reset"),
@@ -195,8 +239,8 @@ function findDuplicateAxes(settings: JoystickSettings): Set<"move" | "aim"> {
   return settings.move === settings.aim ? new Set(["move", "aim"]) : new Set();
 }
 
-function findDuplicateButtons(settings: JoystickSettings): Set<keyof Omit<JoystickSettings, "move" | "aim">> {
-  const actions = ["shoot", "bomb", "alternate", "reload", "activeCard", "info", "enter"] as const;
+function findDuplicateButtons(settings: JoystickSettings): Set<JoystickButtonAction> {
+  const actions = ["shoot", "bomb", "alternate", "reload", "activeCard", "info", "enter", "pause"] as const;
   const seen = new Map<JoystickButtonInput, Array<(typeof actions)[number]>>();
   actions.forEach((action) => {
     const input = settings[action];
@@ -209,6 +253,28 @@ function findDuplicateButtons(settings: JoystickSettings): Set<keyof Omit<Joysti
     }
   });
   return duplicates;
+}
+
+function createSensitivityRow(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  label: string,
+  value: number,
+  onChange: (value: number) => void,
+): Phaser.GameObjects.Container {
+  const container = scene.add.container(x, y);
+  const background = scene.add.graphics();
+  drawAngledPanel(background, 0, 0, width, height, 0x151b26, 0x34475c, 1);
+  const normalized = normalizeSensitivity(value);
+  container.add(background);
+  container.add(scene.add.text(18, Math.round(height / 2 - 10), label, bodyStyle("#f6f1e6", 16)));
+  container.add(scene.add.text(width - 160, Math.round(height / 2 - 10), `${normalized.toFixed(1)}x`, bodyStyle("#ffcf6e", 16)).setOrigin(0.5, 0));
+  container.add(createRectangleButton(scene, width - 92, height / 2, 42, 30, "-", () => onChange(normalizeSensitivity(normalized - 0.1)), { accent: 0x5c7185 }).container);
+  container.add(createRectangleButton(scene, width - 36, height / 2, 42, 30, "+", () => onChange(normalizeSensitivity(normalized + 0.1)), { accent: 0x8af7ff }).container);
+  return container;
 }
 
 function sectionTitle(scene: Phaser.Scene, x: number, y: number, label: string): Phaser.GameObjects.Text {

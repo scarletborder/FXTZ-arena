@@ -146,7 +146,8 @@
       "size": "大小",
       "alpha": "透明度",
       "dragAdjust": "拖拽调节",
-      "confirm": "确定"
+      "confirm": "确定",
+      "sensitivity": "灵敏度"
     },
     "general.username.title": "用户名",
     "general.music.title": "音乐",
@@ -250,7 +251,8 @@
         "active": "激活卡牌/激活道具 (Active)",
         "alt": "次要按键/切换商店 (Alt)",
         "info": "战局看板信息 (Info)",
-        "enter": "确定按键 (Enter)"
+        "enter": "确定按键 (Enter)",
+        "pause": "暂停游戏 (Pause)"
       },
       "confirm": "确认变动",
       "reset": "恢复默认",
@@ -306,7 +308,12 @@
       "importInvalid": "Profile文件校验失败",
       "deleteConfirm": "确认删除此Profile吗？删除后会刷新列表。",
       "importSuccess": "导入成功"
-    }
+    },
+    "joystick.sectionSensitivity": "摇杆灵敏度",
+    "joystick.pause": "暂停游戏",
+    "joystick.leftStickSensitivity": "左摇杆灵敏度",
+    "joystick.rightStickSensitivity": "右摇杆灵敏度",
+    "joystick.button.MENU": "Menu Button"
   },
   "content": {
     "characters": {
@@ -419,7 +426,9 @@
   "dialog": {
     "close": "关闭",
     "public_server": "选择公共服务器",
-    "public_server_index": "公共服务器 {{index}}"
+    "public_server_index": "公共服务器 {{index}}",
+    "confirm": "确定",
+    "cancel": "取消"
   },
   "pause": {
     "title": "暂停",
@@ -758,7 +767,8 @@
     "shop_uses_infinite": "无限",
     "shop_cooldown_none": "无",
     "shop_cooldown_seconds": "{{seconds}}秒",
-    "shop_buy_hint": "点击{{key}}购买"
+    "shop_buy_hint": "点击{{key}}购买",
+    "mobile_pause": "暂停"
   },
   "replay": {
     "save_title": "保存回放",

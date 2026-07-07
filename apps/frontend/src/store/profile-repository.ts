@@ -1,5 +1,5 @@
 import { IS_DESKTOP_APP } from "@repo/constants";
-import { DEFAULT_JOYSTICK_SETTINGS, type JoystickSettings } from "../battle/input-controller/gamepad";
+import { normalizeJoystickSettings, type JoystickSettings } from "../battle/input-controller/gamepad";
 import { DEFAULT_KEYBINDS, type KeybindSettings } from "../battle/input-controller/pc";
 import {
   DEFAULT_VIRTUAL_JOY_SETTINGS,
@@ -106,7 +106,7 @@ export async function createProfile(username = "default"): Promise<LocalInputPro
     createdAt: now,
     updatedAt: now,
     keybinds: { ...DEFAULT_KEYBINDS },
-    joystick: { ...DEFAULT_JOYSTICK_SETTINGS },
+    joystick: normalizeJoystickSettings(undefined),
     virtualJoy: { ...DEFAULT_VIRTUAL_JOY_SETTINGS },
   });
   await persistProfile(profile);
@@ -117,13 +117,25 @@ export async function createProfile(username = "default"): Promise<LocalInputPro
 export async function saveProfile(profileId: string, patch: ProfileInputPatch): Promise<LocalInputProfile> {
   await initializeProfileRepository();
   const current = getProfile(profileId);
-  const next = await withComputedHash({
-    ...current,
-    ...patch,
+  const normalizedPatch = {
     username: normalizeProfileUsername(patch.username ?? current.username),
     keybinds: patch.keybinds ? { ...DEFAULT_KEYBINDS, ...patch.keybinds } : current.keybinds,
-    joystick: patch.joystick ? { ...DEFAULT_JOYSTICK_SETTINGS, ...patch.joystick } : current.joystick,
+    joystick: patch.joystick ? normalizeJoystickSettings(patch.joystick) : current.joystick,
     virtualJoy: patch.virtualJoy ? normalizeVirtualJoySettings(patch.virtualJoy) : current.virtualJoy,
+  } satisfies Pick<LocalInputProfile, "username" | "keybinds" | "joystick" | "virtualJoy">;
+
+  if (
+    normalizedPatch.username === current.username
+    && stableStringify(normalizedPatch.keybinds) === stableStringify(current.keybinds)
+    && stableStringify(normalizedPatch.joystick) === stableStringify(current.joystick)
+    && stableStringify(normalizedPatch.virtualJoy) === stableStringify(current.virtualJoy)
+  ) {
+    return current;
+  }
+
+  const next = await withComputedHash({
+    ...current,
+    ...normalizedPatch,
     updatedAt: new Date().toISOString(),
   });
   await persistProfile(next);
@@ -170,7 +182,7 @@ export async function importProfile(profile: LocalInputProfile): Promise<LocalIn
     ...next,
     username: normalizeProfileUsername(next.username),
     keybinds: { ...DEFAULT_KEYBINDS, ...next.keybinds },
-    joystick: { ...DEFAULT_JOYSTICK_SETTINGS, ...next.joystick },
+    joystick: normalizeJoystickSettings(next.joystick),
     virtualJoy: normalizeVirtualJoySettings(next.virtualJoy),
   });
   await persistProfile(normalized);
@@ -300,22 +312,24 @@ function fallbackDefaultProfile(): LocalInputProfile {
     createdAt: now,
     updatedAt: now,
     keybinds: { ...DEFAULT_KEYBINDS },
-    joystick: { ...DEFAULT_JOYSTICK_SETTINGS },
+    joystick: normalizeJoystickSettings(undefined),
     virtualJoy: { ...DEFAULT_VIRTUAL_JOY_SETTINGS },
     hash: "",
   };
 }
 
 async function withComputedHash(profile: Omit<LocalInputProfile, "hash"> | LocalInputProfile): Promise<LocalInputProfile> {
-  const { hash: _hash, ...withoutHash } = profile as LocalInputProfile;
+  const { hash: _hash, updatedAt: _updatedAt, ...withoutHash } = profile as LocalInputProfile;
   void _hash;
+  void _updatedAt;
   const hash = await computeProfileHash(withoutHash);
-  return { ...withoutHash, hash };
+  return { ...(profile as Omit<LocalInputProfile, "hash">), hash };
 }
 
-async function computeProfileHash(profile: Omit<LocalInputProfile, "hash"> | LocalInputProfile): Promise<string> {
-  const { hash: _hash, ...withoutHash } = profile as LocalInputProfile;
+async function computeProfileHash(profile: Partial<LocalInputProfile> & Omit<LocalInputProfile, "hash" | "updatedAt">): Promise<string> {
+  const { hash: _hash, updatedAt: _updatedAt, ...withoutHash } = profile;
   void _hash;
+  void _updatedAt;
   const source = stableStringify(withoutHash);
   if (globalThis.crypto?.subtle) {
     const bytes = new TextEncoder().encode(source);
@@ -336,7 +350,7 @@ function normalizeImportedProfile(value: Partial<LocalInputProfile>): LocalInput
     createdAt: typeof value.createdAt === "string" ? value.createdAt : new Date().toISOString(),
     updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : new Date().toISOString(),
     keybinds: { ...DEFAULT_KEYBINDS, ...(value.keybinds ?? {}) },
-    joystick: { ...DEFAULT_JOYSTICK_SETTINGS, ...(value.joystick ?? {}) },
+    joystick: normalizeJoystickSettings(value.joystick),
     virtualJoy: normalizeVirtualJoySettings(value.virtualJoy),
     hash: typeof value.hash === "string" ? value.hash : "",
   };
@@ -347,7 +361,7 @@ function readKeybinds(): KeybindSettings {
 }
 
 function readJoystickSettings(): JoystickSettings {
-  return { ...DEFAULT_JOYSTICK_SETTINGS, ...readJsonRecord("fxtz_joystick") };
+  return normalizeJoystickSettings(readJsonRecord("fxtz_joystick"));
 }
 
 function readVirtualJoySettings(): VirtualJoySettings {

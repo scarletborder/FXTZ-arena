@@ -40,6 +40,7 @@ export class ProfilesManageScene extends Phaser.Scene {
   private statusText: Phaser.GameObjects.Text | undefined;
   private statusMessage = "";
   private confirmDialog: Phaser.GameObjects.Container | undefined;
+  private listScrollY = 0;
 
   constructor() {
     super("profiles-manage" satisfies SceneKey);
@@ -86,13 +87,15 @@ export class ProfilesManageScene extends Phaser.Scene {
 
     const contentHeight = 18 + (profiles.length + 1) * 68;
     const maxScroll = Math.max(0, contentHeight - LIST_H + 18);
-    let scrollY = 0;
+    let scrollY = Phaser.Math.Clamp(this.listScrollY, 0, maxScroll);
     let dragging = false;
     let lastY = 0;
     const setScroll = (next: number) => {
       scrollY = Phaser.Math.Clamp(next, 0, maxScroll);
+      this.listScrollY = scrollY;
       viewport.y = -scrollY;
     };
+    setScroll(scrollY);
     const onPointerDown = (pointer: Phaser.Input.Pointer) => {
       const point = this.listLayer?.getWorldTransformMatrix().applyInverse(pointer.x, pointer.y);
       if (!point || point.x < 0 || point.x > LIST_W || point.y < 0 || point.y > LIST_H) {
@@ -173,6 +176,8 @@ export class ProfilesManageScene extends Phaser.Scene {
     const layer = this.previewLayer;
     if (!layer) return;
     const profile = getProfile(this.selectedProfileId);
+    const profiles = listProfiles();
+    const isFirstProfileSelected = profiles[0]?.id === profile.id;
     const frame = this.add.graphics();
     frame.fillStyle(0x101820, 0.92).fillRect(0, 0, 430, 470);
     frame.lineStyle(2, 0x34475c, 0.9).strokeRect(0, 0, 430, 470);
@@ -210,7 +215,19 @@ export class ProfilesManageScene extends Phaser.Scene {
         this.renderPreview();
       });
     }, { accent: 0x34d399 }).container);
-    layer.add(createRectangleButton(this, 215, 430, 250, 42, t("settings.profiles.delete"), () => this.confirmDelete(profile), { accent: 0xff5c66 }).container);
+    layer.add(createRectangleButton(
+      this,
+      215,
+      430,
+      250,
+      42,
+      t("settings.profiles.delete"),
+      isFirstProfileSelected ? undefined : () => this.confirmDelete(profile),
+      {
+        accent: 0xff5c66,
+        enabled: !isFirstProfileSelected,
+      },
+    ).container);
     this.statusText = this.add.text(28, 454, this.statusMessage, bodyStyle("#34d399", 14));
     layer.add(this.statusText);
   }
@@ -266,8 +283,9 @@ export class ProfilesManageScene extends Phaser.Scene {
       this.confirmDialog = undefined;
     }, { accent: 0x5c7185 }).container);
     dialog.add(createRectangleButton(this, 732, 400, 150, 42, t("dialog.confirm"), () => {
+      const nextSelectedProfileId = this.resolveSelectionAfterDelete(profile.id);
       void deleteProfile(profile.id).then(() => {
-        this.selectedProfileId = listProfiles()[0]?.id ?? "default";
+        this.selectedProfileId = nextSelectedProfileId;
         dialog.destroy();
         this.confirmDialog = undefined;
         this.renderList();
@@ -275,6 +293,16 @@ export class ProfilesManageScene extends Phaser.Scene {
       });
     }, { accent: 0xff5c66 }).container);
     this.confirmDialog = dialog;
+  }
+
+  private resolveSelectionAfterDelete(deletedProfileId: string): string {
+    const profiles = listProfiles();
+    const deletedIndex = profiles.findIndex((profile) => profile.id === deletedProfileId);
+    if (deletedIndex < 0) {
+      return profiles[0]?.id ?? "default";
+    }
+    const nextProfile = profiles[deletedIndex + 1] ?? profiles[deletedIndex - 1];
+    return nextProfile?.id ?? "default";
   }
 }
 

@@ -24,6 +24,9 @@ const TAB_DEFINITIONS: readonly SettingsTabDefinition[] = [
 ];
 
 export class SettingsScene extends Phaser.Scene {
+  static readonly CONTENT_WIDTH = 1130;
+  static readonly CONTENT_HEIGHT = 500;
+
   private activeTab: SettingsTabKey = "online";
   private tabLayer: Phaser.GameObjects.Container | undefined;
   private contentLayer: Phaser.GameObjects.Container | undefined;
@@ -153,9 +156,9 @@ export class SettingsScene extends Phaser.Scene {
     this.contentLayer.removeAll(true);
     const background = this.add.graphics();
     background.fillStyle(0x101820, 0.9);
-    background.fillRect(0, 0, 1130, 438);
+    background.fillRect(0, 0, SettingsScene.CONTENT_WIDTH, SettingsScene.CONTENT_HEIGHT);
     background.lineStyle(2, 0x34475c, 0.9);
-    background.strokeRect(0, 0, 1130, 438);
+    background.strokeRect(0, 0, SettingsScene.CONTENT_WIDTH, SettingsScene.CONTENT_HEIGHT);
     this.contentLayer.add(background);
 
     const tab = TAB_DEFINITIONS.find((item) => item.key === this.activeTab) ?? TAB_DEFINITIONS[0];

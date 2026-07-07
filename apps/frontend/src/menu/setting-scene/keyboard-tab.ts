@@ -38,6 +38,7 @@ const RIGHT_COLUMN_KEYS: KeyRowConfig[] = [
   { action: "alternate", labelKey: "settings.keyboard.actions.alt" },
   { action: "info", labelKey: "settings.keyboard.actions.info" },
   { action: "enter", labelKey: "settings.keyboard.actions.enter" },
+  { action: "pause", labelKey: "settings.keyboard.actions.pause" },
 ];
 
 function getKeyDisplayName(value: string | number): string {
