@@ -155,7 +155,8 @@ export class BattleScene extends Phaser.Scene {
       this,
       data.mode === "online" || data.mode === "local" ? "online" : (data.mode ?? "training"),
       data.mapId ?? data.battleConfig?.mapId,
-      data.battleMode ?? data.battleConfig?.battleMode ?? "versus"
+      data.battleMode ?? data.battleConfig?.battleMode ?? "versus",
+      { localSingleDevice: data.localSingleDevice === true },
     );
 
     this.pauseCtrl = new BattlePauseController(

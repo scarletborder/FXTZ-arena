@@ -31,6 +31,7 @@ import {
   type BattleViewMode,
 } from "./stage";
 import { createBattleTextures } from "./textures";
+import type { ProjectileAlphaOptions } from "./projectile/display";
 
 export class BattleView {
   private readonly fighters: FighterView;
@@ -47,12 +48,14 @@ export class BattleView {
   private readonly debug: BattleDebugView;
   private readonly arenaBounds: ArenaBounds;
   private readonly battleMode: "versus" | "collaborate";
+  private readonly projectileAlphaOptions: ProjectileAlphaOptions;
 
   constructor(
     scene: Phaser.Scene,
     mode: BattleViewMode = "training",
     mapId?: MapId,
     battleMode: "versus" | "collaborate" = "versus",
+    projectileAlphaOptions: ProjectileAlphaOptions = {},
   ) {
     createBattleTextures(scene);
     const map = getCombatMapDefinition(mapId ?? "hakurei_shrine");
@@ -66,6 +69,7 @@ export class BattleView {
       : DEFAULT_ARENA_BOUNDS;
     this.stage = createBattleStage(scene, mode, mapId);
     this.battleMode = battleMode;
+    this.projectileAlphaOptions = projectileAlphaOptions;
     this.fighters = new FighterView(scene);
     this.mobs = new MobView(scene);
     this.spellCardHud = new SpellCardHud(scene);
@@ -134,6 +138,7 @@ export class BattleView {
       { player: state.player, target: state.target },
       localFighterKey,
       this.battleMode,
+      this.projectileAlphaOptions,
       alpha,
       rollbackBlend,
     );

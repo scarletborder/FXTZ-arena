@@ -7,6 +7,10 @@ import type { FighterKey, ProjectileDisplay } from "./types";
 const PROJECTILE_PREVIEW_ALPHA = 0.85;
 const INFINITE_LASER_RENDER_LENGTH = 1600;
 
+export interface ProjectileAlphaOptions {
+  readonly localSingleDevice?: boolean;
+}
+
 export function shouldRenderPreviewLine(projectile: ProjectileState): boolean {
   return (
     projectile.kind === "laser" &&
@@ -19,14 +23,16 @@ export function projectileAlpha(
   projectile: ProjectileState,
   localFighterKey: FighterKey,
   battleMode: BattleRoomMode = "versus",
+  options: ProjectileAlphaOptions = {},
 ): number {
   const visualAlpha =
     projectile.kind === "spark" &&
     (projectile.renderHeight ?? projectile.height) > projectile.height
       ? 0.7
       : 1;
+  const treatBothPlayersAsOpponents = options.localSingleDevice === true;
   if (
-    projectile.owner === localFighterKey ||
+    (!treatBothPlayersAsOpponents && projectile.owner === localFighterKey) ||
     (battleMode === "collaborate" &&
       (projectile.owner === "Player1" || projectile.owner === "Player2"))
   ) {

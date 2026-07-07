@@ -9,6 +9,7 @@ import {
 import {
   projectileAlpha,
   projectileDisplay,
+  type ProjectileAlphaOptions,
   shouldRenderPreviewLine,
 } from "./display";
 import { createBulletFrames } from "./frames";
@@ -50,6 +51,7 @@ export class ProjectileView {
     fighters: ProjectileFighters,
     localFighterKey: FighterKey = "Player1",
     battleMode: BattleRoomMode = "versus",
+    options: ProjectileAlphaOptions = {},
     alpha = 1,
     rollbackBlend = 1,
   ): void {
@@ -62,7 +64,13 @@ export class ProjectileView {
       active.add(projectile.id);
       if (shouldRenderPreviewLine(projectile)) {
         this.visuals.destroy(projectile.id);
-        this.renderPreviewLine(projectile, alpha, localFighterKey, battleMode);
+        this.renderPreviewLine(
+          projectile,
+          alpha,
+          localFighterKey,
+          battleMode,
+          options,
+        );
         continue;
       }
       this.previewLines.get(projectile.id)?.setVisible(false);
@@ -83,7 +91,12 @@ export class ProjectileView {
         group.segments.push({
           display,
           angle: projectile.angle,
-          alpha: projectileAlpha(projectile, localFighterKey, battleMode),
+          alpha: projectileAlpha(
+            projectile,
+            localFighterKey,
+            battleMode,
+            options,
+          ),
           segmentIndex: spec.segmentIndex,
         });
         slashGroups.set(key, group);
@@ -94,6 +107,7 @@ export class ProjectileView {
           spec,
           localFighterKey,
           battleMode,
+          options,
           rollbackBlend,
         );
       } else if (spec.kind === "ranCompanion") {
@@ -102,6 +116,7 @@ export class ProjectileView {
           display,
           localFighterKey,
           battleMode,
+          options,
           frame,
           rollbackBlend,
         );
@@ -111,6 +126,7 @@ export class ProjectileView {
           display,
           localFighterKey,
           battleMode,
+          options,
           rollbackBlend,
         );
       } else {
@@ -120,6 +136,7 @@ export class ProjectileView {
           spec,
           localFighterKey,
           battleMode,
+          options,
           rollbackBlend,
         );
       }
@@ -136,6 +153,7 @@ export class ProjectileView {
     alpha: number,
     localFighterKey: FighterKey,
     battleMode: BattleRoomMode,
+    options: ProjectileAlphaOptions,
   ): void {
     const display = projectileDisplay(projectile, alpha);
     let preview = this.previewLines.get(projectile.id);
@@ -158,7 +176,9 @@ export class ProjectileView {
       length: display.width,
       width: display.height,
     });
-    preview.setAlpha(projectileAlpha(projectile, localFighterKey, battleMode));
+    preview.setAlpha(
+      projectileAlpha(projectile, localFighterKey, battleMode, options),
+    );
     preview.setVisible(true);
   }
 

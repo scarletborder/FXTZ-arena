@@ -3,7 +3,7 @@ import Phaser from "phaser";
 import type { ProjectileState } from "@repo/raid-logic";
 import { Depth } from "../../../../utils/depth";
 
-import { projectileAlpha } from "../display";
+import { projectileAlpha, type ProjectileAlphaOptions } from "../display";
 import { smoothValue } from "../../smooth";
 import type {
   FighterKey,
@@ -42,6 +42,7 @@ export class ProjectileVisualStore {
     spec: Extract<ProjectileSpec, { readonly kind: "image" | "fallback" }>,
     localFighterKey: FighterKey,
     battleMode: BattleRoomMode,
+    options: ProjectileAlphaOptions,
     rollbackBlend = 1,
   ): void {
     const visual = this.ensureImageVisual(projectile.id, display.x, display.y);
@@ -69,7 +70,7 @@ export class ProjectileVisualStore {
     sprite.setAlpha(
       smoothValue(
         sprite.alpha,
-        projectileAlpha(projectile, localFighterKey, battleMode),
+        projectileAlpha(projectile, localFighterKey, battleMode, options),
         rollbackBlend,
       ),
     );
@@ -82,6 +83,7 @@ export class ProjectileVisualStore {
     spec: Extract<ProjectileSpec, { readonly kind: "laser" }>,
     localFighterKey: FighterKey,
     battleMode: BattleRoomMode,
+    options: ProjectileAlphaOptions,
     rollbackBlend = 1,
   ): void {
     const visual = this.ensureLaserVisual(projectile.id, display.x, display.y);
@@ -95,7 +97,7 @@ export class ProjectileVisualStore {
     container.setAlpha(
       smoothValue(
         container.alpha,
-        projectileAlpha(projectile, localFighterKey, battleMode),
+        projectileAlpha(projectile, localFighterKey, battleMode, options),
         rollbackBlend,
       ),
     );
@@ -123,6 +125,7 @@ export class ProjectileVisualStore {
     display: ProjectileDisplay,
     localFighterKey: FighterKey,
     battleMode: BattleRoomMode,
+    options: ProjectileAlphaOptions,
     frame: number,
     rollbackBlend = 1,
   ): void {
@@ -195,7 +198,7 @@ export class ProjectileVisualStore {
     sprite.setAlpha(
       smoothValue(
         sprite.alpha,
-        projectileAlpha(projectile, localFighterKey, battleMode),
+        projectileAlpha(projectile, localFighterKey, battleMode, options),
         rollbackBlend,
       ),
     );
@@ -207,6 +210,7 @@ export class ProjectileVisualStore {
     display: ProjectileDisplay,
     localFighterKey: FighterKey,
     battleMode: BattleRoomMode,
+    options: ProjectileAlphaOptions,
     rollbackBlend = 1,
   ): void {
     const visual = this.ensureGraphicsVisual(projectile.id);
@@ -220,7 +224,7 @@ export class ProjectileVisualStore {
     graphics.setAlpha(
       smoothValue(
         graphics.alpha,
-        projectileAlpha(projectile, localFighterKey, battleMode),
+        projectileAlpha(projectile, localFighterKey, battleMode, options),
         rollbackBlend,
       ),
     );
