@@ -236,6 +236,30 @@ describe("BattleModel rollback snapshots", () => {
     ).toBe(2005);
   });
 
+  it("keeps dynamic familiar ids outside the stable wave mob id space", async () => {
+    const model = await createBattleModel();
+
+    expect(
+      model.neutralMobManager.allocateNeutralMobId({
+        waveId: 2,
+        waveMemberIndex: 0,
+      }),
+    ).toBe(2001);
+    expect(
+      model.neutralMobManager.allocateNeutralMobId({
+        waveId: 2,
+        waveMemberIndex: 1,
+      }),
+    ).toBe(2002);
+    expect(model.neutralMobManager.allocateNeutralMobId()).toBe(1_000_000_000);
+    expect(
+      model.neutralMobManager.allocateNeutralMobId({
+        waveId: 2,
+        waveMemberIndex: 2,
+      }),
+    ).toBe(2003);
+  });
+
   it("omits collaborate extra state from versus snapshots", async () => {
     const model = await createBattleModel();
 
@@ -1406,7 +1430,7 @@ describe("BattleModel character bombs", () => {
 
     model.deserialize(snapshot);
     expect(model.hashHex()).toBe(snapshotHash);
-    expect(model.neutralMobManager.getNextNeutralMobId()).toBe(2);
+    expect(model.neutralMobManager.getNextNeutralMobId()).toBe(1_000_000_001);
 
     model.step(input());
     expect(model.hashHex()).toBe(originalHash);

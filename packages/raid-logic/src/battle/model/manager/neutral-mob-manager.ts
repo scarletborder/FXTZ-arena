@@ -28,7 +28,7 @@ export type BattleNeutralMob = Mob<
 
 export class NeutralMobManager {
   readonly mobs: BattleNeutralMob[] = [];
-  private nextNeutralMobId = 1;
+  private nextDynamicNeutralMobId = DYNAMIC_NEUTRAL_MOB_ID_START;
 
   constructor(
     private readonly mobSpawner: NeutralMobSpawner | undefined,
@@ -38,7 +38,7 @@ export class NeutralMobManager {
   reset(): void {
     this.mobSpawner?.reset();
     this.mobs.length = 0;
-    this.nextNeutralMobId = 1;
+    this.nextDynamicNeutralMobId = DYNAMIC_NEUTRAL_MOB_ID_START;
   }
 
   allocateNeutralMobId(params?: {
@@ -46,15 +46,13 @@ export class NeutralMobManager {
     readonly waveMemberIndex: number;
   }): number {
     if (params) {
-      const id = stableNeutralMobId(params.waveId, params.waveMemberIndex);
-      this.nextNeutralMobId = Math.max(this.nextNeutralMobId, id + 1);
-      return id;
+      return stableNeutralMobId(params.waveId, params.waveMemberIndex);
     }
-    return this.nextNeutralMobId++;
+    return this.nextDynamicNeutralMobId++;
   }
 
   getNextNeutralMobId(): number {
-    return this.nextNeutralMobId;
+    return this.nextDynamicNeutralMobId;
   }
 
   addNeutralMob(mob: BattleNeutralMob): void {
@@ -62,7 +60,10 @@ export class NeutralMobManager {
       throw new Error(`Duplicate neutral mob id: ${mob.id}`);
     }
     this.mobs.push(mob);
-    this.nextNeutralMobId = Math.max(this.nextNeutralMobId, mob.id + 1);
+    this.nextDynamicNeutralMobId = Math.max(
+      this.nextDynamicNeutralMobId,
+      nextDynamicMobIdAfter(this.mobs),
+    );
     this.sortNeutralMobs();
   }
 
@@ -260,9 +261,9 @@ export class NeutralMobManager {
         }
       }
     }
-    this.nextNeutralMobId = Math.max(
-      this.nextNeutralMobId,
-      1 + Math.max(0, ...snapshots.map((mob) => mob.id)),
+    this.nextDynamicNeutralMobId = Math.max(
+      this.nextDynamicNeutralMobId,
+      nextDynamicMobIdAfter(snapshots),
     );
     this.sortNeutralMobs();
   }
@@ -271,9 +272,10 @@ export class NeutralMobManager {
     nextNeutralMobId: number,
     snapshots: readonly MobState[],
   ): void {
-    this.nextNeutralMobId = Math.max(
+    this.nextDynamicNeutralMobId = Math.max(
       nextNeutralMobId,
-      1 + Math.max(0, ...snapshots.map((mob) => mob.id)),
+      DYNAMIC_NEUTRAL_MOB_ID_START,
+      nextDynamicMobIdAfter(snapshots),
     );
   }
 
@@ -288,10 +290,24 @@ export class NeutralMobManager {
   }
 }
 
+const DYNAMIC_NEUTRAL_MOB_ID_START = 1_000_000_000;
+
 function stableNeutralMobId(waveId: number, waveMemberIndex: number): number {
   const normalizedWaveId = Math.max(0, Math.floor(waveId));
   const normalizedMemberIndex = Math.max(0, Math.floor(waveMemberIndex));
   return normalizedWaveId * 1000 + normalizedMemberIndex + 1;
+}
+
+function nextDynamicMobIdAfter(mobs: readonly { readonly id: number }[]): number {
+  return (
+    1 +
+    Math.max(
+      DYNAMIC_NEUTRAL_MOB_ID_START - 1,
+      ...mobs
+        .map((mob) => mob.id)
+        .filter((id) => id >= DYNAMIC_NEUTRAL_MOB_ID_START),
+    )
+  );
 }
 
 function isSpecialSpellMob(state: MobState): boolean {
