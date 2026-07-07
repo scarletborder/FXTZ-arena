@@ -161,8 +161,8 @@ export class StoryLoadoutScene extends Phaser.Scene {
     );
     const stage = this.currentStage();
     this.drawStoryPanel(66, 72, 288, 566, t("story.primary"));
-    this.drawStoryPanel(386, 72, 404, 566, t("story.alternate"));
-    this.drawStoryPanel(822, 72, 390, 566, t("story.cards"));
+    this.drawStoryPanel(386, 72, 430, 566, t("story.alternate"));
+    this.drawStoryPanel(834, 72, 378, 566, t("story.cards"));
     this.layer = this.add.container(0, 0).setDepth(10);
     this.costLayer = this.add.container(0, 0).setDepth(11);
     this.tipLayer = this.add.container(0, 0).setDepth(50).setVisible(false);
@@ -193,7 +193,7 @@ export class StoryLoadoutScene extends Phaser.Scene {
         .setOrigin(0.5),
     );
 
-    const alternateBounds = new Phaser.Geom.Rectangle(404, 144, 368, 476);
+    const alternateBounds = new Phaser.Geom.Rectangle(404, 144, 394, 476);
     const alternateContainer = this.add.container(0, 0);
     this.layer.add(alternateContainer);
     const characters = getAllCharacterDefinitions().filter(
@@ -203,8 +203,8 @@ export class StoryLoadoutScene extends Phaser.Scene {
       const col = index % 3;
       const row = Math.floor(index / 3);
       const tile = this.createStoryCharacterTile(
-        alternateBounds.x + 68 + col * 124,
-        alternateBounds.y + 30 + row * 136,
+        alternateBounds.x + 60 + col * 118,
+        alternateBounds.y + 74 + row * 136,
         character,
         this.alternateId === character.id,
         () => {
@@ -227,7 +227,7 @@ export class StoryLoadoutScene extends Phaser.Scene {
       alternateBounds.height,
     );
 
-    const cardBounds = new Phaser.Geom.Rectangle(840, 144, 354, 476);
+    const cardBounds = new Phaser.Geom.Rectangle(842, 144, 340, 476);
     const cardContainer = this.add.container(0, 0);
     this.layer.add(cardContainer);
     const cards = getAllAbilityCardDefinitions();
@@ -235,8 +235,8 @@ export class StoryLoadoutScene extends Phaser.Scene {
       const col = index % 3;
       const row = Math.floor(index / 3);
       const tile = this.createStoryCardTile(
-        cardBounds.x + 47 + col * 124,
-        cardBounds.y + 12 + row * 102,
+        cardBounds.x + 59 + col * 110,
+        cardBounds.y + 52 + row * 102,
         card,
         this.selectedCards.has(card.id),
         () => {
