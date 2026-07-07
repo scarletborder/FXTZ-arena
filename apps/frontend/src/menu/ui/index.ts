@@ -15,5 +15,6 @@ export * from "./createCardTile";
 export * from "./createCodexTile";
 export * from "./drawCharacterIcon";
 export * from "./drawCardIcon";
+export * from "./createScrollIndicator";
 
 export * from "./widgets";

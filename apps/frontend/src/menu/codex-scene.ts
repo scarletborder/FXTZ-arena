@@ -6,6 +6,7 @@ import {
   createBackButton,
   createCodexTile,
   createSmallTab,
+  createScrollIndicator,
   drawCardIcon,
   drawCharacterPreviewIcon,
   drawFightingBackdrop,
@@ -213,7 +214,7 @@ export class CodexScene extends Phaser.Scene {
     const rows = Math.ceil(characters.length / columns) || 1;
     const topPadding = startY - listBounds.y;
     const contentHeight = topPadding + rows * tileHeight + (rows - 1) * gapY + 6;
-    this.registerScrollArea(listBounds, listContainer, contentHeight, listBounds.height);
+    this.registerScrollArea(listBounds, listContainer, contentHeight, listBounds.height, this.listLayer);
   }
 
   private renderCardList(): void {
@@ -264,7 +265,7 @@ export class CodexScene extends Phaser.Scene {
     const rows = Math.ceil(cards.length / columns) || 1;
     const topPadding = startY - listBounds.y;
     const contentHeight = topPadding + rows * scaledHeight + (rows - 1) * gapY + 6;
-    this.registerScrollArea(listBounds, listContainer, contentHeight, listBounds.height);
+    this.registerScrollArea(listBounds, listContainer, contentHeight, listBounds.height, this.listLayer);
   }
 
   private renderCharacterDetail(): void {
@@ -300,7 +301,7 @@ export class CodexScene extends Phaser.Scene {
     content.filters?.internal.addMask(mask);
 
     this.detailLayer.add(content);
-    this.registerDetailScrollArea(bounds, content, descriptionY - bounds.y + description.height, bounds.height);
+    this.registerDetailScrollArea(bounds, content, descriptionY - bounds.y + description.height, bounds.height, this.detailLayer);
   }
 
   private createCharacterIdentityCard(
@@ -412,7 +413,7 @@ export class CodexScene extends Phaser.Scene {
     content.filters?.internal.addMask(mask);
 
     this.detailLayer.add(content);
-    this.registerDetailScrollArea(bounds, content, text.y - bounds.y + text.height, bounds.height);
+    this.registerDetailScrollArea(bounds, content, text.y - bounds.y + text.height, bounds.height, this.detailLayer);
   }
 
   private registerDetailScrollArea(
@@ -420,10 +421,18 @@ export class CodexScene extends Phaser.Scene {
     container: Phaser.GameObjects.Container,
     contentHeight: number,
     viewHeight: number,
+    layer: Phaser.GameObjects.Container,
   ): void {
     const maxOffset = Math.max(0, contentHeight - viewHeight);
+    const indicator = createScrollIndicator(this, {
+      x: bounds.right - 10,
+      y: bounds.y + 6,
+      height: bounds.height - 12,
+    });
+    layer.add(indicator.container);
     let offset = Phaser.Math.Clamp(this.detailScrollOffset, 0, maxOffset);
     container.y = -offset;
+    indicator.update(offset, viewHeight, contentHeight);
     const scroll = (deltaY: number) => {
       if (maxOffset <= 0) {
         return;
@@ -431,6 +440,7 @@ export class CodexScene extends Phaser.Scene {
       offset = Phaser.Math.Clamp(offset + deltaY, 0, maxOffset);
       container.y = -offset;
       this.detailScrollOffset = offset;
+      indicator.update(offset, viewHeight, contentHeight);
     };
     this.detailScrollOffset = offset;
     this.scrollAreas.push({ bounds, scroll });
@@ -441,10 +451,18 @@ export class CodexScene extends Phaser.Scene {
     container: Phaser.GameObjects.Container,
     contentHeight: number,
     viewHeight: number,
+    layer: Phaser.GameObjects.Container,
   ): void {
     const maxOffset = Math.max(0, contentHeight - viewHeight);
+    const indicator = createScrollIndicator(this, {
+      x: bounds.right - 10,
+      y: bounds.y + 6,
+      height: bounds.height - 12,
+    });
+    layer.add(indicator.container);
     let offset = Phaser.Math.Clamp(this.listScrollOffset, 0, maxOffset);
     container.y = -offset;
+    indicator.update(offset, viewHeight, contentHeight);
     const scroll = (deltaY: number) => {
       if (maxOffset <= 0) {
         return;
@@ -452,6 +470,7 @@ export class CodexScene extends Phaser.Scene {
       offset = Phaser.Math.Clamp(offset + deltaY, 0, maxOffset);
       container.y = -offset;
       this.listScrollOffset = offset;
+      indicator.update(offset, viewHeight, contentHeight);
     };
     this.listScrollOffset = offset;
     this.scrollAreas.push({ bounds, scroll });

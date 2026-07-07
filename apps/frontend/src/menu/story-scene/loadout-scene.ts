@@ -35,7 +35,12 @@ import {
   roleLabel,
   type SceneKey,
 } from "../shared";
-import { bodyStyle, createFightButton, drawFightingBackdrop } from "../ui";
+import {
+  bodyStyle,
+  createFightButton,
+  createScrollIndicator,
+  drawFightingBackdrop,
+} from "../ui";
 import {
   clamp,
   compactText,
@@ -53,6 +58,50 @@ export class StoryLoadoutScene extends Phaser.Scene {
   private costLayer!: Phaser.GameObjects.Container;
   private layer!: Phaser.GameObjects.Container;
   private tipLayer!: Phaser.GameObjects.Container;
+  private alternateScrollOffset = 0;
+  private cardScrollOffset = 0;
+  private scrollAreas: Array<{ bounds: Phaser.Geom.Rectangle; scroll: (deltaY: number) => void }> = [];
+  private dragScroll:
+    | { readonly pointerId: number; readonly area: { bounds: Phaser.Geom.Rectangle; scroll: (deltaY: number) => void }; lastY: number }
+    | undefined;
+  private readonly onWheel = (
+    pointer: Phaser.Input.Pointer,
+    _gameObjects: unknown,
+    _deltaX: number,
+    deltaY: number,
+  ): void => {
+    for (const area of this.scrollAreas) {
+      if (Phaser.Geom.Rectangle.Contains(area.bounds, pointer.x, pointer.y)) {
+        area.scroll(deltaY);
+        break;
+      }
+    }
+  };
+  private readonly onPointerDown = (pointer: Phaser.Input.Pointer): void => {
+    for (const area of this.scrollAreas) {
+      if (Phaser.Geom.Rectangle.Contains(area.bounds, pointer.x, pointer.y)) {
+        this.dragScroll = { pointerId: pointer.id, area, lastY: pointer.y };
+        break;
+      }
+    }
+  };
+  private readonly onPointerMove = (pointer: Phaser.Input.Pointer): void => {
+    if (!this.dragScroll || this.dragScroll.pointerId !== pointer.id || !pointer.isDown) {
+      return;
+    }
+    const deltaY = this.dragScroll.lastY - pointer.y;
+    if (Math.abs(deltaY) <= 0) {
+      return;
+    }
+    this.dragScroll.area.scroll(deltaY);
+    this.dragScroll.lastY = pointer.y;
+    pointer.event?.preventDefault();
+  };
+  private readonly onPointerUp = (pointer: Phaser.Input.Pointer): void => {
+    if (this.dragScroll?.pointerId === pointer.id) {
+      this.dragScroll = undefined;
+    }
+  };
 
   constructor() {
     super("story-loadout" satisfies SceneKey);
@@ -62,6 +111,10 @@ export class StoryLoadoutScene extends Phaser.Scene {
     this.story = data.story;
     this.state = data.state;
     this.alternateId = data.state.alternateCharacterId;
+    this.alternateScrollOffset = 0;
+    this.cardScrollOffset = 0;
+    this.scrollAreas = [];
+    this.dragScroll = undefined;
     this.selectedCards.clear();
     data.state.cardIds.forEach((id) => this.selectedCards.add(id));
   }
@@ -72,11 +125,25 @@ export class StoryLoadoutScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.input.on("wheel", this.onWheel);
+    this.input.on("pointerdown", this.onPointerDown);
+    this.input.on("pointermove", this.onPointerMove);
+    this.input.on("pointerup", this.onPointerUp);
+    this.input.on("pointerupoutside", this.onPointerUp);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.off("wheel", this.onWheel);
+      this.input.off("pointerdown", this.onPointerDown);
+      this.input.off("pointermove", this.onPointerMove);
+      this.input.off("pointerup", this.onPointerUp);
+      this.input.off("pointerupoutside", this.onPointerUp);
+    });
     this.render();
   }
 
   private render(): void {
     this.children.removeAll(true);
+    this.scrollAreas = [];
+    this.dragScroll = undefined;
     drawFightingBackdrop(this, "STORY", "BUILD");
     createFightButton(
       this,
@@ -126,6 +193,9 @@ export class StoryLoadoutScene extends Phaser.Scene {
         .setOrigin(0.5),
     );
 
+    const alternateBounds = new Phaser.Geom.Rectangle(404, 144, 368, 476);
+    const alternateContainer = this.add.container(0, 0);
+    this.layer.add(alternateContainer);
     const characters = getAllCharacterDefinitions().filter(
       (character) => character.id !== this.state.primaryCharacterId,
     );
@@ -133,8 +203,8 @@ export class StoryLoadoutScene extends Phaser.Scene {
       const col = index % 3;
       const row = Math.floor(index / 3);
       const tile = this.createStoryCharacterTile(
-        472 + col * 124,
-        174 + row * 136,
+        alternateBounds.x + 68 + col * 124,
+        alternateBounds.y + 30 + row * 136,
         character,
         this.alternateId === character.id,
         () => {
@@ -142,24 +212,51 @@ export class StoryLoadoutScene extends Phaser.Scene {
           this.render();
         },
       );
-      this.layer.add(tile);
+      alternateContainer.add(tile);
     });
+    const alternateMask = this.make.graphics({ x: 0, y: 0 });
+    alternateMask.fillStyle(0xffffff, 1);
+    alternateMask.fillRect(alternateBounds.x, alternateBounds.y, alternateBounds.width, alternateBounds.height);
+    alternateContainer.enableFilters();
+    alternateContainer.filters?.internal.addMask(alternateMask);
+    this.registerScrollArea(
+      "alternate",
+      alternateBounds,
+      alternateContainer,
+      Math.ceil(characters.length / 3) * 136 - 18,
+      alternateBounds.height,
+    );
 
+    const cardBounds = new Phaser.Geom.Rectangle(840, 144, 354, 476);
+    const cardContainer = this.add.container(0, 0);
+    this.layer.add(cardContainer);
     const cards = getAllAbilityCardDefinitions();
     cards.forEach((card, index) => {
       const col = index % 3;
       const row = Math.floor(index / 3);
       const tile = this.createStoryCardTile(
-        887 + col * 124,
-        156 + row * 102,
+        cardBounds.x + 47 + col * 124,
+        cardBounds.y + 12 + row * 102,
         card,
         this.selectedCards.has(card.id),
         () => {
           this.toggleCard(card);
         },
       );
-      this.layer.add(tile);
+      cardContainer.add(tile);
     });
+    const cardMask = this.make.graphics({ x: 0, y: 0 });
+    cardMask.fillStyle(0xffffff, 1);
+    cardMask.fillRect(cardBounds.x, cardBounds.y, cardBounds.width, cardBounds.height);
+    cardContainer.enableFilters();
+    cardContainer.filters?.internal.addMask(cardMask);
+    this.registerScrollArea(
+      "cards",
+      cardBounds,
+      cardContainer,
+      Math.ceil(cards.length / 3) * 102 - 16,
+      cardBounds.height,
+    );
 
     this.drawCostDisplay();
     this.confirmButton = createFightButton(
@@ -460,6 +557,46 @@ export class StoryLoadoutScene extends Phaser.Scene {
   private hideTip(): void {
     this.tipLayer?.removeAll(true);
     this.tipLayer?.setVisible(false);
+  }
+
+  private registerScrollArea(
+    kind: "alternate" | "cards",
+    bounds: Phaser.Geom.Rectangle,
+    container: Phaser.GameObjects.Container,
+    contentHeight: number,
+    viewHeight: number,
+  ): void {
+    const maxOffset = Math.max(0, contentHeight - viewHeight);
+    const indicator = createScrollIndicator(this, {
+      x: bounds.right - 10,
+      y: bounds.y + 6,
+      height: bounds.height - 12,
+    });
+    this.layer.add(indicator.container);
+    let offset = kind === "alternate" ? this.alternateScrollOffset : this.cardScrollOffset;
+    offset = Phaser.Math.Clamp(offset, 0, maxOffset);
+    container.y = -offset;
+    indicator.update(offset, viewHeight, contentHeight);
+    const scroll = (deltaY: number) => {
+      if (maxOffset <= 0) {
+        return;
+      }
+      this.hideTip();
+      offset = Phaser.Math.Clamp(offset + deltaY, 0, maxOffset);
+      container.y = -offset;
+      indicator.update(offset, viewHeight, contentHeight);
+      if (kind === "alternate") {
+        this.alternateScrollOffset = offset;
+      } else {
+        this.cardScrollOffset = offset;
+      }
+    };
+    if (kind === "alternate") {
+      this.alternateScrollOffset = offset;
+    } else {
+      this.cardScrollOffset = offset;
+    }
+    this.scrollAreas.push({ bounds, scroll });
   }
 
   private toggleCard(card: AbilityCardDefinition): void {

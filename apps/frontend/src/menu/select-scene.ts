@@ -16,6 +16,7 @@ import {
   createCardTile,
   createCharacterTile,
   createFightButton,
+  createScrollIndicator,
   createSmallTab,
   drawCharacterPreviewIcon,
   drawFightingBackdrop,
@@ -429,6 +430,7 @@ export class SelectScene extends Phaser.Scene {
       listContainer,
       rows * tileHeight + (rows - 1) * gapY,
       listBounds.height,
+      this.layer,
     );
   }
 
@@ -520,6 +522,7 @@ export class SelectScene extends Phaser.Scene {
       listContainer,
       rows * tileHeight + (rows - 1) * gapY,
       listBounds.height,
+      this.layer,
     );
   }
 
@@ -569,16 +572,25 @@ export class SelectScene extends Phaser.Scene {
     container: Phaser.GameObjects.Container,
     contentHeight: number,
     viewHeight: number,
+    layer: Phaser.GameObjects.Container,
   ): void {
     const maxOffset = Math.max(0, contentHeight - viewHeight);
+    const indicator = createScrollIndicator(this, {
+      x: bounds.right - 10,
+      y: bounds.y + 6,
+      height: bounds.height - 12,
+    });
+    layer.add(indicator.container);
     let offset = kind === "characters" ? this.characterScrollOffset : this.cardScrollOffset;
     offset = Phaser.Math.Clamp(offset, 0, maxOffset);
     container.y = -offset;
+    indicator.update(offset, viewHeight, contentHeight);
     const scroll = (deltaY: number) => {
       if (maxOffset <= 0) return;
       this.hideTip();
       offset = Phaser.Math.Clamp(offset + deltaY, 0, maxOffset);
       container.y = -offset;
+      indicator.update(offset, viewHeight, contentHeight);
       if (kind === "characters") {
         this.characterScrollOffset = offset;
       } else {
