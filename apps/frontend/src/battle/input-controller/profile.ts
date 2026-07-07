@@ -22,3 +22,21 @@ export function resolveAccountBattleInput(
 }
 
 export const resolveAccountBattleProfile = resolveAccountBattleProfileId;
+
+export interface RuntimeBattleInputCapabilities {
+  readonly mobileControlsEnabled: boolean;
+  readonly joystickAvailable?: boolean;
+}
+
+export function resolveRuntimeBattleInput(
+  requestedInput: InputProfileId,
+  capabilities: RuntimeBattleInputCapabilities,
+): InputProfileId {
+  if (requestedInput === "mobile" && !capabilities.mobileControlsEnabled) {
+    return "keyboard";
+  }
+  if (requestedInput.startsWith("joystick:") && capabilities.joystickAvailable === false) {
+    return "keyboard";
+  }
+  return requestedInput;
+}

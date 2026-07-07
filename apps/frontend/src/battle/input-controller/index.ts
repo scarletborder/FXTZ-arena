@@ -11,7 +11,7 @@ import { BattleSceneData } from "../loadout";
 import { BattleMobileControls, shouldEnableMobileBattleControls } from "./mobile";
 import { BattleKeybinds, createBattleKeybinds } from "./pc";
 import { BattleJoystickController, InputProfileId } from "./gamepad";
-import { resolveAccountBattleInput, resolveAccountBattleProfileId } from "./profile";
+import { resolveAccountBattleInput, resolveAccountBattleProfileId, resolveRuntimeBattleInput } from "./profile";
 import { settingsRepository } from "../../store/settings";
 import { getProfile, type LocalInputProfile } from "../../store/profile-repository";
 
@@ -45,9 +45,9 @@ export class BattleInputController {
     const activeProfileId = resolveActiveProfileId(sceneData);
     this.activeInputProfile = getProfile(activeProfileId);
     this.p2InputProfile = sceneData.localSingleDevice ? getProfile(account.p2ProfileId) : undefined;
-    this.activeProfile = resolveAccountBattleInput(account, sceneData);
+    const requestedActiveProfile = resolveAccountBattleInput(account, sceneData);
     this.p2Profile = sceneData.localSingleDevice ? account.p2Input : undefined;
-    this.mobileControlsOwner = this.activeProfile === "mobile"
+    const requestedMobileOwner = requestedActiveProfile === "mobile"
       ? "Player1"
       : this.p2Profile === "mobile"
         ? "Player2"
@@ -55,9 +55,17 @@ export class BattleInputController {
 
     this.mobileControlsEnabled =
       shouldEnableMobileBattleControls(scene) &&
-      this.mobileControlsOwner !== undefined &&
+      requestedMobileOwner !== undefined &&
       !sceneData.replayData &&
       !sceneData.spectatorData;
+
+    this.activeProfile = resolveRuntimeBattleInput(requestedActiveProfile, {
+      mobileControlsEnabled: this.mobileControlsEnabled,
+      joystickAvailable: requestedActiveProfile.startsWith("joystick:")
+        ? hasJoystick(scene, requestedActiveProfile)
+        : undefined,
+    });
+    this.mobileControlsOwner = this.mobileControlsEnabled ? requestedMobileOwner : undefined;
 
     if (this.mobileControlsEnabled) {
       this.previousScaleAutoCenter = scene.scale.autoCenter;
@@ -331,4 +339,13 @@ function createJoystickController(
   }
   const padIndex = Math.max(0, Number(profile.slice("joystick:".length)) || 0);
   return new BattleJoystickController(scene, inputProfile.joystick, padIndex);
+}
+
+function hasJoystick(scene: Phaser.Scene, profile: InputProfileId): boolean {
+  if (!profile.startsWith("joystick:")) {
+    return false;
+  }
+  const padIndex = Math.max(0, Number(profile.slice("joystick:".length)) || 0);
+  const gamepad = scene.input.gamepad;
+  return Boolean(gamepad && gamepad.total > 0 && gamepad.gamepads[padIndex]);
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveAccountBattleInput, resolveAccountBattleProfileId } from "./profile";
+import { resolveAccountBattleInput, resolveAccountBattleProfileId, resolveRuntimeBattleInput } from "./profile";
 
 describe("resolveAccountBattleProfileId", () => {
   it("uses the active battle profile in training mode", () => {
@@ -55,5 +55,29 @@ describe("resolveAccountBattleInput", () => {
     );
 
     expect(input).toBe("keyboard");
+  });
+});
+
+describe("resolveRuntimeBattleInput", () => {
+  it("falls back to keyboard when mobile controls are unavailable", () => {
+    expect(resolveRuntimeBattleInput("mobile", { mobileControlsEnabled: false })).toBe("keyboard");
+  });
+
+  it("keeps mobile input when virtual controls are enabled", () => {
+    expect(resolveRuntimeBattleInput("mobile", { mobileControlsEnabled: true })).toBe("mobile");
+  });
+
+  it("falls back to keyboard when the selected joystick is unavailable", () => {
+    expect(resolveRuntimeBattleInput("joystick:0", {
+      mobileControlsEnabled: false,
+      joystickAvailable: false,
+    })).toBe("keyboard");
+  });
+
+  it("keeps an available joystick input", () => {
+    expect(resolveRuntimeBattleInput("joystick:0", {
+      mobileControlsEnabled: false,
+      joystickAvailable: true,
+    })).toBe("joystick:0");
   });
 });
