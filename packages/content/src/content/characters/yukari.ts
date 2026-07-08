@@ -72,7 +72,7 @@ type PlayerFighterKey = Exclude<FighterKey, "Neutral">;
 export class YukariBattleCharacter extends BattleCharacter {
   readonly id = "yukari" as CharacterDefinition["id"];
   readonly name = "content.characters.yukari.name";
-  readonly cost = 5;
+  readonly cost = 4;
   readonly roleClass = "sniper" as CharacterDefinition["roleClass"];
   readonly moveSpeed = "low" as CharacterDefinition["moveSpeed"];
   readonly fireRate = "low" as CharacterDefinition["fireRate"];
@@ -486,8 +486,8 @@ class RanFamiliar extends FamiliarMob<
     this.state.y += this.state.vy;
   }
 
-  fire(): void {}
-  switchForm(): void {}
+  fire(): void { }
+  switchForm(): void { }
   die(): void {
     this.state.active = true;
     this.state.CurrentHealth = RAN_HEALTH;
@@ -502,7 +502,7 @@ class RanFamiliar extends FamiliarMob<
     return "accepted";
   }
 
-  onDeath(_source: NeutralMobDeathSource): void {}
+  onDeath(_source: NeutralMobDeathSource): void { }
 }
 
 function playerFighterKey(key: FighterKey): PlayerFighterKey {
