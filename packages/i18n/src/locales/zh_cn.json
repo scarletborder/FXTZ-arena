@@ -398,6 +398,10 @@
       "whitecat": {
         "name": "苏格拉底",
         "description": "主动使用一次，在当前位置召唤一只名叫Socrates的猫。\n具有较高的韧性和攻击能力。"
+      },
+      "tanuki_helper": {
+        "name": "打工狸小弟",
+        "description": "被命中时增加很多Power，狸小弟是酒狐扮演的"
       }
     },
     "maps": {

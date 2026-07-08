@@ -19,6 +19,7 @@ import "./spirit-strike-card";
 import "./extension";
 import "./graze-lover";
 import "./whitecat";
+import "./tanuki-helper";
 
 import type { AbilityCardDefinition } from "./types";
 import type { FighterState } from "../battle-types";

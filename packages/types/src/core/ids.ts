@@ -19,7 +19,8 @@ export type AbilityCardId =
   | "spirit_strike_card"
   | "extension"
   | "graze_lover"
-  | "whitecat";
+  | "whitecat"
+  | "tanuki_helper";
 export type MapId =
   | "hakurei_shrine"
   | "mist_lake"

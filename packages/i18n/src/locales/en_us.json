@@ -394,6 +394,10 @@
       "whitecat": {
         "name": "Socrates",
         "description": "Active, one use. Summons a cat familiar called Socrates at your position."
+      },
+      "tanuki_helper": {
+        "name": "Tanuki Helper",
+        "description": "Gain a large amount of Power when hit. The little tanuki helper is Jiuhu in disguise."
       }
     },
     "maps": {
