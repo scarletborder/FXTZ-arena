@@ -6,7 +6,7 @@ import Phaser from "phaser";
 
 import { type BattleInputState } from "@repo/raid-logic";
 import { type ArenaBounds, BattleEvents } from "@repo/constants";
-import { BattleKeyMap, createBattleInput, getBattlePointerWorld, type BattleInputBundle } from "./input";
+import { BattleKeyMap, createBattleAimInput, createBattleInput, getBattlePointerWorld, type BattleInputBundle } from "./input";
 import { BattleSceneData } from "../loadout";
 import { BattleMobileControls, shouldEnableMobileBattleControls } from "./mobile";
 import { BattleKeybinds, createBattleKeybinds } from "./pc";
@@ -214,16 +214,10 @@ export class BattleInputController {
     if (this.activeProfile.startsWith("joystick:")) {
       return;
     }
-    const input = createBattleInput(
+    const input = createBattleAimInput(
       this.scene,
-      this.keys,
-      {
-        mobileControls: this.mobileControlsFor("Player1"),
-        joystickControls: this.joystickControls,
-        keyboardEnabled: this.activeProfile === "keyboard",
-        pointerEnabled: this.activeProfile === "keyboard",
-        arenaBounds: this.arenaBounds,
-      },
+      this.mobileControlsFor("Player1"),
+      this.arenaBounds,
     );
     this.lastInput = {
       ...this.lastInput,
@@ -232,13 +226,6 @@ export class BattleInputController {
       pointerX: input.pointerX,
       pointerY: input.pointerY,
     };
-    if (this.p2Keys) {
-      this.lastP2Input = createBattleInput(
-        this.scene,
-        this.p2Keys,
-        this.p2InputOptions(),
-      );
-    }
   }
 
   destroy(): void {

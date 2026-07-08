@@ -18,7 +18,7 @@ vi.mock("phaser", () => ({
   },
 }));
 
-import { createBattleInput, type BattleKeyMap } from "./input-controller/input";
+import { createBattleAimInput, createBattleInput, type BattleKeyMap } from "./input-controller/input";
 import type { BattleMobileControls } from "./input-controller";
 import { BattleJoystickController, DEFAULT_JOYSTICK_SETTINGS } from "./input-controller/gamepad";
 
@@ -123,6 +123,42 @@ describe("createBattleInput", () => {
     expect(input.pointerX).toBe(613);
     expect(input.pointerY).toBe(360);
   });
+
+  it("updates aim without consuming one-shot action buttons", () => {
+    const keys = createKeys({ activeCard: true });
+    const scene = createSceneStub({
+      pointer: {
+        positionToCamera: () => ({ x: 420.9, y: 240.2 }),
+      },
+    });
+
+    const aim = createBattleAimInput(
+      scene,
+      undefined,
+      { width: 1280, height: 720, viewportWidth: 1280, viewportHeight: 720 },
+    );
+    const input = createBattleInput(
+      scene,
+      keys,
+      {
+        keyboardEnabled: true,
+        pointerEnabled: true,
+        arenaBounds: { width: 1280, height: 720, viewportWidth: 1280, viewportHeight: 720 },
+      },
+    );
+
+    expect(aim).toMatchObject({
+      aimX: 420,
+      aimY: 240,
+      pointerX: 420.9,
+      pointerY: 240.2,
+    });
+    expect(Number.isInteger(aim.aimX)).toBe(true);
+    expect(Number.isInteger(aim.aimY)).toBe(true);
+    expect(Number.isInteger(input.aimX)).toBe(true);
+    expect(Number.isInteger(input.aimY)).toBe(true);
+    expect(input.activeCardPressed).toBe(true);
+  });
 });
 
 function createSceneStub(overrides: {
@@ -170,7 +206,10 @@ function createPadStub({
 }
 
 function createKeys(down: Partial<Record<keyof BattleKeyMap, boolean>> = {}): BattleKeyMap {
-  const key = (name: keyof BattleKeyMap) => ({ isDown: down[name] === true });
+  const key = (name: keyof BattleKeyMap) => {
+    const isDown = down[name] === true;
+    return { isDown, _justDown: isDown };
+  };
   return {
     moveUp: key("moveUp"),
     moveLeft: key("moveLeft"),

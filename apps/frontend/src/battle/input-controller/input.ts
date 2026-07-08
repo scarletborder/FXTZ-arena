@@ -18,6 +18,13 @@ export interface BattleInputBundle extends BattleInputState {
   readonly pointerY: number;
 }
 
+export interface BattleAimInput {
+  readonly aimX: number;
+  readonly aimY: number;
+  readonly pointerX: number;
+  readonly pointerY: number;
+}
+
 export interface BattleInputAutoReloadContext {
   readonly fighter: FighterState | undefined;
   readonly previousShotsFired: number;
@@ -113,6 +120,20 @@ export function createBattleInput(
       (keyboardEnabled && Phaser.Input.Keyboard.JustDown(keys.enter)),
     pointerX: joystickState?.aimX ?? pointerWorld.x,
     pointerY: joystickState?.aimY ?? pointerWorld.y,
+  };
+}
+
+export function createBattleAimInput(
+  scene: Phaser.Scene,
+  mobileControls?: BattleMobileControls,
+  arenaBounds?: ArenaBounds,
+): BattleAimInput {
+  const pointerWorld = getBattlePointerWorld(scene, mobileControls, arenaBounds);
+  return {
+    aimX: Math.trunc(pointerWorld.x),
+    aimY: Math.trunc(pointerWorld.y),
+    pointerX: pointerWorld.x,
+    pointerY: pointerWorld.y,
   };
 }
 
