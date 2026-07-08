@@ -13,6 +13,8 @@ export function applyHit(params: {
   readonly frame: number;
   readonly damage: number;
   readonly defaultBombs: number;
+  readonly lifeLoss: number;
+  readonly respawnBombDelta: number;
 }): "ignored" | "accepted" | "game-over" {
   if (params.victim.invulnerableUntil > 0 || params.victim.deadUntil > 0) {
     return "ignored";
@@ -31,14 +33,22 @@ export function applyHit(params: {
     params.target.hits += 1;
   }
 
-  params.victim.lives = Math.max(0, params.victim.lives - 1);
+  const lifeLoss = Math.max(0, Math.trunc(params.lifeLoss));
+  params.victim.lives = Math.max(0, params.victim.lives - lifeLoss);
+
+  if (lifeLoss <= 0) {
+    return "accepted";
+  }
 
   if (params.victim.lives <= 0) {
     params.victim.deaths += 1;
     return "game-over";
   }
 
-  params.victim.bombs = params.defaultBombs;
+  params.victim.bombs = Math.max(
+    0,
+    Math.trunc(params.defaultBombs + params.respawnBombDelta),
+  );
   params.victim.invulnerableUntil = secondsToTicks(3);
   return "accepted";
 }

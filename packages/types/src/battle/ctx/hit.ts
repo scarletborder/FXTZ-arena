@@ -2,6 +2,8 @@ import type { BattleActionContext } from "./action";
 
 export interface HitResolutionContext {
   defaultBombs: number;
+  lifeLoss: number;
+  respawnBombDelta: number;
 }
 
 export interface BattleHitContext<

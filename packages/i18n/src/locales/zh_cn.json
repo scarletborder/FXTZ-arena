@@ -403,6 +403,10 @@
         "name": "河城荷包",
         "description": "道具吸收范围小范围增加"
       },
+      "sakura_charm": {
+        "name": "樱花护符",
+        "description": "免疫第一次命减少。此后每次复活时，bomb 结算结果最后再 -1。"
+      },
       "whitecat": {
         "name": "苏格拉底",
         "description": "主动使用一次，在当前位置召唤一只名叫Socrates的猫。\n具有较高的韧性和攻击能力。"

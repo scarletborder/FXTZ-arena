@@ -298,6 +298,7 @@ function serializeFighter(
     activeCardUses: fighter.activeCardUses,
     activeCardCooldownUntil: fighter.activeCardCooldownUntil,
     hakkeroBeamCooldownUntil: fighter.hakkeroBeamCooldownUntil,
+    sakuraCharmGuardAvailable: fighter.sakuraCharmGuardAvailable,
     fireCooldownUntil: fighter.fireCooldownUntil,
     bombCooldownUntil: fighter.bombCooldownUntil,
     shotsFired: fighter.shotsFired,

@@ -330,6 +330,7 @@ function writeFighter(
   hasher.writeNumber(fighter.activeCardUses);
   hasher.writeNumber(fighter.activeCardCooldownUntil);
   hasher.writeNumber(fighter.hakkeroBeamCooldownUntil);
+  hasher.writeNumber(fighter.sakuraCharmGuardAvailable ? 1 : 0);
   hasher.writeNumber(fighter.fireCooldownUntil);
   hasher.writeNumber(fighter.bombCooldownUntil);
   hasher.writeNumber(fighter.shotsFired);

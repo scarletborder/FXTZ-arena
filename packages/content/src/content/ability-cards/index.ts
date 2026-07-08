@@ -20,6 +20,7 @@ import "./spirit-strike-card";
 import "./invisibility-cloth";
 import "./extension";
 import "./graze-lover";
+import "./sakura-charm";
 import "./whitecat";
 import "./tanuki-helper";
 
@@ -51,6 +52,8 @@ export function applyInitialCardState(
   }
   const resolution: HitResolution = {
     defaultBombs: options.storyMode ? fighter.bombs : DEFAULT_BOMBS,
+    lifeLoss: 1,
+    respawnBombDelta: 0,
   };
   for (const card of cards) {
     if (options.storyMode && card.storyModeOverride?.onInitialize) {

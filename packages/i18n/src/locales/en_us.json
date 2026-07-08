@@ -399,6 +399,10 @@
         "name": "Kawashiro Pouch",
         "description": "Slightly increases item pickup range"
       },
+      "sakura_charm": {
+        "name": "Sakura Charm",
+        "description": "Prevent the first life loss. After that, each respawn applies an extra -1 Bomb at the end of the respawn calculation."
+      },
       "whitecat": {
         "name": "Socrates",
         "description": "Active, one use. Summons a cat familiar called Socrates at your position."

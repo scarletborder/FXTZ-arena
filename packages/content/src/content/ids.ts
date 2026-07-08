@@ -21,6 +21,7 @@ export type AbilityCardId =
   | "invisibility_cloth"
   | "extension"
   | "graze_lover"
+  | "sakura_charm"
   | "whitecat"
   | "tanuki_helper";
 export type MapId =

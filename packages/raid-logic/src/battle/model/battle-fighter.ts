@@ -48,7 +48,7 @@ export class BattleFighter {
   private activeBattleCard: BattleAbilityCard | undefined;
   private battleCards: BattleAbilityCard[] = [];
   private storyModeOverride: StoryModeOverride | undefined;
-  private reviveBombs = DEFAULT_BOMBS;
+  private reviveBombsBase = DEFAULT_BOMBS;
 
   constructor(
     key: FighterKey,
@@ -85,7 +85,7 @@ export class BattleFighter {
       lives: storyModeOverride?.lives,
       bombs: storyModeOverride?.bombs,
     });
-    this.reviveBombs = this.state.bombs;
+    this.reviveBombsBase = this.state.bombs;
     this.applyActiveCharacter(primaryCharacter);
   }
 
@@ -122,7 +122,7 @@ export class BattleFighter {
       lives: storyModeOverride?.lives,
       bombs: storyModeOverride?.bombs,
     });
-    this.reviveBombs = this.state.bombs;
+    this.reviveBombsBase = this.state.bombs;
     this.applyActiveCharacter(primaryCharacter);
   }
 
@@ -163,7 +163,11 @@ export class BattleFighter {
     }
     battleCard.onInitialize({
       self: this.state,
-      resolution: { defaultBombs: this.reviveBombs },
+      resolution: {
+        defaultBombs: this.reviveBombsBase,
+        lifeLoss: 1,
+        respawnBombDelta: 0,
+      },
     });
   }
 
@@ -417,6 +421,8 @@ export class BattleFighter {
     return applyHit({
       ...params,
       defaultBombs: hitContext.resolution.defaultBombs,
+      lifeLoss: hitContext.resolution.lifeLoss,
+      respawnBombDelta: hitContext.resolution.respawnBombDelta,
     });
   }
 
@@ -490,8 +496,10 @@ export class BattleFighter {
       resolution: {
         defaultBombs:
           this.storyModeOverride?.enabled === true
-            ? this.reviveBombs
+            ? this.reviveBombsBase
             : DEFAULT_BOMBS,
+        lifeLoss: 1,
+        respawnBombDelta: 0,
         ignored: false,
       },
     };

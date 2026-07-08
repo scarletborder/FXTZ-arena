@@ -44,6 +44,7 @@ export interface FighterAbilityCardState {
   activeCardUses: number;
   activeCardCooldownUntil: number;
   hakkeroBeamCooldownUntil: number;
+  sakuraCharmGuardAvailable: boolean;
 }
 
 export interface FighterStatsState {

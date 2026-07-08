@@ -587,6 +587,42 @@ describe("BattleModel hit recovery", () => {
     expect(model.player.bombs).toBe(4);
   });
 
+  it("sakura charm prevents the first life loss without restoring bombs", async () => {
+    const model = await createBattleModel("reimu", "marisa", ["sakura_charm"]);
+    model.player.bombs = 1;
+
+    hitPlayer(model);
+
+    expect(model.player.lives).toBe(3);
+    expect(model.player.bombs).toBe(1);
+    expect(model.player.sakuraCharmGuardAvailable).toBe(false);
+  });
+
+  it("sakura charm reduces respawn bombs by 1 after the guard is consumed", async () => {
+    const model = await createBattleModel("reimu", "marisa", ["sakura_charm"]);
+    hitPlayer(model);
+
+    model.player.bombs = 0;
+    hitPlayer(model);
+
+    expect(model.player.lives).toBe(2);
+    expect(model.player.bombs).toBe(2);
+  });
+
+  it("applies sakura charm after ember's respawn bomb calculation", async () => {
+    const model = await createBattleModel("reimu", "marisa", [
+      "ember",
+      "sakura_charm",
+    ]);
+    hitPlayer(model);
+
+    model.player.bombs = 0;
+    hitPlayer(model);
+
+    expect(model.player.lives).toBe(2);
+    expect(model.player.bombs).toBe(3);
+  });
+
   it("ends the battle when Player1 drops from 1 life to 0", async () => {
     const model = await createBattleModel("reimu", "marisa");
     model.player.lives = 1;
@@ -938,7 +974,7 @@ describe("BattleModel ability cards", () => {
     expect(model.projectiles).toHaveLength(4);
     const extraShot = model.projectiles.find(
       (projectile) =>
-        projectile.textureKey === "bullet_type_8_offset_0" &&
+        projectile.textureKey === "bullet_type_7_offset_0" &&
         projectile.width === 8 &&
         projectile.height === 8,
     );
