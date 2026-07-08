@@ -17,6 +17,7 @@ export type AbilityCardId =
   | "backdoor"
   | "multi_shot"
   | "spirit_strike_card"
+  | "invisibility_cloth"
   | "extension"
   | "graze_lover"
   | "whitecat"

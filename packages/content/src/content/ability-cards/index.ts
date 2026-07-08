@@ -16,6 +16,7 @@ import "./ember";
 import "./backdoor";
 import "./multi-shot";
 import "./spirit-strike-card";
+import "./invisibility-cloth";
 import "./extension";
 import "./graze-lover";
 import "./whitecat";

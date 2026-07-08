@@ -387,6 +387,10 @@
         "name": "Spirit Strike",
         "description": "Clears a small area of bullets around you"
       },
+      "invisibility_cloth": {
+        "name": "Invisibility Cloth",
+        "description": "Become invisible for a short time, but cannot act."
+      },
       "extension": {
         "name": "Kawashiro Pouch",
         "description": "Slightly increases item pickup range"

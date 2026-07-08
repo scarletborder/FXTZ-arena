@@ -391,6 +391,10 @@
         "name": "灵击符",
         "description": "清除周围小范围的弹幕"
       },
+      "invisibility_cloth": {
+        "name": "隐身布",
+        "description": "使用时隐身一段时间但是不可行动"
+      },
       "extension": {
         "name": "河城荷包",
         "description": "道具吸收范围小范围增加"
