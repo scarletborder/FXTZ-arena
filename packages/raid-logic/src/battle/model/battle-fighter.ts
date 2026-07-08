@@ -62,6 +62,7 @@ export class BattleFighter {
     private readonly arenaBounds: ArenaBounds = DEFAULT_ARENA_BOUNDS,
   ) {
     this.storyModeOverride = storyModeOverride;
+    const normalizedCards = normalizeAbilityCards(cards, activeCard);
     this.state = createFighter(
       key,
       primaryCharacter,
@@ -69,12 +70,14 @@ export class BattleFighter {
       x,
       y,
       activeCard,
-      cards,
+      normalizedCards,
     );
     this.activeBattleCard = activeCard
       ? createBattleAbilityCard(activeCard)
       : undefined;
-    this.battleCards = cards.map((card) => createBattleAbilityCard(card));
+    this.battleCards = normalizedCards.map((card) =>
+      createBattleAbilityCard(card),
+    );
     this.registerCharacter(primaryCharacter);
     this.registerCharacter(alternateCharacter);
     applyInitialCardState(this.state, this.battleCards, {
@@ -96,6 +99,7 @@ export class BattleFighter {
     storyModeOverride?: StoryModeOverride,
   ): void {
     this.storyModeOverride = storyModeOverride;
+    const normalizedCards = normalizeAbilityCards(cards, activeCard);
     resetFighter(
       this.state,
       primaryCharacter,
@@ -103,12 +107,14 @@ export class BattleFighter {
       x,
       y,
       activeCard,
-      cards,
+      normalizedCards,
     );
     this.activeBattleCard = activeCard
       ? createBattleAbilityCard(activeCard)
       : undefined;
-    this.battleCards = cards.map((card) => createBattleAbilityCard(card));
+    this.battleCards = normalizedCards.map((card) =>
+      createBattleAbilityCard(card),
+    );
     this.registerCharacter(primaryCharacter);
     this.registerCharacter(alternateCharacter);
     applyInitialCardState(this.state, this.battleCards, {
@@ -133,8 +139,28 @@ export class BattleFighter {
       return;
     }
     const battleCard = createBattleAbilityCard(card);
-    this.battleCards = [...this.battleCards, battleCard];
-    this.state.abilityCards = [...this.state.abilityCards, card];
+    const existingCards =
+      card.kind === "active"
+        ? this.state.abilityCards.filter(
+            (existing) => existing.kind !== "active",
+          )
+        : this.state.abilityCards;
+    const existingBattleCards =
+      card.kind === "active"
+        ? this.battleCards.filter(
+            (existing) => existing.definition.kind !== "active",
+          )
+        : this.battleCards;
+    this.battleCards = [...existingBattleCards, battleCard];
+    this.state.abilityCards = [...existingCards, card];
+    if (
+      card.kind === "active" &&
+      this.state.activeCard &&
+      this.state.activeCard.id !== card.id
+    ) {
+      this.state.activeCard = undefined;
+      this.activeBattleCard = undefined;
+    }
     battleCard.onInitialize({
       self: this.state,
       resolution: { defaultBombs: this.reviveBombs },
@@ -536,4 +562,21 @@ export class BattleFighter {
     }
     return this.state.reloadStartedAmmo;
   }
+}
+
+function normalizeAbilityCards(
+  cards: readonly AbilityCardDefinition[],
+  activeCard: AbilityCardDefinition | undefined,
+): readonly AbilityCardDefinition[] {
+  let activeKept = false;
+  return cards.filter((card) => {
+    if (card.kind !== "active") {
+      return true;
+    }
+    if (!activeCard || activeKept || card.id !== activeCard.id) {
+      return false;
+    }
+    activeKept = true;
+    return true;
+  });
 }

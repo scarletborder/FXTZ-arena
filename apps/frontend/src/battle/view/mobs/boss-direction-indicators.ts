@@ -78,7 +78,11 @@ export class BossDirectionIndicatorView {
     const playerY = lerp(localFighter.previousY, localFighter.y, alpha);
 
     for (const mob of neutralMobs) {
-      if (!mob.active || (mob.class !== "elite" && mob.class !== "boss")) {
+      if (
+        !mob.active ||
+        isLocalFamiliar(mob, localFighter) ||
+        (mob.class !== "elite" && mob.class !== "boss")
+      ) {
         continue;
       }
       activeIndicatorIds.add(mob.id);
@@ -117,6 +121,10 @@ export class BossDirectionIndicatorView {
       }
     }
   }
+}
+
+function isLocalFamiliar(mob: MobState, localFighter: FighterState): boolean {
+  return mob.mobKind === "familiar" && mob.key === localFighter.key;
 }
 
 function isPointInsideArena(

@@ -102,6 +102,12 @@ export function createNeutralMobActionContext(bindings: {
   readonly owner: BattlePlayerId;
   readonly player: { readonly x: number; readonly y: number };
   readonly target: { readonly x: number; readonly y: number };
+  readonly enemyTargets?: readonly {
+    readonly key?: BattlePlayerId;
+    readonly mobId?: number;
+    readonly x: number;
+    readonly y: number;
+  }[];
   spawnBullet(params: BulletProjectileParams): void;
   spawnLaser(params: LaserProjectileParams): void;
 }): NeutralMobActionContext<BulletProjectileParams, LaserProjectileParams> {
@@ -111,6 +117,12 @@ export function createNeutralMobActionContext(bindings: {
     owner: bindings.owner,
     player: { x: bindings.player.x, y: bindings.player.y },
     target: { x: bindings.target.x, y: bindings.target.y },
+    enemyTargets: bindings.enemyTargets?.map((target) => ({
+      key: target.key,
+      mobId: target.mobId,
+      x: target.x,
+      y: target.y,
+    })),
     spawnBullet: (params) => {
       bindings.spawnBullet({
         ...params,

@@ -45,17 +45,17 @@ export class MobView {
       const x = lerp(mob.previousX, mob.x, alpha);
       const y = lerp(mob.previousY, mob.y, alpha);
       const rendered = this.sprites.render(mob, x, y, frame, rollbackBlend);
+      const fallbackWidth = mob.hitWidth ?? mob.hitRadius * 2;
+      const fallbackHeight = mob.hitHeight ?? mob.hitRadius * 2;
 
-      if (rendered) {
-        this.healthRings.render(
-          mob,
-          x,
-          y,
-          rendered.sprite.displayWidth,
-          rendered.sprite.displayHeight,
-          rollbackBlend,
-        );
-      }
+      this.healthRings.render(
+        mob,
+        x,
+        y,
+        rendered?.sprite.displayWidth ?? fallbackWidth,
+        rendered?.sprite.displayHeight ?? fallbackHeight,
+        rollbackBlend,
+      );
       this.damageTags.render(mob, x, y, rollbackBlend);
     }
 

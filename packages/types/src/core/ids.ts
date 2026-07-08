@@ -18,7 +18,8 @@ export type AbilityCardId =
   | "multi_shot"
   | "spirit_strike_card"
   | "extension"
-  | "graze_lover";
+  | "graze_lover"
+  | "whitecat";
 export type MapId =
   | "hakurei_shrine"
   | "mist_lake"

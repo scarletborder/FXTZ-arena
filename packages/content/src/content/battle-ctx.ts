@@ -57,6 +57,7 @@ export interface BattleActionContext<
   readonly self: TFighter;
   readonly opponent: TFighter;
   readonly enemyTargets?: readonly BattleTargetState[];
+  readonly aim?: { readonly x: number; readonly y: number };
   consumeAim?(): void;
   spawnBullet(params: TBulletParams): void;
   spawnLaser(params: TLaserParams): void;

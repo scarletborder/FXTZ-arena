@@ -46,7 +46,9 @@ export interface BattleActionContextManagerContext {
   getTarget(): FighterState;
   getBattleMode(): BattleRoomMode;
   getEnemyTargets(owner: FighterKey): readonly ProjectileHitTarget[];
-  getAim(owner: FighterKey): { readonly x: number; readonly y: number } | undefined;
+  getAim(
+    owner: FighterKey,
+  ): { readonly x: number; readonly y: number } | undefined;
   allocateMobId(): number;
   spawnMob(mob: BattleNeutralMob): void;
   consumeAim(): void;
@@ -65,10 +67,7 @@ export class BattleActionContextManager {
         self.key === "Player1"
           ? this.context.getTarget()
           : this.context.getPlayer(),
-      enemyTargets:
-        this.context.getBattleMode() === "collaborate"
-          ? this.context.getEnemyTargets(self.key)
-          : undefined,
+      enemyTargets: this.context.getEnemyTargets(self.key),
       projectiles: this.context.projectiles,
       mobs: this.context.neutralMobs,
       effects: this.context.effects,
@@ -209,6 +208,7 @@ export class BattleActionContextManager {
         x: this.context.getTarget().x,
         y: this.context.getTarget().y,
       },
+      enemyTargets: this.context.getEnemyTargets(mob.state.key),
       spawnBullet: (params) => {
         this.context.deferSpawn(() => {
           this.context.projectileSystem.spawnBullet(

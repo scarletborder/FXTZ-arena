@@ -91,6 +91,8 @@ export interface FamiliarMobState extends MobState {
 }
 
 export interface NeutralMobTargetState {
+  readonly key?: MobOwner;
+  readonly mobId?: NeutralMobId;
   readonly x: number;
   readonly y: number;
 }
@@ -101,6 +103,7 @@ export interface MobActionContext<TBulletParams, TLaserParams> {
   readonly owner: MobOwner;
   readonly player: NeutralMobTargetState;
   readonly target: NeutralMobTargetState;
+  readonly enemyTargets?: readonly NeutralMobTargetState[];
   spawnBullet(params: TBulletParams): void;
   spawnLaser(params: TLaserParams): void;
 }

@@ -6,6 +6,8 @@ import { Depth } from "../../../utils/depth";
 import { smoothValue } from "../smooth";
 import { clampRatio } from "./math";
 
+const MIN_HEALTH_RING_DIAMETER = 44;
+
 export class MobHealthRingView {
   private readonly healthRings = new Map<number, Phaser.GameObjects.Graphics>();
 
@@ -35,7 +37,9 @@ export class MobHealthRingView {
       this.healthRings.set(mob.id, ring);
     }
 
-    const radius = Math.max(mobWidth, mobHeight, mob.hitRadius * 2) * 0.56;
+    const radius =
+      Math.max(mobWidth, mobHeight, mob.hitRadius * 2, MIN_HEALTH_RING_DIAMETER) *
+      0.56;
     const ratio = clampRatio(
       mob.spellCard.currentHealth / mob.spellCard.maxHealth,
     );

@@ -18,6 +18,7 @@ import "./multi-shot";
 import "./spirit-strike-card";
 import "./extension";
 import "./graze-lover";
+import "./whitecat";
 
 import type { AbilityCardDefinition } from "./types";
 import type { FighterState } from "../battle-types";
@@ -26,7 +27,9 @@ import type { BattleAbilityCard } from "./base";
 import type { HitResolution } from "./base";
 import { DEFAULT_BOMBS } from "@repo/constants";
 
-export function createBattleAbilityCard(definition: AbilityCardDefinition): BattleAbilityCard {
+export function createBattleAbilityCard(
+  definition: AbilityCardDefinition,
+): BattleAbilityCard {
   return cardLibrary.create(definition.id);
 }
 
@@ -43,7 +46,9 @@ export function applyInitialCardState(
     fighter.lives = Math.max(0, Math.trunc(options.lives ?? fighter.lives));
     fighter.bombs = Math.max(0, Math.trunc(options.bombs ?? fighter.bombs));
   }
-  const resolution: HitResolution = { defaultBombs: options.storyMode ? fighter.bombs : DEFAULT_BOMBS };
+  const resolution: HitResolution = {
+    defaultBombs: options.storyMode ? fighter.bombs : DEFAULT_BOMBS,
+  };
   for (const card of cards) {
     if (options.storyMode && card.storyModeOverride?.onInitialize) {
       card.storyModeOverride.onInitialize({ self: fighter, resolution });

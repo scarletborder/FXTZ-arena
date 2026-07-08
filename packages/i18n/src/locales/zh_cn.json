@@ -394,6 +394,10 @@
       "extension": {
         "name": "河城荷包",
         "description": "道具吸收范围小范围增加"
+      },
+      "whitecat": {
+        "name": "苏格拉底",
+        "description": "主动使用一次，在当前位置召唤一只名叫Socrates的猫。\n具有较高的韧性和攻击能力。"
       }
     },
     "maps": {
