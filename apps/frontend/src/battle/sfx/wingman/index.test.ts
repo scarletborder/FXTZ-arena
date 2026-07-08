@@ -33,6 +33,24 @@ describe("WingmanView", () => {
     expect(scene.containers[0]?.visible).toBe(true);
     expect(scene.graphics[0]?.commands).toContain("lineTo");
   });
+
+  it("renders a rear Reimu-style wingman for multi-shot", () => {
+    const scene = createSceneStub();
+    const view = new WingmanView(scene);
+
+    view.render({
+      player: fighter("Player1", character("marisa"), 0, ["multi_shot"]),
+      target: fighter("Player2", character("marisa"), 0),
+      frame: 30,
+      gameOver: false,
+      localFighterKey: "Player1",
+      alpha: 1,
+    });
+
+    expect(scene.containers[0]?.visible).toBe(true);
+    expect(scene.graphics[0]?.commands).toContain("fillCircle");
+    expect(scene.containers[1]?.visible).toBe(false);
+  });
 });
 
 function createSceneStub() {
@@ -152,6 +170,7 @@ function fighter(
   key: FighterKey,
   activeCharacter: CharacterDefinition,
   pointCount: number,
+  abilityCardIds: readonly string[] = [],
 ): FighterState {
   return {
     key,
@@ -176,7 +195,7 @@ function fighter(
     activeCharacter,
     alternateCharacter: activeCharacter,
     activeCard: undefined,
-    abilityCards: [],
+    abilityCards: abilityCardIds.map((id) => abilityCard(id)),
     activeCardUses: 0,
     activeCardCooldownUntil: 0,
     shotsFired: 0,
@@ -212,6 +231,24 @@ function fighter(
     flashUntil: 0,
     statusVisibleUntil: 0,
     grazedProjectileIds: [],
+  };
+}
+
+function abilityCard(id: string): FighterState["abilityCards"][number] {
+  return {
+    id: id as FighterState["abilityCards"][number]["id"],
+    name: id,
+    cost: 0,
+    kind: "passive",
+    useLimit: "infinite",
+    cooldownTicks: 0,
+    description: "",
+    gallery: {
+      iconAsset: "",
+    },
+    collaborateShop: {
+      rarity: "common",
+    },
   };
 }
 

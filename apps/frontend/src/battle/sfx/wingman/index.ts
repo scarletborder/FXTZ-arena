@@ -22,6 +22,7 @@ import {
   type RelativeSource,
   type WingmanEmitterConfig,
 } from "./types";
+import { abilityCardWingmen } from "./card";
 
 interface WingmanVisual {
   readonly root: Phaser.GameObjects.Container;
@@ -89,7 +90,10 @@ export class WingmanView {
 
     const profile = wingmanProfile(fighter.activeCharacter.id);
     const tier = pointPowerTier(fighter.pointCount);
-    const emitters = profile?.wingmenForTier(tier) ?? [];
+    const emitters = [
+      ...(profile?.wingmenForTier(tier) ?? []),
+      ...abilityCardWingmen(fighter, tier),
+    ];
 
     if (!visible || emitters.length === 0) {
       visual.root.setVisible(false);

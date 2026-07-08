@@ -927,18 +927,25 @@ describe("BattleModel collaborate projectile rules", () => {
 describe("BattleModel ability cards", () => {
   it("adds multi-shot's extra homing bullet after a normal shot", async () => {
     const model = await createBattleModel("reimu", "marisa", ["multi_shot"]);
+    const startX = model.player.x;
+    const startY = model.player.y;
+    model.player.facing = 0;
 
-    model.step(input({ shootPressed: true }));
+    model.step(
+      input({ aimX: startX + 100, aimY: startY, shootPressed: true }),
+    );
 
     expect(model.projectiles).toHaveLength(4);
-    expect(
-      model.projectiles.some(
-        (projectile) =>
-          projectile.textureKey === "bullet_type_8_offset_0" &&
-          projectile.width === 8 &&
-          projectile.height === 8,
-      ),
-    ).toBe(true);
+    const extraShot = model.projectiles.find(
+      (projectile) =>
+        projectile.textureKey === "bullet_type_8_offset_0" &&
+        projectile.width === 8 &&
+        projectile.height === 8,
+    );
+
+    expect(extraShot).toBeDefined();
+    expect(extraShot?.x).toBeCloseTo(startX - 2, 1);
+    expect(extraShot?.y).toBeCloseTo(startY, 1);
   });
 
   it("clears nearby bullets with spirit strike", async () => {

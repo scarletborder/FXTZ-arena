@@ -5,6 +5,8 @@ import type { FighterState } from "../battle-types";
 import { BattleAbilityCard, type BattleCardContext, type BattleHitContext, type BattleInitializeContext } from "./base";
 import { Vanilla } from "../decorators";
 
+const MULTI_SHOT_WINGMAN_DISTANCE = 36;
+
 export class MultiShotBattleCard extends BattleAbilityCard {
   readonly id: AbilityCardDefinition["id"] = "multi_shot";
   readonly name = "content.ability_cards.multi_shot.name";
@@ -18,12 +20,17 @@ export class MultiShotBattleCard extends BattleAbilityCard {
   };
 
   onAfterFire(ctx: BattleCardContext): void {
+    const wingmanX =
+      ctx.self.x - Math.cos(ctx.self.facing) * MULTI_SHOT_WINGMAN_DISTANCE;
+    const wingmanY =
+      ctx.self.y - Math.sin(ctx.self.facing) * MULTI_SHOT_WINGMAN_DISTANCE;
+
     ctx.spawnBullet({
       owner: ctx.self.key,
-      textureKey: "bullet_type_8_offset_0",
+      textureKey: "bullet_type_7_offset_0",
       kind: "orb",
-      x: ctx.self.x,
-      y: ctx.self.y,
+      x: wingmanX,
+      y: wingmanY,
       angle: ctx.self.facing,
       speedRank: "low",
       width: 8,
