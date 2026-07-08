@@ -16,6 +16,7 @@ export type AbilityCardId =
   | "ember"
   | "backdoor"
   | "multi_shot"
+  | "hakkero"
   | "spirit_strike_card"
   | "invisibility_cloth"
   | "extension"

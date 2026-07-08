@@ -1,6 +1,7 @@
 import type { FighterState } from "@repo/raid-logic";
 
 import { multiShotWingmen } from "./multi-shot";
+import { hakkeroWingmen } from "./hakkero";
 import type { PointPowerTier, WingmanEmitterConfig } from "../types";
 
 const CARD_WINGMEN: Partial<
@@ -10,6 +11,7 @@ const CARD_WINGMEN: Partial<
   >
 > = {
   multi_shot: multiShotWingmen,
+  hakkero: hakkeroWingmen,
 };
 
 export function abilityCardWingmen(

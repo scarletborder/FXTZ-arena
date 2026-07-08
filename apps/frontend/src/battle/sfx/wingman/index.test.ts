@@ -51,6 +51,24 @@ describe("WingmanView", () => {
     expect(scene.graphics[0]?.commands).toContain("fillCircle");
     expect(scene.containers[1]?.visible).toBe(false);
   });
+
+  it("renders a rear Marisa-style laser wingman for Hakkero", () => {
+    const scene = createSceneStub();
+    const view = new WingmanView(scene);
+
+    view.render({
+      player: fighter("Player1", character("reimu"), 0, ["hakkero"]),
+      target: fighter("Player2", character("marisa"), 0),
+      frame: 30,
+      gameOver: false,
+      localFighterKey: "Player1",
+      alpha: 1,
+    });
+
+    expect(scene.containers[0]?.visible).toBe(true);
+    expect(scene.graphics[0]?.commands).toContain("lineTo");
+    expect(scene.containers[1]?.visible).toBe(false);
+  });
 });
 
 function createSceneStub() {
@@ -198,6 +216,7 @@ function fighter(
     abilityCards: abilityCardIds.map((id) => abilityCard(id)),
     activeCardUses: 0,
     activeCardCooldownUntil: 0,
+    hakkeroBeamCooldownUntil: 0,
     shotsFired: 0,
     hits: 0,
     hitsTaken: 0,

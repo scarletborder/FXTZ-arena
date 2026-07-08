@@ -43,6 +43,7 @@ export interface FighterAbilityCardState {
   abilityCards: readonly AbilityCardDefinition[];
   activeCardUses: number;
   activeCardCooldownUntil: number;
+  hakkeroBeamCooldownUntil: number;
 }
 
 export interface FighterStatsState {

@@ -383,6 +383,10 @@
         "name": "Yin-Yang Orb",
         "description": "Adds extra slow homing shots to normal attacks."
       },
+      "hakkero": {
+        "name": "Hakkero",
+        "description": "Creates a Hakkero behind you. When you fire, it shoots a laser at most once every 2 seconds after a 0.8-second warning, lasting 0.35 seconds and dealing 1 damage per frame."
+      },
       "spirit_strike": {
         "name": "Spirit Strike",
         "description": "Clears a small area of bullets around you"

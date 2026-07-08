@@ -297,6 +297,7 @@ function serializeFighter(
     abilityCardIds: fighter.abilityCards.map((card) => card.id),
     activeCardUses: fighter.activeCardUses,
     activeCardCooldownUntil: fighter.activeCardCooldownUntil,
+    hakkeroBeamCooldownUntil: fighter.hakkeroBeamCooldownUntil,
     fireCooldownUntil: fighter.fireCooldownUntil,
     bombCooldownUntil: fighter.bombCooldownUntil,
     shotsFired: fighter.shotsFired,

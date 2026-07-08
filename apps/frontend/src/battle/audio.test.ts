@@ -161,6 +161,7 @@ function fighter(
     abilityCards: [],
     activeCardUses: 0,
     activeCardCooldownUntil: 0,
+    hakkeroBeamCooldownUntil: 0,
     shotsFired: 0,
     hits: 0,
     hitsTaken: 0,

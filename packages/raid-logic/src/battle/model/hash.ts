@@ -329,6 +329,7 @@ function writeFighter(
   hasher.writeNumber(fighter.abilityCards.length);
   hasher.writeNumber(fighter.activeCardUses);
   hasher.writeNumber(fighter.activeCardCooldownUntil);
+  hasher.writeNumber(fighter.hakkeroBeamCooldownUntil);
   hasher.writeNumber(fighter.fireCooldownUntil);
   hasher.writeNumber(fighter.bombCooldownUntil);
   hasher.writeNumber(fighter.shotsFired);

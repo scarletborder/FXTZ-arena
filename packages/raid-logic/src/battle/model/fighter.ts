@@ -43,6 +43,7 @@ export function createFighter(
     activeCardUses:
       activeCard?.useLimit === "infinite" ? 999 : (activeCard?.useLimit ?? 0),
     activeCardCooldownUntil: 0,
+    hakkeroBeamCooldownUntil: 0,
 
     shotsFired: 0,
     hits: 0,
@@ -122,6 +123,9 @@ export function tickFighterTimers(fighter: FighterState): void {
   }
   if (fighter.bombCooldownUntil > 0) {
     fighter.bombCooldownUntil -= 1;
+  }
+  if (fighter.hakkeroBeamCooldownUntil > 0) {
+    fighter.hakkeroBeamCooldownUntil -= 1;
   }
   if (fighter.actionLockedUntil > 0) {
     fighter.actionLockedUntil -= 1;

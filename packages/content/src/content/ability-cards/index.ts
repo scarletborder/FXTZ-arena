@@ -15,6 +15,7 @@ import "./extra-life";
 import "./ember";
 import "./backdoor";
 import "./multi-shot";
+import "./hakkero";
 import "./spirit-strike-card";
 import "./invisibility-cloth";
 import "./extension";
