@@ -203,10 +203,12 @@ export class BattleActionContextManager {
       player: {
         x: this.context.getPlayer().x,
         y: this.context.getPlayer().y,
+        reloadRemaining: this.context.getPlayer().reloadRemaining,
       },
       target: {
         x: this.context.getTarget().x,
         y: this.context.getTarget().y,
+        reloadRemaining: this.context.getTarget().reloadRemaining,
       },
       enemyTargets: this.context.getEnemyTargets(mob.state.key),
       spawnBullet: (params) => {

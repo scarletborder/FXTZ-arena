@@ -100,8 +100,16 @@ export function createNeutralMobActionContext(bindings: {
   readonly frame: number;
   readonly arenaBounds: ArenaBounds;
   readonly owner: BattlePlayerId;
-  readonly player: { readonly x: number; readonly y: number };
-  readonly target: { readonly x: number; readonly y: number };
+  readonly player: {
+    readonly x: number;
+    readonly y: number;
+    readonly reloadRemaining?: number;
+  };
+  readonly target: {
+    readonly x: number;
+    readonly y: number;
+    readonly reloadRemaining?: number;
+  };
   readonly enemyTargets?: readonly {
     readonly key?: BattlePlayerId;
     readonly mobId?: number;
@@ -115,8 +123,16 @@ export function createNeutralMobActionContext(bindings: {
     frame: bindings.frame,
     arenaBounds: bindings.arenaBounds,
     owner: bindings.owner,
-    player: { x: bindings.player.x, y: bindings.player.y },
-    target: { x: bindings.target.x, y: bindings.target.y },
+    player: {
+      x: bindings.player.x,
+      y: bindings.player.y,
+      reloadRemaining: bindings.player.reloadRemaining,
+    },
+    target: {
+      x: bindings.target.x,
+      y: bindings.target.y,
+      reloadRemaining: bindings.target.reloadRemaining,
+    },
     enemyTargets: bindings.enemyTargets?.map((target) => ({
       key: target.key,
       mobId: target.mobId,

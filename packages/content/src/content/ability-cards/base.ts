@@ -5,8 +5,28 @@ import type {
   HitResolutionContext,
 } from "../battle-ctx";
 
-import type { EffectState, FighterKey, FighterState, ProjectileState, ShieldState, TrainingStats } from "../battle-types";
-import type { BattleBulletSpawnParams, BattleLaserSpawnParams } from "../characters/base";
+import type {
+  EffectState,
+  FighterKey,
+  FighterState,
+  ProjectileState,
+  ShieldState,
+  TrainingStats,
+} from "../battle-types";
+import type {
+  BattleBulletSpawnParams,
+  BattleLaserSpawnParams,
+} from "../characters/base";
+
+interface BattleCardMobState {
+  readonly key: string;
+  readonly kind: string;
+  active: boolean;
+}
+
+interface BattleCardMob {
+  readonly state: BattleCardMobState;
+}
 
 export interface BattleCardContext
   extends StandardBattleActionContext<
@@ -15,7 +35,8 @@ export interface BattleCardContext
     EffectState,
     TrainingStats,
     BattleBulletSpawnParams,
-    BattleLaserSpawnParams
+    BattleLaserSpawnParams,
+    BattleCardMob
   > {}
 
 export interface HitResolution extends HitResolutionContext {}

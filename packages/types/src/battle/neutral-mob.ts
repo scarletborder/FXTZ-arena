@@ -95,6 +95,7 @@ export interface NeutralMobTargetState {
   readonly mobId?: NeutralMobId;
   readonly x: number;
   readonly y: number;
+  readonly reloadRemaining?: number;
 }
 
 export interface MobActionContext<TBulletParams, TLaserParams> {

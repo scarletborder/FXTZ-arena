@@ -24,7 +24,8 @@ export type AbilityCardId =
   | "graze_lover"
   | "sakura_charm"
   | "whitecat"
-  | "tanuki_helper";
+  | "tanuki_helper"
+  | "doll";
 export type MapId =
   | "hakurei_shrine"
   | "mist_lake"

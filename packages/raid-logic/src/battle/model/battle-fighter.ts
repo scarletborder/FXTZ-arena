@@ -188,7 +188,7 @@ export class BattleFighter {
 
   resetActiveCardUsage(): void {
     const useLimit = this.state.activeCard?.useLimit;
-    this.state.activeCardUses = typeof useLimit === "number" ? useLimit : 0;
+    this.state.activeCardUses = useLimit === "infinite" ? 999 : (useLimit ?? 0);
     this.state.activeCardCooldownUntil = 0;
   }
 
@@ -375,7 +375,9 @@ export class BattleFighter {
       return false;
     }
 
-    this.state.activeCardUses -= 1;
+    if (this.state.activeCard.useLimit !== "infinite") {
+      this.state.activeCardUses -= 1;
+    }
     this.state.activeCardCooldownUntil = this.state.activeCard.cooldownTicks;
     this.activeBattleCard?.onUse(ctx);
     return true;

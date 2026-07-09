@@ -57,11 +57,22 @@ import {
   TestNeutralMob,
 } from "./test/helpers";
 
-function findMobState(
+function findMobState(model: BattleModel, kind: string): MobState | undefined {
+  return model.neutralMobManager.states().find((mob) => mob.kind === kind);
+}
+
+function findMobStateWithAngle(
   model: BattleModel,
   kind: string,
-): MobState | undefined {
-  return model.neutralMobManager.states().find((mob) => mob.kind === kind);
+): (MobState & { readonly angle: number }) | undefined {
+  const mob = findMobState(model, kind);
+  return mob && hasMobAngle(mob) ? mob : undefined;
+}
+
+function hasMobAngle(
+  mob: MobState,
+): mob is MobState & { readonly angle: number } {
+  return "angle" in mob && typeof mob.angle === "number";
 }
 
 describe("BattleModel rollback snapshots", () => {
@@ -975,9 +986,7 @@ describe("BattleModel ability cards", () => {
     const startY = model.player.y;
     model.player.facing = 0;
 
-    model.step(
-      input({ aimX: startX + 100, aimY: startY, shootPressed: true }),
-    );
+    model.step(input({ aimX: startX + 100, aimY: startY, shootPressed: true }));
 
     expect(model.projectiles).toHaveLength(4);
     const extraShot = model.projectiles.find(
@@ -1054,8 +1063,18 @@ describe("BattleModel ability cards", () => {
 
     const familiar = findMobState(model, "backdoor_familiar");
     model.projectiles.push(
-      testProjectile({ id: 1, owner: "Player2", x: familiar!.x, y: familiar!.y }),
-      testProjectile({ id: 2, owner: "Player1", x: familiar!.x, y: familiar!.y }),
+      testProjectile({
+        id: 1,
+        owner: "Player2",
+        x: familiar!.x,
+        y: familiar!.y,
+      }),
+      testProjectile({
+        id: 2,
+        owner: "Player1",
+        x: familiar!.x,
+        y: familiar!.y,
+      }),
       testProjectile({
         id: 3,
         owner: "Player2",
@@ -1096,7 +1115,12 @@ describe("BattleModel ability cards", () => {
     model.step(action);
     const familiar = findMobState(model, "backdoor_familiar");
     model.projectiles.push(
-      testProjectile({ id: 1, owner: "Player2", x: familiar!.x, y: familiar!.y }),
+      testProjectile({
+        id: 1,
+        owner: "Player2",
+        x: familiar!.x,
+        y: familiar!.y,
+      }),
     );
     const snapshot = model.serialize();
 
@@ -1120,7 +1144,7 @@ describe("BattleModel ability cards", () => {
     model.step(input());
 
     const backdoor = findMobState(model, "backdoor_familiar");
-    const ufo = findMobState(model, "ufo_helper_familiar");
+    const ufo = findMobStateWithAngle(model, "ufo_helper_familiar");
     expect(backdoor).toBeDefined();
     expect(ufo).toMatchObject({
       key: "Player1",
@@ -1133,8 +1157,8 @@ describe("BattleModel ability cards", () => {
 
     model.step(input());
 
-    const movedUfo = findMobState(model, "ufo_helper_familiar");
-    expect(movedUfo?.angle).toBeLessThan((ufo?.angle ?? 0));
+    const movedUfo = findMobStateWithAngle(model, "ufo_helper_familiar");
+    expect(movedUfo?.angle).toBeLessThan(ufo?.angle ?? 0);
     expect(movedUfo?.y).toBeLessThan(ufo?.y ?? 0);
 
     model.projectiles.push(

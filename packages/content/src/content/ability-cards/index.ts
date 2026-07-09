@@ -4,6 +4,8 @@ export * from "./types";
 export * from "./card-library";
 export * from "./base";
 export * from "./defensive-familiars";
+export * from "./doll";
+export * from "./whitecat";
 export type {
   BattleCardContext,
   BattleHitContext,
@@ -25,6 +27,7 @@ import "./graze-lover";
 import "./sakura-charm";
 import "./whitecat";
 import "./tanuki-helper";
+import "./doll";
 
 import type { AbilityCardDefinition } from "./types";
 import type { FighterState } from "../battle-types";

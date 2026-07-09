@@ -414,6 +414,10 @@
       "tanuki_helper": {
         "name": "Tanuki Helper",
         "description": "Gain a large amount of Power when hit. The little tanuki helper is Jiuhu in disguise."
+      },
+      "doll": {
+        "name": "Doll",
+        "description": "Active use. Launches a doll familiar toward the crosshair. If your doll already exists, it is removed first. After you reload, the doll returns toward you and fires slow bullets up, down, left, and right every 1.2 seconds while moving."
       }
     },
     "maps": {
