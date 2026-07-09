@@ -46,6 +46,7 @@ export function resolveProjectileHit(params: {
     return params.neutralMobManager.handleProjectileHit({
       target: victim,
       owner,
+      projectile: params.ctx.projectile,
       damage: params.ctx.projectile.damage,
       onKilled: (mob, source) => params.handleNeutralMobKilled(mob, source),
     });

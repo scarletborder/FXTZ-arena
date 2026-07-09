@@ -210,10 +210,10 @@ export class BattleFighter {
     );
   }
 
-  collectShields(): readonly ShieldState[] {
+  collectShields(frame: number): readonly ShieldState[] {
     const shields: ShieldState[] = [];
     for (const card of this.battleCards) {
-      shields.push(...card.collectShields(this.state));
+      shields.push(...card.collectShields(this.state, frame));
     }
     return shields;
   }

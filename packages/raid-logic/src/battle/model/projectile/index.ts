@@ -683,6 +683,7 @@ function projectileIntersectsClearer(
     projectile.height > 0
   ) {
     return rotatedRectsIntersect(clearer, {
+      id: `projectile:${projectile.id}`,
       owner: projectile.owner,
       x: projectile.x,
       y: projectile.y,
@@ -754,6 +755,7 @@ function hitTest(
       return infiniteBeamIntersectsRect(projectile, victim);
     }
     return rotatedRectsIntersect(projectile, {
+      id: `victim:${victim.key}`,
       owner: victim.key,
       x: victim.x,
       y: victim.y,

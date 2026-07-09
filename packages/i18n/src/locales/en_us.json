@@ -367,6 +367,10 @@
         "name": "Backdoor",
         "description": "Adds a rear shield behind the character to clear bullets from the back"
       },
+      "ufo_helper": {
+        "name": "UFO Helper",
+        "description": "Summons a square UFO shield 56 px from the character. It orbits clockwise at a medium speed, spins as it moves, and clears ordinary enemy bullets on contact."
+      },
       "ember": {
         "name": "Spell Card",
         "description": "Default bombs become 4, and respawns also restore to 4."

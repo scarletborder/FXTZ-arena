@@ -38,6 +38,12 @@ export class MobSpriteView {
     frame: number,
     rollbackBlend: number,
   ): RenderedMobSprite | undefined {
+    if (
+      mob.textureKey === "card-backdoor-familiar" ||
+      mob.textureKey === "card-ufo-helper-familiar"
+    ) {
+      return this.renderDefensiveFamiliarSprite(mob, x, y, rollbackBlend);
+    }
     if (mob.textureKey === DEFAULT_FAMILIAR_TEXTURE_KEY) {
       return this.renderDefaultFamiliarSprite(mob, x, y, rollbackBlend);
     }
@@ -251,6 +257,52 @@ export class MobSpriteView {
     sprite.setRotation(
       defaultFamiliarNeedsRotation(mob) ? angle + Math.PI / 2 : 0,
     );
+    sprite.setVisible(true);
+    this.animationStates.set(mob.id, {
+      textureKey,
+      visualKind: "character",
+      animation: "default",
+      characterFrame: 0,
+      direction: 1,
+    });
+    return { sprite };
+  }
+
+  private renderDefensiveFamiliarSprite(
+    mob: MobState,
+    x: number,
+    y: number,
+    rollbackBlend: number,
+  ): RenderedMobSprite | undefined {
+    const textureKey = mob.textureKey;
+    if (!textureKey || !this.scene.textures.exists(textureKey)) {
+      return undefined;
+    }
+
+    const width = mob.hitWidth ?? mob.hitRadius * 2;
+    const height = mob.hitHeight ?? mob.hitRadius * 2;
+    const angle = ranAngle(mob);
+
+    let sprite = this.sprites.get(mob.id);
+    if (!sprite) {
+      sprite = this.scene.add
+        .sprite(x, y, textureKey)
+        .setOrigin(0.5)
+        .setDepth(Depth.Character)
+        .setDisplaySize(width * 1.8, height * 1.8);
+      this.sprites.set(mob.id, sprite);
+    }
+    if (sprite.texture.key !== textureKey) {
+      sprite.setTexture(textureKey);
+    }
+
+    sprite.setPosition(
+      smoothValue(sprite.x, x, rollbackBlend),
+      smoothValue(sprite.y, y, rollbackBlend),
+    );
+    sprite.setAlpha(smoothValue(sprite.alpha, 1, rollbackBlend));
+    sprite.setDisplaySize(width * 1.8, height * 1.8);
+    sprite.setRotation(angle);
     sprite.setVisible(true);
     this.animationStates.set(mob.id, {
       textureKey,

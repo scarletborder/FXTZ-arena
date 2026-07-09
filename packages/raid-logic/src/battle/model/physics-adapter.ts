@@ -180,7 +180,7 @@ export class BattlePhysics {
     }
 
     for (const shield of shields) {
-      const bodyId = `shield:${shield.owner}`;
+      const bodyId = `shield:${shield.owner}:${shield.id}`;
       this.world.addBody({
         id: bodyId,
         kind: "shield",
@@ -400,7 +400,10 @@ function resolveCollision(
   }
 
   if (otherId.startsWith("shield:")) {
-    const shieldOwner = otherId.slice("shield:".length);
+    const shieldOwner = parseShieldOwnerFromCollisionId(otherId);
+    if (!shieldOwner) {
+      return null;
+    }
     if (projectileMap.get(projectileNum)?.owner === shieldOwner) {
       return null;
     }
@@ -457,6 +460,18 @@ function parseProjectileCollisionId(
       id: Number(id.slice("proj:".length)),
       grazeOnly: false,
     };
+  }
+  return undefined;
+}
+
+function parseShieldOwnerFromCollisionId(id: string): FighterKey | undefined {
+  const parts = id.split(":");
+  if (parts.length < 3 || parts[0] !== "shield") {
+    return undefined;
+  }
+  const owner = parts[1];
+  if (owner === "Player1" || owner === "Player2" || owner === "Neutral") {
+    return owner;
   }
   return undefined;
 }

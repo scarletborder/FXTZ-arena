@@ -9,9 +9,14 @@ import {
   PLAYER_CORE_RADIUS,
   type ArenaBounds,
 } from "@repo/types";
-import type { FighterKey, FighterState } from "@repo/content";
+import type { FighterKey, FighterState, ProjectileState } from "@repo/content";
 import type { NeutralMobSpawner, NeutralMobSpawnerState } from "@repo/content";
 import { createFamiliarFromSnapshot } from "@repo/content";
+import {
+  BACKDOOR_FAMILIAR_KIND,
+  UFO_HELPER_FAMILIAR_KIND,
+  clearsOrdinaryProjectileByDefensiveFamiliar,
+} from "@repo/content";
 import type { BattleRules } from "../battle-rules";
 
 import type {
@@ -205,6 +210,7 @@ export class NeutralMobManager {
   handleProjectileHit(params: {
     readonly target: ProjectileHitTarget;
     readonly owner: FighterKey;
+    readonly projectile: ProjectileState;
     readonly damage: number;
     readonly onKilled: (mob: MobState, source: FighterKey) => void;
   }): boolean {
@@ -212,6 +218,20 @@ export class NeutralMobManager {
       (candidate) => candidate.id === params.target.mobId,
     );
     if (!mob) {
+      return false;
+    }
+    if (
+      (mob.state.kind === BACKDOOR_FAMILIAR_KIND ||
+        mob.state.kind === UFO_HELPER_FAMILIAR_KIND) &&
+      !clearsOrdinaryProjectileByDefensiveFamiliar({
+        familiarKind: mob.state.kind,
+        projectileKind: params.projectile.kind,
+        owner: params.owner,
+        targetOwner: mob.state.key,
+        projectileDamage: params.projectile.damage,
+        projectileVisible: true,
+      })
+    ) {
       return false;
     }
     const wasActive = mob.state.active;

@@ -3,6 +3,7 @@ export * from "./types";
 
 export * from "./card-library";
 export * from "./base";
+export * from "./defensive-familiars";
 export type {
   BattleCardContext,
   BattleHitContext,
@@ -14,6 +15,7 @@ export type {
 import "./extra-life";
 import "./ember";
 import "./backdoor";
+import "./ufo-helper";
 import "./multi-shot";
 import "./hakkero";
 import "./spirit-strike-card";

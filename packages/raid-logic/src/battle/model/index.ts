@@ -1145,10 +1145,10 @@ export class BattleModel {
   private currentShields(): readonly ShieldState[] {
     const shields: ShieldState[] = [];
     if (this.player.deadUntil <= 0) {
-      shields.push(...this.playerFighter.collectShields());
+      shields.push(...this.playerFighter.collectShields(this.frame));
     }
     if (this.target.deadUntil <= 0) {
-      shields.push(...this.targetFighter.collectShields());
+      shields.push(...this.targetFighter.collectShields(this.frame));
     }
     return shields;
   }

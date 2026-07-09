@@ -36,6 +36,7 @@ import {
   FamiliarMob,
   type FamiliarMobState,
   type MobActionContext,
+  type MobState,
   type NeutralMobState,
 } from "@repo/types";
 import type {
@@ -55,6 +56,13 @@ import {
   testProjectile,
   TestNeutralMob,
 } from "./test/helpers";
+
+function findMobState(
+  model: BattleModel,
+  kind: string,
+): MobState | undefined {
+  return model.neutralMobManager.states().find((mob) => mob.kind === kind);
+}
 
 describe("BattleModel rollback snapshots", () => {
   it("restores frame-relative timers without changing replay results", async () => {
@@ -1008,49 +1016,70 @@ describe("BattleModel ability cards", () => {
 
   it("clears ordinary bullets behind the fighter with backdoor", async () => {
     const model = await createBattleModel("reimu", "marisa", ["backdoor"]);
+    const action = input({ aimX: model.player.x + 100, aimY: model.player.y });
+
     model.player.facing = 0;
-    const shield = model.toOutputState().shields[0]!;
+    model.step(action);
+
+    const familiar = findMobState(model, "backdoor_familiar");
+    expect(familiar).toMatchObject({
+      key: "Player1",
+      textureKey: "card-backdoor-familiar",
+      hitWidth: 7,
+      hitHeight: 34,
+    });
+    expect(familiar?.x).toBeLessThan(model.player.x);
+
     model.projectiles.push(
-      testProjectile({ id: 1, owner: "Player2", x: shield.x, y: shield.y }),
+      testProjectile({
+        id: 1,
+        owner: "Player2",
+        x: familiar!.x,
+        y: familiar!.y,
+      }),
     );
 
-    model.step(input({ aimX: model.player.x + 100, aimY: model.player.y }));
+    model.step(action);
 
     expect(model.projectiles).toHaveLength(0);
-    expect(model.toOutputState().shields).toHaveLength(1);
+    expect(findMobState(model, "backdoor_familiar")?.id).toBe(familiar?.id);
   });
 
   it("only lets backdoor clear visible damaging ordinary enemy bullets", async () => {
     const model = await createBattleModel("reimu", "marisa", ["backdoor"]);
+    const action = input({ aimX: model.player.x + 100, aimY: model.player.y });
+
     model.player.facing = 0;
-    const shield = model.toOutputState().shields[0]!;
+    model.step(action);
+
+    const familiar = findMobState(model, "backdoor_familiar");
     model.projectiles.push(
-      testProjectile({ id: 1, owner: "Player2", x: shield.x, y: shield.y }),
-      testProjectile({ id: 2, owner: "Player1", x: shield.x, y: shield.y }),
+      testProjectile({ id: 1, owner: "Player2", x: familiar!.x, y: familiar!.y }),
+      testProjectile({ id: 2, owner: "Player1", x: familiar!.x, y: familiar!.y }),
       testProjectile({
         id: 3,
         owner: "Player2",
         kind: "spark",
-        x: shield.x,
-        y: shield.y,
+        x: familiar!.x,
+        y: familiar!.y,
       }),
       testProjectile({
         id: 4,
         owner: "Player2",
-        x: shield.x,
-        y: shield.y,
+        x: familiar!.x,
+        y: familiar!.y,
         visibleFrom: 999,
       }),
       testProjectile({
         id: 5,
         owner: "Player2",
-        x: shield.x,
-        y: shield.y,
+        x: familiar!.x,
+        y: familiar!.y,
         damage: 0,
       }),
     );
 
-    model.step(input({ aimX: model.player.x + 100, aimY: model.player.y }));
+    model.step(action);
 
     expect(
       model.projectiles
@@ -1059,15 +1088,92 @@ describe("BattleModel ability cards", () => {
     ).toEqual([2, 3, 4, 5]);
   });
 
-  it("replays backdoor shield clears deterministically after rollback", async () => {
+  it("replays backdoor familiar clears deterministically after rollback", async () => {
     const model = await createBattleModel("reimu", "marisa", ["backdoor"]);
+    const action = input({ aimX: model.player.x + 100, aimY: model.player.y });
+
     model.player.facing = 0;
-    const shield = model.toOutputState().shields[0]!;
+    model.step(action);
+    const familiar = findMobState(model, "backdoor_familiar");
     model.projectiles.push(
-      testProjectile({ id: 1, owner: "Player2", x: shield.x, y: shield.y }),
+      testProjectile({ id: 1, owner: "Player2", x: familiar!.x, y: familiar!.y }),
     );
     const snapshot = model.serialize();
-    const action = input({ aimX: model.player.x + 100, aimY: model.player.y });
+
+    model.step(action);
+    const originalHash = model.hashHex();
+    expect(model.projectiles).toHaveLength(0);
+
+    model.deserialize(snapshot);
+    model.step(action);
+
+    expect(model.projectiles).toHaveLength(0);
+    expect(model.hashHex()).toBe(originalHash);
+  });
+
+  it("spawns a clockwise ufo helper familiar and keeps it alongside backdoor", async () => {
+    const model = await createBattleModel("reimu", "marisa", [
+      "backdoor",
+      "ufo_helper",
+    ]);
+
+    model.step(input());
+
+    const backdoor = findMobState(model, "backdoor_familiar");
+    const ufo = findMobState(model, "ufo_helper_familiar");
+    expect(backdoor).toBeDefined();
+    expect(ufo).toMatchObject({
+      key: "Player1",
+      textureKey: "card-ufo-helper-familiar",
+      hitWidth: 22,
+      hitHeight: 22,
+    });
+    expect(ufo?.x).toBeGreaterThan(model.player.x);
+    expect(ufo?.y).toBe(model.player.y);
+
+    model.step(input());
+
+    const movedUfo = findMobState(model, "ufo_helper_familiar");
+    expect(movedUfo?.angle).toBeLessThan((ufo?.angle ?? 0));
+    expect(movedUfo?.y).toBeLessThan(ufo?.y ?? 0);
+
+    model.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Player2",
+        x: movedUfo!.x,
+        y: movedUfo!.y,
+        width: 40,
+        height: 40,
+      }),
+    );
+
+    model.step(input());
+
+    expect(model.projectiles).toHaveLength(0);
+    expect(findMobState(model, "backdoor_familiar")).toBeDefined();
+    expect(findMobState(model, "ufo_helper_familiar")).toBeDefined();
+  });
+
+  it("replays ufo helper familiar clears deterministically after rollback", async () => {
+    const model = await createBattleModel("reimu", "marisa", ["ufo_helper"]);
+
+    model.step(input());
+    model.step(input());
+
+    const familiar = findMobState(model, "ufo_helper_familiar");
+    model.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Player2",
+        x: familiar!.x,
+        y: familiar!.y,
+        width: 40,
+        height: 40,
+      }),
+    );
+    const snapshot = model.serialize();
+    const action = input();
 
     model.step(action);
     const originalHash = model.hashHex();

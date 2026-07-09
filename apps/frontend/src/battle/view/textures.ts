@@ -116,6 +116,22 @@ export function createBattleTextures(scene: Phaser.Scene): void {
     g.lineStyle(3, 0xffffff, 1);
     g.strokeCircle(128, 128, 34);
   });
+  make("card-backdoor-familiar", (g) => {
+    g.fillStyle(0xffffff, 1);
+    g.fillRoundedRect(112, 32, 32, 192, 10);
+    g.lineStyle(10, 0xffffff, 1);
+    g.strokeRoundedRect(112, 32, 32, 192, 10);
+    g.lineStyle(6, 0xffffff, 0.7);
+    g.lineBetween(128, 48, 128, 208);
+  });
+  make("card-ufo-helper-familiar", (g) => {
+    g.lineStyle(8, 0xffffff, 0.9);
+    g.strokeRoundedRect(46, 46, 164, 164, 24);
+    g.lineStyle(4, 0xffffff, 0.6);
+    g.strokeRoundedRect(72, 72, 112, 112, 18);
+    g.lineBetween(72, 72, 184, 184);
+    g.lineBetween(184, 72, 72, 184);
+  });
 
   // ---- Neutral mob textures ------------------------------------------------
 

@@ -83,7 +83,7 @@ export abstract class BattleAbilityCard {
   getGrazeRadiusMultiplier(_fighter: FighterState): number {
     return 1;
   }
-  collectShields(_fighter: FighterState): ShieldState[] {
+  collectShields(_fighter: FighterState, _frame: number): ShieldState[] {
     return [];
   }
 }

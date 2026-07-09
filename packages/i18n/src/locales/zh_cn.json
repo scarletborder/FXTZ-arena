@@ -371,6 +371,10 @@
         "name": "backdoor",
         "description": "角色后方追加后门，消去背后的敌弹"
       },
+      "ufo_helper": {
+        "name": "ufo小帮手",
+        "description": "在角色 56px 外召唤一个 UFO 方形护盾，以中速顺时针环绕并旋转，消去接触到的敌方普通弹。"
+      },
       "ember": {
         "name": "符咒卡牌",
         "description": "默认 bomb 变为 4，死亡复活也恢复到 4。"

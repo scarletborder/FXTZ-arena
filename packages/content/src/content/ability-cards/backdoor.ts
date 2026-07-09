@@ -1,8 +1,7 @@
-import { fp } from "@shaisrc/fixed-point";
 import type { AbilityCardDefinition } from "./types";
 
-import type { FighterState, ShieldState } from "../battle-types";
-import { BattleAbilityCard, type BattleCardContext, type BattleHitContext, type BattleInitializeContext } from "./base";
+import { BattleAbilityCard, type BattleCardContext } from "./base";
+import { ensureBackdoorFamiliar } from "./defensive-familiars";
 import { Vanilla } from "../decorators";
 
 export class BackdoorBattleCard extends BattleAbilityCard {
@@ -17,22 +16,8 @@ export class BackdoorBattleCard extends BattleAbilityCard {
     iconAsset: "assets/ability-cards/backdoor/icon.png",
   };
 
-  collectShields(fighter: FighterState): ShieldState[] {
-    const distance = 64;
-    const fpFacing = fp.fromFloat(fighter.facing);
-    const fpCos = fp.cos(fpFacing);
-    const fpSin = fp.sin(fpFacing);
-    const fpDist = fp.fromInt(distance);
-    return [
-      {
-        owner: fighter.key,
-        x: fp.toFloat(fp.sub(fp.fromFloat(fighter.x), fp.mul(fpCos, fpDist))),
-        y: fp.toFloat(fp.sub(fp.fromFloat(fighter.y), fp.mul(fpSin, fpDist))),
-        width: 7,
-        height: 34,
-        angle: fighter.facing,
-      },
-    ];
+  onPostUpdate(ctx: BattleCardContext): void {
+    ensureBackdoorFamiliar(ctx, ctx.self);
   }
 }
 
