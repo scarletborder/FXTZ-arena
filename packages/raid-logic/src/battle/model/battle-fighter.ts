@@ -134,6 +134,10 @@ export class BattleFighter {
     return this.battleCards.map((card) => card.definition);
   }
 
+  battleCardInstances(): readonly BattleAbilityCard[] {
+    return this.battleCards;
+  }
+
   acquireAbilityCard(card: AbilityCardDefinition): void {
     if (this.state.abilityCards.some((existing) => existing.id === card.id)) {
       return;
@@ -142,14 +146,14 @@ export class BattleFighter {
     const existingCards =
       card.kind === "active"
         ? this.state.abilityCards.filter(
-            (existing) => existing.kind !== "active",
-          )
+          (existing) => existing.kind !== "active",
+        )
         : this.state.abilityCards;
     const existingBattleCards =
       card.kind === "active"
         ? this.battleCards.filter(
-            (existing) => existing.definition.kind !== "active",
-          )
+          (existing) => existing.definition.kind !== "active",
+        )
         : this.battleCards;
     this.battleCards = [...existingBattleCards, battleCard];
     this.state.abilityCards = [...existingCards, card];

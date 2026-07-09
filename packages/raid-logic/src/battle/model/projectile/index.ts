@@ -72,7 +72,7 @@ export class ProjectileSystem {
     private readonly sizeManager = new BattleSizeManager({
       battleMode: "versus",
     }),
-  ) {}
+  ) { }
 
   reset(): void {
     this.nextProjectileId = 1;
@@ -175,7 +175,7 @@ export class ProjectileSystem {
         ProjectileHitTarget,
         FighterKey
       >,
-    ) => void;
+    ) => boolean;
     readonly clearProjectiles?: (projectiles: ProjectileState[]) => void;
     readonly computeRapierHits?: (
       projectiles: readonly ProjectileState[],
@@ -310,18 +310,27 @@ export class ProjectileSystem {
           }
         }
         if (!victim && params.onGraze) {
+          let clearedByGraze = false;
           for (const grazer of physicsGrazeTargets(
             projectile,
             hitTargets,
             rapierGrazeMap,
             params.rules,
           )) {
-            params.onGraze({
-              projectile,
-              owner: projectile.owner,
-              victim: grazer,
-              damage: 0,
-            });
+            if (
+              params.onGraze({
+                projectile,
+                owner: projectile.owner,
+                victim: grazer,
+                damage: 0,
+              })
+            ) {
+              clearedByGraze = true;
+              break;
+            }
+          }
+          if (clearedByGraze) {
+            continue;
           }
         }
       }
@@ -408,7 +417,7 @@ function syncOwnerBoundProjectile(
     if (aim) {
       const neutralTarget =
         params.rules?.mode === "collaborate" &&
-        (projectile.owner === "Player1" || projectile.owner === "Player2")
+          (projectile.owner === "Player1" || projectile.owner === "Player2")
           ? nearestNeutralTargetToPoint(params.hitTargets ?? [], aim.x, aim.y)
           : undefined;
       projectile.retargetX = neutralTarget?.x ?? aim.x;

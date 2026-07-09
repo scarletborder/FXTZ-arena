@@ -383,6 +383,10 @@
         "name": "Graze Lover",
         "description": "Increases the graze detection range"
       },
+      "danmaku_ghost": {
+        "name": "Danmaku Ghost",
+        "description": "When you graze a clearable enemy bullet, it has a 20% chance to be cleared immediately."
+      },
       "multi_shot": {
         "name": "Yin-Yang Orb",
         "description": "Adds extra slow homing shots to normal attacks."

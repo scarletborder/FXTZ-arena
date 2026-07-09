@@ -18,6 +18,7 @@ import type { BattleRules } from "./battle-rules";
 import type { NeutralMobManager } from "./manager/neutral-mob-manager";
 import { clampPointCount } from "./manager/point-manager";
 import type { ProjectileHitTarget } from "./projectile";
+import { mulberry32 } from "./utils/random";
 
 export function resolveProjectileHit(params: {
   readonly ctx: ProjectileCollisionContext<
@@ -94,28 +95,76 @@ export function resolveProjectileGraze(params: {
   readonly rules: BattleRules;
   readonly player: FighterState;
   readonly target: FighterState;
+  readonly playerFighter: BattleFighter;
+  readonly targetFighter: BattleFighter;
+  readonly seed: number;
   addCollaborateScore(key: "Player1" | "Player2", value: number): void;
-}): void {
+}): boolean {
   const { owner, victim, projectile } = params.ctx;
   if (victim.key !== "Player1" && victim.key !== "Player2") {
-    return;
+    return false;
   }
   if (!params.rules.canProjectileGrazeTarget(owner, victim.key)) {
-    return;
+    return false;
   }
   const fighter = victim.key === "Player1" ? params.player : params.target;
+  const victimFighter =
+    victim.key === "Player1" ? params.playerFighter : params.targetFighter;
   if (
     fighter.deadUntil > 0 ||
     fighter.grazedProjectileIds.includes(projectile.id)
   ) {
-    return;
+    return false;
   }
   fighter.grazedProjectileIds = [...fighter.grazedProjectileIds, projectile.id];
   fighter.pointCount = clampPointCount(
     fighter.pointCount +
-      (owner === "Neutral"
-        ? NEUTRAL_PROJECTILE_GRAZE_POINT_REWARD
-        : ENEMY_PROJECTILE_GRAZE_POINT_REWARD),
+    (owner === "Neutral"
+      ? NEUTRAL_PROJECTILE_GRAZE_POINT_REWARD
+      : ENEMY_PROJECTILE_GRAZE_POINT_REWARD),
   );
   params.addCollaborateScore(victim.key, COLLABORATE_GRAZE_SCORE);
+  return victimFighter.battleCardInstances().some((card) =>
+    card.onGraze({
+      projectile,
+      owner,
+      victim: fighter,
+      damage: 0,
+      random: makeGrazeRandom(params.seed, projectile.id, owner, victim.key),
+    }),
+  );
+}
+
+function makeGrazeRandom(
+  seed: number,
+  projectileId: number,
+  owner: FighterKey,
+  victimKey: FighterKey,
+): () => number {
+  const mixedSeed = mixGrazeSeed(seed, projectileId, owner, victimKey);
+  return mulberry32(mixedSeed);
+}
+
+function mixGrazeSeed(
+  seed: number,
+  projectileId: number,
+  owner: FighterKey,
+  victimKey: FighterKey,
+): number {
+  let value = seed >>> 0;
+  value = Math.imul(value ^ projectileId, 0x9e3779b1) >>> 0;
+  value = Math.imul(value ^ fighterKeyToInt(owner), 0x85ebca6b) >>> 0;
+  value = Math.imul(value ^ fighterKeyToInt(victimKey), 0xc2b2ae35) >>> 0;
+  return value >>> 0;
+}
+
+function fighterKeyToInt(key: FighterKey): number {
+  switch (key) {
+    case "Player1":
+      return 1;
+    case "Player2":
+      return 2;
+    default:
+      return 3;
+  }
 }

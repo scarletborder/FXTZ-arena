@@ -387,6 +387,10 @@
         "name": "擦弹爱好者",
         "description": "擦弹判定范围提升"
       },
+      "danmaku_ghost": {
+        "name": "弹幕幽灵",
+        "description": "擦到可消除的敌方弹幕时，有 20% 概率直接将其消除。"
+      },
       "multi_shot": {
         "name": "阴阳玉",
         "description": "为普通攻击额外追加低速诱导弹。"

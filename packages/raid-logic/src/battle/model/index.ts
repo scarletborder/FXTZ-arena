@@ -105,10 +105,10 @@ export class BattleModel {
     FighterKey,
     { readonly x: number; readonly y: number }
   > = {
-    Player1: { x: TARGET_SPAWN.x, y: TARGET_SPAWN.y },
-    Player2: { x: PLAYER_SPAWN.x, y: PLAYER_SPAWN.y },
-    Neutral: { x: 0, y: 0 },
-  };
+      Player1: { x: TARGET_SPAWN.x, y: TARGET_SPAWN.y },
+      Player2: { x: PLAYER_SPAWN.x, y: PLAYER_SPAWN.y },
+      Neutral: { x: 0, y: 0 },
+    };
   private readonly loadouts: BattleLoadouts;
   private readonly rules: BattleRules;
   readonly neutralMobManager: NeutralMobManager;
@@ -394,10 +394,10 @@ export class BattleModel {
   private applyDebugCooperateJump(
     jump:
       | {
-          readonly nodeIndex: number;
-          readonly currentWaveId: string;
-          readonly transitionTarget?: "elite" | "boss";
-        }
+        readonly nodeIndex: number;
+        readonly currentWaveId: string;
+        readonly transitionTarget?: "elite" | "boss";
+      }
       | undefined,
   ): void {
     if (!jump || this.battleMode !== "collaborate" || !this.collaborateExtra) {
@@ -517,18 +517,18 @@ export class BattleModel {
       rules: this.rules,
       computeRapierHits: physics
         ? (projectiles) =>
-            physics.computeCollisions(
-              projectiles,
-              this.player,
-              this.target,
-              this.currentShields(),
-              this.neutralMobManager.states(),
-              this.points,
-              {
-                Player1: this.playerFighter.getGrazeRadiusMultiplier(),
-                Player2: this.targetFighter.getGrazeRadiusMultiplier(),
-              },
-            )
+          physics.computeCollisions(
+            projectiles,
+            this.player,
+            this.target,
+            this.currentShields(),
+            this.neutralMobManager.states(),
+            this.points,
+            {
+              Player1: this.playerFighter.getGrazeRadiusMultiplier(),
+              Player2: this.targetFighter.getGrazeRadiusMultiplier(),
+            },
+          )
         : undefined,
       onHit: (ctx) => this.onProjectileHit(ctx),
       onGraze: (ctx) => this.onProjectileGraze(ctx),
@@ -629,9 +629,9 @@ export class BattleModel {
     this.collaborateExtra =
       this.battleMode === "collaborate"
         ? cloneCollaborateExtra(
-            snapshot.collaborateExtra ??
-              createDefaultCollaborateExtraState(snapshot.frame, 1),
-          )
+          snapshot.collaborateExtra ??
+          createDefaultCollaborateExtraState(snapshot.frame, 1),
+        )
         : undefined;
     restoreFighterSnapshot(this.player, snapshot.player, this.frame);
     restoreFighterSnapshot(this.target, snapshot.target, this.frame);
@@ -933,12 +933,15 @@ export class BattleModel {
       ProjectileHitTarget,
       FighterKey
     >,
-  ): void {
-    resolveProjectileGraze({
+  ): boolean {
+    return resolveProjectileGraze({
       ctx,
       rules: this.rules,
       player: this.player,
       target: this.target,
+      playerFighter: this.playerFighter,
+      targetFighter: this.targetFighter,
+      seed: this.seed,
       addCollaborateScore: (key, value) => this.addCollaborateScore(key, value),
     });
   }

@@ -795,9 +795,9 @@ describe("BattleModel hit recovery", () => {
       ...snapshot,
       collaborateExtra: snapshot.collaborateExtra
         ? {
-            ...snapshot.collaborateExtra,
-            bossDefeated: true,
-          }
+          ...snapshot.collaborateExtra,
+          bossDefeated: true,
+        }
         : undefined,
     });
 
@@ -1231,6 +1231,35 @@ describe("BattleModel ability cards", () => {
     expect(model.player.pointCount).toBe(2);
     expect(model.player.grazedProjectileIds).toEqual([1]);
     expect(model.player.lives).toBe(3);
+  });
+
+  it("can clear clearable enemy bullets on graze with danmaku ghost", async () => {
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.1);
+    const model = await createBattleModel(
+      "reimu",
+      "marisa",
+      ["danmaku_ghost"] as any,
+    );
+    model.projectiles.push(
+      testProjectile({
+        id: 1,
+        owner: "Player2",
+        x: model.player.x + 9.5,
+        y: model.player.y,
+        width: 2,
+        previousWidth: 2,
+        height: 2,
+        pausedUntil: 999,
+        couldClear: true,
+      }),
+    );
+
+    model.step(input());
+
+    expect(model.player.pointCount).toBe(2);
+    expect(model.player.grazedProjectileIds).toEqual([1]);
+    expect(model.projectiles).toHaveLength(0);
+    randomSpy.mockRestore();
   });
 
   it("keeps projectiles alive while they are inside the expanded world padding", async () => {
@@ -1865,12 +1894,12 @@ describe("BattleModel collaborate money and scoring", () => {
       ...snapshot,
       collaborateExtra: snapshot.collaborateExtra
         ? {
-            ...snapshot.collaborateExtra,
-            moneyByPlayerId: {
-              ...snapshot.collaborateExtra.moneyByPlayerId,
-              Player1: 999,
-            },
-          }
+          ...snapshot.collaborateExtra,
+          moneyByPlayerId: {
+            ...snapshot.collaborateExtra.moneyByPlayerId,
+            Player1: 999,
+          },
+        }
         : undefined,
     });
     model.reset();

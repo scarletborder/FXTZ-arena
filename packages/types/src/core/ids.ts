@@ -22,6 +22,7 @@ export type AbilityCardId =
   | "invisibility_cloth"
   | "extension"
   | "graze_lover"
+  | "danmaku_ghost"
   | "sakura_charm"
   | "whitecat"
   | "tanuki_helper"

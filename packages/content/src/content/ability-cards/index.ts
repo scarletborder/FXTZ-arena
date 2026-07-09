@@ -5,6 +5,7 @@ export * from "./card-library";
 export * from "./base";
 export * from "./defensive-familiars";
 export * from "./doll";
+export * from "./danmaku-ghost";
 export * from "./whitecat";
 export type {
   BattleCardContext,
@@ -24,6 +25,7 @@ import "./spirit-strike-card";
 import "./invisibility-cloth";
 import "./extension";
 import "./graze-lover";
+import "./danmaku-ghost";
 import "./sakura-charm";
 import "./whitecat";
 import "./tanuki-helper";

@@ -37,9 +37,9 @@ export interface BattleCardContext
     BattleBulletSpawnParams,
     BattleLaserSpawnParams,
     BattleCardMob
-  > {}
+  > { }
 
-export interface HitResolution extends HitResolutionContext {}
+export interface HitResolution extends HitResolutionContext { }
 
 export interface BattleHitContext
   extends StandardBattleHitContext<
@@ -51,11 +51,19 @@ export interface BattleHitContext
     BattleLaserSpawnParams,
     AbilityCardDefinition,
     FighterKey
-  > {}
+  > { }
 
 export interface BattleInitializeContext {
   readonly self: FighterState;
   readonly resolution: HitResolution;
+}
+
+export interface BattleGrazeContext {
+  readonly projectile: ProjectileState;
+  readonly owner: FighterKey;
+  readonly victim: FighterState;
+  readonly damage: number;
+  readonly random: () => number;
 }
 
 export interface StoryModeCardOverride {
@@ -93,11 +101,14 @@ export abstract class BattleAbilityCard {
     };
   }
 
-  onInitialize(_ctx: BattleInitializeContext): void {}
-  onHit(_ctx: BattleHitContext): void {}
-  onAfterFire(_ctx: BattleCardContext): void {}
-  onPostUpdate(_ctx: BattleCardContext): void {}
-  onUse(_ctx: BattleCardContext): void {}
+  onInitialize(_ctx: BattleInitializeContext): void { }
+  onHit(_ctx: BattleHitContext): void { }
+  onGraze(_ctx: BattleGrazeContext): boolean {
+    return false;
+  }
+  onAfterFire(_ctx: BattleCardContext): void { }
+  onPostUpdate(_ctx: BattleCardContext): void { }
+  onUse(_ctx: BattleCardContext): void { }
   getPointCollectRadiusBonus(_fighter: FighterState): number {
     return 0;
   }
