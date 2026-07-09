@@ -1025,8 +1025,8 @@ describe("BattleModel ability cards", () => {
     expect(familiar).toMatchObject({
       key: "Player1",
       textureKey: "card-backdoor-familiar",
-      hitWidth: 7,
-      hitHeight: 34,
+      hitWidth: 18,
+      hitHeight: 18,
     });
     expect(familiar?.x).toBeLessThan(model.player.x);
 

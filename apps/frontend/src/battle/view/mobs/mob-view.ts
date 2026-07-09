@@ -52,8 +52,8 @@ export class MobView {
         mob,
         x,
         y,
-        rendered?.sprite.displayWidth ?? fallbackWidth,
-        rendered?.sprite.displayHeight ?? fallbackHeight,
+        rendered?.displayWidth ?? fallbackWidth,
+        rendered?.displayHeight ?? fallbackHeight,
         rollbackBlend,
       );
       this.damageTags.render(mob, x, y, rollbackBlend);

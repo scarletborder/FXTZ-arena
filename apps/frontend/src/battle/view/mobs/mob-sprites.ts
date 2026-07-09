@@ -2,6 +2,15 @@ import Phaser from "phaser";
 
 import type { MobState } from "@repo/types";
 import { DEFAULT_FAMILIAR_TEXTURE_KEY } from "@repo/content";
+import {
+  backdoorFamiliarDisplaySize,
+  createBackdoorFamiliarVisual,
+  createUfoHelperFamiliarVisual,
+  renderBackdoorFamiliarVisual,
+  renderUfoHelperFamiliarVisual,
+  type BackdoorFamiliarVisual,
+  type UfoHelperFamiliarVisual,
+} from "../../sfx/mob";
 
 import { Depth } from "../../../utils/depth";
 import { smoothValue } from "../smooth";
@@ -19,11 +28,17 @@ import type {
 } from "./types";
 
 export interface RenderedMobSprite {
-  readonly sprite: Phaser.GameObjects.Sprite;
+  readonly node: Phaser.GameObjects.Sprite | Phaser.GameObjects.Container;
+  readonly displayWidth: number;
+  readonly displayHeight: number;
 }
 
 export class MobSpriteView {
   private readonly sprites = new Map<number, Phaser.GameObjects.Sprite>();
+  private readonly defensiveVisuals = new Map<
+    number,
+    BackdoorFamiliarVisual | UfoHelperFamiliarVisual
+  >();
   private readonly animationStates = new Map<number, MobAnimationState>();
   private readonly enemyConfigs: ReadonlyMap<string, EnemyVisualConfig>;
 
@@ -73,13 +88,24 @@ export class MobSpriteView {
 
   removeInactive(
     activeIds: ReadonlySet<number>,
-    onRemoved: (sprite: Phaser.GameObjects.Sprite, id: number) => void,
+    onRemoved: (
+      node: Phaser.GameObjects.Sprite | Phaser.GameObjects.Container,
+      id: number,
+    ) => void,
   ): void {
     for (const [id, sprite] of this.sprites) {
       if (!activeIds.has(id)) {
         onRemoved(sprite, id);
         sprite.destroy();
         this.sprites.delete(id);
+        this.animationStates.delete(id);
+      }
+    }
+    for (const [id, visual] of this.defensiveVisuals) {
+      if (!activeIds.has(id)) {
+        onRemoved(visual.root, id);
+        visual.root.destroy();
+        this.defensiveVisuals.delete(id);
         this.animationStates.delete(id);
       }
     }
@@ -127,7 +153,11 @@ export class MobSpriteView {
     sprite.setFlipX(motion.direction < 0);
     sprite.setVisible(true);
     this.playMobAnimation(mob.id, sprite, config, motion);
-    return { sprite };
+    return {
+      node: sprite,
+      displayWidth: sprite.displayWidth,
+      displayHeight: sprite.displayHeight,
+    };
   }
 
   private renderCharacterMobSprite(
@@ -161,7 +191,11 @@ export class MobSpriteView {
     sprite.setFlipX(motion.flipX);
     sprite.setVisible(true);
     this.playCharacterMobFrame(mob.id, sprite, textureKey, motion);
-    return { sprite };
+    return {
+      node: sprite,
+      displayWidth: sprite.displayWidth,
+      displayHeight: sprite.displayHeight,
+    };
   }
 
   private renderRanFamiliarSprite(
@@ -216,7 +250,11 @@ export class MobSpriteView {
       characterFrame: Number(sprite.frame.name) || 0,
       direction: sprite.flipX ? 1 : -1,
     });
-    return { sprite };
+    return {
+      node: sprite,
+      displayWidth: sprite.displayWidth,
+      displayHeight: sprite.displayHeight,
+    };
   }
 
   private renderDefaultFamiliarSprite(
@@ -265,7 +303,11 @@ export class MobSpriteView {
       characterFrame: 0,
       direction: 1,
     });
-    return { sprite };
+    return {
+      node: sprite,
+      displayWidth: sprite.displayWidth,
+      displayHeight: sprite.displayHeight,
+    };
   }
 
   private renderDefensiveFamiliarSprite(
@@ -275,35 +317,46 @@ export class MobSpriteView {
     rollbackBlend: number,
   ): RenderedMobSprite | undefined {
     const textureKey = mob.textureKey;
-    if (!textureKey || !this.scene.textures.exists(textureKey)) {
+    if (!textureKey) {
       return undefined;
     }
 
+    const angle = ranAngle(mob);
     const width = mob.hitWidth ?? mob.hitRadius * 2;
     const height = mob.hitHeight ?? mob.hitRadius * 2;
-    const angle = ranAngle(mob);
+    let displayWidth = width;
+    let displayHeight = height;
+    const existing = this.defensiveVisuals.get(mob.id);
+    const currentNode = existing?.root;
+    const smoothX = smoothValue(currentNode?.x ?? x, x, rollbackBlend);
+    const smoothY = smoothValue(currentNode?.y ?? y, y, rollbackBlend);
+    const alpha = smoothValue(currentNode?.alpha ?? 1, 1, rollbackBlend);
 
-    let sprite = this.sprites.get(mob.id);
-    if (!sprite) {
-      sprite = this.scene.add
-        .sprite(x, y, textureKey)
-        .setOrigin(0.5)
-        .setDepth(Depth.Character)
-        .setDisplaySize(width * 1.8, height * 1.8);
-      this.sprites.set(mob.id, sprite);
-    }
-    if (sprite.texture.key !== textureKey) {
-      sprite.setTexture(textureKey);
+    let visual = existing;
+    if (textureKey === "card-backdoor-familiar") {
+      const displaySize = backdoorFamiliarDisplaySize(mob);
+      displayWidth = displaySize.width;
+      displayHeight = displaySize.height;
+      if (!visual || !("core" in visual)) {
+        visual?.root.destroy();
+        visual = createBackdoorFamiliarVisual(this.scene);
+        this.defensiveVisuals.set(mob.id, visual);
+      }
+      renderBackdoorFamiliarVisual(visual, mob, smoothX, smoothY, angle, alpha);
+    } else if (textureKey === "card-ufo-helper-familiar") {
+      const size = Math.max(24, Math.max(width, height));
+      displayWidth = size * 1.8;
+      displayHeight = size * 1.15;
+      if (!visual || !("windows" in visual)) {
+        visual?.root.destroy();
+        visual = createUfoHelperFamiliarVisual(this.scene);
+        this.defensiveVisuals.set(mob.id, visual);
+      }
+      renderUfoHelperFamiliarVisual(visual, mob, smoothX, smoothY, alpha);
+    } else {
+      return undefined;
     }
 
-    sprite.setPosition(
-      smoothValue(sprite.x, x, rollbackBlend),
-      smoothValue(sprite.y, y, rollbackBlend),
-    );
-    sprite.setAlpha(smoothValue(sprite.alpha, 1, rollbackBlend));
-    sprite.setDisplaySize(width * 1.8, height * 1.8);
-    sprite.setRotation(angle);
-    sprite.setVisible(true);
     this.animationStates.set(mob.id, {
       textureKey,
       visualKind: "character",
@@ -311,7 +364,11 @@ export class MobSpriteView {
       characterFrame: 0,
       direction: 1,
     });
-    return { sprite };
+    return {
+      node: visual.root,
+      displayWidth,
+      displayHeight,
+    };
   }
 
   private playCharacterMobFrame(

@@ -23,6 +23,7 @@ const UFO_HELPER_FAMILIAR_ID = {
   Player2: -1112,
 } as const;
 const INFINITE_FAMILIAR_HEALTH = Number.MAX_SAFE_INTEGER;
+const BACKDOOR_FAMILIAR_HIT_SIZE = 18;
 const UFO_HELPER_ORBIT_RADIUS = 56;
 const UFO_HELPER_ROTATION_SPEED = -(Math.PI * 2) / 180;
 
@@ -94,9 +95,9 @@ export class BackdoorFamiliar extends DefensiveFamiliar<DefensiveFamiliarState> 
       textureKey: BACKDOOR_FAMILIAR_TEXTURE_KEY,
       x: fighter.x,
       y: fighter.y,
-      hitRadius: 17,
-      hitWidth: 7,
-      hitHeight: 34,
+      hitRadius: BACKDOOR_FAMILIAR_HIT_SIZE / 2,
+      hitWidth: BACKDOOR_FAMILIAR_HIT_SIZE,
+      hitHeight: BACKDOOR_FAMILIAR_HIT_SIZE,
       angle: fighter.facing,
     });
     syncBackdoorFamiliar(state, fighter);
