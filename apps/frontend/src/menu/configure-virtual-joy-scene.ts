@@ -9,7 +9,7 @@ import {
 } from "./ui";
 import type { SceneKey } from "./shared";
 import { ARENA_HEIGHT_PX, ARENA_WIDTH_PX } from "@repo/constants";
-import { createBattleLayout, type BattleLayout } from "../battle/manager/layout-manager";
+import { createBattleLayout, type BattleLayout } from "../battle/view/layout";
 import {
   resolveVirtualJoyAlpha,
   resolveVirtualJoyPosition,

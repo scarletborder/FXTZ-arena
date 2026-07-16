@@ -12,7 +12,7 @@ import type { AbilityCardDefinition, FighterState } from "@repo/content";
 import { abilityCardIconTextureKey } from "../../../ability-card-assets";
 import { Depth } from "../../../utils/depth";
 import { settingsRepository } from "../../../store/settings";
-import type { CanonicalFighterKey } from "../../../network/combat/types";
+import type { BattleViewFighterKey } from "../types";
 import { cardDescription, cardName } from "../../../menu/shared";
 
 interface ShopPanelCallbacks {
@@ -85,8 +85,8 @@ export class CollaborateShopPanel {
 
   update(
     extra: CollaborateExtraState | undefined,
-    localKey: CanonicalFighterKey,
-    fighters: Readonly<Record<CanonicalFighterKey, FighterState>>,
+    localKey: BattleViewFighterKey,
+    fighters: Readonly<Record<BattleViewFighterKey, FighterState>>,
   ): void {
     const previewOpening =
       extra?.state === "transition_sync" &&
@@ -337,7 +337,7 @@ export class CollaborateShopPanel {
 
   private renderGoods(
     extra: CollaborateExtraState,
-    localKey: CanonicalFighterKey,
+    localKey: BattleViewFighterKey,
     disabled: boolean,
   ): void {
     const baseCount = this.orderedGoods.filter((item) => BASE_ITEM_KINDS.has(item.kind)).length;
@@ -814,7 +814,7 @@ function getKeyDisplayName(value: string | number): string {
 
 function formatMoneyDisplay(params: {
   readonly extra: CollaborateExtraState;
-  readonly localKey: CanonicalFighterKey;
+  readonly localKey: BattleViewFighterKey;
   readonly hoverItem: CollaborateShopItemState | undefined;
 }): string {
   const p1 = params.extra.moneyByPlayerId.Player1;

@@ -1,21 +1,21 @@
 import Phaser from "phaser";
-import { BattleEvents, GAME_HEIGHT, GAME_WIDTH } from "@repo/constants";
+import { BattleEvents, GAME_HEIGHT, GAME_WIDTH, type ArenaBounds } from "@repo/constants";
 import type { BattleSceneData } from "./battle/loadout";
-import { BattleLayout, createBattleLayout, sameBattleLayout } from "./battle/manager/layout-manager";
+import { BattleLayout, createBattleLayout, sameBattleLayout } from "./battle/view/layout";
 import { BattleView } from "./battle/view";
+import { createBattleViewModel } from "./battle/view/model";
 import { installBattleAudioBridge, installBattleBgmBridge, type BattleAudioBridge, type BattleBgmBridge } from "./sound";
 import { BattleAudioDirector } from "./battle/sfx/audio";
 import BgmCmd from "./commands/BgmCmd";
 import ConsoleCmd, { DebugHashRow } from "./commands/ConsoleCmd";
 
 import { resolveArenaBounds } from "./battle/utils/battle-helpers";
-import { BattleReplayManager } from "./battle/manager/replay-manager";
+import { BattleReplayManager } from "./battle/adapters/phaser/replay-controller";
 import { BattleResultHandler } from "./battle/result-handler";
 import { BattleInputController } from "./battle/input-controller";
-import { BattleDebugController } from "./battle/manager/debug-manager";
-import { BattleNetworkSession } from "./battle/session/network-session";
-import { BattleRollbackFacade } from "./battle/manager/rollback-manager";
-import { BattleRuntimeAdapter } from "./battle/adapters/phaser/runtime-adapter";
+import { BattleDebugController, type DebugPointSize } from "./battle/adapters/phaser/debug-controller";
+import { BattleSession } from "./battle/session/battle-session";
+import { PhaserBattleRollbackAdapter } from "./battle/adapters/phaser/rollback-adapter";
 import { PhaserBattleNetworkHost } from "./battle/adapters/phaser/network-host";
 import { createLocalCombatConnection } from "./network/combat/local-connection";
 import { connectionManager } from "./menu/shared";
@@ -29,12 +29,11 @@ export class BattleScene extends Phaser.Scene {
   private battleAudioBridge: BattleAudioBridge | undefined;
   private battleBgmBridge: BattleBgmBridge | undefined;
 
-  private networkMgr!: BattleNetworkSession;
+  private battleSession!: BattleSession;
   private networkHost!: PhaserBattleNetworkHost;
-  private rollbackFacade!: BattleRollbackFacade;
+  private rollbackFacade!: PhaserBattleRollbackAdapter;
   private replayMgr!: BattleReplayManager;
   private resultHandler!: BattleResultHandler;
-  private runtimeAdapter!: BattleRuntimeAdapter;
   private inputCtrl!: BattleInputController;
   private debugCtrl!: BattleDebugController;
 
@@ -43,7 +42,7 @@ export class BattleScene extends Phaser.Scene {
   private shopCtrl!: CollaborateShopController;
 
   private battleLayout: BattleLayout | undefined;
-  private arenaBounds: any;
+  private arenaBounds!: ArenaBounds;
   private applyingBattleLayout = false;
   private pendingLayoutRefresh: Phaser.Time.TimerEvent | undefined;
   private rollbackVisualFrames = 0;
@@ -83,83 +82,72 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    // 4. 【核心修复 1】安全链守护外观层依赖
-    this.rollbackFacade = new BattleRollbackFacade(
+    this.rollbackFacade = new PhaserBattleRollbackAdapter(
       this,
       data,
-      () => this.runtimeAdapter?.getRuntime()?.frame ?? 0,
-      () => this.networkMgr?.getConfirmedFrame(), //  当 networkMgr 是 undefined 时，安全返回 undefined，不会报错
-      () => this.debugCtrl?.getLiveHashEnabled() ?? false, //  安全返回 false，不会报错
+      () => this.battleSession?.getRollbackHistory() ?? null,
+      () => this.battleSession?.getRuntime().frame ?? 0,
+      () => this.battleSession?.getConfirmedFrame(),
+      () => this.debugCtrl?.getLiveHashEnabled() ?? false,
       () => this.audioDirector
     );
 
-    // 5. 【核心修复 2】安全链守护物理适配器依赖
-    this.runtimeAdapter = new BattleRuntimeAdapter(
-      this,
-      data,
-      () => this.inputCtrl.getKeys(),
-      () => this.debugCtrl?.isInputLocked() ?? false,
-      (fighter, prevShots) =>
-        this.inputCtrl.generateInput(
-          fighter,
-          prevShots,
-          () => this.runtimeAdapter.getCurrentOutput()?.state?.collaborateExtra,
-          this.networkMgr?.localFighterKey() ?? "Player1",
-          this.shopCtrl?.getPendingPurchaseItemId(),
-          this.shopCtrl?.getPendingActiveCardSwitchId(),
-          () => this.shopCtrl?.clearPending()
-        ),
-      (fighter, prevShots) => this.inputCtrl.generateP2Input(fighter, prevShots),
-      () => this.networkMgr?.isSyncRunning() ?? false,
-      (input) => this.networkMgr?.step(input),
-      (aimConsumed?: boolean) => {
-        const lastOutput = this.rollbackFacade.recordFrame(this.runtimeAdapter.getRuntime().outputQueue, aimConsumed);
-        if (lastOutput) {
-          this.runtimeAdapter.setCurrentOutput(lastOutput);
-        }
-      }
-    );
-
-    // 初始化快照记录：此刻 rollbackFacade 调用时，networkMgr 仍为 undefined，
-    // 但因为可选链的保护，它会优雅地回退到本地默认物理帧，成功渡过初始化阶段
-    const lastOutput = this.rollbackFacade.recordFrame(this.runtimeAdapter.getRuntime().outputQueue);
-    if (lastOutput) {
-      this.runtimeAdapter.setCurrentOutput(lastOutput);
-    }
-
-    // 6. 初始化联机管理器（在 recordFrame 后正常初始化）
     const networkEnabled =
       data.mode === "online" ||
       (data.mode === "local" && !data.localSingleDevice);
     this.networkHost = new PhaserBattleNetworkHost(this, networkEnabled);
-    this.networkMgr = new BattleNetworkSession({
+    this.battleSession = new BattleSession({
       sceneData: data,
-      runtime: this.runtimeAdapter.getRuntime(),
       connection:
         data.mode === "local"
           ? createLocalCombatConnection()
           : connectionManager,
-      host: this.networkHost,
-      recordStepInputs: (record) => this.rollbackFacade.recordStepInputs(record),
-      recordConfirmedInputs: (record) => this.rollbackFacade.recordConfirmedInputs(record),
-      recordFrame: (aimConsumed) => {
-        const lastOutput = this.rollbackFacade.recordFrame(this.runtimeAdapter.getRuntime().outputQueue, aimConsumed);
-        if (lastOutput) {
-          this.runtimeAdapter.setCurrentOutput(lastOutput);
-        }
+      networkHost: this.networkHost,
+      output: this.rollbackFacade,
+      input: {
+        isLocked: () => this.debugCtrl?.isInputLocked() ?? false,
+        create: (fighter, previousShotsFired) =>
+          this.inputCtrl.generateInput(
+            fighter,
+            previousShotsFired,
+            () =>
+              this.battleSession.getCurrentOutput()?.state?.collaborateExtra,
+            this.battleSession?.localFighterKey() ?? "Player1",
+            this.shopCtrl?.getPendingPurchaseItemId(),
+            this.shopCtrl?.getPendingActiveCardSwitchId(),
+            () => this.shopCtrl?.clearPending()
+          ),
+        createTarget: (fighter, previousShotsFired) => {
+          const input = this.inputCtrl.generateP2Input(
+            fighter,
+            previousShotsFired
+          );
+          if (!input) {
+            throw new Error("Second-player input is unavailable");
+          }
+          return input;
+        },
       },
-      getRollbackRecord: (frame) => this.rollbackFacade.getRollbackRecord(frame),
-      pruneAfter: (frame) => this.rollbackFacade.pruneAfter(frame),
-      pruneBefore: (frame) => this.rollbackFacade.pruneBefore(frame),
-      onRollback: () => {
-        this.rollbackVisualFrames = 2;
+      host: {
+        isActive: () => this.scene.isActive(),
+        recordInputFrame: (frame, player, target) =>
+          this.events.emit(BattleEvents.RECORD_FRAME, frame, player, target),
+        shouldFinishBattle: () =>
+          Phaser.Input.Keyboard.JustDown(this.inputCtrl.getKeys().enter),
+        finishBattle: () => this.events.emit(BattleEvents.GO_TO_RESULT),
+        onRollback: () => {
+          this.rollbackVisualFrames = 2;
+        },
       },
     });
+    this.events.on(BattleEvents.RESET_ACCUMULATOR, () =>
+      this.battleSession.resetAccumulator()
+    );
 
     // 执行物理超前赶进逻辑
-    if (this.runtimeAdapter.isLogicReady() && data.battleZeroTimeMs !== undefined) {
+    if (this.battleSession.isLogicReady() && data.battleZeroTimeMs !== undefined) {
       const elapsedMs = performance.now() - data.battleZeroTimeMs;
-      this.runtimeAdapter.fastForward(elapsedMs, this.networkMgr.localFighterKey(), this.inputCtrl.getLastInput());
+      this.battleSession.fastForward(elapsedMs, this.inputCtrl.getLastInput());
     }
 
     // 7. 初始化 UI 视图与模块管理器
@@ -190,9 +178,9 @@ export class BattleScene extends Phaser.Scene {
     this.resultHandler = new BattleResultHandler(
       this,
       data,
-      () => this.runtimeAdapter.getCurrentOutput()?.state,
-      () => this.networkMgr?.localFighterKey() ?? "Player1",
-      () => this.networkMgr?.getLocalPlayerId() ?? null,
+      () => this.battleSession.getCurrentOutput()?.state,
+      () => this.battleSession?.localFighterKey() ?? "Player1",
+      () => this.battleSession?.getLocalPlayerId() ?? null,
       () => this.rollbackFacade.getFinalDebugHashes(),
       () => this.replayMgr.getRecorder()
     );
@@ -200,19 +188,11 @@ export class BattleScene extends Phaser.Scene {
     this.debugCtrl = new BattleDebugController(
       this,
       data,
-      this.runtimeAdapter.getRuntime(),
-      this.rollbackFacade.getRollbackManager(),
+      this.battleSession,
       this.view,
       this.inputCtrl.getMobileControls(),
       this.arenaBounds,
-      (input) => this.inputCtrl.setLastInput(input),
-      (input) => this.runtimeAdapter.stepRuntimeWithInput(input),
-      () => {
-        const lastOutput = this.rollbackFacade.recordFrame(this.runtimeAdapter.getRuntime().outputQueue);
-        if (lastOutput) {
-          this.runtimeAdapter.setCurrentOutput(lastOutput);
-        }
-      }
+      (input) => this.inputCtrl.setLastInput(input)
     );
 
     // 8. 绑定跨控制器的桥接事件
@@ -258,10 +238,10 @@ export class BattleScene extends Phaser.Scene {
     }
 
     // 准备界面更新数据
-    const currentOutput = this.runtimeAdapter.getCurrentOutput();
+    const currentOutput = this.battleSession.getCurrentOutput();
     const collaborateExtra = currentOutput?.state.collaborateExtra;
-    const localFighterKey = this.networkMgr.localFighterKey();
-    const isLocalDead = this.runtimeAdapter.localFighterState(localFighterKey).deadUntil > 0;
+    const localFighterKey = this.battleSession.localFighterKey();
+    const isLocalDead = this.battleSession.localFighterState().deadUntil > 0;
 
     // 1. 更新商店面板逻辑输入
     this.shopCtrl.update(
@@ -276,7 +256,7 @@ export class BattleScene extends Phaser.Scene {
     );
 
     // 2. 更新核心物理步进计算
-    this.runtimeAdapter.update(delta, localFighterKey);
+    this.battleSession.update(delta);
 
     // 3. 更新输入设备光标状态和坐标采样
     this.shopCtrl.updateCursor(collaborateExtra?.shop.open === true);
@@ -285,12 +265,17 @@ export class BattleScene extends Phaser.Scene {
     // 4. 渲染核心战斗视口
     const lastInput = this.inputCtrl.getLastInput();
     this.view.render(
-      currentOutput.state,
-      lastInput,
-      localFighterKey,
-      this.runtimeAdapter.getAccumulator() / 16.666,
-      this.rollbackVisualFrames > 0 ? 0.7 : 1,
-      this.localSingleDevice ? this.inputCtrl.getLastP2Input() : undefined
+      createBattleViewModel({
+        state: currentOutput.state,
+        input: lastInput,
+        localFighterKey,
+        arenaBounds: this.arenaBounds,
+        alpha: this.battleSession.getAccumulator() / 16.666,
+        rollbackBlend: this.rollbackVisualFrames > 0 ? 0.7 : 1,
+        secondaryInput: this.localSingleDevice
+          ? this.inputCtrl.getLastP2Input()
+          : undefined,
+      }),
     );
 
     // 5. 更新 UI
@@ -306,8 +291,8 @@ export class BattleScene extends Phaser.Scene {
 
     // 单机模式下，如果联机同步网络未跑起（Offline），当 GameOver 时延迟向结果处理器发出结算请求
     if (
-      !this.networkMgr.isSyncRunning() &&
-      this.runtimeAdapter.getRuntime().gameOver &&
+      !this.battleSession.isSyncRunning() &&
+      this.battleSession.isGameOver() &&
       !this.resultHandler.isResultScheduled()
     ) {
       this.time.delayedCall(900, () => this.events.emit(BattleEvents.GO_TO_RESULT));
@@ -343,7 +328,7 @@ export class BattleScene extends Phaser.Scene {
     return this.debugCtrl.runPresetScript();
   }
 
-  spawnDebugPoint(size: any): boolean {
+  spawnDebugPoint(size: DebugPointSize): boolean {
     return this.debugCtrl.spawnPoint(size);
   }
 
@@ -368,9 +353,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private renderDebugPhysics(): void {
-    const runtime = this.runtimeAdapter.getRuntime();
-    if (!runtime.physicsReady) return;
-    this.view.renderDebugBodies(runtime.readDebugBodies());
+    const bodies = this.battleSession.readDebugBodies();
+    if (bodies) this.view.renderDebugBodies(bodies);
   }
 
   private scheduleBattleLayoutRefresh(): void {
@@ -407,14 +391,13 @@ export class BattleScene extends Phaser.Scene {
     this.transitionCtrl?.destroy();
     this.shopCtrl?.destroy();
 
-    this.arenaBounds = undefined;
     this.scale.setGameSize(GAME_WIDTH, GAME_HEIGHT);
     this.cameras.main?.setSize(GAME_WIDTH, GAME_HEIGHT);
     this.cameras.main?.setScroll(0, 0);
     this.input?.setDefaultCursor("auto");
 
     ConsoleCmd.uninstall(this);
-    this.networkMgr?.destroy();
+    this.battleSession?.destroy();
     this.networkHost?.destroy();
   }
 }

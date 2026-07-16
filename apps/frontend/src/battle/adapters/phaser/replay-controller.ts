@@ -1,10 +1,10 @@
 import Phaser from "phaser";
-import type { BattleSceneData } from "../loadout";
-import { ReplayBattleOverride } from "../../replay/replay-battle-override";
-import { SpectatorBattleOverride } from "../../replay/spectator/spectator-battle-override";
-import { ReplayRecorder, globalReplayRecorder } from "../../replay/recorder";
-import type { BattleKeyMap } from "../input-controller";
-import type { BattleBgmBridge } from "../../sound";
+import type { BattleSceneData } from "../../loadout";
+import { ReplayBattleOverride } from "../../../replay/replay-battle-override";
+import { SpectatorBattleOverride } from "../../../replay/spectator/spectator-battle-override";
+import { ReplayRecorder, globalReplayRecorder } from "../../../replay/recorder";
+import type { BattleKeyMap } from "../../input-controller";
+import type { BattleBgmBridge } from "../../../sound";
 import { BattleEvents } from "@repo/constants";
 
 export class BattleReplayManager {

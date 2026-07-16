@@ -10,7 +10,6 @@ import {
   type CombatFrameInputRecord,
   type CombatRollbackRecord,
 } from "../../network/combat";
-import type { PeerConnection } from "../../network/p2p";
 
 export interface BattleNetworkHost {
   showStatus(text: string): void;
@@ -39,7 +38,7 @@ export class BattleNetworkSession {
   private readonly sceneData: BattleSceneData;
   private readonly connection: CombatConnection;
   private readonly host: BattleNetworkHost;
-  private readonly p2p: PeerConnection | undefined;
+  private readonly p2p: BattleSceneData["p2p"];
   private combatSync: CombatSyncManager | undefined;
 
   constructor(options: BattleNetworkSessionOptions) {

@@ -2,18 +2,11 @@ import Phaser from "phaser";
 
 import {
   DEFAULT_ARENA_BOUNDS,
-  PLAYER_CORE_RADIUS,
-  YOUMU_BOMB_DASH_DISTANCE,
   normalizeArenaBounds,
   type ArenaBounds,
 } from "@repo/constants";
 import { getCombatMapDefinition } from "@repo/content";
-import type {
-  BattleInputState,
-  BattleOutputState,
-  BodyDebugData,
-  FighterKey,
-} from "@repo/raid-logic";
+import type { BodyDebugData } from "@repo/raid-logic";
 import type { MapId } from "@repo/types";
 import { CrosshairView } from "./crosshair";
 import { CollaborateHud } from "./collaborate-hud";
@@ -32,6 +25,7 @@ import {
 } from "./stage";
 import { createBattleTextures } from "./textures";
 import type { ProjectileAlphaOptions } from "./projectile/display";
+import type { BattleViewModel } from "./model";
 
 export class BattleView {
   private readonly fighters: FighterView;
@@ -83,114 +77,64 @@ export class BattleView {
     this.debug = new BattleDebugView(scene);
   }
 
-  render(
-    state: BattleOutputState,
-    input: BattleInputState,
-    localFighterKey: FighterKey = "Player1",
-    alpha = 1,
-    rollbackBlend = 1,
-    secondaryInput?: BattleInputState,
-  ): void {
-    const localFighter =
-      localFighterKey === "Player1" ? state.player : state.target;
-    this.stage.render(localFighter, state.player, state.target);
+  render(model: BattleViewModel): void {
+    this.stage.render(model.localFighter, model.player, model.target);
     this.fighters.render(
-      state.player,
-      state.target,
-      state.frame,
-      state.gameOver,
-      input.infoHeld,
-      localFighterKey,
-      input.aimX,
-      input.aimY,
-      alpha,
-      rollbackBlend,
+      model.player,
+      model.target,
+      model.frame,
+      model.gameOver,
+      model.infoHeld,
+      model.localFighterKey,
+      model.primaryCrosshair.pointerX,
+      model.primaryCrosshair.pointerY,
+      model.alpha,
+      model.rollbackBlend,
     );
     this.mobs.render(
-      state.neutralMobs,
-      localFighter,
-      state.frame,
+      model.neutralMobs,
+      model.localFighter,
+      model.frame,
       this.arenaBounds,
-      alpha,
-      rollbackBlend,
+      model.alpha,
+      model.rollbackBlend,
     );
-    this.spellCardHud.render(state.neutralMobs);
-    this.collaborateHud.render(state.collaborateExtra, localFighterKey);
+    this.spellCardHud.render(model.neutralMobs);
+    this.collaborateHud.render(model.collaborateExtra, model.localFighterKey);
     this.points.render({
-      points: state.points,
-      player: state.player,
-      target: state.target,
-      alpha,
-      rollbackBlend,
+      points: model.points,
+      player: model.player,
+      target: model.target,
+      alpha: model.alpha,
+      rollbackBlend: model.rollbackBlend,
     });
     this.wingmen.render({
-      player: state.player,
-      target: state.target,
-      frame: state.frame,
-      gameOver: state.gameOver,
-      localFighterKey,
-      alpha,
-      rollbackBlend,
+      player: model.player,
+      target: model.target,
+      frame: model.frame,
+      gameOver: model.gameOver,
+      localFighterKey: model.localFighterKey,
+      alpha: model.alpha,
+      rollbackBlend: model.rollbackBlend,
     });
     this.projectiles.render(
-      state.projectiles,
-      state.frame,
-      { player: state.player, target: state.target },
-      localFighterKey,
+      model.projectiles,
+      model.frame,
+      { player: model.player, target: model.target },
+      model.localFighterKey,
       this.battleMode,
       this.projectileAlphaOptions,
-      alpha,
-      rollbackBlend,
+      model.alpha,
+      model.rollbackBlend,
     );
-    this.effects.render(state.effects, state.shields);
-    if (state.collaborateExtra?.shop.open) {
+    this.effects.render(model.effects, model.shields);
+    if (model.collaborateExtra?.shop.open) {
       this.crosshair.setVisible(false);
       this.secondaryCrosshair.setVisible(false);
     } else {
-      this.crosshair.render({
-        pointerX: input.aimX,
-        pointerY: input.aimY,
-        danger: localFighter.ammo <= 0 || localFighter.reloadRemaining > 0,
-        highlight: canYoumuDashToPointer(
-          localFighter,
-          input.aimX,
-          input.aimY,
-          this.arenaBounds,
-        ),
-        ammoDisplay: localFighter.ammoDisplay,
-        ammoCount: localFighter.ammo,
-        ammoMax: localFighter.ammoCapacity,
-        pointCount: localFighter.pointCount,
-        bombs: localFighter.bombs,
-        lives: localFighter.lives,
-        activeCardUses: localFighter.activeCardUses,
-        activeCardUseLimit: localFighter.activeCard?.useLimit,
-        activeCardCooldownRemaining: localFighter.activeCardCooldownUntil,
-        activeCardCooldownTotal: localFighter.activeCard?.cooldownTicks ?? 0,
-      });
-      if (secondaryInput) {
-        const targetFighter = state.target;
-        this.secondaryCrosshair.render({
-          pointerX: secondaryInput.aimX,
-          pointerY: secondaryInput.aimY,
-          danger: targetFighter.ammo <= 0 || targetFighter.reloadRemaining > 0,
-          highlight: canYoumuDashToPointer(
-            targetFighter,
-            secondaryInput.aimX,
-            secondaryInput.aimY,
-            this.arenaBounds,
-          ),
-          ammoDisplay: targetFighter.ammoDisplay,
-          ammoCount: targetFighter.ammo,
-          ammoMax: targetFighter.ammoCapacity,
-          pointCount: targetFighter.pointCount,
-          bombs: targetFighter.bombs,
-          lives: targetFighter.lives,
-          activeCardUses: targetFighter.activeCardUses,
-          activeCardUseLimit: targetFighter.activeCard?.useLimit,
-          activeCardCooldownRemaining: targetFighter.activeCardCooldownUntil,
-          activeCardCooldownTotal: targetFighter.activeCard?.cooldownTicks ?? 0,
-        });
+      this.crosshair.render(model.primaryCrosshair);
+      if (model.secondaryCrosshair) {
+        this.secondaryCrosshair.render(model.secondaryCrosshair);
       } else {
         this.secondaryCrosshair.setVisible(false);
       }
@@ -213,25 +157,4 @@ export class BattleView {
   destroy(): void {
     this.fighters.destroy();
   }
-}
-
-function canYoumuDashToPointer(
-  fighter: BattleOutputState["player"],
-  pointerX: number,
-  pointerY: number,
-  arenaBounds: ArenaBounds = DEFAULT_ARENA_BOUNDS,
-): boolean {
-  if (fighter.activeCharacter.id !== "youmu") return false;
-  if (
-    pointerX < PLAYER_CORE_RADIUS ||
-    pointerX > arenaBounds.width - PLAYER_CORE_RADIUS ||
-    pointerY < PLAYER_CORE_RADIUS ||
-    pointerY > arenaBounds.height - PLAYER_CORE_RADIUS
-  ) {
-    return false;
-  }
-  return (
-    Math.hypot(pointerX - fighter.x, pointerY - fighter.y) <=
-    YOUMU_BOMB_DASH_DISTANCE
-  );
 }

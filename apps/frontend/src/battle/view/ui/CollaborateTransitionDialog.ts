@@ -4,7 +4,7 @@ import type { CollaborateExtraState } from "@repo/types";
 import { GAME_HEIGHT, GAME_WIDTH } from "@repo/constants";
 
 import { Depth } from "../../../utils/depth";
-import type { CanonicalFighterKey } from "../../../network/combat/types";
+import type { BattleViewFighterKey } from "../types";
 
 export class CollaborateTransitionDialog {
   private container: Phaser.GameObjects.Container | undefined;
@@ -23,7 +23,7 @@ export class CollaborateTransitionDialog {
 
   update(
     extra: CollaborateExtraState | undefined,
-    localKey: CanonicalFighterKey,
+    localKey: BattleViewFighterKey,
   ): void {
     if (
       !extra ||

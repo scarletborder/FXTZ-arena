@@ -1,9 +1,13 @@
 import type { BattleInputState } from "@repo/raid-logic";
 import { BattleEvents, type PointRewardSize } from "@repo/constants";
 import Phaser from "phaser";
-import { DebugHashRow } from "../../commands/ConsoleCmd";
-import { getBattlePointerWorld } from "../input-controller/input";
-import { BattleSceneData } from "../loadout";
+import { DebugHashRow } from "../../../commands/ConsoleCmd";
+import { getBattlePointerWorld } from "../../input-controller/input";
+import { BattleSceneData } from "../../loadout";
+import type { ArenaBounds } from "@repo/constants";
+import type { BattleMobileControls } from "../../input-controller";
+import type { BattleView } from "../../view";
+import type { BattleSession } from "../../session/battle-session";
 
 export type DebugPointSize = "small" | "medium" | "large";
 
@@ -104,14 +108,11 @@ export class BattleDebugController {
   constructor(
     private scene: Phaser.Scene,
     private sceneData: BattleSceneData,
-    private runtime: any,
-    private rollbackManager: any,
-    private view: any,
-    private mobileControls: any,
-    private arenaBounds: any,
-    private setLastInput: (input: any) => void,
-    private stepRuntime: (input: any) => void,
-    private recordDebugFrame: () => void
+    private session: BattleSession,
+    private view: BattleView,
+    private mobileControls: BattleMobileControls | undefined,
+    private arenaBounds: ArenaBounds,
+    private setLastInput: (input: BattleInputState) => void,
   ) {
     if (sceneData.debug) {
       this.setDebugPhysicsEnabled(true);
@@ -119,15 +120,15 @@ export class BattleDebugController {
   }
 
   getFrame(): number {
-    return this.runtime.frame;
+    return this.session.getRuntime().frame;
   }
 
   getRecentHashes(count = 50): DebugHashRow[] {
-    return this.rollbackManager.getRecentDebugHashes(count);
+    return this.session.getRollbackHistory().getRecentDebugHashes(count);
   }
 
   getHash(frame: number): DebugHashRow | null {
-    return this.rollbackManager.getDebugHash(frame);
+    return this.session.getRollbackHistory().getDebugHash(frame);
   }
 
   getLiveHashEnabled(): boolean {
@@ -140,14 +141,15 @@ export class BattleDebugController {
   }
 
   rollbackToFrame(frame: number): boolean {
-    const snapshot = this.rollbackManager.getSnapshot(frame);
+    const history = this.session.getRollbackHistory();
+    const snapshot = history.getSnapshot(frame);
     if (!snapshot) {
       return false;
     }
-    this.runtime.deserialize(snapshot);
+    this.session.getRuntime().deserialize(snapshot);
     this.scene.events.emit(BattleEvents.RESET_ACCUMULATOR);
-    this.rollbackManager.pruneAfter(frame);
-    this.recordDebugFrame();
+    history.pruneAfter(frame);
+    this.session.recordOutputFrame();
     return true;
   }
 
@@ -170,8 +172,8 @@ export class BattleDebugController {
           pointerY: input.aimY,
         };
         this.setLastInput(lastInput);
-        this.stepRuntime(input);
-        const row = this.getHash(this.runtime.frame);
+        this.session.stepRuntimeWithInput(input);
+        const row = this.getHash(this.session.getRuntime().frame);
         if (row) {
           rows.push({ ...row, action: describePresetScriptAction(offset) });
         }
@@ -187,12 +189,12 @@ export class BattleDebugController {
       return false;
     }
     const pointer = getBattlePointerWorld(this.scene, this.mobileControls, this.arenaBounds);
-    this.runtime.debugSpawnPoint({
+    this.session.getRuntime().debugSpawnPoint({
       rewardSize: pointRewardSizeForDebugSize(size),
       x: pointer.x,
       y: pointer.y,
     });
-    this.recordDebugFrame();
+    this.session.recordOutputFrame();
     return true;
   }
 
@@ -200,8 +202,8 @@ export class BattleDebugController {
     if (this.sceneData.mode === "online" || this.sceneData.mode === "local") {
       return false;
     }
-    this.runtime.debugSetPoint(pointCount);
-    this.recordDebugFrame();
+    this.session.getRuntime().debugSetPoint(pointCount);
+    this.session.recordOutputFrame();
     return true;
   }
 
@@ -216,8 +218,9 @@ export class BattleDebugController {
   setDebugPhysicsEnabled(enabled: boolean): void {
     this.debugPhysicsEnabled = enabled;
     this.view.setDebugPhysics(enabled);
-    if (enabled && this.runtime.physicsReady) {
-      this.view.renderDebugBodies(this.runtime.readDebugBodies());
+    const runtime = this.session.getRuntime();
+    if (enabled && runtime.physicsReady) {
+      this.view.renderDebugBodies(runtime.readDebugBodies());
     }
   }
 

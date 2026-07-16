@@ -6,6 +6,8 @@ import type { BattleConfig, PlayerId, ServerMessage } from "@repo/types";
 import { createBattleInput } from "../../battle/input-controller/input";
 import type { BattleKeyMap } from "../../battle/input-controller";
 import { BattleView } from "../../battle/view";
+import { createBattleViewModel } from "../../battle/view/model";
+import { resolveArenaBounds } from "../../battle/utils/battle-helpers";
 import { BattlePauseMenuController } from "../../battle/view/pause";
 import { BattleAudioDirector } from "../../battle/sfx/audio";
 import type { BattleLoadouts, BattleSceneData } from "../../battle/loadout";
@@ -37,6 +39,7 @@ export class SpectatorBattleOverride {
   private readonly playerName: string;
   private readonly opponentName: string;
   private readonly loadouts: BattleLoadouts;
+  private readonly arenaBounds;
   private resultScheduled = false;
   private resultStarted = false;
   private frame = 1;
@@ -56,6 +59,7 @@ export class SpectatorBattleOverride {
     this.playerName = data.playerName ?? playerCfg.username ?? "Player1";
     this.opponentName = data.opponentName ?? targetCfg.username ?? "Player2";
     this.loadouts = data.loadouts ?? createLoadoutsFromConfig(config);
+    this.arenaBounds = resolveArenaBounds(config.mapId);
 
     this.runtime = createRaidLogicRuntime({
       mode: "online",
@@ -141,11 +145,13 @@ export class SpectatorBattleOverride {
 
     if (this.currentOutput) {
       this.view.render(
-        this.currentOutput.state,
-        this.pointerInput,
-        "Player1",
-        this.accumulator / FIXED_STEP_MS,
-        1,
+        createBattleViewModel({
+          state: this.currentOutput.state,
+          input: this.pointerInput,
+          localFighterKey: "Player1",
+          arenaBounds: this.arenaBounds,
+          alpha: this.accumulator / FIXED_STEP_MS,
+        }),
       );
     }
   }

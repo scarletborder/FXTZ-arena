@@ -63,3 +63,59 @@
 1. 提取 `BattleSession`，隐藏 `BattleScene` 中运行时、回滚和网络之间的回调网。
 2. 将 `rollback-manager.ts` 迁入 `battle/session/rollback-history.ts`。
 3. 为 `battle/session` 添加禁止导入 Phaser 的自动依赖守卫。
+
+## 2026-07-16：阶段 3 战斗会话
+
+### 完成
+
+- 新增无 Phaser 依赖的 `BattleSession`，统一拥有 `RaidLogicRuntime`、`BattleFramePipeline` 和 `BattleNetworkSession`。
+- 将初始输出记录、固定帧更新、同步步进、快进和当前输出访问收敛到会话接口。
+- 将回滚快照、确认帧哈希和调试历史迁入纯 `BattleRollbackHistory`。
+- 新增 `PhaserBattleRollbackAdapter`，仅保留场景事件、设置读取、音频同步和调试输出等 Phaser 侧职责。
+- `BattleScene` 改为组合 `BattleSession` 与 Phaser adapters，不再直接连接运行时、回滚和网络之间的回调网。
+- 删除 `runtime-adapter.ts`、`hash-manager.ts` 和 `rollback-manager.ts`，未保留兼容转发文件。
+- 新增 `BattleSession` 接口测试，覆盖初始输出记录和固定帧推进。
+
+### 验证结果
+
+- 会话层 3 个测试文件共 6 个测试通过。
+- `pnpm test`：全部 workspace 测试通过；前端 71、战斗逻辑 209、服务端 117 个测试通过。
+- `pnpm check-types`：全部 workspace 类型检查和前端生产构建通过。
+- `pnpm lint`：全部 workspace lint 完成，无 error；保留既有 warning，新回滚 adapter 无 warning。
+- `battle/session` 未检出 Phaser 导入，旧 manager 和 adapter 名称未检出残留引用。
+
+### 下一步
+
+1. 增加自动依赖守卫，持续禁止 `battle/session` 导入 Phaser 或具体传输。
+2. 提取战斗视图模型投影，让 Phaser 视图不再读取完整领域对象。
+3. 继续迁移 `battle/manager` 中的回放和调试职责，缩减 `BattleScene` 组合根。
+
+## 2026-07-16：阶段 3 复核与阶段 4—6
+
+### 复核修正
+
+- 将 `BattleRollbackHistory` 的所有权从 Phaser adapter 移入 `BattleSession`；会话负责排空输出队列、记录快照、维护调试哈希并向呈现端发布输出。
+- 将 `BattleDebugLogger` 改为通过 `BattleRollbackLogger` 端口注入，纯 session 模块不再导入浏览器文件写入实现。
+- 扩充会话层测试，覆盖离线固定帧、回滚快照存取与裁剪，以及在线同步销毁。
+
+### 渲染投影
+
+- 新增纯 `createBattleViewModel` 投影，集中选择本地角色并派生准星危险状态、Youmu 冲刺高亮、插值和回滚透明度。
+- `BattleView.render` 只接收 `BattleViewModel`，正常战斗、回放和观战调用者均已迁移。
+- 新增投影测试，验证本地角色选择和准星数据派生。
+
+### 目录与依赖守卫
+
+- 新增架构测试，禁止 `battle/session` 导入 Phaser 或具体网络传输、禁止 `network/combat` 导入 Phaser，并禁止 `battle/view` 导入网络或可变运行时。
+- 守卫首次运行发现两个协作 UI 直接读取网络层 `CanonicalFighterKey`；已迁移为 view 自有类型。
+- 清空旧 `battle/manager`：布局迁入 `battle/view/layout.ts`，回放和调试控制器迁入 `battle/adapters/phaser`。
+
+### 后续
+
+1. 将商店和转场控制器的输入投影纳入统一 presentation model。
+
+### 场景组合根收尾
+
+- `BattleDebugController` 改为依赖 `BattleSession`，`BattleScene` 不再把可变 runtime 与 rollback history 分别传入调试模块。
+- 游戏结束判断与调试物理读取通过会话查询接口完成，场景不再直接读取运行时状态。
+- `BattleScene` 保留模块装配、Phaser 生命周期、输入采样、会话推进和视图提交职责。

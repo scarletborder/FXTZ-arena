@@ -11,6 +11,8 @@ import { createBattleInput, type BattleInputBundle } from "../battle/input-contr
 import type { BattleKeyMap } from "../battle/input-controller";
 import type { BattleMobileControls } from "../battle/input-controller";
 import { BattleView } from "../battle/view";
+import { createBattleViewModel } from "../battle/view/model";
+import { resolveArenaBounds } from "../battle/utils/battle-helpers";
 import { BattlePauseMenuController } from "../battle/view/pause";
 import { BattleAudioDirector } from "../battle/sfx/audio";
 import { Depth } from "../utils/depth";
@@ -343,11 +345,13 @@ export class ReplayBattleOverride {
 
     // 1. Render the normal view
     this.view.render(
-      this.currentOutput.state,
-      this.lastInput,
-      "Player1",
-      this.accumulator / FIXED_STEP_MS,
-      1,
+      createBattleViewModel({
+        state: this.currentOutput.state,
+        input: this.lastInput,
+        localFighterKey: "Player1",
+        arenaBounds: resolveArenaBounds(this.initialData.replayData?.mapId),
+        alpha: this.accumulator / FIXED_STEP_MS,
+      }),
     );
 
     // 2. Hide crosshair
