@@ -138,7 +138,7 @@ export interface CharacterActionContext
     BattleBulletSpawnParams,
     BattleLaserSpawnParams,
     BattleMob
-> {
+  > {
   readonly aim?: { readonly x: number; readonly y: number };
   spawnSegment(params: BattleSegmentSpawnParams): void;
   pauseProjectileTimeline(projectile: ProjectileState, ticks: number): void;
@@ -170,6 +170,7 @@ export abstract class BattleCharacter extends PointCollectRadius {
 
   readonly pointBombThreshold: number = DEFAULT_POINT_BOMB_THRESHOLD;
   readonly pointBombCost: number = DEFAULT_POINT_BOMB_COST;
+  readonly consumesAimOnPostUpdate: boolean = false;
 
   get definition(): CharacterDefinition {
     return {

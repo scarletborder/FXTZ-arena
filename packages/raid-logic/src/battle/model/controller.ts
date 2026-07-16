@@ -112,7 +112,11 @@ function stepTargetAi(bindings: FighterControllerBindings): void {
     fp.fromFloat(aiInput.aimX - fighter.x),
   );
   bindings.targetFighter.moveBy(aiInput);
-  bindings.targetFighter.postUpdate(bindings.createActionContext(fighter));
+  if (
+    bindings.targetFighter.postUpdate(bindings.createActionContext(fighter))
+  ) {
+    bindings.consumeAim();
+  }
   bindings.targetFighter.handleReload(aiInput.reloadPressed);
 
   const ctx = bindings.createActionContext(fighter);
@@ -161,7 +165,11 @@ function stepTargetSimple(bindings: FighterControllerBindings): void {
     x: bindings.player.x,
     y: bindings.player.y,
   };
-  bindings.targetFighter.postUpdate(bindings.createActionContext(fighter));
+  if (
+    bindings.targetFighter.postUpdate(bindings.createActionContext(fighter))
+  ) {
+    bindings.consumeAim();
+  }
   const ctx = bindings.createActionContext(fighter);
   const shootPressed = bindings.frame % 72 === 0;
   if (shootPressed) {
@@ -204,7 +212,9 @@ function applyInputMovement(
     fp.fromFloat(input.aimX - state.x),
   );
   fighter.moveBy(input);
-  fighter.postUpdate(bindings.createActionContext(state));
+  if (fighter.postUpdate(bindings.createActionContext(state))) {
+    bindings.consumeAim();
+  }
 }
 
 function pauseCooldownsForNewTimeStop(

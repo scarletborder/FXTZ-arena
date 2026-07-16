@@ -1,10 +1,15 @@
-import type { PlayerId } from "@repo/types";
+import type { ClientMessage, PlayerId, ServerMessage } from "@repo/types";
 import type { BattleInputState, BattleModelSnapshot } from "@repo/raid-logic";
 
 import type { BattleSceneData } from "../../battle/loadout";
 import type { PeerConnection } from "../p2p";
 
 export type CanonicalFighterKey = "Player1" | "Player2";
+
+export interface CombatConnection {
+  send(message: ClientMessage): void;
+  setMessageHandler(handler: ((message: ServerMessage) => void) | null): void;
+}
 
 export interface CombatRollbackRecord {
   readonly frame: number;

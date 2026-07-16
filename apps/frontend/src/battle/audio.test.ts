@@ -162,6 +162,7 @@ function fighter(
     activeCardUses: 0,
     activeCardCooldownUntil: 0,
     hakkeroBeamCooldownUntil: 0,
+    sakuraCharmGuardAvailable: false,
     shotsFired: 0,
     hits: 0,
     hitsTaken: 0,

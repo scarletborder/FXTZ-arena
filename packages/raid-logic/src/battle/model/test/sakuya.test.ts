@@ -114,7 +114,7 @@ describe("BattleModel Sakuya", () => {
 
     const extraShot = model.projectiles.find(
       (projectile) =>
-        projectile.textureKey === "bullet_type_8_offset_0" &&
+        projectile.textureKey === "bullet_type_7_offset_0" &&
         projectile.owner === "Player1",
     );
     expect(extraShot?.pausedUntil).toBe(model.frame + 60);

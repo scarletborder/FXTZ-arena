@@ -5,6 +5,7 @@ import { ensureBackdoorFamiliar } from "./defensive-familiars";
 import { Vanilla } from "../decorators";
 
 export class BackdoorBattleCard extends BattleAbilityCard {
+  readonly consumesAimOnPostUpdate = true;
   readonly id: AbilityCardDefinition["id"] = "backdoor";
   readonly name = "content.ability_cards.backdoor.name";
   readonly cost = 1;

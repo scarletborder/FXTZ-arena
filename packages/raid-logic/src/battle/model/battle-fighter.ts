@@ -146,14 +146,14 @@ export class BattleFighter {
     const existingCards =
       card.kind === "active"
         ? this.state.abilityCards.filter(
-          (existing) => existing.kind !== "active",
-        )
+            (existing) => existing.kind !== "active",
+          )
         : this.state.abilityCards;
     const existingBattleCards =
       card.kind === "active"
         ? this.battleCards.filter(
-          (existing) => existing.definition.kind !== "active",
-        )
+            (existing) => existing.definition.kind !== "active",
+          )
         : this.battleCards;
     this.battleCards = [...existingBattleCards, battleCard];
     this.state.abilityCards = [...existingCards, card];
@@ -387,7 +387,11 @@ export class BattleFighter {
     return true;
   }
 
-  postUpdate(ctx: CharacterActionContext): void {
+  postUpdate(ctx: CharacterActionContext): boolean {
+    const consumesAim =
+      this.activeCharacter.consumesAimOnPostUpdate ||
+      this.nonActiveCharacter.consumesAimOnPostUpdate ||
+      this.battleCards.some((card) => card.consumesAimOnPostUpdate);
     this.activeCharacter.onPostUpdate(ctx, this.state);
     // Also update the non-active character so companions (e.g. Yukari's Ran)
     // stay alive and deal collision damage even after switching.
@@ -395,6 +399,7 @@ export class BattleFighter {
     for (const card of this.battleCards) {
       card.onPostUpdate(ctx);
     }
+    return consumesAim;
   }
 
   onProjectileHit(params: {

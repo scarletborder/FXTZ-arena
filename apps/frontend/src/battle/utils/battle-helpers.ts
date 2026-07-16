@@ -1,13 +1,5 @@
 import { DEFAULT_ARENA_BOUNDS, normalizeArenaBounds, type ArenaBounds } from "@repo/constants";
-import { connectionManager } from "../../menu/shared";
 import { getCombatMapDefinition } from "@repo/content";
-
-export function createLocalBattleConnectionManager(): typeof connectionManager {
-  return {
-    send: () => undefined,
-    setMessageHandler: () => undefined,
-  } as unknown as typeof connectionManager;
-}
 
 export function resolveArenaBounds(mapId: string | undefined): ArenaBounds {
   const map = getCombatMapDefinition(mapId ?? "hakurei_shrine");

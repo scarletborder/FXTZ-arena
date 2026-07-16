@@ -255,7 +255,8 @@ class DollFamiliar extends FamiliarMob<
     const dy = targetY - this.state.y;
     const distance = Math.hypot(dx, dy);
     if (this.state.phase == "return" && distance <= stopDistance) {
-      // 回收
+      this.state.vx = 0;
+      this.state.vy = 0;
       this.state.active = false;
       return;
     }

@@ -70,6 +70,7 @@ const FULL_CIRCLE = Math.PI * 2;
 type PlayerFighterKey = Exclude<FighterKey, "Neutral">;
 
 export class YukariBattleCharacter extends BattleCharacter {
+  readonly consumesAimOnPostUpdate = true;
   readonly id = "yukari" as CharacterDefinition["id"];
   readonly name = "content.characters.yukari.name";
   readonly cost = 4;
@@ -218,9 +219,7 @@ export class YukariBattleCharacter extends BattleCharacter {
     if (!ctx.spawnMob) {
       return;
     }
-    ctx.spawnMob(
-      new RanFamiliar(ranFamiliarId(fighter.key), fighter),
-    );
+    ctx.spawnMob(new RanFamiliar(ranFamiliarId(fighter.key), fighter));
   }
 
   onAfterFire(
@@ -486,8 +485,8 @@ class RanFamiliar extends FamiliarMob<
     this.state.y += this.state.vy;
   }
 
-  fire(): void { }
-  switchForm(): void { }
+  fire(): void {}
+  switchForm(): void {}
   die(): void {
     this.state.active = true;
     this.state.CurrentHealth = RAN_HEALTH;
@@ -502,7 +501,7 @@ class RanFamiliar extends FamiliarMob<
     return "accepted";
   }
 
-  onDeath(_source: NeutralMobDeathSource): void { }
+  onDeath(_source: NeutralMobDeathSource): void {}
 }
 
 function playerFighterKey(key: FighterKey): PlayerFighterKey {

@@ -3,9 +3,8 @@ import type { ClientMessage, InputFrameMessage } from "@repo/types";
 import { t } from "@repo/i18n";
 import type { BattleInputState, RaidLogicRuntime } from "@repo/raid-logic";
 
-import type { ConnectionManager } from "../client";
 import { CombatInputQueues } from "./queues";
-import type { CanonicalFighterKey, CombatSyncManagerOptions } from "./types";
+import type { CanonicalFighterKey, CombatConnection, CombatSyncManagerOptions } from "./types";
 
 export class CombatSyncManager {
   readonly localPlayerId: PlayerId;
@@ -51,7 +50,7 @@ export class CombatSyncManager {
 
   constructor(
     private readonly runtime: RaidLogicRuntime,
-    private readonly connectionManager: ConnectionManager,
+    private readonly connectionManager: CombatConnection,
     private readonly options: CombatSyncManagerOptions,
   ) {
     this.localPlayerId = options.sceneData.localPlayerId ?? "Player1";

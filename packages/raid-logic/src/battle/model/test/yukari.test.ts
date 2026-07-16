@@ -16,7 +16,7 @@ describe("BattleModel Yukari", () => {
     const model = await createBattleModel("yukari", "reimu");
 
     expect(model.player.activeCharacter.id).toBe("yukari");
-    expect(model.player.activeCharacter.cost).toBe(5);
+    expect(model.player.activeCharacter.cost).toBe(4);
     expect(model.player.activeCharacter.roleClass).toBe("sniper");
     expect(model.player.activeCharacter.moveSpeed).toBe("low");
     expect(model.player.ammoCapacity).toBe(2);

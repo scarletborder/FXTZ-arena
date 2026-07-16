@@ -13,9 +13,12 @@ import { BattleReplayManager } from "./battle/manager/replay-manager";
 import { BattleResultHandler } from "./battle/result-handler";
 import { BattleInputController } from "./battle/input-controller";
 import { BattleDebugController } from "./battle/manager/debug-manager";
-import { BattleNetworkManager } from "./battle/manager/network-manager";
+import { BattleNetworkSession } from "./battle/session/network-session";
 import { BattleRollbackFacade } from "./battle/manager/rollback-manager";
-import { BattleRuntimeAdapter } from "./battle/runtime-adapter";
+import { BattleRuntimeAdapter } from "./battle/adapters/phaser/runtime-adapter";
+import { PhaserBattleNetworkHost } from "./battle/adapters/phaser/network-host";
+import { createLocalCombatConnection } from "./network/combat/local-connection";
+import { connectionManager } from "./menu/shared";
 import { BattlePauseController } from "./battle/view/controller/BattlePauseController";
 import { CollaborateShopController } from "./battle/view/controller/CollaborateShopController";
 import { CollaborateTransitionController } from "./battle/view/controller/CollaborateTransitionController";
@@ -26,7 +29,8 @@ export class BattleScene extends Phaser.Scene {
   private battleAudioBridge: BattleAudioBridge | undefined;
   private battleBgmBridge: BattleBgmBridge | undefined;
 
-  private networkMgr!: BattleNetworkManager;
+  private networkMgr!: BattleNetworkSession;
+  private networkHost!: PhaserBattleNetworkHost;
   private rollbackFacade!: BattleRollbackFacade;
   private replayMgr!: BattleReplayManager;
   private resultHandler!: BattleResultHandler;
@@ -124,25 +128,33 @@ export class BattleScene extends Phaser.Scene {
     }
 
     // 6. 初始化联机管理器（在 recordFrame 后正常初始化）
-    this.networkMgr = new BattleNetworkManager(
-      this,
-      data,
-      () => this.runtimeAdapter.getRuntime(),
-      (record) => this.rollbackFacade.recordStepInputs(record),
-      (record) => this.rollbackFacade.recordConfirmedInputs(record),
-      (aimConsumed) => {
+    const networkEnabled =
+      data.mode === "online" ||
+      (data.mode === "local" && !data.localSingleDevice);
+    this.networkHost = new PhaserBattleNetworkHost(this, networkEnabled);
+    this.networkMgr = new BattleNetworkSession({
+      sceneData: data,
+      runtime: this.runtimeAdapter.getRuntime(),
+      connection:
+        data.mode === "local"
+          ? createLocalCombatConnection()
+          : connectionManager,
+      host: this.networkHost,
+      recordStepInputs: (record) => this.rollbackFacade.recordStepInputs(record),
+      recordConfirmedInputs: (record) => this.rollbackFacade.recordConfirmedInputs(record),
+      recordFrame: (aimConsumed) => {
         const lastOutput = this.rollbackFacade.recordFrame(this.runtimeAdapter.getRuntime().outputQueue, aimConsumed);
         if (lastOutput) {
           this.runtimeAdapter.setCurrentOutput(lastOutput);
         }
       },
-      (frame) => this.rollbackFacade.getRollbackRecord(frame),
-      (frame) => this.rollbackFacade.pruneAfter(frame),
-      (frame) => this.rollbackFacade.pruneBefore(frame),
-      () => {
+      getRollbackRecord: (frame) => this.rollbackFacade.getRollbackRecord(frame),
+      pruneAfter: (frame) => this.rollbackFacade.pruneAfter(frame),
+      pruneBefore: (frame) => this.rollbackFacade.pruneBefore(frame),
+      onRollback: () => {
         this.rollbackVisualFrames = 2;
-      }
-    );
+      },
+    });
 
     // 执行物理超前赶进逻辑
     if (this.runtimeAdapter.isLogicReady() && data.battleZeroTimeMs !== undefined) {
@@ -403,5 +415,6 @@ export class BattleScene extends Phaser.Scene {
 
     ConsoleCmd.uninstall(this);
     this.networkMgr?.destroy();
+    this.networkHost?.destroy();
   }
 }
