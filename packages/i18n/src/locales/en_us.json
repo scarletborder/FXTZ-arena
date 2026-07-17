@@ -325,6 +325,10 @@
         "name": "Marisa",
         "description": "· An ordinary magician from the roadside\n· A sniper-like unit built around high-speed lasers with heavy damage\n· Bomb can fire an oversized master spark"
       },
+      "shinki": {
+        "name": "Shinki",
+        "description": "· Goddess of Makai\n· A suppression character whose many familiars fire crossing barrages\n· At higher tiers, familiars add lasers and high-speed large orbs\n· Bomb pours bullets along ten firing lines\n· Normal shots reload one round at a time"
+      },
       "sakuya": {
         "name": "Sakuya",
         "description": "· An overworked 996 maid\n· An assault unit that excels at close to mid-range pressure\n· Bomb can stop time"

@@ -45,6 +45,19 @@ export interface ProjectileTimerSnapshot {
   readonly retargetIn: number | undefined;
 }
 
+export interface ProjectileCommandSnapshot {
+  readonly id: number;
+  readonly kind: "bullet" | "laser";
+  readonly params: NeutralMobSpawnerStateValue;
+  readonly startIn: number;
+  readonly burstCount: number;
+  readonly burstInterval: number;
+  readonly repeatCount: number;
+  readonly repeatInterval: number;
+  readonly burstIndex: number;
+  readonly repeatIndex: number;
+}
+
 export interface BattleModelSnapshot {
   readonly version: 1;
   readonly frame: number;
@@ -62,6 +75,8 @@ export interface BattleModelSnapshot {
   readonly clearRings: readonly ClearRingSnapshot[];
   readonly mobSpawner: NeutralMobSpawnerState | undefined;
   readonly ticker?: TickerManagerSnapshot;
+  readonly nextProjectileCommandId?: number;
+  readonly projectileCommands?: readonly ProjectileCommandSnapshot[];
   readonly projectiles: readonly ProjectileSnapshot[];
   readonly effects: readonly EffectSnapshot[];
   readonly stats: TrainingStats;

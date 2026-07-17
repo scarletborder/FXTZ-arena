@@ -2,6 +2,8 @@ import { fp } from "@shaisrc/fixed-point";
 
 import type {
   CharacterActionContext,
+  BulletCmd,
+  LaserCmd,
   EffectState,
   FighterKey,
   FighterState,
@@ -53,6 +55,8 @@ export interface BattleActionContextManagerContext {
   spawnMob(mob: BattleNeutralMob): void;
   consumeAim(): void;
   deferSpawn(spawn: () => void): void;
+  scheduleBullet(command: BulletCmd): void;
+  scheduleLaser(command: LaserCmd): void;
 }
 
 export class BattleActionContextManager {
@@ -132,6 +136,8 @@ export class BattleActionContextManager {
           }
         });
       },
+      scheduleBullet: (command) => this.context.scheduleBullet(command),
+      scheduleLaser: (command) => this.context.scheduleLaser(command),
       spawnSegment: (params) => {
         const spawnFrame = params.frame ?? this.context.getFrame();
         const owner =

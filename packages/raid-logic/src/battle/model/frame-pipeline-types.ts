@@ -15,6 +15,7 @@ export interface BattleFramePipelineContext {
   stepMobSpawner(): void;
   beginRunningFrame(): boolean;
   processFighterActions(inputPair: BattleFrameInputPair): void;
+  stepProjectileCommands(): void;
   stepNeutralMobs(): void;
   resolveProjectileClashes(): void;
   stepProjectiles(): void;

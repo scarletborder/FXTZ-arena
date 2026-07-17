@@ -104,6 +104,12 @@ export function hashBattleModel(model: BattleModel): number {
   writeSpawnerState(hasher, model.neutralMobManager.mobSpawnerState());
   writeCollaborateExtra(hasher, model.toOutputState().collaborateExtra);
   writeProjectiles(hasher, model.projectiles);
+  writeStateValue(
+    hasher,
+    model.projectileCommandScheduler.snapshot(
+      model.frame,
+    ) as unknown as NeutralMobSpawnerStateValue,
+  );
   writeEffects(hasher, model.effects);
   writeStats(hasher, model.stats);
   return hasher.digest();
@@ -149,6 +155,14 @@ export function hashBattleModelComponents(
       writeCollaborateExtra(h, model.toOutputState().collaborateExtra),
     ),
     projectiles: hash("projs", (h) => writeProjectiles(h, model.projectiles)),
+    projectileCommands: hash("projectileCommands", (h) =>
+      writeStateValue(
+        h,
+        model.projectileCommandScheduler.snapshot(
+          model.frame,
+        ) as unknown as NeutralMobSpawnerStateValue,
+      ),
+    ),
     effects: hash("effects", (h) => writeEffects(h, model.effects)),
     stats: hash("stats", (h) => writeStats(h, model.stats)),
   };

@@ -64,6 +64,7 @@ function runBattleFrame(
   }
 
   context.processFighterActions(inputPair);
+  context.stepProjectileCommands();
   context.stepMobSpawner();
   context.stepNeutralMobs();
 

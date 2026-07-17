@@ -17,6 +17,40 @@ import type {
 import { WingmanView } from "./index";
 
 describe("WingmanView", () => {
+  it("renders two Shinki familiars before tier 3 and four from tier 3", () => {
+    const tier1Scene = createSceneStub();
+    const tier1View = new WingmanView(tier1Scene);
+    tier1View.render({
+      player: fighter("Player1", character("shinki"), 0),
+      target: fighter("Player2", character("reimu"), 0),
+      frame: 30,
+      gameOver: false,
+      localFighterKey: "Player1",
+      alpha: 1,
+    });
+    expect(
+      tier1Scene.graphics[0]?.commands.filter(
+        (command) => command === "fillCircle",
+      ),
+    ).toHaveLength(4);
+
+    const tier3Scene = createSceneStub();
+    const tier3View = new WingmanView(tier3Scene);
+    tier3View.render({
+      player: fighter("Player1", character("shinki"), 200),
+      target: fighter("Player2", character("reimu"), 0),
+      frame: 30,
+      gameOver: false,
+      localFighterKey: "Player1",
+      alpha: 1,
+    });
+    expect(
+      tier3Scene.graphics[0]?.commands.filter(
+        (command) => command === "fillCircle",
+      ),
+    ).toHaveLength(8);
+  });
+
   it("renders Iku wingmen from tier 2 onward", () => {
     const scene = createSceneStub();
     const view = new WingmanView(scene);

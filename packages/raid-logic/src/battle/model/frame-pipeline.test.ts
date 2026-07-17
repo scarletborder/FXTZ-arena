@@ -76,6 +76,7 @@ describe("BattleFramePipeline", () => {
       "isCollaborateShopOpen",
       "beginRunningFrame",
       "processFighterActions",
+      "stepProjectileCommands",
       "stepMobSpawner",
       "stepNeutralMobs",
       "resolveProjectileClashes",
@@ -100,6 +101,7 @@ describe("BattleFramePipeline", () => {
       "isCollaborateShopOpen",
       "beginRunningFrame",
       "processFighterActions",
+      "stepProjectileCommands",
       "stepMobSpawner",
       "stepNeutralMobs",
       "resolveProjectileClashes",
@@ -170,6 +172,10 @@ function createContext(
     processFighterActions: (pair) => {
       record("processFighterActions");
       overrides.processFighterActions?.(pair);
+    },
+    stepProjectileCommands: () => {
+      record("stepProjectileCommands");
+      overrides.stepProjectileCommands?.();
     },
     stepNeutralMobs: () => {
       record("stepNeutralMobs");

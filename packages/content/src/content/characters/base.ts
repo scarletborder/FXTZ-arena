@@ -129,6 +129,86 @@ export interface BattleSegmentSpawnParams {
   readonly piercesTargets?: boolean;
 }
 
+export interface ProjectileCommandSchedule {
+  readonly delay: number;
+  readonly burstCount: number;
+  readonly burstInterval: number;
+  readonly repeatCount: number;
+  readonly repeatInterval: number;
+}
+
+const IMMEDIATE_COMMAND_SCHEDULE: ProjectileCommandSchedule = {
+  delay: 0,
+  burstCount: 1,
+  burstInterval: 0,
+  repeatCount: 1,
+  repeatInterval: 0,
+};
+
+abstract class ProjectileCmd<TParams> {
+  readonly schedule: ProjectileCommandSchedule;
+
+  protected constructor(
+    readonly params: TParams,
+    schedule: ProjectileCommandSchedule = IMMEDIATE_COMMAND_SCHEDULE,
+  ) {
+    this.schedule = schedule;
+  }
+
+  abstract copy(schedule: ProjectileCommandSchedule): ProjectileCmd<TParams>;
+
+  after(ticks: number): this {
+    return this.copy({
+      ...this.schedule,
+      delay: nonNegativeInteger(ticks),
+    }) as this;
+  }
+
+  burst(count: number, intervalTicks: number): this {
+    return this.copy({
+      ...this.schedule,
+      burstCount: positiveInteger(count),
+      burstInterval: nonNegativeInteger(intervalTicks),
+    }) as this;
+  }
+
+  repeat(count: number, intervalTicks: number): this {
+    return this.copy({
+      ...this.schedule,
+      repeatCount: positiveInteger(count),
+      repeatInterval: nonNegativeInteger(intervalTicks),
+    }) as this;
+  }
+}
+
+export class BulletCmd extends ProjectileCmd<BattleBulletSpawnParams> {
+  readonly kind = "bullet" as const;
+  constructor(
+    params: BattleBulletSpawnParams,
+    schedule: ProjectileCommandSchedule = IMMEDIATE_COMMAND_SCHEDULE,
+  ) {
+    super(params, schedule);
+  }
+
+  copy(schedule: ProjectileCommandSchedule): BulletCmd {
+    return new BulletCmd(this.params, schedule);
+  }
+}
+
+export class LaserCmd extends ProjectileCmd<BattleLaserSpawnParams> {
+  readonly kind = "laser" as const;
+  constructor(
+    params: BattleLaserSpawnParams,
+    schedule: ProjectileCommandSchedule = IMMEDIATE_COMMAND_SCHEDULE,
+  ) {
+    super(params, schedule);
+  }
+
+  copy(schedule: ProjectileCommandSchedule): LaserCmd {
+    return new LaserCmd(this.params, schedule);
+  }
+}
+
 export interface CharacterActionContext
   extends StandardBattleActionContext<
     FighterState,
@@ -140,6 +220,9 @@ export interface CharacterActionContext
     BattleMob
   > {
   readonly aim?: { readonly x: number; readonly y: number };
+  schedule(command: BulletCmd | LaserCmd): void;
+  scheduleBullet(command: BulletCmd): void;
+  scheduleLaser(command: LaserCmd): void;
   spawnSegment(params: BattleSegmentSpawnParams): void;
   pauseProjectileTimeline(projectile: ProjectileState, ticks: number): void;
 }
@@ -338,6 +421,14 @@ export function pointPowerTier(pointCount: number): PointPowerTier {
   if (pointCount >= 200) return 3;
   if (pointCount >= 100) return 2;
   return 1;
+}
+
+function positiveInteger(value: number): number {
+  return Math.max(1, Math.trunc(value));
+}
+
+function nonNegativeInteger(value: number): number {
+  return Math.max(0, Math.trunc(value));
 }
 
 export { secondsToTicks };

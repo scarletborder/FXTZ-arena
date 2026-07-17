@@ -3,6 +3,8 @@ import type {
   BattleBulletSpawnParams,
   BattleLaserSpawnParams,
   BattleSegmentSpawnParams,
+  BulletCmd,
+  LaserCmd,
 } from "@repo/content";
 import type {
   ArenaBounds,
@@ -42,6 +44,8 @@ type BattleModelContextBindings = {
   readonly aim?: { readonly x: number; readonly y: number };
   spawnBullet(params: BattleBulletSpawnParams): void;
   spawnLaser(params: BattleLaserSpawnParams): void;
+  scheduleBullet(command: BulletCmd): void;
+  scheduleLaser(command: LaserCmd): void;
   spawnSegment(params: BattleSegmentSpawnParams): void;
   allocateMobId(): number;
   spawnMob(mob: BattleNeutralMob): void;
@@ -85,12 +89,23 @@ export function createCharacterActionContext(
     aim: bindings.aim,
     spawnBullet: (params) => bindings.spawnBullet(params),
     spawnLaser: (params) => bindings.spawnLaser(params),
+    schedule: (command) => {
+      if (command.kind === "bullet") bindings.scheduleBullet(command);
+      else bindings.scheduleLaser(command);
+    },
+    scheduleBullet: (command) => bindings.scheduleBullet(command),
+    scheduleLaser: (command) => bindings.scheduleLaser(command),
     spawnSegment: (params) => bindings.spawnSegment(params),
     allocateMobId: () => bindings.allocateMobId(),
     spawnMob: (mob) => bindings.spawnMob(mob as BattleNeutralMob),
     clearProjectilesAround: (params) => bindings.clearProjectilesAround(params),
     spawnClearRingEntity: (params) => bindings.spawnClearRingEntity(params),
     spawnClearRing: (params) => bindings.spawnClearRing(params),
+    spawnEffectRing: (params) =>
+      bindings.spawnClearRing({
+        ...params,
+        radius: params.scale * 100,
+      }),
     pauseProjectileTimeline: (projectile, ticks) =>
       bindings.pauseProjectileTimeline(projectile, ticks),
   };

@@ -69,6 +69,7 @@ import {
 } from "./frame-pipeline";
 import { createBattleFrameBranchManagers } from "./frame-branch-manager";
 import { BattleActionContextManager } from "./action-context-manager";
+import { ProjectileCommandScheduler } from "./projectile-command-scheduler";
 
 export class BattleModel {
   readonly projectiles: ProjectileState[] = [];
@@ -117,6 +118,7 @@ export class BattleModel {
   private readonly projectileSystem: ProjectileSystem;
   private readonly effectSystem = new EffectSystem();
   private readonly ticker = new TickerManager();
+  readonly projectileCommandScheduler = new ProjectileCommandScheduler();
   private readonly framePipeline: BattleFramePipeline;
   private readonly actionContextManager: BattleActionContextManager;
   private readonly activeCardCooldowns = new ActiveCardCooldownManager(
@@ -272,6 +274,10 @@ export class BattleModel {
       deferSpawn: (spawn) => {
         this.pendingSpawns.push(spawn);
       },
+      scheduleBullet: (command) =>
+        this.projectileCommandScheduler.scheduleBullet(command, this.frame),
+      scheduleLaser: (command) =>
+        this.projectileCommandScheduler.scheduleLaser(command, this.frame),
     });
     const frameContext: BattleFramePipelineContext = {
       ensurePhysicsReady: () => this.ensurePhysicsReady(),
@@ -293,6 +299,7 @@ export class BattleModel {
       beginRunningFrame: () => this.beginRunningFrame(),
       processFighterActions: (inputPair) =>
         this.processFighterActionPair(inputPair),
+      stepProjectileCommands: () => this.stepProjectileCommands(),
       stepNeutralMobs: () => this.stepNeutralMobs(),
       resolveProjectileClashes: () => this.resolveProjectileClashes(),
       stepProjectiles: () => this.stepProjectiles(),
@@ -326,6 +333,7 @@ export class BattleModel {
 
   reset(): void {
     this.projectileSystem.reset();
+    this.projectileCommandScheduler.reset();
     this.effectSystem.reset();
     this.neutralMobManager.reset();
     this.pointManager.reset();
@@ -598,6 +606,8 @@ export class BattleModel {
       nextNeutralMobId: this.neutralMobManager.getNextNeutralMobId(),
       nextPointId: this.pointManager.getNextPointId(),
       nextClearRingId: this.clearRingManager.getNextClearRingId(),
+      nextProjectileCommandId: this.projectileCommandScheduler.getNextId(),
+      projectileCommands: this.projectileCommandScheduler.snapshot(this.frame),
       neutralMobs: this.neutralMobManager.states(),
       points: this.points,
       clearRings: this.clearRings,
@@ -661,6 +671,11 @@ export class BattleModel {
     this.projectileSystem.restoreNextId(
       this.projectiles,
       snapshot.nextProjectileId,
+    );
+    this.projectileCommandScheduler.restore(
+      snapshot.projectileCommands ?? [],
+      this.frame,
+      snapshot.nextProjectileCommandId,
     );
     this.effectSystem.restoreNextId(this.effects, snapshot.nextEffectId);
     this.neutralMobManager.restoreNextId(
@@ -1101,6 +1116,52 @@ export class BattleModel {
       spawn();
     }
     this.pendingSpawns = [];
+  }
+
+  private stepProjectileCommands(): void {
+    this.projectileCommandScheduler.step(
+      this.frame,
+      (params) => this.spawnScheduledBullet(params),
+      (params) => this.spawnScheduledLaser(params),
+    );
+  }
+
+  private spawnScheduledBullet(
+    params: import("@repo/content").BattleBulletSpawnParams,
+  ): void {
+    const startIndex = this.projectiles.length;
+    this.projectileSystem.spawnBullet(this.projectiles, {
+      ...params,
+      frame: this.frame,
+      pausedUntil: params.pausedUntil ?? this.frame,
+    });
+    this.applyScheduledProjectilePause(params, startIndex);
+  }
+
+  private spawnScheduledLaser(
+    params: import("@repo/content").BattleLaserSpawnParams,
+  ): void {
+    const startIndex = this.projectiles.length;
+    this.projectileSystem.spawnLaser(this.projectiles, {
+      ...params,
+      frame: this.frame,
+      pausedUntil: params.pausedUntil ?? this.frame,
+    });
+    this.applyScheduledProjectilePause(params, startIndex);
+  }
+
+  private applyScheduledProjectilePause(
+    params: { readonly owner: FighterKey; readonly pausedUntil?: number },
+    startIndex: number,
+  ): void {
+    if (params.pausedUntil !== undefined) return;
+    const projectile = this.projectiles[startIndex];
+    if (!projectile) return;
+    const owner = params.owner === "Player1" ? this.player : this.target;
+    this.ticker.pauseProjectileTimeline(
+      projectile,
+      owner.projectilePauseUntil,
+    );
   }
 
   private timeStopped(): boolean {

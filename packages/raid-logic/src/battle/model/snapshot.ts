@@ -48,6 +48,8 @@ export function createBattleModelSnapshot(params: {
   readonly nextNeutralMobId: number;
   readonly nextPointId: number;
   readonly nextClearRingId: number;
+  readonly nextProjectileCommandId: number;
+  readonly projectileCommands: BattleModelSnapshot["projectileCommands"];
   readonly neutralMobs: readonly MobState[];
   readonly points: readonly PointState[];
   readonly clearRings: readonly ClearRingState[];
@@ -67,6 +69,8 @@ export function createBattleModelSnapshot(params: {
     nextNeutralMobId: params.nextNeutralMobId,
     nextPointId: params.nextPointId,
     nextClearRingId: params.nextClearRingId,
+    nextProjectileCommandId: params.nextProjectileCommandId,
+    projectileCommands: params.projectileCommands,
     player: serializeFighter(params.player, params.frame),
     target: serializeFighter(params.target, params.frame),
     neutralMobs: params.neutralMobs.map((mob) => ({ ...mob })),
