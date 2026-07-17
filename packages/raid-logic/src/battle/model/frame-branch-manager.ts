@@ -1,5 +1,5 @@
 import type {
-  BattleFrameContext,
+  BattleFramePipelineContext,
   BattleFrameInputPair,
 } from "./frame-pipeline-types";
 
@@ -10,7 +10,7 @@ export interface BattleFrameBranchManager {
 }
 
 export function createBattleFrameBranchManagers(
-  context: BattleFrameContext,
+  context: BattleFramePipelineContext,
 ): readonly BattleFrameBranchManager[] {
   return [
     new CollaborateTransitionBranchManager(context),
@@ -20,7 +20,7 @@ export function createBattleFrameBranchManagers(
 }
 
 class CollaborateTransitionBranchManager implements BattleFrameBranchManager {
-  constructor(private readonly context: BattleFrameContext) {}
+  constructor(private readonly context: BattleFramePipelineContext) {}
 
   advance(inputPair: BattleFrameInputPair): BattleFrameBranchResult {
     return this.context.processCollaborateTransitionSync(inputPair)
@@ -30,7 +30,7 @@ class CollaborateTransitionBranchManager implements BattleFrameBranchManager {
 }
 
 class CollaborateShopBranchManager implements BattleFrameBranchManager {
-  constructor(private readonly context: BattleFrameContext) {}
+  constructor(private readonly context: BattleFramePipelineContext) {}
 
   advance(inputPair: BattleFrameInputPair): BattleFrameBranchResult {
     if (!this.context.isCollaborateShopOpen()) {
@@ -47,7 +47,7 @@ class CollaborateShopBranchManager implements BattleFrameBranchManager {
 }
 
 class RunningBattleBranchManager implements BattleFrameBranchManager {
-  constructor(private readonly context: BattleFrameContext) {}
+  constructor(private readonly context: BattleFramePipelineContext) {}
 
   advance(inputPair: BattleFrameInputPair): BattleFrameBranchResult {
     runBattleFrame(this.context, inputPair);
@@ -56,7 +56,7 @@ class RunningBattleBranchManager implements BattleFrameBranchManager {
 }
 
 function runBattleFrame(
-  context: BattleFrameContext,
+  context: BattleFramePipelineContext,
   inputPair: BattleFrameInputPair,
 ): void {
   if (context.beginRunningFrame()) {

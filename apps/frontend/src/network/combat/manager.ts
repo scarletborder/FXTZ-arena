@@ -1,10 +1,15 @@
 import type { PlayerId, ServerMessage } from "@repo/types";
 import type { ClientMessage, InputFrameMessage } from "@repo/types";
 import { t } from "@repo/i18n";
-import type { BattleInputState, RaidLogicRuntime } from "@repo/raid-logic";
+import type { RaidLogicRuntime } from "@repo/raid-logic";
+import type { BattleInputState } from "@repo/types";
 
 import { CombatInputQueues } from "./queues";
-import type { CanonicalFighterKey, CombatConnection, CombatSyncManagerOptions } from "./types";
+import type {
+  CanonicalFighterKey,
+  CombatConnection,
+  CombatSyncManagerOptions,
+} from "./types";
 
 export class CombatSyncManager {
   readonly localPlayerId: PlayerId;
@@ -17,23 +22,36 @@ export class CombatSyncManager {
     ["Player1", neutralInput()],
     ["Player2", neutralInput()],
   ]);
-  private readonly forcedShopReadyFrames = new Map<PlayerId, Map<number, number>>([
+  private readonly forcedShopReadyFrames = new Map<
+    PlayerId,
+    Map<number, number>
+  >([
     ["Player1", new Map()],
     ["Player2", new Map()],
   ]);
-  private readonly forcedTransitionReadyFrames = new Map<PlayerId, Set<number>>([
-    ["Player1", new Set()],
-    ["Player2", new Set()],
-  ]);
+  private readonly forcedTransitionReadyFrames = new Map<PlayerId, Set<number>>(
+    [
+      ["Player1", new Set()],
+      ["Player2", new Set()],
+    ],
+  );
   private lastReceivedRemoteFrame = 0;
   private lastPeerAckFrame = 0;
   private lastReportedConfirmedInputFrame = 0;
   private gameOverVerdictSent = false;
   private localGameOverVerdict:
-    | { readonly frame: number; readonly ackFrame: number; readonly winnerPlayerId: PlayerId }
+    | {
+        readonly frame: number;
+        readonly ackFrame: number;
+        readonly winnerPlayerId: PlayerId;
+      }
     | undefined;
   private peerGameOverVerdict:
-    | { readonly frame: number; readonly ackFrame: number; readonly winnerPlayerId: PlayerId }
+    | {
+        readonly frame: number;
+        readonly ackFrame: number;
+        readonly winnerPlayerId: PlayerId;
+      }
     | undefined;
   private finishedByServer = false;
   /**
@@ -54,10 +72,13 @@ export class CombatSyncManager {
     private readonly options: CombatSyncManagerOptions,
   ) {
     this.localPlayerId = options.sceneData.localPlayerId ?? "Player1";
-    this.remotePlayerId = this.localPlayerId === "Player1" ? "Player2" : "Player1";
+    this.remotePlayerId =
+      this.localPlayerId === "Player1" ? "Player2" : "Player1";
     this.inputs.set("Player1", new Map());
     this.inputs.set("Player2", new Map());
-    this.connectionManager.setMessageHandler((msg) => this.handleServerMessage(msg));
+    this.connectionManager.setMessageHandler((msg) =>
+      this.handleServerMessage(msg),
+    );
   }
 
   destroy(): void {
@@ -142,7 +163,12 @@ export class CombatSyncManager {
       this.markServerConfirmedFrame(msg.confirmedFrame);
       this.finishedByServer = true;
       this.options.callbacks.setStatusText(t("battle.adjudication_done"));
-      this.options.callbacks.delay(450, () => this.options.callbacks.finishBattle(msg.winnerPlayerId, msg.confirmedFrame));
+      this.options.callbacks.delay(450, () =>
+        this.options.callbacks.finishBattle(
+          msg.winnerPlayerId,
+          msg.confirmedFrame,
+        ),
+      );
       return;
     }
 
@@ -151,7 +177,10 @@ export class CombatSyncManager {
       return;
     }
 
-    if (msg.type === "peer_collaborate_shop_forced_ready" && msg.playerId === this.remotePlayerId) {
+    if (
+      msg.type === "peer_collaborate_shop_forced_ready" &&
+      msg.playerId === this.remotePlayerId
+    ) {
       this.receiveForcedShopReady(msg.playerId, msg.frame, msg.shopIndex);
       return;
     }
@@ -165,15 +194,23 @@ export class CombatSyncManager {
         this.clearReconnectTimeout();
         this.paused = false;
         this.options.callbacks.setStatusText(t("battle.peer_reconnected"));
-        this.options.callbacks.delay(700, () => this.options.callbacks.hideStatusText());
+        this.options.callbacks.delay(700, () =>
+          this.options.callbacks.hideStatusText(),
+        );
       }
       return;
     }
 
-    if (msg.type === "room_state" && msg.status === "finished" && !this.finishedByServer) {
+    if (
+      msg.type === "room_state" &&
+      msg.status === "finished" &&
+      !this.finishedByServer
+    ) {
       this.paused = true;
       this.options.callbacks.setStatusText(t("battle.peer_left"));
-      this.options.callbacks.delay(900, () => this.options.callbacks.finishBattle(this.localPlayerId));
+      this.options.callbacks.delay(900, () =>
+        this.options.callbacks.finishBattle(this.localPlayerId),
+      );
     }
   }
 
@@ -185,7 +222,9 @@ export class CombatSyncManager {
         return;
       }
       this.options.callbacks.setStatusText(t("battle.reconnect_timeout"));
-      this.options.callbacks.delay(300, () => this.options.callbacks.finishBattle(this.localPlayerId));
+      this.options.callbacks.delay(300, () =>
+        this.options.callbacks.finishBattle(this.localPlayerId),
+      );
     }, 1_000);
   }
 
@@ -207,14 +246,27 @@ export class CombatSyncManager {
       return;
     }
 
-    if (msg.type === "peer_collaborate_shop_forced_ready" && msg.playerId === this.remotePlayerId) {
+    if (
+      msg.type === "peer_collaborate_shop_forced_ready" &&
+      msg.playerId === this.remotePlayerId
+    ) {
       this.receiveForcedShopReady(msg.playerId, msg.frame, msg.shopIndex);
     }
   }
 
-  private receiveForcedShopReady(playerId: PlayerId, frame: number, shopIndex: number): void {
+  private receiveForcedShopReady(
+    playerId: PlayerId,
+    frame: number,
+    shopIndex: number,
+  ): void {
     if (playerId === this.localPlayerId) return;
-    if (!Number.isInteger(frame) || frame <= 0 || !Number.isInteger(shopIndex) || shopIndex <= 0) return;
+    if (
+      !Number.isInteger(frame) ||
+      frame <= 0 ||
+      !Number.isInteger(shopIndex) ||
+      shopIndex <= 0
+    )
+      return;
 
     const frames = this.forcedShopReadyFrames.get(playerId);
     if (!frames || frames.get(frame) === shopIndex) {
@@ -230,7 +282,9 @@ export class CombatSyncManager {
     }
   }
 
-  private receivePeerGameOver(msg: Extract<ServerMessage, { type: "peer_game_over" }>): void {
+  private receivePeerGameOver(
+    msg: Extract<ServerMessage, { type: "peer_game_over" }>,
+  ): void {
     this.peerGameOverVerdict = {
       frame: msg.frame,
       ackFrame: msg.ackFrame,
@@ -244,7 +298,9 @@ export class CombatSyncManager {
     this.trySendGameOverVerdict();
   }
 
-  private receiveInputFrameMessage(msg: Extract<ServerMessage, { type: "input_frame" }>): void {
+  private receiveInputFrameMessage(
+    msg: Extract<ServerMessage, { type: "input_frame" }>,
+  ): void {
     this.queues.enqueueReceived({
       playerId: msg.playerId,
       frame: msg.frame,
@@ -271,7 +327,11 @@ export class CombatSyncManager {
 
   private consumeSendSceneQueue(): void {
     this.queues.drainPending((item) => {
-      const input = this.applyForcedInputs(this.localPlayerId, item.frame, item.input);
+      const input = this.applyForcedInputs(
+        this.localPlayerId,
+        item.frame,
+        item.input,
+      );
       this.storeInput(this.localPlayerId, item.frame, input);
       this.lastKnownInputs.set(this.localPlayerId, input);
       this.sendInput(item.frame, input);
@@ -286,7 +346,9 @@ export class CombatSyncManager {
       ackFrame: this.lastReceivedRemoteFrame,
       ...canonicalInput,
     };
-    const redundantInputs = this.options.p2p?.connected ? this.createRedundantInputs(frame) : [];
+    const redundantInputs = this.options.p2p?.connected
+      ? this.createRedundantInputs(frame)
+      : [];
     if (redundantInputs.length > 0) {
       message.UnreliableLinkExtra = { redundantInputs };
     }
@@ -296,7 +358,11 @@ export class CombatSyncManager {
     }
   }
 
-  private receiveRemoteInput(playerId: PlayerId, frame: number, input: BattleInputState): void {
+  private receiveRemoteInput(
+    playerId: PlayerId,
+    frame: number,
+    input: BattleInputState,
+  ): void {
     if (playerId === this.localPlayerId) return;
 
     const actualInput = canonicalizeInput(input);
@@ -338,7 +404,9 @@ export class CombatSyncManager {
     for (const f of this.aimConsumingFrames) {
       if (f > restoreFrame) this.aimConsumingFrames.delete(f);
     }
-    this.options.callbacks.recordFrame(this.aimConsumingFrames.has(restoreFrame));
+    this.options.callbacks.recordFrame(
+      this.aimConsumingFrames.has(restoreFrame),
+    );
 
     for (let frame = restoreFrame + 1; frame <= currentFrame; frame += 1) {
       this.stepRuntimeFrame(frame);
@@ -356,14 +424,21 @@ export class CombatSyncManager {
       return;
     }
 
-    this.lastReceivedRemoteFrame = Math.max(this.lastReceivedRemoteFrame, frame);
+    this.lastReceivedRemoteFrame = Math.max(
+      this.lastReceivedRemoteFrame,
+      frame,
+    );
     this.lastPeerAckFrame = Math.max(this.lastPeerAckFrame, frame);
     this.pruneOnlineHistory();
   }
 
   private trySendGameOverVerdict(): void {
     if (this.gameOverVerdictSent) {
-      if (this.sceneIsLocalBattle() && this.peerGameOverVerdict && !this.localBattleFinished) {
+      if (
+        this.sceneIsLocalBattle() &&
+        this.peerGameOverVerdict &&
+        !this.localBattleFinished
+      ) {
         this.finishLocalBattle();
       }
       return;
@@ -406,7 +481,9 @@ export class CombatSyncManager {
     if (this.localBattleFinished || !this.peerGameOverVerdict) {
       return;
     }
-    const localVerdict = this.localGameOverVerdict ?? this.createLocalGameOverVerdict(this.peerGameOverVerdict);
+    const localVerdict =
+      this.localGameOverVerdict ??
+      this.createLocalGameOverVerdict(this.peerGameOverVerdict);
     if (!localVerdict) {
       return;
     }
@@ -419,7 +496,9 @@ export class CombatSyncManager {
       this.peerGameOverVerdict.ackFrame,
     );
     this.options.callbacks.setStatusText(t("battle.adjudication_done"));
-    this.options.callbacks.delay(450, () => this.options.callbacks.finishBattle(winnerPlayerId, confirmedFrame));
+    this.options.callbacks.delay(450, () =>
+      this.options.callbacks.finishBattle(winnerPlayerId, confirmedFrame),
+    );
   }
 
   private sceneIsLocalBattle(): boolean {
@@ -437,33 +516,63 @@ export class CombatSyncManager {
     return this.runtime.state.target.lives <= 0 ? "Player1" : "Player2";
   }
 
-  private storeInput(playerId: PlayerId, frame: number, input: BattleInputState): void {
+  private storeInput(
+    playerId: PlayerId,
+    frame: number,
+    input: BattleInputState,
+  ): void {
     this.inputs.get(playerId)?.set(frame, canonicalizeInput(input));
   }
 
   private createLocalGameOverVerdict(
-    peerVerdict: { readonly frame: number; readonly ackFrame: number; readonly winnerPlayerId: PlayerId } | undefined,
-  ): { readonly frame: number; readonly ackFrame: number; readonly winnerPlayerId: PlayerId } | null {
+    peerVerdict:
+      | {
+          readonly frame: number;
+          readonly ackFrame: number;
+          readonly winnerPlayerId: PlayerId;
+        }
+      | undefined,
+  ): {
+    readonly frame: number;
+    readonly ackFrame: number;
+    readonly winnerPlayerId: PlayerId;
+  } | null {
     if (!this.runtime.gameOver && !peerVerdict) {
       return null;
     }
 
     const frame = this.runtime.gameOver
       ? this.runtime.frame
-      : Math.min(this.runtime.frame, this.lastReceivedRemoteFrame, peerVerdict?.frame ?? this.runtime.frame);
+      : Math.min(
+          this.runtime.frame,
+          this.lastReceivedRemoteFrame,
+          peerVerdict?.frame ?? this.runtime.frame,
+        );
     const ackFrame = Math.min(this.lastReceivedRemoteFrame, frame);
-    const winnerPlayerId = this.runtime.gameOver ? this.winnerPlayerId() : peerVerdict!.winnerPlayerId;
+    const winnerPlayerId = this.runtime.gameOver
+      ? this.winnerPlayerId()
+      : peerVerdict!.winnerPlayerId;
     return { frame, ackFrame, winnerPlayerId };
   }
 
-  private createRedundantInputs(currentFrame: number): NonNullable<InputFrameMessage["UnreliableLinkExtra"]>["redundantInputs"] {
+  private createRedundantInputs(
+    currentFrame: number,
+  ): NonNullable<InputFrameMessage["UnreliableLinkExtra"]>["redundantInputs"] {
     const inputMap = this.inputs.get(this.localPlayerId);
     if (!inputMap) {
       return [];
     }
 
-    const redundant: Array<NonNullable<InputFrameMessage["UnreliableLinkExtra"]>["redundantInputs"][number]> = [];
-    for (let frame = currentFrame - 1; frame >= Math.max(1, currentFrame - 4); frame -= 1) {
+    const redundant: Array<
+      NonNullable<
+        InputFrameMessage["UnreliableLinkExtra"]
+      >["redundantInputs"][number]
+    > = [];
+    for (
+      let frame = currentFrame - 1;
+      frame >= Math.max(1, currentFrame - 4);
+      frame -= 1
+    ) {
       const input = inputMap.get(frame);
       if (!input) {
         continue;
@@ -476,15 +585,24 @@ export class CombatSyncManager {
     return redundant;
   }
 
-  private getInputForFrame(playerId: PlayerId, frame: number): BattleInputState {
+  private getInputForFrame(
+    playerId: PlayerId,
+    frame: number,
+  ): BattleInputState {
     const actual = this.inputs.get(playerId)?.get(frame);
     if (actual) return this.applyForcedInputs(playerId, frame, actual);
-    const predicted = cloneInput(this.lastKnownInputs.get(playerId) ?? neutralInput());
+    const predicted = cloneInput(
+      this.lastKnownInputs.get(playerId) ?? neutralInput(),
+    );
     this.predictedInputs.set(inputKey(playerId, frame), predicted);
     return this.applyForcedInputs(playerId, frame, predicted);
   }
 
-  private applyForcedInputs(playerId: PlayerId, frame: number, input: BattleInputState): BattleInputState {
+  private applyForcedInputs(
+    playerId: PlayerId,
+    frame: number,
+    input: BattleInputState,
+  ): BattleInputState {
     let next = input;
     if (this.forcedTransitionReadyFrames.get(playerId)?.has(frame)) {
       next = {
@@ -506,13 +624,18 @@ export class CombatSyncManager {
 
   private maybeScheduleLocalForcedTransitionReady(frame: number): void {
     const extra = this.runtime.state.collaborateExtra;
-    if (!extra || extra.state !== "transition_sync" || extra.transitionType !== "auto") {
+    if (
+      !extra ||
+      extra.state !== "transition_sync" ||
+      extra.transitionType !== "auto"
+    ) {
       return;
     }
     const localKey = this.localFighterKey();
-    const localReady = localKey === "Player1"
-      ? extra.player1TransitionReady
-      : extra.player2TransitionReady;
+    const localReady =
+      localKey === "Player1"
+        ? extra.player1TransitionReady
+        : extra.player2TransitionReady;
     if (localReady) {
       return;
     }
@@ -525,7 +648,11 @@ export class CombatSyncManager {
     const extra = this.runtime.state.collaborateExtra;
     const localKey = this.localFighterKey();
     const shop = extra?.shop;
-    if (!shop?.open || !shop.revivedByPlayerId[localKey] || shop.readyByPlayerId[localKey]) {
+    if (
+      !shop?.open ||
+      !shop.revivedByPlayerId[localKey] ||
+      shop.readyByPlayerId[localKey]
+    ) {
       return;
     }
 
@@ -543,10 +670,17 @@ export class CombatSyncManager {
   }
 
   private pruneOnlineHistory(): void {
-    const confirmedFrame = Math.min(this.lastReceivedRemoteFrame, this.lastPeerAckFrame);
+    const confirmedFrame = Math.min(
+      this.lastReceivedRemoteFrame,
+      this.lastPeerAckFrame,
+    );
     if (confirmedFrame <= 0) return;
 
-    for (let frame = this.lastReportedConfirmedInputFrame + 1; frame <= confirmedFrame; frame += 1) {
+    for (
+      let frame = this.lastReportedConfirmedInputFrame + 1;
+      frame <= confirmedFrame;
+      frame += 1
+    ) {
       const player = this.inputs.get("Player1")?.get(frame);
       const target = this.inputs.get("Player2")?.get(frame);
       if (!player || !target) {
@@ -565,7 +699,9 @@ export class CombatSyncManager {
       return;
     }
 
-    this.options.callbacks.pruneRollbackHistoryBefore(safelyConfirmedInputFrame);
+    this.options.callbacks.pruneRollbackHistoryBefore(
+      safelyConfirmedInputFrame,
+    );
     for (const inputMap of this.inputs.values()) {
       for (const [frame] of inputMap) {
         if (frame < safelyConfirmedInputFrame) {
@@ -720,7 +856,10 @@ function hasAimConsumingAction(input: BattleInputState): boolean {
  * that the BattleModel has flagged as aim-consuming via projectile
  * retarget or other automatic mechanisms not visible at the input level).
  */
-function sameIntentWithAim(left: BattleInputState, right: BattleInputState): boolean {
+function sameIntentWithAim(
+  left: BattleInputState,
+  right: BattleInputState,
+): boolean {
   if (left.moveX !== right.moveX) return false;
   if (left.moveY !== right.moveY) return false;
   if (left.shootPressed !== right.shootPressed) return false;
@@ -729,10 +868,17 @@ function sameIntentWithAim(left: BattleInputState, right: BattleInputState): boo
   if (left.reloadPressed !== right.reloadPressed) return false;
   if (left.alternateHeld !== right.alternateHeld) return false;
   if (left.infoHeld !== right.infoHeld) return false;
-  if ((left.transitionReadyPressed === true) !== (right.transitionReadyPressed === true)) return false;
-  if ((left.shopReadyPressed === true) !== (right.shopReadyPressed === true)) return false;
-  if ((left.shopPurchaseItemId ?? "") !== (right.shopPurchaseItemId ?? "")) return false;
-  if ((left.activeCardSwitchId ?? "") !== (right.activeCardSwitchId ?? "")) return false;
+  if (
+    (left.transitionReadyPressed === true) !==
+    (right.transitionReadyPressed === true)
+  )
+    return false;
+  if ((left.shopReadyPressed === true) !== (right.shopReadyPressed === true))
+    return false;
+  if ((left.shopPurchaseItemId ?? "") !== (right.shopPurchaseItemId ?? ""))
+    return false;
+  if ((left.activeCardSwitchId ?? "") !== (right.activeCardSwitchId ?? ""))
+    return false;
 
   return left.aimX === right.aimX && left.aimY === right.aimY;
 }
@@ -747,10 +893,17 @@ function sameIntent(left: BattleInputState, right: BattleInputState): boolean {
   if (left.reloadPressed !== right.reloadPressed) return false;
   if (left.alternateHeld !== right.alternateHeld) return false;
   if (left.infoHeld !== right.infoHeld) return false;
-  if ((left.transitionReadyPressed === true) !== (right.transitionReadyPressed === true)) return false;
-  if ((left.shopReadyPressed === true) !== (right.shopReadyPressed === true)) return false;
-  if ((left.shopPurchaseItemId ?? "") !== (right.shopPurchaseItemId ?? "")) return false;
-  if ((left.activeCardSwitchId ?? "") !== (right.activeCardSwitchId ?? "")) return false;
+  if (
+    (left.transitionReadyPressed === true) !==
+    (right.transitionReadyPressed === true)
+  )
+    return false;
+  if ((left.shopReadyPressed === true) !== (right.shopReadyPressed === true))
+    return false;
+  if ((left.shopPurchaseItemId ?? "") !== (right.shopPurchaseItemId ?? ""))
+    return false;
+  if ((left.activeCardSwitchId ?? "") !== (right.activeCardSwitchId ?? ""))
+    return false;
 
   // Aim only matters when something consumes it.
   if (!hasAimConsumingAction(left) && !hasAimConsumingAction(right)) {

@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 
 import type { ArenaBounds } from "@repo/constants";
-import type { FighterState } from "@repo/raid-logic";
+import type { FighterState } from "@repo/types";
 import type { MobState } from "@repo/types";
 
 import { BossDirectionIndicatorView } from "./boss-direction-indicators";

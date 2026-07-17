@@ -1,9 +1,9 @@
 import {
   ConfirmedFrameHashAccumulator,
   stableHash,
-  type BattleInputState,
   type DeterministicHasher,
 } from "@repo/raid-logic";
+import type { BattleInputState } from "@repo/types";
 
 import type { ReplayFrame } from "./types";
 
@@ -17,7 +17,9 @@ export function hashReplayFrameInputsHex(frame: ReplayFrame): string {
   return hash.toString(16).padStart(8, "0");
 }
 
-export function finalReplayInputHash(frames: readonly ReplayFrame[]): string | null {
+export function finalReplayInputHash(
+  frames: readonly ReplayFrame[],
+): string | null {
   if (frames.length === 0) {
     return null;
   }

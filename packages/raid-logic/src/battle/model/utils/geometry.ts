@@ -1,6 +1,6 @@
 import { fp } from "@shaisrc/fixed-point";
 
-import type { ProjectileState } from "@repo/content";
+import type { ProjectileState } from "@repo/types";
 
 export function hitsBeam(beam: ProjectileState, x: number, y: number): boolean {
   const fpDx = fp.sub(fp.fromFloat(x), fp.fromFloat(beam.x));
@@ -21,7 +21,9 @@ export function hitsBeam(beam: ProjectileState, x: number, y: number): boolean {
     );
   }
   return (
-    fp.lte(fp.abs(fpForward), fp.div(fp.fromFloat(beam.width), fp.fromInt(2))) &&
-    fp.lte(fpSide, fp.div(fp.fromFloat(beam.height), fp.fromInt(2)))
+    fp.lte(
+      fp.abs(fpForward),
+      fp.div(fp.fromFloat(beam.width), fp.fromInt(2)),
+    ) && fp.lte(fpSide, fp.div(fp.fromFloat(beam.height), fp.fromInt(2)))
   );
 }

@@ -1,5 +1,5 @@
 import type { BattleRoomMode } from "@repo/types";
-import type { FighterKey } from "@repo/content";
+import type { FighterKey } from "@repo/types";
 
 export interface BattleRules {
   readonly mode: BattleRoomMode;

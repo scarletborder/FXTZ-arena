@@ -2,7 +2,7 @@ import { fp } from "@shaisrc/fixed-point";
 
 import { bulletSpeedRankToPixelsPerTick, secondsToTicks } from "@repo/types";
 
-import type { FighterState } from "@repo/content";
+import type { FighterState } from "@repo/types";
 import type { IntelligenceResult } from "./intelligence";
 import { fpHypotFp, fpMax } from "@repo/content";
 
@@ -49,7 +49,14 @@ export class StrategyManager {
 
     const { aimX, aimY } = this.predictiveAim(self, opponent);
 
-    return { shootPressed, bombPressed, reloadPressed, alternateHeld, aimX, aimY };
+    return {
+      shootPressed,
+      bombPressed,
+      reloadPressed,
+      alternateHeld,
+      aimX,
+      aimY,
+    };
   }
 
   reset(): void {
@@ -63,10 +70,15 @@ export class StrategyManager {
       return self.activeCharacter.id === self.alternateCharacter.id;
     }
 
-    const usingAlternate = self.activeCharacter.id === self.alternateCharacter.id;
+    const usingAlternate =
+      self.activeCharacter.id === self.alternateCharacter.id;
     const currentAmmo = self.ammo;
-    const primaryAmmo = (self.ammoByCharacterId[self.primaryCharacter.id] ?? self.primaryCharacter.ammoCapacity);
-    const alternateAmmo = (self.ammoByCharacterId[self.alternateCharacter.id] ?? self.alternateCharacter.ammoCapacity);
+    const primaryAmmo =
+      self.ammoByCharacterId[self.primaryCharacter.id] ??
+      self.primaryCharacter.ammoCapacity;
+    const alternateAmmo =
+      self.ammoByCharacterId[self.alternateCharacter.id] ??
+      self.alternateCharacter.ammoCapacity;
     const otherAmmo = usingAlternate ? primaryAmmo : alternateAmmo;
 
     if (currentAmmo <= 0 && otherAmmo > 0) {
@@ -96,14 +108,19 @@ export class StrategyManager {
     const playerVx = opponent.x - opponent.previousX;
     const playerVy = opponent.y - opponent.previousY;
 
-    const bulletSpeed = bulletSpeedRankToPixelsPerTick(self.activeCharacter.bulletSpeed);
+    const bulletSpeed = bulletSpeedRankToPixelsPerTick(
+      self.activeCharacter.bulletSpeed,
+    );
 
     const fpDx = fp.fromFloat(opponent.x - self.x);
     const fpDy = fp.fromFloat(opponent.y - self.y);
     const fpDist = fpHypotFp(fpDx, fpDy);
 
     const bulletSpeedFp = fp.fromFloat(bulletSpeed);
-    const fpTravelTime = fpMax(fp.fromInt(1), fp.div(fpDist, fpMax(bulletSpeedFp, fp.fromFloat(0.1))));
+    const fpTravelTime = fpMax(
+      fp.fromInt(1),
+      fp.div(fpDist, fpMax(bulletSpeedFp, fp.fromFloat(0.1))),
+    );
 
     const leadFactor = fp.fromFloat(0.6);
     const fpAimX = fp.add(
@@ -118,21 +135,33 @@ export class StrategyManager {
     return { aimX: fp.toFloat(fpAimX), aimY: fp.toFloat(fpAimY) };
   }
 
-  private shouldShoot(frame: number, self: FighterState, intel: IntelligenceResult): boolean {
+  private shouldShoot(
+    frame: number,
+    self: FighterState,
+    intel: IntelligenceResult,
+  ): boolean {
     if (self.reloadRemaining > 0) return false;
     if (self.ammo <= 0) return false;
     if (self.fireCooldownUntil > 0) return false;
     if (self.actionLockedUntil > 0) return false;
     if (self.deadUntil > 0) return false;
 
-    if (intel.dullingProgress > 0.5 && deterministicUnit(frame, this.switchTimer, self.shotsFired) < intel.dullingProgress * 0.3) {
+    if (
+      intel.dullingProgress > 0.5 &&
+      deterministicUnit(frame, this.switchTimer, self.shotsFired) <
+        intel.dullingProgress * 0.3
+    ) {
       return false;
     }
 
     return true;
   }
 
-  private shouldReload(self: FighterState, threatCount: number, intel: IntelligenceResult): boolean {
+  private shouldReload(
+    self: FighterState,
+    threatCount: number,
+    intel: IntelligenceResult,
+  ): boolean {
     if (self.reloadRemaining > 0) return false;
     if (self.ammo >= self.ammoCapacity) return false;
     if (self.actionLockedUntil > 0) return false;
@@ -148,7 +177,11 @@ export class StrategyManager {
     return false;
   }
 
-  private shouldBomb(self: FighterState, threatCount: number, emergencyBomb: boolean): boolean {
+  private shouldBomb(
+    self: FighterState,
+    threatCount: number,
+    emergencyBomb: boolean,
+  ): boolean {
     if (self.bombs <= 0) return false;
     if (self.bombCooldownUntil > 0) return false;
     if (self.actionLockedUntil > 0) return false;

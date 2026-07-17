@@ -1,4 +1,4 @@
-import type { FighterState, PointState, ProjectileState } from "@repo/content";
+import type { FighterState, PointState, ProjectileState } from "@repo/types";
 import type { NeutralMobState } from "@repo/types";
 
 import type { DodgeIntent, DodgeResult } from "../dodger";

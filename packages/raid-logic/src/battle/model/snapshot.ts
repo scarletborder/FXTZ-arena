@@ -1,5 +1,15 @@
-import type { CollaborateExtraState, MobState } from "@repo/types";
-import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
+import type {
+  BattleModelSnapshot,
+  ClearRingSnapshot,
+  CollaborateExtraState,
+  EffectSnapshot,
+  FighterSnapshot,
+  MobState,
+  NeutralMobSnapshot,
+  PointSnapshot,
+  ProjectileSnapshot,
+  TickerManagerSnapshot,
+} from "@repo/types";
 
 import { getAbilityCard, getCharacter } from "../content";
 import type {
@@ -12,77 +22,17 @@ import type {
 } from "@repo/content";
 import type { NeutralMobSpawnerState } from "@repo/content";
 import type { ClearRingState } from "./entities/clear-ring";
-import {
-  TickerManager,
-  type ProjectileTimerSnapshot,
-  type TickerManagerSnapshot,
-} from "./ticker-manager";
+import { TickerManager } from "./ticker-manager";
 
-export interface BattleModelSnapshot {
-  readonly version: 1;
-  readonly frame: number;
-  readonly gameOver: boolean;
-  readonly result?: BattleResult;
-  readonly nextProjectileId: number;
-  readonly nextEffectId: number;
-  readonly nextNeutralMobId: number;
-  readonly nextPointId: number;
-  readonly nextClearRingId: number;
-  readonly player: FighterSnapshot;
-  readonly target: FighterSnapshot;
-  readonly neutralMobs: readonly NeutralMobSnapshot[];
-  readonly points: readonly PointSnapshot[];
-  readonly clearRings: readonly ClearRingSnapshot[];
-  readonly mobSpawner: NeutralMobSpawnerState | undefined;
-  readonly ticker?: TickerManagerSnapshot;
-  readonly projectiles: readonly ProjectileSnapshot[];
-  readonly effects: readonly EffectSnapshot[];
-  readonly stats: TrainingStats;
-  readonly collaborateExtra?: CollaborateExtraState;
-}
-
-export type FighterSnapshot = Omit<
-  FighterState,
-  | "primaryCharacter"
-  | "activeCharacter"
-  | "alternateCharacter"
-  | "activeCard"
-  | "abilityCards"
-  | "flashUntil"
-  | "statusVisibleUntil"
-> & {
-  readonly primaryCharacterId: CharacterDefinition["id"];
-  readonly activeCharacterId: CharacterDefinition["id"];
-  readonly alternateCharacterId: CharacterDefinition["id"];
-  readonly activeCardId: AbilityCardDefinition["id"] | undefined;
-  readonly abilityCardIds: readonly AbilityCardDefinition["id"][];
-  readonly flashRemaining: number;
-  readonly statusVisibleRemaining: number;
-};
-
-export type ProjectileSnapshot = Omit<
-  ProjectileState,
-  | "visibleFrom"
-  | "expireAt"
-  | "damageFrom"
-  | "damageUntil"
-  | "homingStartAt"
-  | "homingUntil"
-  | "pausedUntil"
-  | "retargetAt"
-> &
-  ProjectileTimerSnapshot;
-
-export type EffectSnapshot = Omit<EffectState, "expireAt"> & {
-  readonly expireIn: number;
-};
-
-export type ClearRingSnapshot = Omit<ClearRingState, "expireAt"> & {
-  readonly expireIn: number;
-};
-
-export type NeutralMobSnapshot = MobState;
-export type PointSnapshot = PointState;
+export type {
+  BattleModelSnapshot,
+  ClearRingSnapshot,
+  EffectSnapshot,
+  FighterSnapshot,
+  NeutralMobSnapshot,
+  PointSnapshot,
+  ProjectileSnapshot,
+} from "@repo/types";
 
 export function createBattleModelSnapshot(params: {
   readonly frame: number;

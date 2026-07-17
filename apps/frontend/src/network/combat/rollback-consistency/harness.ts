@@ -1,12 +1,12 @@
 import {
   ConfirmedFrameHashAccumulator,
   createRaidLogicRuntime,
-  type BattleModelSnapshot,
   type RaidLogicRuntime,
 } from "@repo/raid-logic";
 import type {
   BattleConfig,
   BattleInputState,
+  BattleModelSnapshot,
   ClientMessage,
   PlayerLoadout,
   ServerMessage,
@@ -130,7 +130,8 @@ async function createClient(
       nextFrame += 1
     ) {
       const hash = hashBacklog.get(nextFrame) ?? hashHistory.get(nextFrame);
-      if (!hash) throw new Error(`Missing hash for confirmed frame ${nextFrame}`);
+      if (!hash)
+        throw new Error(`Missing hash for confirmed frame ${nextFrame}`);
       globalHash.addSample({ frame: nextFrame, hashHex: hash });
       sampledFrameHashes.set(nextFrame, hash);
       hashBacklog.delete(nextFrame);
@@ -279,10 +280,14 @@ function expectFrameHashesMatch(
     const leftSampled = left.sampledHashAt(frame);
     const rightSampled = right.sampledHashAt(frame);
     if (leftSampled && leftHash !== leftSampled) {
-      mismatches.push(`${frame}: Player1 sampled ${leftSampled}, final ${leftHash}`);
+      mismatches.push(
+        `${frame}: Player1 sampled ${leftSampled}, final ${leftHash}`,
+      );
     }
     if (rightSampled && rightHash !== rightSampled) {
-      mismatches.push(`${frame}: Player2 sampled ${rightSampled}, final ${rightHash}`);
+      mismatches.push(
+        `${frame}: Player2 sampled ${rightSampled}, final ${rightHash}`,
+      );
     }
     if (leftSampled && rightSampled && leftSampled !== rightSampled) {
       mismatches.push(`${frame}: ${leftSampled} != ${rightSampled}`);
@@ -404,7 +409,8 @@ class DedicatedServerHarness {
   send(from: TestPlayerId, message: ClientMessage): void {
     this.queue.push({
       deliverAt: this.tick + this.latencyTicks[from],
-      run: () => this.handler.handle(this.endpoints[from].serverConnection, message),
+      run: () =>
+        this.handler.handle(this.endpoints[from].serverConnection, message),
     });
   }
 
@@ -458,9 +464,7 @@ class ClientEndpoint {
     this.network.send(this.playerId, message);
   }
 
-  setMessageHandler(
-    handler: ((message: ServerMessage) => void) | null,
-  ): void {
+  setMessageHandler(handler: ((message: ServerMessage) => void) | null): void {
     this.handler = handler;
   }
 

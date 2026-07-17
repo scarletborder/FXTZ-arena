@@ -1,7 +1,6 @@
-import type { FighterState, ProjectileState } from "@repo/raid-logic";
+import type { FighterState } from "@repo/types";
 
-export type FighterKey = ProjectileState["owner"];
-export type CharacterId = FighterState["activeCharacter"]["id"];
+export type { CharacterId, FighterKey } from "@repo/types";
 
 export interface BulletFrame {
   readonly key: string;

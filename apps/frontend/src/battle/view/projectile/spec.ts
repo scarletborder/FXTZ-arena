@@ -1,4 +1,4 @@
-import type { FighterState, ProjectileState } from "@repo/raid-logic";
+import type { FighterState, ProjectileState } from "@repo/types";
 
 import { bulletFrameKey } from "./frames";
 import type {

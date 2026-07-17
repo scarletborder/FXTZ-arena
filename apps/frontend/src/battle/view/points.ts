@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-import type { FighterState, PointState } from "@repo/raid-logic";
+import type { FighterState, PointState } from "@repo/types";
 import { Depth } from "../../utils/depth";
 import { smoothValue } from "./smooth";
 
@@ -13,7 +13,7 @@ interface PointVisual {
 export class PointView {
   private readonly visuals = new Map<number, PointVisual>();
 
-  constructor(private readonly scene: Phaser.Scene) { }
+  constructor(private readonly scene: Phaser.Scene) {}
 
   render(params: {
     readonly points: readonly PointState[];
@@ -37,11 +37,22 @@ export class PointView {
       }
 
       const display = pointDisplay(point, params.player, params.target, alpha);
-      const collectRatio = point.collectingBy ? Math.max(0, point.collectTicksRemaining / 10) : 1;
+      const collectRatio = point.collectingBy
+        ? Math.max(0, point.collectTicksRemaining / 10)
+        : 1;
       const scale = point.collectingBy ? 1 + (1 - collectRatio) * 0.35 : 1;
       visual.container.setScale(scale);
-      visual.container.setPosition(smoothValue(visual.container.x, display.x, rollbackBlend), smoothValue(visual.container.y, display.y, rollbackBlend));
-      visual.container.setAlpha(smoothValue(visual.container.alpha, point.collectingBy ? collectRatio : 1, rollbackBlend));
+      visual.container.setPosition(
+        smoothValue(visual.container.x, display.x, rollbackBlend),
+        smoothValue(visual.container.y, display.y, rollbackBlend),
+      );
+      visual.container.setAlpha(
+        smoothValue(
+          visual.container.alpha,
+          point.collectingBy ? collectRatio : 1,
+          rollbackBlend,
+        ),
+      );
       visual.container.setVisible(true);
       visual.box.setDisplaySize(point.size, point.size);
       const style = pointVisualStyle(point.rewardKind);
@@ -62,23 +73,26 @@ export class PointView {
 
   private createVisual(point: PointState): PointVisual {
     const style = pointVisualStyle(point.rewardKind);
-    const box = this.scene.add.rectangle(0, 0, point.size, point.size, style.fill, 1)
+    const box = this.scene.add
+      .rectangle(0, 0, point.size, point.size, style.fill, 1)
       .setOrigin(0.5)
       .setStrokeStyle(2, style.stroke, 1);
-    const label = this.scene.add.text(0, 0, style.label, {
-      fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
-      fontSize: `${Math.max(8, point.size - 1)}px`,
-      fontStyle: "700",
-      color: style.text,
-    }).setOrigin(0.5);
-    const container = this.scene.add.container(point.x, point.y, [box, label]).setDepth(Depth.Point);
+    const label = this.scene.add
+      .text(0, 0, style.label, {
+        fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+        fontSize: `${Math.max(8, point.size - 1)}px`,
+        fontStyle: "700",
+        color: style.text,
+      })
+      .setOrigin(0.5);
+    const container = this.scene.add
+      .container(point.x, point.y, [box, label])
+      .setDepth(Depth.Point);
     return { box, label, container };
   }
 }
 
-function pointVisualStyle(
-  rewardKind: PointState["rewardKind"],
-): {
+function pointVisualStyle(rewardKind: PointState["rewardKind"]): {
   readonly fill: number;
   readonly stroke: number;
   readonly text: string;
@@ -114,7 +128,10 @@ function pointDisplay(
   const fighter = point.collectingBy === "Player1" ? player : target;
   const targetX = lerp(fighter.previousX, fighter.x, alpha);
   const targetY = lerp(fighter.previousY, fighter.y, alpha);
-  const progress = Math.max(0, Math.min(1, (10 - point.collectTicksRemaining + alpha) / 10));
+  const progress = Math.max(
+    0,
+    Math.min(1, (10 - point.collectTicksRemaining + alpha) / 10),
+  );
   return {
     x: lerp(point.x, targetX, progress),
     y: lerp(point.y, targetY, progress),

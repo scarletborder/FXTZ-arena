@@ -1,4 +1,8 @@
-import { getAbilityCardDefinition, getCharacterDefinition, type AbilityCardDefinition, type CharacterDefinition } from "@repo/content";
+import {
+  getAbilityCardDefinition,
+  getCharacterDefinition,
+} from "@repo/content";
+import type { AbilityCardDefinition, CharacterDefinition } from "@repo/types";
 import { t } from "@repo/i18n";
 import type { BattleResult } from "@repo/content";
 import type { BattleRoomMode, PlayerId, PlayerLoadout } from "@repo/types";
@@ -33,10 +37,19 @@ export type SceneKey =
   | "replay-playback"
   | "spectator-loading"
   | "debug-bullet-volume";
-export type SelectionMode = "ai" | "training" | "online" | "local" | "local_single" | "debug_cooperate";
+export type SelectionMode =
+  | "ai"
+  | "training"
+  | "online"
+  | "local"
+  | "local_single"
+  | "debug_cooperate";
 export type DebugCooperateJumpTarget = "start" | "elite" | "boss";
 export type CodexTab = "characters" | "cards";
-export type CpuLoadoutPresetId = "marisa_solo" | "sakuya_cirno" | "kaguya_reisen";
+export type CpuLoadoutPresetId =
+  | "marisa_solo"
+  | "sakuya_cirno"
+  | "kaguya_reisen";
 
 export interface SelectionData {
   readonly mode: SelectionMode;
@@ -142,7 +155,9 @@ export function speedLabel(speed: CharacterDefinition["moveSpeed"]): string {
   }[speed];
 }
 
-export function characterName(character: Pick<CharacterDefinition, "name">): string {
+export function characterName(
+  character: Pick<CharacterDefinition, "name">,
+): string {
   return t(character.name);
 }
 
@@ -166,7 +181,9 @@ export function contentName(definition: { readonly name: string }): string {
   return t(definition.name);
 }
 
-export function getCharacterById(id: CharacterDefinition["id"]): CharacterDefinition {
+export function getCharacterById(
+  id: CharacterDefinition["id"],
+): CharacterDefinition {
   const character = getCharacterDefinition(id);
   if (!character) {
     throw new Error(`Missing character: ${id}`);
@@ -174,7 +191,9 @@ export function getCharacterById(id: CharacterDefinition["id"]): CharacterDefini
   return character;
 }
 
-export function getCardById(id: AbilityCardDefinition["id"]): AbilityCardDefinition {
+export function getCardById(
+  id: AbilityCardDefinition["id"],
+): AbilityCardDefinition {
   const card = getAbilityCardDefinition(id);
   if (!card) {
     throw new Error(`Missing ability card: ${id}`);

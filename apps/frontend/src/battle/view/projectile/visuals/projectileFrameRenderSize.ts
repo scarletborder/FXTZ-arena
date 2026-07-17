@@ -1,5 +1,5 @@
 import { bulletRenderSizeForHitSize } from "@repo/content";
-import type { ProjectileState } from "@repo/raid-logic";
+import type { ProjectileState } from "@repo/types";
 
 import type { ProjectileDisplay, ProjectileSpec } from "../types";
 

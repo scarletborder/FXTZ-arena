@@ -1,4 +1,4 @@
-import type { FighterState } from "@repo/content";
+import type { FighterState } from "@repo/types";
 
 import { kaguyaReisenPreset } from "./preset_kaguya_reisen";
 import { marisaNullPreset } from "./preset_marisa_null";

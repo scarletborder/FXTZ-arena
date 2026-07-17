@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-import type { ProjectileState } from "@repo/raid-logic";
+import type { ProjectileState } from "@repo/types";
 import { Depth } from "../../../../utils/depth";
 
 import { projectileAlpha, type ProjectileAlphaOptions } from "../display";
@@ -235,16 +235,40 @@ export class ProjectileVisualStore {
     const glowHeight = Math.max(halfHeight + 6, halfHeight * 1.5);
 
     graphics.fillStyle(0xffd4d4, 0.35);
-    graphics.fillRoundedRect(-halfLength, -glowHeight, display.width, glowHeight * 2, glowHeight);
+    graphics.fillRoundedRect(
+      -halfLength,
+      -glowHeight,
+      display.width,
+      glowHeight * 2,
+      glowHeight,
+    );
 
     graphics.fillStyle(0xff4d5f, 0.85);
-    graphics.fillRoundedRect(-halfLength, -halfHeight - 2, display.width, display.height + 4, halfHeight + 2);
+    graphics.fillRoundedRect(
+      -halfLength,
+      -halfHeight - 2,
+      display.width,
+      display.height + 4,
+      halfHeight + 2,
+    );
 
     graphics.fillStyle(0x0b0909, 1);
-    graphics.fillRoundedRect(-halfLength + 2, -halfHeight + 2, Math.max(4, display.width - 4), Math.max(4, display.height - 4), Math.max(2, halfHeight - 1));
+    graphics.fillRoundedRect(
+      -halfLength + 2,
+      -halfHeight + 2,
+      Math.max(4, display.width - 4),
+      Math.max(4, display.height - 4),
+      Math.max(2, halfHeight - 1),
+    );
 
     graphics.lineStyle(2, 0xffffff, 0.8);
-    graphics.strokeRoundedRect(-halfLength + 0.5, -halfHeight + 0.5, display.width - 1, display.height - 1, Math.max(2, halfHeight - 1));
+    graphics.strokeRoundedRect(
+      -halfLength + 0.5,
+      -halfHeight + 0.5,
+      display.width - 1,
+      display.height - 1,
+      Math.max(2, halfHeight - 1),
+    );
   }
 
   renderYoumuSlashArcs(
@@ -365,7 +389,9 @@ export class ProjectileVisualStore {
     if (existing) {
       destroyVisual(existing);
     }
-    const graphics = this.scene.add.graphics().setDepth(Depth.Projectile + 0.05);
+    const graphics = this.scene.add
+      .graphics()
+      .setDepth(Depth.Projectile + 0.05);
     const visual = { kind: "graphics" as const, graphics };
     this.visuals.set(id, visual);
     return visual;

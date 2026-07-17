@@ -1,17 +1,23 @@
 import Phaser from "phaser";
 
-import type { EffectState, ShieldState } from "@repo/raid-logic";
+import type { EffectState, ShieldState } from "@repo/types";
 import { createClearRingSfx, renderClearRingSfx } from "../sfx";
 import { Depth } from "../../utils/depth";
 
 export class EffectsView {
   private readonly sprites = new Map<number, Phaser.GameObjects.Image>();
   private readonly rings = new Map<number, Phaser.GameObjects.Graphics>();
-  private readonly shields = new Map<string, Phaser.GameObjects.Shape | Phaser.GameObjects.Container>();
+  private readonly shields = new Map<
+    string,
+    Phaser.GameObjects.Shape | Phaser.GameObjects.Container
+  >();
 
   constructor(private readonly scene: Phaser.Scene) {}
 
-  render(effects: readonly EffectState[], shields: readonly ShieldState[] = []): void {
+  render(
+    effects: readonly EffectState[],
+    shields: readonly ShieldState[] = [],
+  ): void {
     const active = new Set<number>();
     for (const effect of effects) {
       active.add(effect.id);
@@ -37,7 +43,14 @@ export class EffectsView {
       }
       let sprite = this.sprites.get(effect.id);
       if (!sprite) {
-        sprite = this.scene.add.image(effect.x, effect.y, effect.kind === "burst" ? "effect-burst" : "effect-ring").setOrigin(0.5).setDepth(Depth.Effect);
+        sprite = this.scene.add
+          .image(
+            effect.x,
+            effect.y,
+            effect.kind === "burst" ? "effect-burst" : "effect-ring",
+          )
+          .setOrigin(0.5)
+          .setDepth(Depth.Effect);
         this.sprites.set(effect.id, sprite);
       }
       sprite.setPosition(effect.x, effect.y);
@@ -81,9 +94,18 @@ export class EffectsView {
     }
   }
 
-  private createDefaultShield(shield: ShieldState): Phaser.GameObjects.Rectangle {
+  private createDefaultShield(
+    shield: ShieldState,
+  ): Phaser.GameObjects.Rectangle {
     const rect = this.scene.add
-      .rectangle(shield.x, shield.y, shield.width, shield.height, 0x8af7ff, 0.18)
+      .rectangle(
+        shield.x,
+        shield.y,
+        shield.width,
+        shield.height,
+        0x8af7ff,
+        0.18,
+      )
       .setOrigin(0.5)
       .setDepth(Depth.Shield);
     rect.setStrokeStyle(2, 0x8af7ff, 0.95);
@@ -92,9 +114,23 @@ export class EffectsView {
   }
 
   private createUfoShield(shield: ShieldState): Phaser.GameObjects.Container {
-    const body = this.scene.add.rectangle(0, 0, shield.width, shield.height, 0x72f6ff, 0.2);
+    const body = this.scene.add.rectangle(
+      0,
+      0,
+      shield.width,
+      shield.height,
+      0x72f6ff,
+      0.2,
+    );
     body.setStrokeStyle(2, 0x72f6ff, 0.95);
-    const inner = this.scene.add.rectangle(0, 0, shield.width * 0.62, shield.height * 0.62, 0xf7ff8a, 0.32);
+    const inner = this.scene.add.rectangle(
+      0,
+      0,
+      shield.width * 0.62,
+      shield.height * 0.62,
+      0xf7ff8a,
+      0.32,
+    );
     inner.setStrokeStyle(1, 0xf7ff8a, 0.85);
     const cross = this.scene.add.graphics();
     cross.lineStyle(2, 0xd9fbff, 0.95);

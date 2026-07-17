@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { t } from "@repo/i18n";
 
-import type { AbilityCardDefinition } from "@repo/content";
+import type { AbilityCardDefinition } from "@repo/types";
 
 import { cardName, type CardTileControl } from "../shared";
 

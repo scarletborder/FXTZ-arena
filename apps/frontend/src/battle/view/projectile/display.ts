@@ -1,4 +1,4 @@
-import type { ProjectileState } from "@repo/raid-logic";
+import type { ProjectileState } from "@repo/types";
 import { OWN_PROJECTILE_ALPHA } from "@repo/constants";
 import type { BattleRoomMode } from "@repo/types";
 
@@ -74,10 +74,8 @@ export function projectileDisplay(
   // Physics body stays at the projectile's logical position (no offset).
   const cosR = Math.cos(projectile.angle + Math.PI / 2);
   const sinR = Math.sin(projectile.angle + Math.PI / 2);
-  const ox =
-    projectile.centerOffsetX * cosR - projectile.centerOffsetY * sinR;
-  const oy =
-    projectile.centerOffsetX * sinR + projectile.centerOffsetY * cosR;
+  const ox = projectile.centerOffsetX * cosR - projectile.centerOffsetY * sinR;
+  const oy = projectile.centerOffsetX * sinR + projectile.centerOffsetY * cosR;
   return {
     x: baseX + ox,
     y: baseY + oy,

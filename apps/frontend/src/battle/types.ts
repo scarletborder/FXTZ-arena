@@ -7,4 +7,4 @@ export type {
   ProjectileKind,
   ProjectileState,
   TrainingStats,
-} from "@repo/raid-logic";
+} from "@repo/types";

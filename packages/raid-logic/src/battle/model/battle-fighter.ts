@@ -1,6 +1,6 @@
 import { fp } from "@shaisrc/fixed-point";
 
-import type { AbilityCardDefinition, CharacterDefinition } from "@repo/content";
+import type { AbilityCardDefinition, CharacterDefinition } from "@repo/types";
 import {
   DEFAULT_ARENA_BOUNDS,
   DEFAULT_BOMBS,

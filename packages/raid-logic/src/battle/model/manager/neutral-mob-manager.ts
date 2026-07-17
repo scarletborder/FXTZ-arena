@@ -9,7 +9,7 @@ import {
   PLAYER_CORE_RADIUS,
   type ArenaBounds,
 } from "@repo/types";
-import type { FighterKey, FighterState, ProjectileState } from "@repo/content";
+import type { FighterKey, FighterState, ProjectileState } from "@repo/types";
 import type { NeutralMobSpawner, NeutralMobSpawnerState } from "@repo/content";
 import { createFamiliarFromSnapshot } from "@repo/content";
 import {
@@ -318,7 +318,9 @@ function stableNeutralMobId(waveId: number, waveMemberIndex: number): number {
   return normalizedWaveId * 1000 + normalizedMemberIndex + 1;
 }
 
-function nextDynamicMobIdAfter(mobs: readonly { readonly id: number }[]): number {
+function nextDynamicMobIdAfter(
+  mobs: readonly { readonly id: number }[],
+): number {
   return (
     1 +
     Math.max(

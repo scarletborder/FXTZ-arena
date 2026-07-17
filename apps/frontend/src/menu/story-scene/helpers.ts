@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import type { CharacterDefinition } from "@repo/content";
+import type { CharacterDefinition } from "@repo/types";
 import { t } from "@repo/i18n";
 
 import { storyJsonKey } from "../../story/assets";
@@ -25,18 +25,21 @@ export function getStoryFromCache(
 
 export function applyDifficultyToStory(
   story: StoryDefinition,
-  cfg: typeof DIFFICULTY_CONFIGS[EnumDifficulty],
+  cfg: (typeof DIFFICULTY_CONFIGS)[EnumDifficulty],
 ): StoryDefinition {
-  const adjustedStages: StoryDefinition["stages"] = story.stages.map((stage) => {
-    return {
-      ...stage,
-      ai: {
-        smartDurationSeconds: stage.ai.smartDurationSeconds * cfg.smartDurationRatio,
-        dumbRampSeconds: stage.ai.dumbRampSeconds * cfg.dumbRampRatio,
-      },
-      initEnemyPoint: cfg.initialAIPoint,
-    }
-  });
+  const adjustedStages: StoryDefinition["stages"] = story.stages.map(
+    (stage) => {
+      return {
+        ...stage,
+        ai: {
+          smartDurationSeconds:
+            stage.ai.smartDurationSeconds * cfg.smartDurationRatio,
+          dumbRampSeconds: stage.ai.dumbRampSeconds * cfg.dumbRampRatio,
+        },
+        initEnemyPoint: cfg.initialAIPoint,
+      };
+    },
+  );
   return {
     ...story,
     stages: adjustedStages,

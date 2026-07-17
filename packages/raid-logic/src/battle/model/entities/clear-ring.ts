@@ -1,23 +1,14 @@
 import { fp } from "@shaisrc/fixed-point";
 
-import type { FighterKey, FighterState, ProjectileState } from "@repo/content";
+import type { FighterKey, FighterState, ProjectileState } from "@repo/types";
 import { fpHypotFp } from "@repo/content";
+import type { ClearRingState } from "@repo/types";
 import type { PhysicsBodyDef } from "../../../physics-world";
 import type { BattleRules } from "../battle-rules";
 
-export interface ClearRingState {
-  readonly id: number;
-  readonly owner: FighterKey;
-  x: number;
-  y: number;
-  previousX: number;
-  previousY: number;
-  readonly radius: number;
-  readonly expireAt: number;
-  readonly followsOwner: boolean;
-}
+export type { ClearRingState } from "@repo/types";
 
-export interface SpawnClearRingEntityParams {
+export interface CreateClearRingStateParams {
   readonly id: number;
   readonly owner: FighterKey;
   readonly x: number;
@@ -29,7 +20,7 @@ export interface SpawnClearRingEntityParams {
 }
 
 export function createClearRingState(
-  params: SpawnClearRingEntityParams,
+  params: CreateClearRingStateParams,
 ): ClearRingState {
   return {
     id: params.id,

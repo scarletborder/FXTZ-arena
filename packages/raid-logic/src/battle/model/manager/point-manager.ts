@@ -1,6 +1,6 @@
 import { fp } from "@shaisrc/fixed-point";
 
-import type { FighterState, PointState } from "@repo/content";
+import type { FighterState, PointState } from "@repo/types";
 import type { MobState } from "@repo/types";
 import { DEFAULT_ARENA_BOUNDS, type ArenaBounds } from "@repo/types";
 import { fpHypotFp } from "@repo/content";

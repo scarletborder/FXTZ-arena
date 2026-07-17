@@ -1,4 +1,4 @@
-import type { BattleInputState } from "@repo/raid-logic";
+import type { BattleInputState } from "@repo/types";
 import { BattleEvents, type PointRewardSize } from "@repo/constants";
 import Phaser from "phaser";
 import { DebugHashRow } from "../../../commands/ConsoleCmd";
@@ -11,7 +11,9 @@ import type { BattleSession } from "../../session/battle-session";
 
 export type DebugPointSize = "small" | "medium" | "large";
 
-export function pointRewardSizeForDebugSize(size: DebugPointSize): PointRewardSize {
+export function pointRewardSizeForDebugSize(
+  size: DebugPointSize,
+): PointRewardSize {
   switch (size) {
     case "small":
       return "small";
@@ -48,7 +50,10 @@ export function describePresetScriptAction(offset: number): string {
   if (
     offset > 150 &&
     offset < 390 &&
-    (isPresetAlternateHeld(offset) || isPresetShootFrame(offset) || isPresetReloadFrame(offset) || isPresetBombFrame(offset))
+    (isPresetAlternateHeld(offset) ||
+      isPresetShootFrame(offset) ||
+      isPresetReloadFrame(offset) ||
+      isPresetBombFrame(offset))
   ) {
     actions.push("duringMarisaBombLock");
   }
@@ -76,7 +81,10 @@ function presetMoveY(offset: number): -1 | 0 | 1 {
 }
 
 function isPresetShootFrame(offset: number): boolean {
-  return [4, 10, 18, 35, 78, 90, 118, 146, 166, 174, 182, 205, 238, 274, 330, 360, 390].includes(offset);
+  return [
+    4, 10, 18, 35, 78, 90, 118, 146, 166, 174, 182, 205, 238, 274, 330, 360,
+    390,
+  ].includes(offset);
 }
 
 function isPresetReloadFrame(offset: number): boolean {
@@ -88,7 +96,12 @@ function isPresetBombFrame(offset: number): boolean {
 }
 
 function isPresetAlternateHeld(offset: number): boolean {
-  return (offset >= 72 && offset < 122) || (offset >= 144 && offset < 248) || (offset >= 255 && offset < 305) || (offset >= 350 && offset < 382);
+  return (
+    (offset >= 72 && offset < 122) ||
+    (offset >= 144 && offset < 248) ||
+    (offset >= 255 && offset < 305) ||
+    (offset >= 350 && offset < 382)
+  );
 }
 
 export class BattleDebugController {
@@ -170,7 +183,11 @@ export class BattleDebugController {
     if (this.sceneData.mode === "online" || this.sceneData.mode === "local") {
       return false;
     }
-    const pointer = getBattlePointerWorld(this.scene, this.mobileControls, this.arenaBounds);
+    const pointer = getBattlePointerWorld(
+      this.scene,
+      this.mobileControls,
+      this.arenaBounds,
+    );
     this.session.spawnDebugPoint({
       rewardSize: pointRewardSizeForDebugSize(size),
       x: pointer.x,

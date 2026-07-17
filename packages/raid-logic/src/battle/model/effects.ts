@@ -1,4 +1,4 @@
-import type { EffectState } from "@repo/content";
+import type { EffectState } from "@repo/types";
 
 export class EffectSystem {
   private nextEffectId = 1;
@@ -12,8 +12,12 @@ export class EffectSystem {
   }
 
   restoreNextId(effects: readonly EffectState[], nextEffectId?: number): void {
-    const nextIdFromEffects = Math.max(0, ...effects.map((effect) => effect.id)) + 1;
-    this.nextEffectId = Math.max(nextEffectId ?? nextIdFromEffects, nextIdFromEffects);
+    const nextIdFromEffects =
+      Math.max(0, ...effects.map((effect) => effect.id)) + 1;
+    this.nextEffectId = Math.max(
+      nextEffectId ?? nextIdFromEffects,
+      nextIdFromEffects,
+    );
   }
 
   spawnRing(
@@ -37,6 +41,10 @@ export class EffectSystem {
   }
 
   stepEffects(effects: EffectState[], frame: number): void {
-    effects.splice(0, effects.length, ...effects.filter((effect) => frame < effect.expireAt));
+    effects.splice(
+      0,
+      effects.length,
+      ...effects.filter((effect) => frame < effect.expireAt),
+    );
   }
 }

@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import type { BattleOutputFrame } from "@repo/raid-logic";
+import type { BattleOutputFrame } from "@repo/types";
 import type { PlayerId } from "@repo/types";
 import type { BattleSceneData } from "../../loadout";
 import { settingsRepository } from "../../../store/settings";

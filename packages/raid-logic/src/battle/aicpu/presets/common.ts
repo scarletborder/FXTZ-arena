@@ -4,7 +4,7 @@ import {
   bulletSpeedRankToPixelsPerTick,
 } from "@repo/types";
 
-import type { FighterState, ProjectileState } from "@repo/content";
+import type { FighterState, ProjectileState } from "@repo/types";
 
 import type { DodgeIntent } from "../dodger";
 import type { CpuPresetContext } from "./types";
@@ -56,8 +56,7 @@ export function alternateHeldForDesired(
   self: FighterState,
   desiredCharacterId: FighterState["activeCharacter"]["id"],
 ): boolean {
-  const usingAlternate =
-    self.activeCharacter.id === self.alternateCharacter.id;
+  const usingAlternate = self.activeCharacter.id === self.alternateCharacter.id;
   if (!canSwitch(self)) {
     return usingAlternate;
   }

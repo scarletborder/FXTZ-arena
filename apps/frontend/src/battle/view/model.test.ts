@@ -1,8 +1,8 @@
+import { createRaidLogicRuntime } from "@repo/raid-logic";
 import {
-  createRaidLogicRuntime,
+  createDefaultCollaborateExtraState,
   type BattleInputState,
-} from "@repo/raid-logic";
-import { createDefaultCollaborateExtraState } from "@repo/types";
+} from "@repo/types";
 import { describe, expect, it } from "vitest";
 
 import { createBattleViewModel } from "./model";

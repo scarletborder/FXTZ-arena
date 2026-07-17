@@ -18,9 +18,9 @@ import {
   type ArenaBounds,
   type PointRewardSize,
 } from "@repo/constants";
-import type { BattleOutputState } from "@repo/content";
+import type { BattleOutputState, MapDefinition } from "@repo/types";
 import { DEFAULT_MAPS, resolveMobSpawner } from "@repo/content";
-import type { MapDefinition, NeutralMobSpawner } from "@repo/content";
+import type { NeutralMobSpawner } from "@repo/content";
 
 export type RaidLogicMode = "training" | "ai" | "online";
 

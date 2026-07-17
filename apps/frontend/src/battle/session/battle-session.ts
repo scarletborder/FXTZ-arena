@@ -1,28 +1,57 @@
 import { FIXED_STEP_MS, type PointRewardSize } from "@repo/constants";
-import { createRaidLogicRuntime, type BattleInputState, type BattleOutputFrame, type BattleOutputState, type RaidLogicRuntime } from "@repo/raid-logic";
-import type { PlayerId } from "@repo/types";
+import {
+  createRaidLogicRuntime,
+  type RaidLogicRuntime,
+} from "@repo/raid-logic";
+import type {
+  BattleInputState,
+  BattleOutputFrame,
+  BattleOutputState,
+  PlayerId,
+} from "@repo/types";
 
 import type { BattleSceneData } from "../loadout";
 import type { CombatConnection } from "../../network/combat";
 import { BattleFramePipeline } from "./frame-pipeline";
-import { BattleNetworkSession, type BattleNetworkHost } from "./network-session";
-import { BattleRollbackHistory, type BattleRollbackLogger, type BattleRollbackLogRecord } from "./rollback-history";
+import {
+  BattleNetworkSession,
+  type BattleNetworkHost,
+} from "./network-session";
+import {
+  BattleRollbackHistory,
+  type BattleRollbackLogger,
+  type BattleRollbackLogRecord,
+} from "./rollback-history";
 
 export interface BattleSessionOutput {
   isDebugEnabled(): boolean;
   readonly logger: BattleRollbackLogger;
-  present(output: BattleOutputFrame, logRecord: BattleRollbackLogRecord | null, confirmedFrame: number): void;
+  present(
+    output: BattleOutputFrame,
+    logRecord: BattleRollbackLogRecord | null,
+    confirmedFrame: number,
+  ): void;
 }
 
 export interface BattleSessionInput {
   isLocked(): boolean;
-  create(fighter: BattleOutputState["player"], previousShotsFired: number): BattleInputState;
-  createTarget(fighter: BattleOutputState["target"], previousShotsFired: number): BattleInputState;
+  create(
+    fighter: BattleOutputState["player"],
+    previousShotsFired: number,
+  ): BattleInputState;
+  createTarget(
+    fighter: BattleOutputState["target"],
+    previousShotsFired: number,
+  ): BattleInputState;
 }
 
 export interface BattleSessionHost {
   isActive(): boolean;
-  recordInputFrame(frame: number, player: BattleInputState, target: BattleInputState): void;
+  recordInputFrame(
+    frame: number,
+    player: BattleInputState,
+    target: BattleInputState,
+  ): void;
   shouldFinishBattle(): boolean;
   finishBattle(): void;
   onRollback(): void;
@@ -50,7 +79,12 @@ export class BattleSession {
     this.runtime =
       sceneData.runtime ??
       createRaidLogicRuntime({
-        mode: sceneData.mode === "ai" ? "ai" : sceneData.mode === "online" || sceneData.mode === "local" ? "online" : "training",
+        mode:
+          sceneData.mode === "ai"
+            ? "ai"
+            : sceneData.mode === "online" || sceneData.mode === "local"
+              ? "online"
+              : "training",
         loadouts: sceneData.loadouts,
         mapId: sceneData.mapId ?? sceneData.battleConfig?.mapId,
         battleMode: sceneData.battleMode ?? sceneData.battleConfig?.battleMode,
@@ -72,14 +106,17 @@ export class BattleSession {
       localSingleDevice: sceneData.localSingleDevice === true,
       isLogicReady: () => this.logicReady,
       isInputLocked: () => options.input.isLocked(),
-      createInput: (fighter, previousShotsFired) => options.input.create(fighter, previousShotsFired),
-      createTargetInput: (fighter, previousShotsFired) => options.input.createTarget(fighter, previousShotsFired),
+      createInput: (fighter, previousShotsFired) =>
+        options.input.create(fighter, previousShotsFired),
+      createTargetInput: (fighter, previousShotsFired) =>
+        options.input.createTarget(fighter, previousShotsFired),
       isSyncRunning: () => this.network?.isSyncRunning() ?? false,
       stepSync: (input) => this.network?.step(input),
       recordOutputFrame: () => {
         this.recordOutputFrame();
       },
-      recordInputFrame: (frame, player, target) => options.host.recordInputFrame(frame, player, target),
+      recordInputFrame: (frame, player, target) =>
+        options.host.recordInputFrame(frame, player, target),
       shouldFinishBattle: () => options.host.shouldFinishBattle(),
       finishBattle: () => options.host.finishBattle(),
     });
@@ -97,10 +134,13 @@ export class BattleSession {
       runtime: this.runtime,
       connection: options.connection,
       host: options.networkHost,
-      recordStepInputs: (record) => this.rollbackHistory.recordStepInputs(record),
-      recordConfirmedInputs: (record) => this.rollbackHistory.recordConfirmedInputs(record),
+      recordStepInputs: (record) =>
+        this.rollbackHistory.recordStepInputs(record),
+      recordConfirmedInputs: (record) =>
+        this.rollbackHistory.recordConfirmedInputs(record),
       recordFrame: (aimConsumed) => this.recordOutputFrame(aimConsumed),
-      getRollbackRecord: (frame) => this.rollbackHistory.getRollbackRecord(frame),
+      getRollbackRecord: (frame) =>
+        this.rollbackHistory.getRollbackRecord(frame),
       pruneAfter: (frame) => this.rollbackHistory.pruneAfter(frame),
       pruneBefore: (frame) => this.rollbackHistory.pruneBefore(frame),
       onRollback: () => options.host.onRollback(),
@@ -127,11 +167,15 @@ export class BattleSession {
     return this.runtime.frame;
   }
 
-  getRecentDebugHashes(count = 50): Array<{ readonly frame: number; readonly hash: string }> {
+  getRecentDebugHashes(
+    count = 50,
+  ): Array<{ readonly frame: number; readonly hash: string }> {
     return this.rollbackHistory.getRecentDebugHashes(count);
   }
 
-  getDebugHash(frame: number): { readonly frame: number; readonly hash: string } | null {
+  getDebugHash(
+    frame: number,
+  ): { readonly frame: number; readonly hash: string } | null {
     return this.rollbackHistory.getDebugHash(frame);
   }
 
@@ -179,7 +223,11 @@ export class BattleSession {
     return true;
   }
 
-  spawnDebugPoint(params: { readonly rewardSize: PointRewardSize; readonly x: number; readonly y: number }): void {
+  spawnDebugPoint(params: {
+    readonly rewardSize: PointRewardSize;
+    readonly x: number;
+    readonly y: number;
+  }): void {
     this.runtime.debugSpawnPoint(params);
     this.recordOutputFrame();
   }
@@ -197,12 +245,19 @@ export class BattleSession {
     this.framePipeline.resetAccumulator();
   }
 
-  stepRuntimeWithInput(input: BattleInputState, targetInput?: BattleInputState): void {
+  stepRuntimeWithInput(
+    input: BattleInputState,
+    targetInput?: BattleInputState,
+  ): void {
     this.framePipeline.stepRuntimeWithInput(input, targetInput);
   }
 
   fastForward(elapsedMs: number, lastInput: BattleInputState): void {
-    this.framePipeline.fastForward(elapsedMs, this.localFighterKey(), lastInput);
+    this.framePipeline.fastForward(
+      elapsedMs,
+      this.localFighterKey(),
+      lastInput,
+    );
   }
 
   recordOutputFrame(aimConsumed = false): BattleOutputFrame | null {
@@ -210,7 +265,10 @@ export class BattleSession {
     let lastOutput: BattleOutputFrame | null = null;
     for (const output of this.runtime.outputQueue.drainAll()) {
       lastOutput = output;
-      this.rollbackHistory.recordRollbackSnapshot(output.frame, output.snapshot);
+      this.rollbackHistory.recordRollbackSnapshot(
+        output.frame,
+        output.snapshot,
+      );
       const confirmedFrame = this.network?.getConfirmedFrame() ?? output.frame;
       const logRecord = this.rollbackHistory.recordFrame(output, {
         localConfirmedFrame: confirmedFrame,

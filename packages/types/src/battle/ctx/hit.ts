@@ -4,6 +4,7 @@ export interface HitResolutionContext {
   defaultBombs: number;
   lifeLoss: number;
   respawnBombDelta: number;
+  ignored?: boolean;
 }
 
 export interface BattleHitContext<

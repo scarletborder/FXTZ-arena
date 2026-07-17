@@ -1,5 +1,5 @@
 import { ARENA_HEIGHT_PX, ARENA_WIDTH_PX } from "@repo/types";
-import type { FighterState, ProjectileState } from "@repo/content";
+import type { FighterState, ProjectileState } from "@repo/types";
 
 import {
   EMERGENCY_BOMB_LOOKAHEAD_TICKS,
@@ -15,7 +15,12 @@ import {
   sweptProjectileBody,
 } from "./body-collision";
 import { projectProjectile } from "./projectile-prediction";
-import type { CandidateScore, DodgeIntent, DodgeResult, MoveOption } from "./types";
+import type {
+  CandidateScore,
+  DodgeIntent,
+  DodgeResult,
+  MoveOption,
+} from "./types";
 
 export function chooseVelocityObstacleMove(params: {
   readonly self: FighterState;
@@ -28,7 +33,9 @@ export function chooseVelocityObstacleMove(params: {
   readonly ignoreDodge: boolean;
 }): DodgeResult {
   const scores = MOVES.map((move) => scoreCandidate(params, move));
-  const safeScores = scores.filter((score) => score.collisionTick === undefined);
+  const safeScores = scores.filter(
+    (score) => score.collisionTick === undefined,
+  );
   const pool = safeScores.length > 0 ? safeScores : scores;
   let best = pool[0]!;
 
@@ -131,13 +138,22 @@ function probeCandidateAgainstProjectile(
   let minClearance = Number.POSITIVE_INFINITY;
   let threatening = false;
 
-  const speed = Math.max(0.001, Math.hypot(projectile.vx - selfVx, projectile.vy - selfVy));
+  const speed = Math.max(
+    0.001,
+    Math.hypot(projectile.vx - selfVx, projectile.vy - selfVy),
+  );
   const coarseStep = speed > 18 ? 1 : speed > 9 ? 2 : 3;
 
-  for (let tick = 1; tick <= VELOCITY_OBSTACLE_HORIZON_TICKS; tick += coarseStep) {
+  for (
+    let tick = 1;
+    tick <= VELOCITY_OBSTACLE_HORIZON_TICKS;
+    tick += coarseStep
+  ) {
     const selfX = self.x + selfVx * tick;
     const selfY = self.y + selfVy * tick;
-    const projected = sweptProjectileBody(projectProjectile(projectile, frame, tick, self));
+    const projected = sweptProjectileBody(
+      projectProjectile(projectile, frame, tick, self),
+    );
     const probe = projectileCollisionProbe(
       projected,
       selfX,
@@ -156,10 +172,16 @@ function probeCandidateAgainstProjectile(
   }
 
   if (collisionTick === undefined && coarseStep > 1 && minClearance < 18) {
-    for (let tick = 1; tick <= Math.min(VELOCITY_OBSTACLE_HORIZON_TICKS, 12); tick += 1) {
+    for (
+      let tick = 1;
+      tick <= Math.min(VELOCITY_OBSTACLE_HORIZON_TICKS, 12);
+      tick += 1
+    ) {
       const selfX = self.x + selfVx * tick;
       const selfY = self.y + selfVy * tick;
-      const projected = sweptProjectileBody(projectProjectile(projectile, frame, tick, self));
+      const projected = sweptProjectileBody(
+        projectProjectile(projectile, frame, tick, self),
+      );
       const probe = projectileCollisionProbe(
         projected,
         selfX,
@@ -178,7 +200,9 @@ function probeCandidateAgainstProjectile(
   return { collisionTick, minClearance, threatening, risk };
 }
 
-function allMovesCollideImmediately(scores: readonly CandidateScore[]): boolean {
+function allMovesCollideImmediately(
+  scores: readonly CandidateScore[],
+): boolean {
   return scores.every(
     (score) =>
       score.collisionTick !== undefined &&
@@ -196,7 +220,8 @@ function intentScore(
   const urgency = clamp01(desiredMove.urgency ?? 0);
   const bravery = pointBravery(desiredMove);
   const intentWeight = 8 + urgency * 8 + bravery * 18;
-  score -= (move.x * desiredMove.moveX + move.y * desiredMove.moveY) * intentWeight;
+  score -=
+    (move.x * desiredMove.moveX + move.y * desiredMove.moveY) * intentWeight;
 
   const nextX = self.x + move.x * 5;
   const nextY = self.y + move.y * 5;

@@ -1,9 +1,16 @@
 import Phaser from "phaser";
 import { IS_DESKTOP_APP } from "@repo/constants";
 import { t } from "@repo/i18n";
-import { getCharacterDefinition, getAbilityCardDefinition, getCombatMapDefinition } from "@repo/content";
-import type { BattleLoadouts, FighterLoadout } from "@repo/raid-logic";
-import { EnumDifficulty } from "@repo/types";
+import {
+  getCharacterDefinition,
+  getAbilityCardDefinition,
+  getCombatMapDefinition,
+} from "@repo/content";
+import {
+  EnumDifficulty,
+  type BattleLoadouts,
+  type FighterLoadout,
+} from "@repo/types";
 
 import {
   bodyStyle,
@@ -53,9 +60,18 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     drawFightingBackdrop(this, "REPLAY", "PLAY");
 
     // Back button
-    createFightButton(this, 85, 56, 120, 42, t("replay.back"), () => {
-      this.scene.start("home");
-    }, { accent: 0x5c7185 });
+    createFightButton(
+      this,
+      85,
+      56,
+      120,
+      42,
+      t("replay.back"),
+      () => {
+        this.scene.start("home");
+      },
+      { accent: 0x5c7185 },
+    );
 
     const slots = await listSlotsForPage(this.currentPage);
     if (this.renderGen !== gen) return;
@@ -67,18 +83,67 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     // Draw panel background
     const panel = this.add.graphics();
     panel.fillStyle(0x0b1118, 0.88);
-    panel.fillRoundedRect(panelX - 10, panelY - 10, panelWidth, rowHeight * SLOTS_PER_PAGE + 20, 6);
+    panel.fillRoundedRect(
+      panelX - 10,
+      panelY - 10,
+      panelWidth,
+      rowHeight * SLOTS_PER_PAGE + 20,
+      6,
+    );
     panel.lineStyle(1, 0x34475c, 0.72);
-    panel.strokeRoundedRect(panelX - 10, panelY - 10, panelWidth, rowHeight * SLOTS_PER_PAGE + 20, 6);
+    panel.strokeRoundedRect(
+      panelX - 10,
+      panelY - 10,
+      panelWidth,
+      rowHeight * SLOTS_PER_PAGE + 20,
+      6,
+    );
     panel.setDepth(0);
 
     // Header row
-    this.add.text(panelX + 10, panelY - 6, "#", bodyStyle("#6e8496", 13)).setDepth(1);
-    this.add.text(panelX + 45, panelY - 6, t("replay.col_title"), bodyStyle("#6e8496", 13)).setDepth(1);
-    this.add.text(panelX + 400, panelY - 6, t("replay.col_time"), bodyStyle("#6e8496", 13)).setDepth(1);
-    this.add.text(panelX + 600, panelY - 6, t("replay.col_mode"), bodyStyle("#6e8496", 13)).setDepth(1);
-    this.add.text(panelX + 710, panelY - 6, t("replay.save_as"), bodyStyle("#6e8496", 13)).setDepth(1);
-    this.add.text(panelX + 820, panelY - 6, t("replay.info"), bodyStyle("#6e8496", 13)).setDepth(1);
+    this.add
+      .text(panelX + 10, panelY - 6, "#", bodyStyle("#6e8496", 13))
+      .setDepth(1);
+    this.add
+      .text(
+        panelX + 45,
+        panelY - 6,
+        t("replay.col_title"),
+        bodyStyle("#6e8496", 13),
+      )
+      .setDepth(1);
+    this.add
+      .text(
+        panelX + 400,
+        panelY - 6,
+        t("replay.col_time"),
+        bodyStyle("#6e8496", 13),
+      )
+      .setDepth(1);
+    this.add
+      .text(
+        panelX + 600,
+        panelY - 6,
+        t("replay.col_mode"),
+        bodyStyle("#6e8496", 13),
+      )
+      .setDepth(1);
+    this.add
+      .text(
+        panelX + 710,
+        panelY - 6,
+        t("replay.save_as"),
+        bodyStyle("#6e8496", 13),
+      )
+      .setDepth(1);
+    this.add
+      .text(
+        panelX + 820,
+        panelY - 6,
+        t("replay.info"),
+        bodyStyle("#6e8496", 13),
+      )
+      .setDepth(1);
 
     for (let i = 0; i < SLOTS_PER_PAGE; i += 1) {
       const slotIndex = this.currentPage * SLOTS_PER_PAGE + i;
@@ -86,7 +151,9 @@ export class ReplayPlaybackScene extends Phaser.Scene {
       const slot = slots[i];
 
       // Slot number
-      this.add.text(panelX + 10, y + 10, `${slotIndex + 1}`, bodyStyle("#5c7185", 14)).setDepth(1);
+      this.add
+        .text(panelX + 10, y + 10, `${slotIndex + 1}`, bodyStyle("#5c7185", 14))
+        .setDepth(1);
 
       // Divider line
       if (i > 0) {
@@ -98,38 +165,65 @@ export class ReplayPlaybackScene extends Phaser.Scene {
 
       if (slot) {
         // Title — clickable to play
-        const displayTitle = slot.title.length > 28 ? `${slot.title.slice(0, 26)}...` : slot.title;
-        this.add.text(panelX + 45, y + 10, displayTitle, bodyStyle("#ffcf6e", 15)).setDepth(1);
-        const titleHit = this.add.rectangle(
-          panelX + 45, y + 18,
-          340, rowHeight - 4,
-          0xffffff, 0.001,
-        ).setInteractive({ useHandCursor: true }).setDepth(2);
+        const displayTitle =
+          slot.title.length > 28 ? `${slot.title.slice(0, 26)}...` : slot.title;
+        this.add
+          .text(panelX + 45, y + 10, displayTitle, bodyStyle("#ffcf6e", 15))
+          .setDepth(1);
+        const titleHit = this.add
+          .rectangle(panelX + 45, y + 18, 340, rowHeight - 4, 0xffffff, 0.001)
+          .setInteractive({ useHandCursor: true })
+          .setDepth(2);
         titleHit.on("pointerup", () => this.selectSlot(slotIndex));
 
         // Time
-        this.add.text(panelX + 400, y + 10, formatSlotTime(slot.timestamp), bodyStyle("#d7e3ef", 14)).setDepth(1);
+        this.add
+          .text(
+            panelX + 400,
+            y + 10,
+            formatSlotTime(slot.timestamp),
+            bodyStyle("#d7e3ef", 14),
+          )
+          .setDepth(1);
 
         // Mode badge
         const modeLabel = t(`replay.mode_${slot.mode}` as any) ?? slot.mode;
-        this.add.text(panelX + 600, y + 10, modeLabel, bodyStyle("#5c7185", 12)).setDepth(1);
+        this.add
+          .text(panelX + 600, y + 10, modeLabel, bodyStyle("#5c7185", 12))
+          .setDepth(1);
 
         // Save As text link
-        const saveLink = this.add.text(panelX + 710, y + 10, t("replay.save_as"), bodyStyle("#26c6da", 14))
-          .setInteractive({ useHandCursor: true }).setDepth(2);
+        const saveLink = this.add
+          .text(
+            panelX + 710,
+            y + 10,
+            t("replay.save_as"),
+            bodyStyle("#26c6da", 14),
+          )
+          .setInteractive({ useHandCursor: true })
+          .setDepth(2);
         saveLink.on("pointerover", () => saveLink.setColor("#80e5f0"));
         saveLink.on("pointerout", () => saveLink.setColor("#26c6da"));
         saveLink.on("pointerup", () => this.handleSaveAs(slotIndex));
 
         // Info text link
-        const infoLink = this.add.text(panelX + 810, y + 10, t("replay.info"), bodyStyle("#5c7185", 14))
-          .setInteractive({ useHandCursor: true }).setDepth(2);
+        const infoLink = this.add
+          .text(
+            panelX + 810,
+            y + 10,
+            t("replay.info"),
+            bodyStyle("#5c7185", 14),
+          )
+          .setInteractive({ useHandCursor: true })
+          .setDepth(2);
         infoLink.on("pointerover", () => infoLink.setColor("#b7c7d8"));
         infoLink.on("pointerout", () => infoLink.setColor("#5c7185"));
         infoLink.on("pointerup", () => this.showInfoDialog(slotIndex));
       } else {
         // Empty slot
-        this.add.text(panelX + 45, y + 10, "-", bodyStyle("#34475c", 18)).setDepth(1);
+        this.add
+          .text(panelX + 45, y + 10, "-", bodyStyle("#34475c", 18))
+          .setDepth(1);
       }
     }
 
@@ -139,19 +233,40 @@ export class ReplayPlaybackScene extends Phaser.Scene {
       const pagY = panelY + SLOTS_PER_PAGE * rowHeight + 40;
       if (this.currentPage > 0) {
         createRectangleButton(
-          this, 980, pagY, 80, 26,
+          this,
+          980,
+          pagY,
+          80,
+          26,
           t("replay.prev_page"),
-          () => { this.currentPage = Math.max(0, this.currentPage - 1); this.renderPage(); },
+          () => {
+            this.currentPage = Math.max(0, this.currentPage - 1);
+            this.renderPage();
+          },
           { accent: 0x5c7185 },
         );
       }
-      this.add.text(1080, pagY + 8, t("replay.page", { page: this.currentPage + 1, total: pageCount }), bodyStyle("#b7c7d8", 14))
-        .setOrigin(0.5).setDepth(1);
+      this.add
+        .text(
+          1080,
+          pagY + 8,
+          t("replay.page", { page: this.currentPage + 1, total: pageCount }),
+          bodyStyle("#b7c7d8", 14),
+        )
+        .setOrigin(0.5)
+        .setDepth(1);
       if (this.currentPage < pageCount - 1) {
         createRectangleButton(
-          this, 1180, pagY, 80, 26,
+          this,
+          1180,
+          pagY,
+          80,
+          26,
           t("replay.next_page"),
-          () => { this.currentPage = Math.min(pageCount - 1, this.currentPage + 1); this.renderPage(); },
+          () => {
+            this.currentPage = Math.min(pageCount - 1, this.currentPage + 1);
+            this.renderPage();
+          },
           { accent: 0x5c7185 },
         );
       }
@@ -162,7 +277,11 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     // "Import Local Replay" — available in browser
     if (!IS_DESKTOP_APP) {
       createRectangleButton(
-        this, 160, btnY, 150, 26,
+        this,
+        160,
+        btnY,
+        150,
+        26,
         t("replay.import_local_replay"),
         () => this.handleImportLocalReplay(),
         { accent: 0x26c6da },
@@ -171,7 +290,11 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     // "Open Replay Folder" — desktop only
     if (IS_DESKTOP_APP) {
       createRectangleButton(
-        this, 160, btnY, 150, 26,
+        this,
+        160,
+        btnY,
+        150,
+        26,
         t("replay.open_replay_folder"),
         () => this.handleOpenReplayFolder(),
         { accent: 0x5c7185 },
@@ -223,7 +346,9 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     const layer = this.add.container(0, 0).setDepth(100);
 
     // Veil — close only on veil hit
-    const veil = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.7).setInteractive();
+    const veil = this.add
+      .rectangle(640, 360, 1280, 720, 0x000000, 0.7)
+      .setInteractive();
     veil.on("pointerup", () => this.closeDialog());
     layer.add(veil);
 
@@ -242,17 +367,28 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     layer.add(panel);
 
     // Blocker on panel area
-    const blocker = this.add.rectangle(cx, dlgY + dlgH / 2, dlgW, dlgH, 0xffffff, 0.001)
+    const blocker = this.add
+      .rectangle(cx, dlgY + dlgH / 2, dlgW, dlgH, 0xffffff, 0.001)
       .setInteractive();
     layer.add(blocker);
 
     // Title
-    const titleText = this.add.text(cx, dlgY + 28, t("replay.info_title"), headingStyle(24))
+    const titleText = this.add
+      .text(cx, dlgY + 28, t("replay.info_title"), headingStyle(24))
       .setOrigin(0.5);
     layer.add(titleText);
 
     // Close button (X)
-    const closeBtn = createRectangleButton(this, dlgX + dlgW - 50, dlgY + 18, 36, 30, "✕", () => this.closeDialog(), { accent: 0x5c7185 });
+    const closeBtn = createRectangleButton(
+      this,
+      dlgX + dlgW - 50,
+      dlgY + 18,
+      36,
+      30,
+      "✕",
+      () => this.closeDialog(),
+      { accent: 0x5c7185 },
+    );
     layer.add(closeBtn.container);
 
     // ── Content lines ──────────────────────────────────────────────────
@@ -261,30 +397,81 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     const lineH = 22;
 
     // Title
-    this.addDialogText(layer, contentX, ly, `${t("replay.col_title")}: ${replay.title}`, "#f6f1e6", 16);
+    this.addDialogText(
+      layer,
+      contentX,
+      ly,
+      `${t("replay.col_title")}: ${replay.title}`,
+      "#f6f1e6",
+      16,
+    );
     ly += lineH + 4;
 
     // Mode & Time on same row
     const modeLabel = t(`replay.mode_${replay.mode}` as any) ?? replay.mode;
-    this.addDialogText(layer, contentX, ly, `${t("replay.col_mode")}: ${modeLabel}    ${t("replay.col_time")}: ${formatSlotTime(replay.timestamp)}`, "#b7c7d8", 14);
+    this.addDialogText(
+      layer,
+      contentX,
+      ly,
+      `${t("replay.col_mode")}: ${modeLabel}    ${t("replay.col_time")}: ${formatSlotTime(replay.timestamp)}`,
+      "#b7c7d8",
+      14,
+    );
     ly += lineH + 4;
 
     if (!showStageTabs) {
-      this.addDialogText(layer, contentX, ly, replayMatchupLine(replay), "#d7e3ef", 14);
+      this.addDialogText(
+        layer,
+        contentX,
+        ly,
+        replayMatchupLine(replay),
+        "#d7e3ef",
+        14,
+      );
       ly += lineH + 2;
 
-      this.addDialogText(layer, contentX, ly, t("replay.winner", { name: replayWinnerLabel(replay) }), "#ffcf6e", 14);
+      this.addDialogText(
+        layer,
+        contentX,
+        ly,
+        t("replay.winner", { name: replayWinnerLabel(replay) }),
+        "#ffcf6e",
+        14,
+      );
       ly += lineH + 2;
     }
 
-    this.addDialogText(layer, contentX, ly, t("replay.version", { version: replay.appVersion?.trim() || "unkwon" }), "#9fb4c8", 14);
+    this.addDialogText(
+      layer,
+      contentX,
+      ly,
+      t("replay.version", { version: replay.appVersion?.trim() || "unkwon" }),
+      "#9fb4c8",
+      14,
+    );
     ly += lineH + 2;
 
     if (replay.mode === "story") {
-      this.addDialogText(layer, contentX, ly, t("replay.difficulty", { difficulty: replayDifficultyLabel(replay.difficulty) }), "#9fb4c8", 14);
+      this.addDialogText(
+        layer,
+        contentX,
+        ly,
+        t("replay.difficulty", {
+          difficulty: replayDifficultyLabel(replay.difficulty),
+        }),
+        "#9fb4c8",
+        14,
+      );
       ly += lineH + 2;
     } else if (replay.battles[0]) {
-      this.addDialogText(layer, contentX, ly, replayInitPointLine(replay.battles[0]), "#9fb4c8", 14);
+      this.addDialogText(
+        layer,
+        contentX,
+        ly,
+        replayInitPointLine(replay.battles[0]),
+        "#9fb4c8",
+        14,
+      );
       ly += lineH + 2;
     }
 
@@ -311,7 +498,9 @@ export class ReplayPlaybackScene extends Phaser.Scene {
 
       for (let bi = 0; bi < replay.battles.length; bi += 1) {
         const battle = replay.battles[bi];
-        const stageName = battle.stageTitle ?? `${t("replay.stage")} ${(battle.stageIndex ?? bi) + 1}`;
+        const stageName =
+          battle.stageTitle ??
+          `${t("replay.stage")} ${(battle.stageIndex ?? bi) + 1}`;
         const duration = formatBattleDuration(battle.inputs.length);
         const lineContent = `${bi + 1}. ${stageName} — ${duration}`;
 
@@ -319,7 +508,14 @@ export class ReplayPlaybackScene extends Phaser.Scene {
 
         if (isNextTooLow) {
           const remaining = replay.battles.length - bi;
-          this.addDialogText(layer, contentX, ly, `… ${t("replay.battles", { count: remaining })}`, "#5c7185", 13);
+          this.addDialogText(
+            layer,
+            contentX,
+            ly,
+            `… ${t("replay.battles", { count: remaining })}`,
+            "#5c7185",
+            13,
+          );
           break;
         }
 
@@ -329,7 +525,16 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     }
 
     // Close button at bottom
-    const closeBottomBtn = createFightButton(this, cx, dlgY + dlgH - 48, 140, 38, t("replay.close"), () => this.closeDialog(), { accent: 0x5c7185 });
+    const closeBottomBtn = createFightButton(
+      this,
+      cx,
+      dlgY + dlgH - 48,
+      140,
+      38,
+      t("replay.close"),
+      () => this.closeDialog(),
+      { accent: 0x5c7185 },
+    );
     layer.add(closeBottomBtn.container);
 
     this.dialog = { layer, cleanup: () => this.closeDialog() };
@@ -344,7 +549,14 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     const lineH = 20;
 
     // Player loadout
-    this.addDialogText(layer, x, y, `【${t("replay.p1_loadout")}】`, "#ffcf6e", 14);
+    this.addDialogText(
+      layer,
+      x,
+      y,
+      `【${t("replay.p1_loadout")}】`,
+      "#ffcf6e",
+      14,
+    );
     y += lineH + 2;
 
     const ply = loadouts.player;
@@ -354,7 +566,14 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     y += 4;
 
     // Opponent loadout
-    this.addDialogText(layer, x, y, `【${t("replay.p2_loadout")}】`, "#ffcf6e", 14);
+    this.addDialogText(
+      layer,
+      x,
+      y,
+      `【${t("replay.p2_loadout")}】`,
+      "#ffcf6e",
+      14,
+    );
     y += lineH + 2;
 
     const opp = loadouts.target;
@@ -374,9 +593,18 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     const priDef = getCharacterDefinition(loadout.primaryCharacterId);
     const altDef = getCharacterDefinition(loadout.alternateCharacterId);
     const priName = priDef ? characterName(priDef) : loadout.primaryCharacterId;
-    const altName = altDef ? characterName(altDef) : loadout.alternateCharacterId;
+    const altName = altDef
+      ? characterName(altDef)
+      : loadout.alternateCharacterId;
 
-    this.addDialogText(layer, x, y, `${t("replay.character", { name: `${priName} / ${altName}` })}`, "#d7e3ef", 14);
+    this.addDialogText(
+      layer,
+      x,
+      y,
+      `${t("replay.character", { name: `${priName} / ${altName}` })}`,
+      "#d7e3ef",
+      14,
+    );
     y += lineH;
 
     const cardIds = loadout.cardIds ?? [];
@@ -386,7 +614,14 @@ export class ReplayPlaybackScene extends Phaser.Scene {
         return def ? cardName(def) : cid;
       });
       const cardStr = cardNames.join(", ");
-      this.addDialogText(layer, x, y, `${t("replay.card", { name: cardStr })}`, "#b7c7d8", 13);
+      this.addDialogText(
+        layer,
+        x,
+        y,
+        `${t("replay.card", { name: cardStr })}`,
+        "#b7c7d8",
+        13,
+      );
       y += lineH;
     }
 
@@ -410,7 +645,12 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     let selectedBi = 0;
 
     // Section label
-    const label = this.add.text(x, y + 7, `${t("replay.select_stage")}:`, bodyStyle("#6e8496", 13));
+    const label = this.add.text(
+      x,
+      y + 7,
+      `${t("replay.select_stage")}:`,
+      bodyStyle("#6e8496", 13),
+    );
     layer.add(label);
 
     // Build stage tab buttons
@@ -418,7 +658,12 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     const tabBgs: Phaser.GameObjects.Graphics[] = [];
     const tabTexts: Phaser.GameObjects.Text[] = [];
 
-    const paintTab = (bg: Phaser.GameObjects.Graphics, tx: number, ty: number, selected: boolean) => {
+    const paintTab = (
+      bg: Phaser.GameObjects.Graphics,
+      tx: number,
+      ty: number,
+      selected: boolean,
+    ) => {
       bg.clear();
       bg.fillStyle(selected ? 0xffcf6e : 0x1d2b36, selected ? 0.9 : 0.6);
       bg.fillRoundedRect(tx, ty, tabW, tabH, 4);
@@ -438,16 +683,19 @@ export class ReplayPlaybackScene extends Phaser.Scene {
       layer.add(bg);
       tabBgs.push(bg);
 
-      const numText = this.add.text(tx + tabW / 2, ty + tabH / 2, `${bi + 1}`, {
-        fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
-        fontSize: "13px",
-        fontStyle: "700",
-        color: isSelected ? "#101820" : "#b7c7d8",
-      }).setOrigin(0.5);
+      const numText = this.add
+        .text(tx + tabW / 2, ty + tabH / 2, `${bi + 1}`, {
+          fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+          fontSize: "13px",
+          fontStyle: "700",
+          color: isSelected ? "#101820" : "#b7c7d8",
+        })
+        .setOrigin(0.5);
       layer.add(numText);
       tabTexts.push(numText);
 
-      const hit = this.add.rectangle(tx + tabW / 2, ty + tabH / 2, tabW, tabH, 0xffffff, 0.001)
+      const hit = this.add
+        .rectangle(tx + tabW / 2, ty + tabH / 2, tabW, tabH, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
       hit.on("pointerup", () => {
         if (selectedBi === bi) return;
@@ -480,7 +728,9 @@ export class ReplayPlaybackScene extends Phaser.Scene {
 
     const renderInfo = (bi: number): void => {
       const battle = replay.battles[bi];
-      const stageName = battle.stageTitle ?? `${t("replay.stage")} ${(battle.stageIndex ?? bi) + 1}`;
+      const stageName =
+        battle.stageTitle ??
+        `${t("replay.stage")} ${(battle.stageIndex ?? bi) + 1}`;
       const totalSecs = Math.round(battle.inputs.length / 60);
 
       // Info panel background
@@ -492,7 +742,12 @@ export class ReplayPlaybackScene extends Phaser.Scene {
       infoContainer.add(bg);
 
       // Stage title
-      const titleText = this.add.text(x + 12, y + 8, stageName, bodyStyle("#ffcf6e", 15));
+      const titleText = this.add.text(
+        x + 12,
+        y + 8,
+        stageName,
+        bodyStyle("#ffcf6e", 15),
+      );
       infoContainer.add(titleText);
 
       // Info line: duration + map
@@ -500,26 +755,40 @@ export class ReplayPlaybackScene extends Phaser.Scene {
         ? getCombatMapDefinition(battle.mapId as import("@repo/types").MapId)
         : undefined;
       const mapName = mapDefinition ? contentName(mapDefinition) : battle.mapId;
-      const mapStr = mapName ? `  |  ${t("replay.map.name", { name: mapName })}` : "";
-      const infoLine = this.add.text(x + 12, y + 30,
+      const mapStr = mapName
+        ? `  |  ${t("replay.map.name", { name: mapName })}`
+        : "";
+      const infoLine = this.add.text(
+        x + 12,
+        y + 30,
         `${t("replay.duration", { seconds: totalSecs })}${mapStr}`,
-        bodyStyle("#b7c7d8", 13));
+        bodyStyle("#b7c7d8", 13),
+      );
       infoContainer.add(infoLine);
 
-      const initPointText = this.add.text(x + 12, y + 48,
+      const initPointText = this.add.text(
+        x + 12,
+        y + 48,
         replayInitPointLine(battle),
-        bodyStyle("#9fb4c8", 13));
+        bodyStyle("#9fb4c8", 13),
+      );
       infoContainer.add(initPointText);
 
       // Player names
-      const playerText = this.add.text(x + 12, y + 66,
+      const playerText = this.add.text(
+        x + 12,
+        y + 66,
         replayBattleMatchupLine(battle),
-        bodyStyle("#d7e3ef", 13));
+        bodyStyle("#d7e3ef", 13),
+      );
       infoContainer.add(playerText);
 
-      const winnerText = this.add.text(x + 12, y + 84,
+      const winnerText = this.add.text(
+        x + 12,
+        y + 84,
         t("replay.winner", { name: replayBattleWinnerLabel(replay, battle) }),
-        bodyStyle("#ffcf6e", 13));
+        bodyStyle("#ffcf6e", 13),
+      );
       infoContainer.add(winnerText);
 
       // ── Loadout per stage ────────────────────────────────────────
@@ -528,18 +797,29 @@ export class ReplayPlaybackScene extends Phaser.Scene {
 
       const priCharDef = getCharacterDefinition(lo.player.primaryCharacterId);
       const altCharDef = getCharacterDefinition(lo.player.alternateCharacterId);
-      const priName = priCharDef ? characterName(priCharDef) : lo.player.primaryCharacterId;
-      const altName = altCharDef ? characterName(altCharDef) : lo.player.alternateCharacterId;
+      const priName = priCharDef
+        ? characterName(priCharDef)
+        : lo.player.primaryCharacterId;
+      const altName = altCharDef
+        ? characterName(altCharDef)
+        : lo.player.alternateCharacterId;
 
       const oppPriDef = getCharacterDefinition(lo.target.primaryCharacterId);
       const oppAltDef = getCharacterDefinition(lo.target.alternateCharacterId);
-      const oppPriName = oppPriDef ? characterName(oppPriDef) : lo.target.primaryCharacterId;
-      const oppAltName = oppAltDef ? characterName(oppAltDef) : lo.target.alternateCharacterId;
+      const oppPriName = oppPriDef
+        ? characterName(oppPriDef)
+        : lo.target.primaryCharacterId;
+      const oppAltName = oppAltDef
+        ? characterName(oppAltDef)
+        : lo.target.alternateCharacterId;
 
       // Player
-      const playerLoadoutLabel = this.add.text(x + 12, ly + 6,
+      const playerLoadoutLabel = this.add.text(
+        x + 12,
+        ly + 6,
         `【${t("replay.p1_loadout")}】 ${priName} / ${altName}`,
-        bodyStyle("#ffcf6e", 13));
+        bodyStyle("#ffcf6e", 13),
+      );
       loadoutContainer.add(playerLoadoutLabel);
 
       const playerCards = (lo.player.cardIds ?? []).map((cid) => {
@@ -547,16 +827,22 @@ export class ReplayPlaybackScene extends Phaser.Scene {
         return def ? cardName(def) : cid;
       });
       if (playerCards.length > 0) {
-        const cardText = this.add.text(x + 12, ly + 26,
+        const cardText = this.add.text(
+          x + 12,
+          ly + 26,
           `${t("replay.card", { name: playerCards.join(", ") })}`,
-          bodyStyle("#b7c7d8", 12));
+          bodyStyle("#b7c7d8", 12),
+        );
         loadoutContainer.add(cardText);
       }
 
       // Opponent
-      const oppLoadoutLabel = this.add.text(x + 12, ly + 44,
+      const oppLoadoutLabel = this.add.text(
+        x + 12,
+        ly + 44,
         `【${t("replay.p2_loadout")}】 ${oppPriName} / ${oppAltName}`,
-        bodyStyle("#ffcf6e", 13));
+        bodyStyle("#ffcf6e", 13),
+      );
       loadoutContainer.add(oppLoadoutLabel);
 
       const oppCards = (lo.target.cardIds ?? []).map((cid) => {
@@ -564,9 +850,12 @@ export class ReplayPlaybackScene extends Phaser.Scene {
         return def ? cardName(def) : cid;
       });
       if (oppCards.length > 0) {
-        const cardText = this.add.text(x + 12, ly + 64,
+        const cardText = this.add.text(
+          x + 12,
+          ly + 64,
           `${t("replay.card", { name: oppCards.join(", ") })}`,
-          bodyStyle("#b7c7d8", 12));
+          bodyStyle("#b7c7d8", 12),
+        );
         loadoutContainer.add(cardText);
       }
     };
@@ -599,7 +888,9 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     this.closeDialog();
 
     const layer = this.add.container(0, 0).setDepth(100);
-    const veil = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.7).setInteractive();
+    const veil = this.add
+      .rectangle(640, 360, 1280, 720, 0x000000, 0.7)
+      .setInteractive();
     veil.on("pointerup", () => this.closeDialog());
     layer.add(veil);
 
@@ -617,17 +908,28 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     panel.strokeRoundedRect(dlgX, dlgY, dlgW, dlgH, 8);
     layer.add(panel);
 
-    const blocker = this.add.rectangle(cx, dlgY + dlgH / 2, dlgW, dlgH, 0xffffff, 0.001)
+    const blocker = this.add
+      .rectangle(cx, dlgY + dlgH / 2, dlgW, dlgH, 0xffffff, 0.001)
       .setInteractive();
     layer.add(blocker);
 
     // Title
-    const titleText = this.add.text(cx, dlgY + 28, t("replay.select_stage"), headingStyle(22))
+    const titleText = this.add
+      .text(cx, dlgY + 28, t("replay.select_stage"), headingStyle(22))
       .setOrigin(0.5);
     layer.add(titleText);
 
     // Close X
-    const closeBtn = createRectangleButton(this, dlgX + dlgW - 50, dlgY + 18, 36, 30, "✕", () => this.closeDialog(), { accent: 0x5c7185 });
+    const closeBtn = createRectangleButton(
+      this,
+      dlgX + dlgW - 50,
+      dlgY + 18,
+      36,
+      30,
+      "✕",
+      () => this.closeDialog(),
+      { accent: 0x5c7185 },
+    );
     layer.add(closeBtn.container);
 
     // Stage list
@@ -636,7 +938,9 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     for (let i = 0; i < replay.battles.length; i += 1) {
       const battle = replay.battles[i];
       const by = startY + i * rowH;
-      const stageTitle = battle.stageTitle ?? `${t("replay.stage")} ${(battle.stageIndex ?? i) + 1}`;
+      const stageTitle =
+        battle.stageTitle ??
+        `${t("replay.stage")} ${(battle.stageIndex ?? i) + 1}`;
       const duration = formatBattleDuration(battle.inputs.length);
 
       const bg = this.add.graphics();
@@ -646,13 +950,31 @@ export class ReplayPlaybackScene extends Phaser.Scene {
       bg.strokeRoundedRect(dlgX + 20, by, dlgW - 40, rowH - 4, 4);
       layer.add(bg);
 
-      const label = this.add.text(dlgX + 34, by + 12, `${i + 1}. ${stageTitle} — ${duration}`, bodyStyle("#f6f1e6", 15));
+      const label = this.add.text(
+        dlgX + 34,
+        by + 12,
+        `${i + 1}. ${stageTitle} — ${duration}`,
+        bodyStyle("#f6f1e6", 15),
+      );
       layer.add(label);
 
-      const playArrow = this.add.text(dlgX + dlgW - 44, by + 12, "▶", bodyStyle("#ffcf6e", 16));
+      const playArrow = this.add.text(
+        dlgX + dlgW - 44,
+        by + 12,
+        "▶",
+        bodyStyle("#ffcf6e", 16),
+      );
       layer.add(playArrow);
 
-      const hit = this.add.rectangle(dlgX + dlgW / 2, by + rowH / 2 - 2, dlgW - 40, rowH - 4, 0xffffff, 0.001)
+      const hit = this.add
+        .rectangle(
+          dlgX + dlgW / 2,
+          by + rowH / 2 - 2,
+          dlgW - 40,
+          rowH - 4,
+          0xffffff,
+          0.001,
+        )
         .setInteractive({ useHandCursor: true });
       hit.on("pointerup", () => {
         this.closeDialog();
@@ -740,7 +1062,9 @@ export class ReplayPlaybackScene extends Phaser.Scene {
 
     const layer = this.add.container(0, 0).setDepth(100);
 
-    const veil = this.add.rectangle(640, 360, 1280, 720, 0x000000, 0.6).setInteractive();
+    const veil = this.add
+      .rectangle(640, 360, 1280, 720, 0x000000, 0.6)
+      .setInteractive();
     veil.on("pointerup", () => layer.destroy(true));
     layer.add(veil);
 
@@ -756,18 +1080,29 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     panel.strokeRoundedRect(dlgX, dlgY, dlgW, dlgH, 8);
     layer.add(panel);
 
-    const msgText = this.add.text(640, dlgY + 55, message, {
-      fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
-      fontSize: "16px",
-      color: "#f6f1e6",
-      wordWrap: { width: dlgW - 40 },
-      align: "center",
-    }).setOrigin(0.5);
+    const msgText = this.add
+      .text(640, dlgY + 55, message, {
+        fontFamily: "Arial, 'Microsoft YaHei', sans-serif",
+        fontSize: "16px",
+        color: "#f6f1e6",
+        wordWrap: { width: dlgW - 40 },
+        align: "center",
+      })
+      .setOrigin(0.5);
     layer.add(msgText);
 
-    const okBtn = createFightButton(this, 640, dlgY + dlgH - 40, 100, 32, t("replay.close"), () => {
-      layer.destroy(true);
-    }, { accent: 0x5c7185 });
+    const okBtn = createFightButton(
+      this,
+      640,
+      dlgY + dlgH - 40,
+      100,
+      32,
+      t("replay.close"),
+      () => {
+        layer.destroy(true);
+      },
+      { accent: 0x5c7185 },
+    );
     layer.add(okBtn.container);
 
     this.dialog = { layer, cleanup: () => layer.destroy(true) };
@@ -779,7 +1114,9 @@ export class ReplayPlaybackScene extends Phaser.Scene {
     try {
       await desktopOpenReplayFolder();
     } catch (e) {
-      this.showMessageDialog(t("replay.open_replay_folder_failed", { error: String(e) }));
+      this.showMessageDialog(
+        t("replay.open_replay_folder_failed", { error: String(e) }),
+      );
     }
   }
 }
@@ -806,17 +1143,26 @@ function replayMatchupLine(replay: ReplayFile): string {
   });
 }
 
-function replayBattleMatchupLine(battle: Pick<ReplayFile["battles"][number], "playerName" | "opponentName">): string {
+function replayBattleMatchupLine(
+  battle: Pick<ReplayFile["battles"][number], "playerName" | "opponentName">,
+): string {
   return `${replayPlayerLabel(battle.playerName, "Player1")} vs ${replayPlayerLabel(battle.opponentName, "Player2")}`;
 }
 
 function replayWinnerLabel(replay: ReplayFile): string {
-  return replayWinnerSlotLabel(replay.winnerPlayerId, replay.player1Id, replay.player2Id);
+  return replayWinnerSlotLabel(
+    replay.winnerPlayerId,
+    replay.player1Id,
+    replay.player2Id,
+  );
 }
 
 function replayBattleWinnerLabel(
   replay: ReplayFile,
-  battle: Pick<ReplayFile["battles"][number], "winnerPlayerId" | "playerName" | "opponentName">,
+  battle: Pick<
+    ReplayFile["battles"][number],
+    "winnerPlayerId" | "playerName" | "opponentName"
+  >,
 ): string {
   return replayWinnerSlotLabel(
     battle.winnerPlayerId ?? replay.winnerPlayerId,
@@ -839,7 +1185,10 @@ function replayWinnerSlotLabel(
   return t("replay.winner_unknown");
 }
 
-function replayPlayerLabel(name: string, playerId: "Player1" | "Player2"): string {
+function replayPlayerLabel(
+  name: string,
+  playerId: "Player1" | "Player2",
+): string {
   return t("replay.player_slot_label", {
     name,
     slot: playerId === "Player1" ? "P1" : "P2",

@@ -20,7 +20,7 @@ vi.mock("phaser", () => ({
   },
 }));
 
-import type { BattleOutputState } from "@repo/raid-logic";
+import type { BattleOutputState } from "@repo/types";
 import type {
   CharacterDefinition,
   FighterKey,

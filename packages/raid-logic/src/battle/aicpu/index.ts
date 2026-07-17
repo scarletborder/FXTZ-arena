@@ -1,5 +1,5 @@
 import type { BattleInputState } from "@repo/types";
-import type { FighterState, PointState, ProjectileState } from "@repo/content";
+import type { FighterState, PointState, ProjectileState } from "@repo/types";
 import type { NeutralMobState } from "@repo/types";
 import { IntelligenceManager } from "./intelligence";
 import { Dodger } from "./dodger";
@@ -24,10 +24,12 @@ export class CpuPlayer {
   private readonly dodger = new Dodger();
   private readonly strategy = new StrategyManager();
 
-  constructor(options: {
-    readonly smartDurationSeconds?: number;
-    readonly dumbRampSeconds?: number;
-  } = {}) {
+  constructor(
+    options: {
+      readonly smartDurationSeconds?: number;
+      readonly dumbRampSeconds?: number;
+    } = {},
+  ) {
     this.intelligence = new IntelligenceManager(options);
   }
 

@@ -1,9 +1,9 @@
+import type { RaidLogicRuntime } from "@repo/raid-logic";
 import type {
   BattleInputState,
   BattleOutputState,
   FighterKey,
-  RaidLogicRuntime,
-} from "@repo/raid-logic";
+} from "@repo/types";
 
 type BattleFrameRuntime = Pick<
   RaidLogicRuntime,

@@ -1,5 +1,10 @@
-import type { ClientMessage, PlayerId, ServerMessage } from "@repo/types";
-import type { BattleInputState, BattleModelSnapshot } from "@repo/raid-logic";
+import type {
+  BattleInputState,
+  BattleModelSnapshot,
+  ClientMessage,
+  PlayerId,
+  ServerMessage,
+} from "@repo/types";
 
 import type { BattleSceneData } from "../../battle/loadout";
 import type { PeerConnection } from "../p2p";
@@ -34,7 +39,8 @@ export interface CombatFrameInputRecord {
   readonly target: BattleInputState;
 }
 
-export interface CombatConfirmedFrameInputRecord extends CombatFrameInputRecord {
+export interface CombatConfirmedFrameInputRecord
+  extends CombatFrameInputRecord {
   readonly confirmedThrough: number;
 }
 

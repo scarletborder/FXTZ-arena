@@ -1,4 +1,9 @@
-import type { Mob, MobState, NeutralMobState } from "@repo/types";
+import type {
+  Mob,
+  MobState,
+  NeutralMobSpawnerState,
+  NeutralMobState,
+} from "@repo/types";
 
 import type { FighterState } from "../battle-types";
 import type {
@@ -8,18 +13,10 @@ import type {
 import type { ArenaBounds } from "@repo/constants";
 import type { CollaborateExtraState } from "@repo/types";
 
-export type NeutralMobSpawnerStateValue =
-  | string
-  | number
-  | boolean
-  | null
-  | readonly NeutralMobSpawnerStateValue[]
-  | { readonly [key: string]: NeutralMobSpawnerStateValue };
-
-export interface NeutralMobSpawnerState {
-  readonly spawnerId: string;
-  readonly [key: string]: NeutralMobSpawnerStateValue;
-}
+export type {
+  NeutralMobSpawnerState,
+  NeutralMobSpawnerStateValue,
+} from "@repo/types";
 
 export type BattleMob = Mob<
   MobState,

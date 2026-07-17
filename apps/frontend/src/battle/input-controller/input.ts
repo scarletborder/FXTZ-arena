@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-import type { BattleInputState } from "@repo/raid-logic";
+import type { BattleInputState } from "@repo/types";
 import {
   ARENA_HEIGHT_PX,
   ARENA_WIDTH_PX,
@@ -49,10 +49,10 @@ export function createBattleInput(
   const options = isBattleInputOptions(mobileControlsOrOptions)
     ? mobileControlsOrOptions
     : {
-      mobileControls: mobileControlsOrOptions,
-      autoReloadContext,
-      arenaBounds,
-    };
+        mobileControls: mobileControlsOrOptions,
+        autoReloadContext,
+        arenaBounds,
+      };
   const mobileControls = options.mobileControls;
   const joystickControls = options.joystickControls;
   const keyboardEnabled = options.keyboardEnabled ?? true;
@@ -65,25 +65,26 @@ export function createBattleInput(
   );
   const joystickState = joystickControls?.readState(options.arenaBounds);
   const pointer = scene.input.activePointer;
-  const keyboardMoveX = ((keys.moveRight.isDown ? 1 : 0) - (keys.moveLeft.isDown ? 1 : 0)) as
-    | -1
-    | 0
-    | 1;
-  const keyboardMoveY = ((keys.moveDown.isDown ? 1 : 0) - (keys.moveUp.isDown ? 1 : 0)) as
-    | -1
-    | 0
-    | 1;
-  const moveX = mobileState?.moveX || joystickState?.moveX || (keyboardEnabled ? keyboardMoveX : 0);
-  const moveY = mobileState?.moveY || joystickState?.moveY || (keyboardEnabled ? keyboardMoveY : 0);
+  const keyboardMoveX = ((keys.moveRight.isDown ? 1 : 0) -
+    (keys.moveLeft.isDown ? 1 : 0)) as -1 | 0 | 1;
+  const keyboardMoveY = ((keys.moveDown.isDown ? 1 : 0) -
+    (keys.moveUp.isDown ? 1 : 0)) as -1 | 0 | 1;
+  const moveX =
+    mobileState?.moveX ||
+    joystickState?.moveX ||
+    (keyboardEnabled ? keyboardMoveX : 0);
+  const moveY =
+    mobileState?.moveY ||
+    joystickState?.moveY ||
+    (keyboardEnabled ? keyboardMoveY : 0);
   const manualReloadPressed =
     (mobileState?.reloadPressed ?? false) ||
     (joystickState?.reloadPressed ?? false) ||
     (keyboardEnabled && keys.reload.isDown);
-  const shootPressed = (
-    mobileState?.shootPressed ??
-    (joystickState?.shootPressed || undefined) ??
-    false
-  ) ||
+  const shootPressed =
+    (mobileState?.shootPressed ??
+      (joystickState?.shootPressed || undefined) ??
+      false) ||
     (pointerEnabled && pointer.leftButtonDown() && !pointer.rightButtonDown());
   const emptyShotReloadPressed = shouldReloadInsteadOfShooting(
     options.autoReloadContext,
@@ -96,11 +97,9 @@ export function createBattleInput(
     aimY: Math.trunc(joystickState?.aimY ?? pointerWorld.y),
     shootPressed: shootPressed && !emptyShotReloadPressed,
     bombPressed:
-      (
-        mobileState?.bombPressed ??
+      (mobileState?.bombPressed ??
         (joystickState?.bombPressed || undefined) ??
-        false
-      ) ||
+        false) ||
       (pointerEnabled && pointer.rightButtonDown()),
     activeCardPressed:
       (mobileState?.activeCardPressed ?? false) ||
@@ -114,7 +113,9 @@ export function createBattleInput(
       (mobileState?.alternateHeld ?? false) ||
       (joystickState?.alternateHeld ?? false) ||
       (keyboardEnabled && keys.alternate.isDown),
-    infoHeld: (joystickState?.infoHeld ?? false) || (keyboardEnabled && keys.info.isDown),
+    infoHeld:
+      (joystickState?.infoHeld ?? false) ||
+      (keyboardEnabled && keys.info.isDown),
     transitionReadyPressed:
       (joystickState?.enterPressed ?? false) ||
       (keyboardEnabled && Phaser.Input.Keyboard.JustDown(keys.enter)),
@@ -128,7 +129,11 @@ export function createBattleAimInput(
   mobileControls?: BattleMobileControls,
   arenaBounds?: ArenaBounds,
 ): BattleAimInput {
-  const pointerWorld = getBattlePointerWorld(scene, mobileControls, arenaBounds);
+  const pointerWorld = getBattlePointerWorld(
+    scene,
+    mobileControls,
+    arenaBounds,
+  );
   return {
     aimX: Math.trunc(pointerWorld.x),
     aimY: Math.trunc(pointerWorld.y),
@@ -140,7 +145,12 @@ export function createBattleAimInput(
 function isBattleInputOptions(
   value: BattleMobileControls | BattleInputOptions | undefined,
 ): value is BattleInputOptions {
-  return Boolean(value && ("joystickControls" in value || "autoReloadContext" in value || "arenaBounds" in value));
+  return Boolean(
+    value &&
+      ("joystickControls" in value ||
+        "autoReloadContext" in value ||
+        "arenaBounds" in value),
+  );
 }
 
 function shouldReloadInsteadOfShooting(

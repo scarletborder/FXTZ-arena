@@ -1,4 +1,4 @@
-import type { FighterState } from "@repo/content";
+import type { FighterState } from "@repo/types";
 import type { TickerManager } from "../ticker-manager";
 
 const ACTIVE_CARD_COOLDOWN_GROUP_PREFIX = "active-card-cooldown";
@@ -19,7 +19,10 @@ export class ActiveCardCooldownManager {
     this.syncOne(fighters[1], fighters);
   }
 
-  restore(fighters: readonly [FighterState, FighterState], frame: number): void {
+  restore(
+    fighters: readonly [FighterState, FighterState],
+    frame: number,
+  ): void {
     this.restoreOne(fighters[0], fighters, frame);
     this.restoreOne(fighters[1], fighters, frame);
   }

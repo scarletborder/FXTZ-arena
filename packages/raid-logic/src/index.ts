@@ -23,8 +23,13 @@ export * from "./battle/output";
 export * from "./battle/runtime";
 export * from "./battle/utils/validation";
 export type {
+  BattleInputState,
+  BattleLoadouts,
+  BattleModelSnapshot,
+  BattleOutputFrame,
   BattleOutputState,
   EffectState,
+  FighterLoadout,
   FighterKey,
   FighterState,
   PointState,
@@ -32,8 +37,7 @@ export type {
   ProjectileState,
   ShieldState,
   TrainingStats,
-} from "@repo/content";
-export type { BattleInputState } from "@repo/types";
+} from "@repo/types";
 
 export interface LegacyFighterState {
   readonly playerId: string;

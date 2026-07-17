@@ -1,7 +1,15 @@
-import { EXAMPLE_COLLABORATE_NODES, getCombatMapDefinition } from "@repo/content";
+import {
+  EXAMPLE_COLLABORATE_NODES,
+  getCombatMapDefinition,
+} from "@repo/content";
 import { DEFAULT_BOMBS, DEFAULT_COST_LIMIT, TICK_RATE } from "@repo/constants";
-import type { BattleConfig, ClientMessage, MapId, ServerMessage } from "@repo/types";
-import type { BattleInputState } from "@repo/raid-logic";
+import type {
+  BattleConfig,
+  ClientMessage,
+  MapId,
+  ServerMessage,
+} from "@repo/types";
+import type { BattleInputState } from "@repo/types";
 
 import type { FighterLoadout } from "../battle/loadout";
 import type { PeerConnection, P2pStatus } from "../network/p2p";
@@ -27,10 +35,16 @@ export interface DebugCooperateRuntimeJump {
   readonly transitionTarget?: "elite" | "boss";
 }
 
-export function getDebugCooperateEliteOptions(mapId: MapId): readonly DebugCooperateEliteOption[] {
+export function getDebugCooperateEliteOptions(
+  mapId: MapId,
+): readonly DebugCooperateEliteOption[] {
   return debugCooperateNodesForMap(mapId)
     .map((node, nodeIndex) => ({ node, nodeIndex }))
-    .filter(({ node }) => node.kind === "wave" && node.members.some((member) => member.class === "elite"))
+    .filter(
+      ({ node }) =>
+        node.kind === "wave" &&
+        node.members.some((member) => member.class === "elite"),
+    )
     .map(({ node, nodeIndex }, index) => ({
       id: String(index),
       name: `${index + 1}. ${node.id}`,
@@ -48,7 +62,8 @@ export function resolveDebugCooperateRuntimeJump(
 
   const nodes = debugCooperateNodesForMap(mapId);
   if (config.target === "elite") {
-    const elite = getDebugCooperateEliteOptions(mapId)[config.eliteWaveIndex ?? 0];
+    const elite =
+      getDebugCooperateEliteOptions(mapId)[config.eliteWaveIndex ?? 0];
     if (!elite) return undefined;
     return {
       nodeIndex: elite.nodeIndex,
@@ -58,7 +73,9 @@ export function resolveDebugCooperateRuntimeJump(
   }
 
   const bossIndex = nodes.findIndex(
-    (node) => node.kind === "wave" && node.members.some((member) => member.class === "boss"),
+    (node) =>
+      node.kind === "wave" &&
+      node.members.some((member) => member.class === "boss"),
   );
   if (bossIndex < 0) return undefined;
   return {
@@ -107,7 +124,9 @@ export function createDebugCooperateBotPeer(): PeerConnection {
   return new DebugCooperateBotPeer();
 }
 
-export function withDebugCooperateResources(loadout: FighterLoadout): FighterLoadout {
+export function withDebugCooperateResources(
+  loadout: FighterLoadout,
+): FighterLoadout {
   return {
     ...loadout,
     cardIds: [],
@@ -137,7 +156,9 @@ function debugCooperateNodesForMap(mapId: MapId) {
   return [];
 }
 
-function toPlayerLoadout(loadout: FighterLoadout): BattleConfig["players"][number]["loadout"] {
+function toPlayerLoadout(
+  loadout: FighterLoadout,
+): BattleConfig["players"][number]["loadout"] {
   return {
     primaryCharacterId: loadout.primaryCharacterId,
     alternateCharacterId: loadout.alternateCharacterId,

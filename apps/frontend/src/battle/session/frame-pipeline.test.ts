@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createRaidLogicRuntime,
-  type BattleInputState,
-} from "@repo/raid-logic";
+import { createRaidLogicRuntime } from "@repo/raid-logic";
+import type { BattleInputState } from "@repo/types";
 
 import { BattleFramePipeline } from "./frame-pipeline";
 

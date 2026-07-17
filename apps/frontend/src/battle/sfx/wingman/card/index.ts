@@ -1,4 +1,4 @@
-import type { FighterState } from "@repo/raid-logic";
+import type { FighterState } from "@repo/types";
 
 import { multiShotWingmen } from "./multi-shot";
 import { hakkeroWingmen } from "./hakkero";

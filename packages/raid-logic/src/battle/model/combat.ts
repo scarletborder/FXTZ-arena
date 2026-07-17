@@ -1,6 +1,6 @@
 import { secondsToTicks } from "@repo/types";
 
-import type { FighterKey, FighterState, TrainingStats } from "@repo/content";
+import type { FighterKey, FighterState, TrainingStats } from "@repo/types";
 
 const STATUS_VISIBLE_TICKS = secondsToTicks(1.5);
 
@@ -53,7 +53,9 @@ export function applyHit(params: {
   return "accepted";
 }
 
-export function getFireCooldown(rank: FighterState["activeCharacter"]["fireRate"]): number {
+export function getFireCooldown(
+  rank: FighterState["activeCharacter"]["fireRate"],
+): number {
   if (rank === "low") {
     return 16;
   }

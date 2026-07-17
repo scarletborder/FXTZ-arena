@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 
 import { t } from "@repo/i18n";
-import type { FighterKey } from "@repo/raid-logic";
+import type { FighterKey } from "@repo/types";
 import type { CollaborateExtraState } from "@repo/types";
 import { Depth } from "../../utils/depth";
 

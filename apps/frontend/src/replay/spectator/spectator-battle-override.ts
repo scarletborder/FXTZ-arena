@@ -1,5 +1,9 @@
 import Phaser from "phaser";
-import { createRaidLogicRuntime, type BattleOutputFrame, type RaidLogicRuntime } from "@repo/raid-logic";
+import {
+  createRaidLogicRuntime,
+  type RaidLogicRuntime,
+} from "@repo/raid-logic";
+import type { BattleOutputFrame } from "@repo/types";
 import { FIXED_STEP_MS } from "@repo/constants";
 import type { BattleConfig, PlayerId, ServerMessage } from "@repo/types";
 
@@ -105,9 +109,13 @@ export class SpectatorBattleOverride {
     });
 
     if (this.udpSession) {
-      this.udpSession.setSpectatorMessageHandler((message) => this.handleServerMessage(message));
+      this.udpSession.setSpectatorMessageHandler((message) =>
+        this.handleServerMessage(message),
+      );
     } else {
-      connectionManager.setMessageHandler((message) => this.handleServerMessage(message));
+      connectionManager.setMessageHandler((message) =>
+        this.handleServerMessage(message),
+      );
     }
     this.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
 
@@ -121,7 +129,11 @@ export class SpectatorBattleOverride {
     const maxSteps = this.accumulator > 500 ? 16 : 4;
     let steps = 0;
 
-    while (this.logicReady && this.accumulator >= FIXED_STEP_MS && steps < maxSteps) {
+    while (
+      this.logicReady &&
+      this.accumulator >= FIXED_STEP_MS &&
+      steps < maxSteps
+    ) {
       const pair = this.inputBuffer.takePair(this.frame);
       if (!pair) {
         break;
@@ -133,7 +145,11 @@ export class SpectatorBattleOverride {
         hostIsPlayer: true,
       });
       this.drainOutput();
-      this.replayRecorder.recordFrame(this.runtime.frame, pair.player, pair.target);
+      this.replayRecorder.recordFrame(
+        this.runtime.frame,
+        pair.player,
+        pair.target,
+      );
       this.frame += 1;
       this.accumulator -= FIXED_STEP_MS;
       steps += 1;
@@ -197,16 +213,30 @@ export class SpectatorBattleOverride {
     this.scene.scene.start(this.exitScene);
   }
 
-  private scheduleResult(winnerPlayerId: PlayerId | null, finishFrame?: number): void {
+  private scheduleResult(
+    winnerPlayerId: PlayerId | null,
+    finishFrame?: number,
+  ): void {
     if (this.resultScheduled) return;
     this.resultScheduled = true;
-    this.scene.time.delayedCall(900, () => this.goToResult(winnerPlayerId, finishFrame));
+    this.scene.time.delayedCall(900, () =>
+      this.goToResult(winnerPlayerId, finishFrame),
+    );
   }
 
-  private goToResult(winnerPlayerId: PlayerId | null, finishFrame?: number): void {
+  private goToResult(
+    winnerPlayerId: PlayerId | null,
+    finishFrame?: number,
+  ): void {
     if (this.resultStarted) return;
-    if (finishFrame !== undefined && this.runtime.frame < finishFrame && this.inputBuffer.hasPair(this.frame)) {
-      this.scene.time.delayedCall(100, () => this.goToResult(winnerPlayerId, finishFrame));
+    if (
+      finishFrame !== undefined &&
+      this.runtime.frame < finishFrame &&
+      this.inputBuffer.hasPair(this.frame)
+    ) {
+      this.scene.time.delayedCall(100, () =>
+        this.goToResult(winnerPlayerId, finishFrame),
+      );
       return;
     }
     if (!this.currentOutput) {
@@ -214,7 +244,9 @@ export class SpectatorBattleOverride {
       return;
     }
     this.resultStarted = true;
-    this.replayRecorder.endBattle(winnerPlayerId === "Player2" ? "Player2" : "Player1");
+    this.replayRecorder.endBattle(
+      winnerPlayerId === "Player2" ? "Player2" : "Player1",
+    );
     if (this.udpSession) {
       this.udpSession.close();
     }

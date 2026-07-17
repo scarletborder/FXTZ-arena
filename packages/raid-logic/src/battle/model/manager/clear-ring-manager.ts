@@ -1,4 +1,4 @@
-import type { FighterKey, FighterState, ProjectileState } from "@repo/content";
+import type { FighterKey, FighterState, ProjectileState } from "@repo/types";
 
 import type { BattleRules } from "../battle-rules";
 import {
@@ -6,10 +6,7 @@ import {
   stepClearRings,
   type ClearRingState,
 } from "../entities/clear-ring";
-import {
-  restoreClearRingSnapshot,
-  type ClearRingSnapshot,
-} from "../snapshot";
+import { restoreClearRingSnapshot, type ClearRingSnapshot } from "../snapshot";
 
 export class ClearRingManager {
   readonly clearRings: ClearRingState[] = [];

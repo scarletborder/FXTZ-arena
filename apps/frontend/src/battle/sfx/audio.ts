@@ -1,6 +1,6 @@
 import AudioCmd from "../../commands/AudioCmd";
-import type { BattleOutputState } from "@repo/raid-logic";
-import type { FighterKey, ProjectileState } from "@repo/content";
+import type { BattleOutputState } from "@repo/types";
+import type { FighterKey, ProjectileState } from "@repo/types";
 import type { MobState } from "@repo/types";
 
 interface BattleAudioSyncOptions {

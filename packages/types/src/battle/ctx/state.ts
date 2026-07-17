@@ -23,3 +23,13 @@ export interface FighterPairContext<TFighter> {
   readonly player: TFighter;
   readonly target: TFighter;
 }
+
+export interface BattleTargetState<TFighterKey extends string = string> {
+  readonly key: TFighterKey;
+  readonly x: number;
+  readonly y: number;
+  readonly hitRadius?: number;
+  readonly hitWidth?: number;
+  readonly hitHeight?: number;
+  readonly mobId?: number;
+}

@@ -1,5 +1,5 @@
 import { ARENA_HEIGHT_PX, ARENA_WIDTH_PX } from "@repo/types";
-import type { FighterState } from "@repo/content";
+import type { FighterState } from "@repo/types";
 
 import { WALL_MARGIN } from "./constants";
 import type { MoveOption } from "./types";
@@ -34,7 +34,11 @@ export function strategicMovement(
   };
 }
 
-export function wallAvoidance(pos: number, margin: number, max: number): number {
+export function wallAvoidance(
+  pos: number,
+  margin: number,
+  max: number,
+): number {
   if (pos < margin) return (margin - pos) / margin;
   if (pos > max - margin) return (max - margin - pos) / margin;
   return 0;

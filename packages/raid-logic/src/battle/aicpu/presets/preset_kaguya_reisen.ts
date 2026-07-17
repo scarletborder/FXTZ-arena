@@ -1,4 +1,4 @@
-import type { FighterState } from "@repo/content";
+import type { FighterState } from "@repo/types";
 import { secondsToTicks } from "@repo/types";
 
 import type { DodgeIntent } from "../dodger";

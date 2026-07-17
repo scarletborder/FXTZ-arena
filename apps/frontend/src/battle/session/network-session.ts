@@ -1,5 +1,6 @@
 import { t } from "@repo/i18n";
-import type { BattleInputState, RaidLogicRuntime } from "@repo/raid-logic";
+import type { RaidLogicRuntime } from "@repo/raid-logic";
+import type { BattleInputState } from "@repo/types";
 import type { PlayerId } from "@repo/types";
 
 import type { BattleSceneData } from "../loadout";

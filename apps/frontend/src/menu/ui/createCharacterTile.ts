@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-import type { CharacterDefinition } from "@repo/content";
+import type { CharacterDefinition } from "@repo/types";
 
 import type { CharacterTileControl } from "../shared";
 import { characterName, roleLabel } from "../shared";
@@ -24,6 +24,7 @@ export function createCharacterTile(
     badge: roleLabel(character.roleClass),
     selected,
     onClick,
-    drawIcon: (target) => drawCharacterPreviewIcon(scene, target, 56, 56, 82, 76, character),
+    drawIcon: (target) =>
+      drawCharacterPreviewIcon(scene, target, 56, 56, 82, 76, character),
   });
 }

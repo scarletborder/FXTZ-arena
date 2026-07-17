@@ -1,4 +1,4 @@
-import type { BattleModelSnapshot } from "@repo/raid-logic";
+import type { BattleModelSnapshot } from "@repo/types";
 import { describe, expect, it, vi } from "vitest";
 
 import {

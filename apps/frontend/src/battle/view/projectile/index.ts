@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-import type { ProjectileState } from "@repo/raid-logic";
+import type { ProjectileState } from "@repo/types";
 import {
   createMasterSparkPreviewSfx,
   renderMasterSparkPreviewSfx,
@@ -22,15 +22,12 @@ import type {
   BulletFrame,
   FighterKey,
   ProjectileFighters,
-  YoumuSlashArcSegment,
 } from "./types";
-import { ProjectileVisualStore } from "./visuals";
+import {
+  ProjectileVisualStore,
+  type YoumuSlashArcGroup,
+} from "./visuals";
 import type { BattleRoomMode } from "@repo/types";
-
-interface YoumuSlashArcGroup {
-  readonly key: string;
-  readonly segments: YoumuSlashArcSegment[];
-}
 
 export class ProjectileView {
   private readonly visuals: ProjectileVisualStore;

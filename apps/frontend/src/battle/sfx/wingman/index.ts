@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-import type { FighterKey, FighterState } from "@repo/raid-logic";
+import type { FighterKey, FighterState } from "@repo/types";
 import { Depth } from "../../../utils/depth";
 import {
   CirnoWingmanProfile,

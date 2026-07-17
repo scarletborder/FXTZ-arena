@@ -12,26 +12,40 @@ vi.mock("phaser", () => ({
       },
     },
     Math: {
-      Clamp: (value: number, min: number, max: number) => Math.max(min, Math.min(max, value)),
+      Clamp: (value: number, min: number, max: number) =>
+        Math.max(min, Math.min(max, value)),
     },
   },
 }));
 
-import { getAbilityCardDefinition, getCharacterDefinition } from "@repo/content";
+import {
+  getAbilityCardDefinition,
+  getCharacterDefinition,
+} from "@repo/content";
 import {
   ConfirmedFrameHashAccumulator,
   createRaidLogicRuntime,
-  type BattleModelSnapshot,
   type RaidLogicRuntime,
 } from "@repo/raid-logic";
-import type { BattleConfig, BattleInputState, ClientMessage, PlayerId, PlayerLoadout, ServerMessage } from "@repo/types";
+import type {
+  BattleConfig,
+  BattleInputState,
+  BattleModelSnapshot,
+  ClientMessage,
+  PlayerId,
+  PlayerLoadout,
+  ServerMessage,
+} from "@repo/types";
 
 import { MessageHandler } from "../../../../dedicated-server/src/protocol/handler";
 import { RoomLifecycle } from "../../../../dedicated-server/src/room/lifecycle";
 import { RoomManager } from "../../../../dedicated-server/src/room/manager";
 import { SessionStore } from "../../../../dedicated-server/src/session/store";
 import type { TransportConnection } from "../../../../dedicated-server/src/transport/interface";
-import { createBattleInput, type BattleKeyMap } from "../../battle/input-controller/input";
+import {
+  createBattleInput,
+  type BattleKeyMap,
+} from "../../battle/input-controller/input";
 import type { BattleSceneData } from "../../battle/loadout";
 import type { ConnectionManager } from "../client";
 import type { P2pConnection } from "../p2p";
@@ -43,52 +57,81 @@ describe("CombatSyncManager rollback integration", () => {
     {
       name: "asymmetric latency",
       latency: {
-        "Player1": { clientToServer: 2, serverToClient: 6 },
-        "Player2": { clientToServer: 8, serverToClient: 3 },
+        Player1: { clientToServer: 2, serverToClient: 6 },
+        Player2: { clientToServer: 8, serverToClient: 3 },
       },
     },
     {
       name: "high asymmetric latency",
       latency: {
-        "Player1": { clientToServer: 10, serverToClient: 18 },
-        "Player2": { clientToServer: 22, serverToClient: 12 },
+        Player1: { clientToServer: 10, serverToClient: 18 },
+        Player2: { clientToServer: 22, serverToClient: 12 },
       },
     },
-  ])("matches final frame and global BLAKE3 hashes through the dedicated server with $name", async ({ latency }) => {
-    expect(getCharacterDefinition("reimu")).toBeDefined();
-    expect(getAbilityCardDefinition("spirit_strike_card")).toBeDefined();
+  ])(
+    "matches final frame and global BLAKE3 hashes through the dedicated server with $name",
+    async ({ latency }) => {
+      expect(getCharacterDefinition("reimu")).toBeDefined();
+      expect(getAbilityCardDefinition("spirit_strike_card")).toBeDefined();
 
-    const harness = new DedicatedServerHarness(latency);
+      const harness = new DedicatedServerHarness(latency);
 
-    const config = harness.setupBattle();
-    const clientA = await createClient("Player1", config, harness.endpoint("Player1"));
-    const clientB = await createClient("Player2", config, harness.endpoint("Player2"));
+      const config = harness.setupBattle();
+      const clientA = await createClient(
+        "Player1",
+        config,
+        harness.endpoint("Player1"),
+      );
+      const clientB = await createClient(
+        "Player2",
+        config,
+        harness.endpoint("Player2"),
+      );
 
-    let tick = 0;
-    for (; tick < 900 && (!clientA.serverConfirmedFrame || !clientB.serverConfirmedFrame); tick += 1) {
-      harness.deliverDue(tick);
-      clientA.step(tick);
-      clientB.step(tick);
-    }
+      let tick = 0;
+      for (
+        ;
+        tick < 900 &&
+        (!clientA.serverConfirmedFrame || !clientB.serverConfirmedFrame);
+        tick += 1
+      ) {
+        harness.deliverDue(tick);
+        clientA.step(tick);
+        clientB.step(tick);
+      }
 
-    harness.deliverAll();
-    for (; tick < 960 && (!clientA.serverConfirmedFrame || !clientB.serverConfirmedFrame); tick += 1) {
-      clientA.step(tick);
-      clientB.step(tick);
-      harness.deliverDue(tick);
-    }
-    harness.deliverAll();
+      harness.deliverAll();
+      for (
+        ;
+        tick < 960 &&
+        (!clientA.serverConfirmedFrame || !clientB.serverConfirmedFrame);
+        tick += 1
+      ) {
+        clientA.step(tick);
+        clientB.step(tick);
+        harness.deliverDue(tick);
+      }
+      harness.deliverAll();
 
-    clientA.expectNoSampledHashMutations();
-    clientB.expectNoSampledHashMutations();
+      clientA.expectNoSampledHashMutations();
+      clientB.expectNoSampledHashMutations();
 
-    const finalFrame = clientA.serverConfirmedFrame ?? Math.min(clientA.manager.getConfirmedFrame(), clientB.manager.getConfirmedFrame());
-    expect(clientB.serverConfirmedFrame ?? finalFrame).toBe(finalFrame);
-    expect(finalFrame).toBeGreaterThan(120);
-    expectFrameHashesMatch(clientA, clientB, finalFrame);
-    expect(clientA.hashAt(finalFrame)).toBe(clientB.hashAt(finalFrame));
-    expect(clientA.globalHashAt(finalFrame)).toBe(clientB.globalHashAt(finalFrame));
-  }, 45_000);
+      const finalFrame =
+        clientA.serverConfirmedFrame ??
+        Math.min(
+          clientA.manager.getConfirmedFrame(),
+          clientB.manager.getConfirmedFrame(),
+        );
+      expect(clientB.serverConfirmedFrame ?? finalFrame).toBe(finalFrame);
+      expect(finalFrame).toBeGreaterThan(120);
+      expectFrameHashesMatch(clientA, clientB, finalFrame);
+      expect(clientA.hashAt(finalFrame)).toBe(clientB.hashAt(finalFrame));
+      expect(clientA.globalHashAt(finalFrame)).toBe(
+        clientB.globalHashAt(finalFrame),
+      );
+    },
+    45_000,
+  );
 
   it("submits a bounded game_over verdict when the peer has already stopped", () => {
     const sent: ClientMessage[] = [];
@@ -109,36 +152,46 @@ describe("CombatSyncManager rollback integration", () => {
       deserialize: () => undefined,
     } as unknown as RaidLogicRuntime;
     const dispatch = (msg: ServerMessage) => {
-      const currentHandler: (msg: ServerMessage) => void = handler ?? (() => {
-        throw new Error("CombatSyncManager did not install a message handler");
-      });
+      const currentHandler: (msg: ServerMessage) => void =
+        handler ??
+        (() => {
+          throw new Error(
+            "CombatSyncManager did not install a message handler",
+          );
+        });
       currentHandler(msg);
     };
 
-    const manager = new CombatSyncManager(runtime, {
-      send: (msg: ClientMessage) => {
-        sent.push(msg);
+    const manager = new CombatSyncManager(
+      runtime,
+      {
+        send: (msg: ClientMessage) => {
+          sent.push(msg);
+        },
+        setMessageHandler: (
+          nextHandler: ((msg: ServerMessage) => void) | null,
+        ) => {
+          handler = nextHandler;
+        },
+      } as unknown as ConnectionManager,
+      {
+        sceneData: {
+          mode: "online",
+          localPlayerId: "Player1",
+        } satisfies BattleSceneData,
+        callbacks: {
+          recordFrame: () => undefined,
+          getRollbackRecord: () => null,
+          pruneRollbackHistoryAfter: () => undefined,
+          pruneRollbackHistoryBefore: () => undefined,
+          onRollback: () => undefined,
+          setStatusText: () => undefined,
+          hideStatusText: () => undefined,
+          delay: (_ms, callback) => callback(),
+          finishBattle: () => undefined,
+        },
       },
-      setMessageHandler: (nextHandler: ((msg: ServerMessage) => void) | null) => {
-        handler = nextHandler;
-      },
-    } as unknown as ConnectionManager, {
-      sceneData: {
-        mode: "online",
-        localPlayerId: "Player1",
-      } satisfies BattleSceneData,
-      callbacks: {
-        recordFrame: () => undefined,
-        getRollbackRecord: () => null,
-        pruneRollbackHistoryAfter: () => undefined,
-        pruneRollbackHistoryBefore: () => undefined,
-        onRollback: () => undefined,
-        setStatusText: () => undefined,
-        hideStatusText: () => undefined,
-        delay: (_ms, callback) => callback(),
-        finishBattle: () => undefined,
-      },
-    });
+    );
 
     for (let frame = 1; frame <= 12; frame += 1) {
       dispatch({
@@ -175,7 +228,10 @@ describe("CombatSyncManager rollback integration", () => {
 
     const sent: ClientMessage[] = [];
     let handler: ((msg: ServerMessage) => void) | null = null;
-    const finished: Array<{ winnerPlayerId: PlayerId; serverConfirmedFrame?: number }> = [];
+    const finished: Array<{
+      winnerPlayerId: PlayerId;
+      serverConfirmedFrame?: number;
+    }> = [];
     new CombatSyncManager(
       {
         frame: 0,
@@ -191,7 +247,9 @@ describe("CombatSyncManager rollback integration", () => {
         send: (msg: ClientMessage) => {
           sent.push(msg);
         },
-        setMessageHandler: (nextHandler: ((msg: ServerMessage) => void) | null) => {
+        setMessageHandler: (
+          nextHandler: ((msg: ServerMessage) => void) | null,
+        ) => {
           handler = nextHandler;
         },
       } as unknown as ConnectionManager,
@@ -243,7 +301,10 @@ describe("CombatSyncManager rollback integration", () => {
 
   it("uses the shared confirmed frame for local battle settlement", () => {
     const sent: ClientMessage[] = [];
-    const finished: Array<{ winnerPlayerId: PlayerId; serverConfirmedFrame?: number }> = [];
+    const finished: Array<{
+      winnerPlayerId: PlayerId;
+      serverConfirmedFrame?: number;
+    }> = [];
     let runtimeFrame = 13;
     const runtime = {
       get frame() {
@@ -399,7 +460,11 @@ describe("CombatSyncManager rollback integration", () => {
   it("replays a late forced shop ready message on its scheduled frame", () => {
     let handler: ((msg: ServerMessage) => void) | null = null;
     let runtimeFrame = 3;
-    const stepped: Array<{ frame: number; player: BattleInputState; target: BattleInputState }> = [];
+    const stepped: Array<{
+      frame: number;
+      player: BattleInputState;
+      target: BattleInputState;
+    }> = [];
     const runtime = {
       get frame() {
         return runtimeFrame;
@@ -422,7 +487,9 @@ describe("CombatSyncManager rollback integration", () => {
       runtime,
       {
         send: () => undefined,
-        setMessageHandler: (nextHandler: ((msg: ServerMessage) => void) | null) => {
+        setMessageHandler: (
+          nextHandler: ((msg: ServerMessage) => void) | null,
+        ) => {
           handler = nextHandler;
         },
       } as unknown as ConnectionManager,
@@ -435,9 +502,13 @@ describe("CombatSyncManager rollback integration", () => {
         callbacks: {
           recordFrame: () => undefined,
           recordStepInputs: (record) => stepped.push(record),
-          getRollbackRecord: (frame) => frame === 1
-            ? ({ frame, snapshot: {} as BattleModelSnapshot } satisfies CombatRollbackRecord)
-            : null,
+          getRollbackRecord: (frame) =>
+            frame === 1
+              ? ({
+                  frame,
+                  snapshot: {} as BattleModelSnapshot,
+                } satisfies CombatRollbackRecord)
+              : null,
           pruneRollbackHistoryAfter: () => undefined,
           pruneRollbackHistoryBefore: () => undefined,
           onRollback: () => undefined,
@@ -460,14 +531,16 @@ describe("CombatSyncManager rollback integration", () => {
       shopIndex: 1,
     });
 
-    expect(stepped).toContainEqual(expect.objectContaining({
-      frame: 2,
-      target: expect.objectContaining({
-        shopReadyPressed: true,
-        shopPurchaseItemId: undefined,
-        activeCardSwitchId: undefined,
+    expect(stepped).toContainEqual(
+      expect.objectContaining({
+        frame: 2,
+        target: expect.objectContaining({
+          shopReadyPressed: true,
+          shopPurchaseItemId: undefined,
+          activeCardSwitchId: undefined,
+        }),
       }),
-    }));
+    );
   });
 
   it("sends auto collaborate transition ready on the next input frame", () => {
@@ -502,7 +575,9 @@ describe("CombatSyncManager rollback integration", () => {
         send: (msg: ClientMessage) => {
           sent.push(msg);
         },
-        setMessageHandler: (nextHandler: ((msg: ServerMessage) => void) | null) => {
+        setMessageHandler: (
+          nextHandler: ((msg: ServerMessage) => void) | null,
+        ) => {
           handler = nextHandler;
         },
       } as unknown as ConnectionManager,
@@ -530,11 +605,13 @@ describe("CombatSyncManager rollback integration", () => {
     manager.step(testInput());
     manager.step(testInput());
 
-    expect(sent).toContainEqual(expect.objectContaining({
-      type: "input_frame",
-      frame: 12,
-      transitionReadyPressed: true,
-    }));
+    expect(sent).toContainEqual(
+      expect.objectContaining({
+        type: "input_frame",
+        frame: 12,
+        transitionReadyPressed: true,
+      }),
+    );
   });
 });
 
@@ -560,7 +637,11 @@ async function createClient(
   const globalHash = new ConfirmedFrameHashAccumulator();
 
   const sampleConfirmedThrough = (frame: number) => {
-    for (let nextFrame = globalHash.lastSampledFrame + 1; nextFrame <= frame; nextFrame += 1) {
+    for (
+      let nextFrame = globalHash.lastSampledFrame + 1;
+      nextFrame <= frame;
+      nextFrame += 1
+    ) {
       const hash = hashBacklog.get(nextFrame) ?? hashHistory.get(nextFrame);
       if (!hash) {
         throw new Error(`Missing hash for confirmed frame ${nextFrame}`);
@@ -575,7 +656,9 @@ async function createClient(
     for (const output of runtime.outputQueue.drainAll()) {
       const sampledHash = sampledFrameHashes.get(output.frame);
       if (sampledHash && sampledHash !== output.hashHex) {
-        sampledHashMutations.push(`${output.frame}: sampled=${sampledHash}, replayed=${output.hashHex}`);
+        sampledHashMutations.push(
+          `${output.frame}: sampled=${sampledHash}, replayed=${output.hashHex}`,
+        );
       }
       snapshotHistory.set(output.frame, output.snapshot);
       hashHistory.set(output.frame, output.hashHex);
@@ -586,45 +669,51 @@ async function createClient(
   };
   recordFrame();
 
-  const manager = new CombatSyncManager(runtime, endpoint as unknown as ConnectionManager, {
-    sceneData: {
-      mode: "online",
-      localPlayerId,
-      loadouts: loadoutsFromConfig(config),
-      battleConfig: config,
-    } satisfies BattleSceneData,
-    callbacks: {
-      recordFrame,
-      getRollbackRecord: (frame) => {
-        const snapshot = snapshotHistory.get(frame);
-        return snapshot ? ({ frame, snapshot } satisfies CombatRollbackRecord) : null;
-      },
-      pruneRollbackHistoryAfter: (frame) => {
-        for (const key of snapshotHistory.keys()) {
-          if (key > frame) snapshotHistory.delete(key);
-        }
-        for (const key of hashHistory.keys()) {
-          if (key > frame) hashHistory.delete(key);
-        }
-        for (const key of hashBacklog.keys()) {
-          if (key > frame) hashBacklog.delete(key);
-        }
-      },
-      pruneRollbackHistoryBefore: (frame) => {
-        sampleConfirmedThrough(frame);
-        for (const key of snapshotHistory.keys()) {
-          if (key < frame) snapshotHistory.delete(key);
-        }
-      },
-      onRollback: () => undefined,
-      setStatusText: () => undefined,
-      hideStatusText: () => undefined,
-      delay: (_ms, callback) => callback(),
-      finishBattle: (_winner, serverConfirmedFrame) => {
-        client.serverConfirmedFrame = serverConfirmedFrame;
+  const manager = new CombatSyncManager(
+    runtime,
+    endpoint as unknown as ConnectionManager,
+    {
+      sceneData: {
+        mode: "online",
+        localPlayerId,
+        loadouts: loadoutsFromConfig(config),
+        battleConfig: config,
+      } satisfies BattleSceneData,
+      callbacks: {
+        recordFrame,
+        getRollbackRecord: (frame) => {
+          const snapshot = snapshotHistory.get(frame);
+          return snapshot
+            ? ({ frame, snapshot } satisfies CombatRollbackRecord)
+            : null;
+        },
+        pruneRollbackHistoryAfter: (frame) => {
+          for (const key of snapshotHistory.keys()) {
+            if (key > frame) snapshotHistory.delete(key);
+          }
+          for (const key of hashHistory.keys()) {
+            if (key > frame) hashHistory.delete(key);
+          }
+          for (const key of hashBacklog.keys()) {
+            if (key > frame) hashBacklog.delete(key);
+          }
+        },
+        pruneRollbackHistoryBefore: (frame) => {
+          sampleConfirmedThrough(frame);
+          for (const key of snapshotHistory.keys()) {
+            if (key < frame) snapshotHistory.delete(key);
+          }
+        },
+        onRollback: () => undefined,
+        setStatusText: () => undefined,
+        hideStatusText: () => undefined,
+        delay: (_ms, callback) => callback(),
+        finishBattle: (_winner, serverConfirmedFrame) => {
+          client.serverConfirmedFrame = serverConfirmedFrame;
+        },
       },
     },
-  });
+  );
 
   const client: SimulatedClient = {
     manager,
@@ -656,7 +745,11 @@ interface SimulatedClient {
   expectNoSampledHashMutations(): void;
 }
 
-function expectFrameHashesMatch(left: SimulatedClient, right: SimulatedClient, finalFrame: number): void {
+function expectFrameHashesMatch(
+  left: SimulatedClient,
+  right: SimulatedClient,
+  finalFrame: number,
+): void {
   const mismatches: string[] = [];
   for (let frame = 0; frame <= finalFrame; frame += 1) {
     const leftHash = left.hashAt(frame);
@@ -664,16 +757,26 @@ function expectFrameHashesMatch(left: SimulatedClient, right: SimulatedClient, f
 
     const leftSampledHash = left.sampledHashAt(frame);
     if (leftSampledHash && leftHash !== leftSampledHash) {
-      mismatches.push(`${frame}: Player1 sampled ${leftSampledHash}, final ${leftHash ?? "<missing>"}`);
+      mismatches.push(
+        `${frame}: Player1 sampled ${leftSampledHash}, final ${leftHash ?? "<missing>"}`,
+      );
     }
 
     const rightSampledHash = right.sampledHashAt(frame);
     if (rightSampledHash && rightHash !== rightSampledHash) {
-      mismatches.push(`${frame}: Player2 sampled ${rightSampledHash}, final ${rightHash ?? "<missing>"}`);
+      mismatches.push(
+        `${frame}: Player2 sampled ${rightSampledHash}, final ${rightHash ?? "<missing>"}`,
+      );
     }
 
-    if (leftSampledHash && rightSampledHash && leftSampledHash !== rightSampledHash) {
-      mismatches.push(`${frame}: sampled ${leftSampledHash} != ${rightSampledHash}`);
+    if (
+      leftSampledHash &&
+      rightSampledHash &&
+      leftSampledHash !== rightSampledHash
+    ) {
+      mismatches.push(
+        `${frame}: sampled ${leftSampledHash} != ${rightSampledHash}`,
+      );
     }
   }
 
@@ -704,8 +807,8 @@ class DedicatedServerHarness {
 
   constructor(private readonly latency: Record<TestPlayerId, LatencyProfile>) {
     this.endpoints = {
-      "Player1": new ClientEndpoint("Player1", this),
-      "Player2": new ClientEndpoint("Player2", this),
+      Player1: new ClientEndpoint("Player1", this),
+      Player2: new ClientEndpoint("Player2", this),
     };
     this.handler.registerConnection(this.endpoints["Player1"].serverConnection);
     this.handler.registerConnection(this.endpoints["Player2"].serverConnection);
@@ -716,8 +819,18 @@ class DedicatedServerHarness {
   }
 
   setupBattle(): BattleConfig {
-    this.send("Player1", { type: "hello", username: "A", clientVersion: "test", debug: true });
-    this.send("Player2", { type: "hello", username: "B", clientVersion: "test", debug: true });
+    this.send("Player1", {
+      type: "hello",
+      username: "A",
+      clientVersion: "test",
+      debug: true,
+    });
+    this.send("Player2", {
+      type: "hello",
+      username: "B",
+      clientVersion: "test",
+      debug: true,
+    });
     this.deliverAll();
 
     this.send("Player1", {
@@ -755,7 +868,8 @@ class DedicatedServerHarness {
   send(from: TestPlayerId, msg: ClientMessage): void {
     this.queue.push({
       deliverAt: this.tick + this.latency[from].clientToServer,
-      run: () => this.handler.handle(this.endpoints[from].serverConnection, msg),
+      run: () =>
+        this.handler.handle(this.endpoints[from].serverConnection, msg),
     });
   }
 
@@ -779,7 +893,7 @@ class DedicatedServerHarness {
   }
 
   private deliver(predicate: (item: ScheduledMessage) => boolean): void {
-    for (let index = 0; index < this.queue.length;) {
+    for (let index = 0; index < this.queue.length; ) {
       const item = this.queue[index]!;
       if (!predicate(item)) {
         index += 1;
@@ -823,7 +937,9 @@ class ClientEndpoint {
     this.handler?.(msg);
   }
 
-  latest<T extends ServerMessage["type"]>(type: T): Extract<ServerMessage, { type: T }> | undefined {
+  latest<T extends ServerMessage["type"]>(
+    type: T,
+  ): Extract<ServerMessage, { type: T }> | undefined {
     for (let index = this.messages.length - 1; index >= 0; index -= 1) {
       const msg = this.messages[index]!;
       if (msg.type === type) {

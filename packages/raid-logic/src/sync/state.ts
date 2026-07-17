@@ -10,7 +10,7 @@ import {
   type BattleStats,
   type PlayerBattleState,
   type PlayerId,
-  type ProjectileState,
+  type LegacyProjectileState,
   type TimerState,
 } from "@repo/types";
 
@@ -495,7 +495,9 @@ function fighterToSnapshot(fighter: FighterEntity): PlayerBattleState {
   };
 }
 
-function projectileToSnapshot(projectile: ProjectileEntity): ProjectileState {
+function projectileToSnapshot(
+  projectile: ProjectileEntity,
+): LegacyProjectileState {
   return {
     id: projectile.id,
     ownerId: projectile.ownerId,

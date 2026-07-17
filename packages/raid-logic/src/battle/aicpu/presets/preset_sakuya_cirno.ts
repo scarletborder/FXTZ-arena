@@ -1,4 +1,4 @@
-import type { FighterState } from "@repo/content";
+import type { FighterState } from "@repo/types";
 
 import type { DodgeIntent } from "../dodger";
 import type {
@@ -44,7 +44,9 @@ export class SakuyaCirnoPreset implements CpuPreset {
   }
 
   getDecision(ctx: CpuPresetContext): CpuPresetDecision {
-    const desired = ctx.dodgeResult.emergencyBomb ? "cirno" : desiredCharacter(ctx);
+    const desired = ctx.dodgeResult.emergencyBomb
+      ? "cirno"
+      : desiredCharacter(ctx);
     const aim = predictiveAim(ctx);
     const useCirnoBomb =
       desired === "cirno" &&

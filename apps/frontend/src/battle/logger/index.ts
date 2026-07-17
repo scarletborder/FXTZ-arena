@@ -1,10 +1,10 @@
-import type { PlayerId } from "@repo/types";
 import { IS_DESKTOP_APP } from "@repo/constants";
-import {
-  stableHash,
-  type BattleInputState,
-  type BattleOutputFrame,
-} from "@repo/raid-logic";
+import { stableHash } from "@repo/raid-logic";
+import type {
+  BattleInputState,
+  BattleOutputFrame,
+  PlayerId,
+} from "@repo/types";
 
 import type { BattleSceneData } from "../loadout";
 import { saveDesktopDebugLog } from "../../platform/desktop-debug-log";
@@ -58,9 +58,15 @@ export interface DebugLogExportParams {
 
 export class BattleDebugLogger {
   private readonly stepInputs = new Map<number, CombatFrameInputRecord>();
-  private readonly confirmedInputs = new Map<number, CombatConfirmedFrameInputRecord>();
+  private readonly confirmedInputs = new Map<
+    number,
+    CombatConfirmedFrameInputRecord
+  >();
   private readonly frameLog = new Map<number, DebugFrameLogRecord>();
-  private readonly confirmedFrameLog = new Map<number, AuthoritativeFrameLogRecord>();
+  private readonly confirmedFrameLog = new Map<
+    number,
+    AuthoritativeFrameLogRecord
+  >();
   private readonly frameRevisions: DebugFrameLogRecord[] = [];
   private sequence = 0;
   private confirmedSequence = 0;
@@ -87,7 +93,10 @@ export class BattleDebugLogger {
     });
   }
 
-  recordConfirmedInputs(record: CombatConfirmedFrameInputRecord, enabled: boolean): void {
+  recordConfirmedInputs(
+    record: CombatConfirmedFrameInputRecord,
+    enabled: boolean,
+  ): void {
     if (!enabled) {
       return;
     }
@@ -197,7 +206,12 @@ export class BattleDebugLogger {
 
   writeFile(params: DebugLogExportParams): string | null {
     const frames = Array.from(this.confirmedFrameLog.values())
-      .filter((record) => record.authoritative && record.frame >= 0 && record.frame <= params.authoritativeFrame)
+      .filter(
+        (record) =>
+          record.authoritative &&
+          record.frame >= 0 &&
+          record.frame <= params.authoritativeFrame,
+      )
       .sort((left, right) => left.frame - right.frame);
     const payload = {
       version: 1,
@@ -216,7 +230,11 @@ export class BattleDebugLogger {
       sampledConfirmedFrames: params.sampledConfirmedFrames,
       frames,
     };
-    const filename = createDebugLogFilename(params.sceneData, params.localPlayerId, params.targetFrame);
+    const filename = createDebugLogFilename(
+      params.sceneData,
+      params.localPlayerId,
+      params.targetFrame,
+    );
     const text = `${JSON.stringify(payload, null, 2)}\n`;
 
     if (IS_DESKTOP_APP) {
@@ -232,8 +250,14 @@ export class BattleDebugLogger {
       return filename;
     }
 
-    if (typeof document === "undefined" || typeof Blob === "undefined" || typeof URL === "undefined") {
-      console.warn(`[FXTZ] Debug log file is unavailable in this runtime: ${filename}`);
+    if (
+      typeof document === "undefined" ||
+      typeof Blob === "undefined" ||
+      typeof URL === "undefined"
+    ) {
+      console.warn(
+        `[FXTZ] Debug log file is unavailable in this runtime: ${filename}`,
+      );
       console.log(text);
       return null;
     }
@@ -284,9 +308,17 @@ function hashInputsHex(record: CombatConfirmedFrameInputRecord | null): string {
   });
 }
 
-function createDebugLogFilename(sceneData: BattleSceneData, localPlayerId: PlayerId | null, targetFrame: number): string {
-  const battleId = sanitizeFilenamePart(sceneData.battleConfig?.battleId ?? "local");
-  const playerId = sanitizeFilenamePart(localPlayerId ?? sceneData.localPlayerId ?? "offline");
+function createDebugLogFilename(
+  sceneData: BattleSceneData,
+  localPlayerId: PlayerId | null,
+  targetFrame: number,
+): string {
+  const battleId = sanitizeFilenamePart(
+    sceneData.battleConfig?.battleId ?? "local",
+  );
+  const playerId = sanitizeFilenamePart(
+    localPlayerId ?? sceneData.localPlayerId ?? "offline",
+  );
   return `fxtz-debug-${battleId}-${playerId}-frame-${targetFrame}-${Date.now()}.json`;
 }
 

@@ -1,4 +1,4 @@
-import type { ProjectileState } from "@repo/content";
+import type { ProjectileState } from "@repo/types";
 
 export interface DodgeResult {
   readonly moveX: -1 | 0 | 1;

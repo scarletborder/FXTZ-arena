@@ -6,7 +6,7 @@ export interface BattleFrameInputPair {
   readonly firstIsPlayer: boolean;
 }
 
-export interface BattleFrameContext {
+export interface BattleFramePipelineContext {
   ensurePhysicsReady(): void;
   beginFrame(): void;
   processCollaborateTransitionSync(inputPair: BattleFrameInputPair): boolean;

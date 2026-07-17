@@ -1,5 +1,9 @@
-import { ARENA_HEIGHT_PX, ARENA_WIDTH_PX, speedRankToPixelsPerTick } from "@repo/types";
-import type { FighterState, ProjectileState } from "@repo/content";
+import {
+  ARENA_HEIGHT_PX,
+  ARENA_WIDTH_PX,
+  speedRankToPixelsPerTick,
+} from "@repo/types";
+import type { FighterState, ProjectileState } from "@repo/types";
 
 import {
   LOCAL_SCAN_RADIUS,
@@ -23,7 +27,11 @@ export class Dodger {
     intel: IntelligenceResult,
     desiredMoveOverride?: DodgeIntent,
   ): DodgeResult {
-    const nearbyProjectiles = collectNearbyProjectiles(self, projectiles, frame);
+    const nearbyProjectiles = collectNearbyProjectiles(
+      self,
+      projectiles,
+      frame,
+    );
     if (nearbyProjectiles.length === 0) {
       this.previousMove = { x: 0, y: 0 };
       return {
@@ -34,10 +42,14 @@ export class Dodger {
       };
     }
 
-    const speed = self.movementLockedUntil > 0
-      ? 0
-      : speedRankToPixelsPerTick(self.moveSpeedOverride ?? self.activeCharacter.moveSpeed);
-    const desiredMove = desiredMoveOverride ?? toDodgeIntent(strategicMovement(self, opponent));
+    const speed =
+      self.movementLockedUntil > 0
+        ? 0
+        : speedRankToPixelsPerTick(
+            self.moveSpeedOverride ?? self.activeCharacter.moveSpeed,
+          );
+    const desiredMove =
+      desiredMoveOverride ?? toDodgeIntent(strategicMovement(self, opponent));
     const result = chooseVelocityObstacleMove({
       self,
       opponent,
@@ -117,7 +129,10 @@ function collectNearbyProjectiles(
     .map((entry) => entry.projectile);
 }
 
-function projectilePriority(self: FighterState, projectile: ProjectileState): number {
+function projectilePriority(
+  self: FighterState,
+  projectile: ProjectileState,
+): number {
   const dx = projectile.x - self.x;
   const dy = projectile.y - self.y;
   const speed = Math.max(0.001, Math.hypot(projectile.vx, projectile.vy));
@@ -125,7 +140,10 @@ function projectilePriority(self: FighterState, projectile: ProjectileState): nu
   return dx * dx + dy * dy - Math.max(0, forward) * 80;
 }
 
-function laserCouldReachSelf(projectile: ProjectileState, self: FighterState): boolean {
+function laserCouldReachSelf(
+  projectile: ProjectileState,
+  self: FighterState,
+): boolean {
   const dx = self.x - projectile.x;
   const dy = self.y - projectile.y;
   const cos = Math.cos(projectile.angle);
@@ -133,6 +151,10 @@ function laserCouldReachSelf(projectile: ProjectileState, self: FighterState): b
   const forward = dx * cos + dy * sin;
   const side = Math.abs(-dx * sin + dy * cos);
   if (side <= LOCAL_SCAN_RADIUS_LASER) return true;
-  if (!Number.isFinite(projectile.width)) return forward > -48 && side < ARENA_WIDTH_PX + ARENA_HEIGHT_PX;
-  return Math.hypot(dx, dy) <= LOCAL_SCAN_RADIUS_LASER + Math.max(projectile.width, projectile.height);
+  if (!Number.isFinite(projectile.width))
+    return forward > -48 && side < ARENA_WIDTH_PX + ARENA_HEIGHT_PX;
+  return (
+    Math.hypot(dx, dy) <=
+    LOCAL_SCAN_RADIUS_LASER + Math.max(projectile.width, projectile.height)
+  );
 }

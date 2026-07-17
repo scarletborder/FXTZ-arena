@@ -7,7 +7,7 @@ import {
   GRAZE_CIRCLE_DIAMETER,
   PLAYER_CORE_RADIUS,
 } from "@repo/constants";
-import type { FighterKey, FighterState } from "@repo/raid-logic";
+import type { FighterKey, FighterState } from "@repo/types";
 import { abilityCardIconTextureKey } from "../../ability-card-assets";
 import { settingsRepository } from "../../store/settings";
 import { Depth } from "../../utils/depth";
@@ -210,14 +210,16 @@ export class FighterView {
     const hovered = isPointerOverFighter(pointerX, pointerY, renderX, renderY);
     this.updateHoverVisibility(visual, hovered);
     const baseResourceVisible =
-      infoHeld ||
-      fighter.statusVisibleUntil > frame ||
-      fighter.deadUntil > 0;
+      infoHeld || fighter.statusVisibleUntil > frame || fighter.deadUntil > 0;
     const hoverResourceVisible =
       settingsRepository.get().battleHoverResources &&
       (visual.hoverVisible || visual.hoverHideTimer !== undefined);
     const shouldShowResource = baseResourceVisible || hoverResourceVisible;
-    const resourceAlpha = baseResourceVisible ? 1 : hoverResourceVisible ? 0.92 : 0;
+    const resourceAlpha = baseResourceVisible
+      ? 1
+      : hoverResourceVisible
+        ? 0.92
+        : 0;
     visual.reloadTag.setPosition(renderX, renderY - 58);
     visual.resourceTag.setPosition(renderX, renderY + 58);
     visual.reloadTag.setAlpha(
@@ -234,7 +236,9 @@ export class FighterView {
     visual.resourceTag.setAlpha(
       smoothValue(visual.resourceTag.alpha, resourceAlpha, rollbackBlend),
     );
-    visual.reloadTag.setVisible(fighter.reloadRemaining > 0 && fighter.deadUntil === 0);
+    visual.reloadTag.setVisible(
+      fighter.reloadRemaining > 0 && fighter.deadUntil === 0,
+    );
     visual.resourceTag.setVisible(shouldShowResource);
     if (fighter.reloadRemaining > 0 && fighter.deadUntil === 0) {
       visual.reloadTag.setText(t("battle.reloading"));
@@ -375,10 +379,13 @@ export class FighterView {
       if (visual.hoverVisible || visual.hoverShowTimer) {
         return;
       }
-      visual.hoverShowTimer = this.scene.time.delayedCall(HOVER_REVEAL_DELAY_MS, () => {
-        visual.hoverShowTimer = undefined;
-        visual.hoverVisible = true;
-      });
+      visual.hoverShowTimer = this.scene.time.delayedCall(
+        HOVER_REVEAL_DELAY_MS,
+        () => {
+          visual.hoverShowTimer = undefined;
+          visual.hoverVisible = true;
+        },
+      );
       return;
     }
 
@@ -387,10 +394,13 @@ export class FighterView {
     if (!visual.hoverVisible || visual.hoverHideTimer) {
       return;
     }
-    visual.hoverHideTimer = this.scene.time.delayedCall(HOVER_HIDE_DELAY_MS, () => {
-      visual.hoverHideTimer = undefined;
-      visual.hoverVisible = false;
-    });
+    visual.hoverHideTimer = this.scene.time.delayedCall(
+      HOVER_HIDE_DELAY_MS,
+      () => {
+        visual.hoverHideTimer = undefined;
+        visual.hoverVisible = false;
+      },
+    );
   }
 
   private cancelTimer(timer: Phaser.Time.TimerEvent | undefined): void {
@@ -425,5 +435,8 @@ function isPointerOverFighter(
   fighterX: number,
   fighterY: number,
 ): boolean {
-  return Math.hypot(pointerX - fighterX, pointerY - fighterY) <= COMBAT_DISPLAY_SIZE / 2;
+  return (
+    Math.hypot(pointerX - fighterX, pointerY - fighterY) <=
+    COMBAT_DISPLAY_SIZE / 2
+  );
 }

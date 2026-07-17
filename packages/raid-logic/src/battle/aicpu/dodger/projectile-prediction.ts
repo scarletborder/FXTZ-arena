@@ -1,4 +1,4 @@
-import type { FighterState, ProjectileState } from "@repo/content";
+import type { FighterState, ProjectileState } from "@repo/types";
 
 import type { ProjectedProjectile } from "./types";
 
@@ -27,12 +27,12 @@ export function projectProjectile(
       continue;
     }
 
-    if (
-      projectile.kind === "laser" ||
-      projectile.kind === "spark"
-    ) {
+    if (projectile.kind === "laser" || projectile.kind === "spark") {
       if (projectile.widthGrowthPerTick > 0 && Number.isFinite(width)) {
-        width = Math.min(projectile.maxWidth ?? Number.POSITIVE_INFINITY, width + projectile.widthGrowthPerTick);
+        width = Math.min(
+          projectile.maxWidth ?? Number.POSITIVE_INFINITY,
+          width + projectile.widthGrowthPerTick,
+        );
       }
       if (
         projectile.anchorX !== undefined &&
@@ -98,7 +98,8 @@ export function projectileCanThreaten(
   if (projectile.owner === self.key) return false;
   if (projectile.damage <= 0) return false;
   if (frame < projectile.visibleFrom) return false;
-  if (projectile.expireAt !== undefined && frame > projectile.expireAt) return false;
+  if (projectile.expireAt !== undefined && frame > projectile.expireAt)
+    return false;
   if (projectile.pausedUntil > frame) return false;
   if (projectile.width <= 0 || projectile.height <= 0) return false;
   return true;

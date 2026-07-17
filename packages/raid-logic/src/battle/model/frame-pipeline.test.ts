@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   BattleFramePipeline,
-  type BattleFrameContext,
+  type BattleFramePipelineContext,
   type BattleFrameInputPair,
 } from "./frame-pipeline";
 import { createBattleFrameBranchManagers } from "./frame-branch-manager";
@@ -130,8 +130,8 @@ describe("BattleFramePipeline", () => {
 });
 
 function createContext(
-  overrides: Partial<BattleFrameContext> = {},
-): BattleFrameContext & { readonly calls: string[] } {
+  overrides: Partial<BattleFramePipelineContext> = {},
+): BattleFramePipelineContext & { readonly calls: string[] } {
   const calls: string[] = [];
   const record = (name: string): void => {
     calls.push(name);
@@ -206,7 +206,7 @@ function createContext(
   };
 }
 
-function createPipeline(context: BattleFrameContext): BattleFramePipeline {
+function createPipeline(context: BattleFramePipelineContext): BattleFramePipeline {
   return new BattleFramePipeline(
     context,
     createBattleFrameBranchManagers(context),

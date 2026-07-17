@@ -1,5 +1,10 @@
-import { DEFAULT_ARENA_BOUNDS, PLAYER_CORE_RADIUS, YOUMU_BOMB_DASH_DISTANCE, type ArenaBounds } from "@repo/constants";
-import type { BattleInputState, BattleOutputState } from "@repo/raid-logic";
+import {
+  DEFAULT_ARENA_BOUNDS,
+  PLAYER_CORE_RADIUS,
+  YOUMU_BOMB_DASH_DISTANCE,
+  type ArenaBounds,
+} from "@repo/constants";
+import type { BattleInputState, BattleOutputState } from "@repo/types";
 import type { CollaborateShopItemState } from "@repo/types";
 
 import type { BattleViewFighterKey } from "./types";
@@ -77,7 +82,10 @@ export function createBattleViewModel(params: {
   readonly rollbackBlend?: number;
   readonly secondaryInput?: BattleInputState;
 }): BattleViewModel {
-  const localFighter = params.localFighterKey === "Player1" ? params.state.player : params.state.target;
+  const localFighter =
+    params.localFighterKey === "Player1"
+      ? params.state.player
+      : params.state.target;
   const arenaBounds = params.arenaBounds ?? DEFAULT_ARENA_BOUNDS;
   return {
     frame: params.state.frame,
@@ -95,10 +103,27 @@ export function createBattleViewModel(params: {
     infoHeld: params.input.infoHeld,
     alpha: params.alpha ?? 1,
     rollbackBlend: params.rollbackBlend ?? 1,
-    shop: createShopPresentationModel(params.state, params.localFighterKey, localFighter),
-    transition: createTransitionPresentationModel(params.state, params.localFighterKey),
-    primaryCrosshair: createCrosshairViewModel(localFighter, params.input, arenaBounds),
-    secondaryCrosshair: params.secondaryInput ? createCrosshairViewModel(params.state.target, params.secondaryInput, arenaBounds) : undefined,
+    shop: createShopPresentationModel(
+      params.state,
+      params.localFighterKey,
+      localFighter,
+    ),
+    transition: createTransitionPresentationModel(
+      params.state,
+      params.localFighterKey,
+    ),
+    primaryCrosshair: createCrosshairViewModel(
+      localFighter,
+      params.input,
+      arenaBounds,
+    ),
+    secondaryCrosshair: params.secondaryInput
+      ? createCrosshairViewModel(
+          params.state.target,
+          params.secondaryInput,
+          arenaBounds,
+        )
+      : undefined,
   };
 }
 
@@ -109,7 +134,10 @@ function createShopPresentationModel(
 ): BattleShopPresentationModel {
   const extra = state.collaborateExtra;
   const shop = extra?.shop;
-  const visible = shop?.open === true || (extra?.state === "transition_sync" && extra.pendingTransitionTarget === "shop");
+  const visible =
+    shop?.open === true ||
+    (extra?.state === "transition_sync" &&
+      extra.pendingTransitionTarget === "shop");
   return {
     visible,
     open: shop?.open === true,
@@ -127,14 +155,20 @@ function createShopPresentationModel(
     localMoney: extra?.moneyByPlayerId[localFighterKey] ?? 0,
     player1Money: extra?.moneyByPlayerId.Player1 ?? 0,
     player2Money: extra?.moneyByPlayerId.Player2 ?? 0,
-    activeCards: localFighter.abilityCards.filter((card) => card.kind === "active"),
+    activeCards: localFighter.abilityCards.filter(
+      (card) => card.kind === "active",
+    ),
     activeCardId: localFighter.activeCard?.id,
   };
 }
 
-function createTransitionPresentationModel(state: BattleOutputState, localFighterKey: BattleViewFighterKey): BattleTransitionPresentationModel {
+function createTransitionPresentationModel(
+  state: BattleOutputState,
+  localFighterKey: BattleViewFighterKey,
+): BattleTransitionPresentationModel {
   const extra = state.collaborateExtra;
-  const visible = extra?.state === "transition_sync" && extra.transitionType === "manual";
+  const visible =
+    extra?.state === "transition_sync" && extra.transitionType === "manual";
   const player1Ready = extra?.player1TransitionReady ?? false;
   const player2Ready = extra?.player2TransitionReady ?? false;
   return {
@@ -145,12 +179,21 @@ function createTransitionPresentationModel(state: BattleOutputState, localFighte
   };
 }
 
-function createCrosshairViewModel(fighter: BattleOutputState["player"], input: BattleInputState, arenaBounds: ArenaBounds): BattleCrosshairViewModel {
+function createCrosshairViewModel(
+  fighter: BattleOutputState["player"],
+  input: BattleInputState,
+  arenaBounds: ArenaBounds,
+): BattleCrosshairViewModel {
   return {
     pointerX: input.aimX,
     pointerY: input.aimY,
     danger: fighter.ammo <= 0 || fighter.reloadRemaining > 0,
-    highlight: canYoumuDashToPointer(fighter, input.aimX, input.aimY, arenaBounds),
+    highlight: canYoumuDashToPointer(
+      fighter,
+      input.aimX,
+      input.aimY,
+      arenaBounds,
+    ),
     ammoDisplay: fighter.ammoDisplay,
     ammoCount: fighter.ammo,
     ammoMax: fighter.ammoCapacity,
@@ -164,7 +207,12 @@ function createCrosshairViewModel(fighter: BattleOutputState["player"], input: B
   };
 }
 
-function canYoumuDashToPointer(fighter: BattleOutputState["player"], pointerX: number, pointerY: number, arenaBounds: ArenaBounds): boolean {
+function canYoumuDashToPointer(
+  fighter: BattleOutputState["player"],
+  pointerX: number,
+  pointerY: number,
+  arenaBounds: ArenaBounds,
+): boolean {
   if (fighter.activeCharacter.id !== "youmu") return false;
   if (
     pointerX < PLAYER_CORE_RADIUS ||
@@ -174,5 +222,8 @@ function canYoumuDashToPointer(fighter: BattleOutputState["player"], pointerX: n
   ) {
     return false;
   }
-  return Math.hypot(pointerX - fighter.x, pointerY - fighter.y) <= YOUMU_BOMB_DASH_DISTANCE;
+  return (
+    Math.hypot(pointerX - fighter.x, pointerY - fighter.y) <=
+    YOUMU_BOMB_DASH_DISTANCE
+  );
 }

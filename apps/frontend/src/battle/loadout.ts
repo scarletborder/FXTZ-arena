@@ -1,5 +1,12 @@
-import type { BattleConfig, BattleRoomMode, MapId, PlayerId, ServerMessage } from "@repo/types";
-import type { BattleLoadouts, RaidLogicRuntime } from "@repo/raid-logic";
+import type {
+  BattleConfig,
+  BattleLoadouts,
+  BattleRoomMode,
+  MapId,
+  PlayerId,
+  ServerMessage,
+} from "@repo/types";
+import type { RaidLogicRuntime } from "@repo/raid-logic";
 import type { PeerConnection } from "../network/p2p";
 import type { StoryAiOverride, StoryBattleContext } from "../story/types";
 import type { ReplayFile } from "../replay/types";
@@ -7,7 +14,7 @@ import type { SpectatorInputBuffer } from "../replay/spectator/spectator-buffer"
 import type { UdpDirectSession } from "../network/udp-direct-session";
 import type { DebugCooperateRuntimeJump } from "../menu/debug-cooperate";
 
-export type { BattleLoadouts, FighterLoadout } from "@repo/raid-logic";
+export type { BattleLoadouts, FighterLoadout } from "@repo/types";
 
 export interface BattleSceneData {
   readonly mode?: "ai" | "training" | "online" | "local";

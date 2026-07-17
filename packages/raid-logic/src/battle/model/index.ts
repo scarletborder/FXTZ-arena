@@ -64,7 +64,7 @@ import { processFighterActions as processFighterControllerActions } from "./cont
 import { resolveProjectileGraze, resolveProjectileHit } from "./referee";
 import {
   BattleFramePipeline,
-  type BattleFrameContext,
+  type BattleFramePipelineContext,
   type BattleFrameInputPair,
 } from "./frame-pipeline";
 import { createBattleFrameBranchManagers } from "./frame-branch-manager";
@@ -273,7 +273,7 @@ export class BattleModel {
         this.pendingSpawns.push(spawn);
       },
     });
-    const frameContext: BattleFrameContext = {
+    const frameContext: BattleFramePipelineContext = {
       ensurePhysicsReady: () => this.ensurePhysicsReady(),
       beginFrame: () => this.beginFrame(),
       processCollaborateTransitionSync: (inputPair) =>

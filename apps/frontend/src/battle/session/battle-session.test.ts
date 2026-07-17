@@ -1,8 +1,6 @@
 import { FIXED_STEP_MS } from "@repo/constants";
-import {
-  createRaidLogicRuntime,
-  type BattleInputState,
-} from "@repo/raid-logic";
+import { createRaidLogicRuntime } from "@repo/raid-logic";
+import type { BattleInputState } from "@repo/types";
 import { describe, expect, it, vi } from "vitest";
 
 import { BattleSession } from "./battle-session";

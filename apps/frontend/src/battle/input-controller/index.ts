@@ -3,17 +3,32 @@ export * from "./mobile";
 export * from "./gamepad";
 import Phaser from "phaser";
 
-
-import { type BattleInputState } from "@repo/raid-logic";
+import { type BattleInputState } from "@repo/types";
 import { type ArenaBounds, BattleEvents } from "@repo/constants";
-import { BattleKeyMap, createBattleAimInput, createBattleInput, getBattlePointerWorld, type BattleInputBundle } from "./input";
+import {
+  BattleKeyMap,
+  createBattleAimInput,
+  createBattleInput,
+  getBattlePointerWorld,
+  type BattleInputBundle,
+} from "./input";
 import { BattleSceneData } from "../loadout";
-import { BattleMobileControls, shouldEnableMobileBattleControls } from "./mobile";
+import {
+  BattleMobileControls,
+  shouldEnableMobileBattleControls,
+} from "./mobile";
 import { BattleKeybinds, createBattleKeybinds } from "./pc";
 import { BattleJoystickController, InputProfileId } from "./gamepad";
-import { resolveAccountBattleInput, resolveAccountBattleProfileId, resolveRuntimeBattleInput } from "./profile";
+import {
+  resolveAccountBattleInput,
+  resolveAccountBattleProfileId,
+  resolveRuntimeBattleInput,
+} from "./profile";
 import { settingsRepository } from "../../store/settings";
-import { getProfile, type LocalInputProfile } from "../../store/profile-repository";
+import {
+  getProfile,
+  type LocalInputProfile,
+} from "../../store/profile-repository";
 
 export class BattleInputController {
   private keybinds!: BattleKeybinds;
@@ -30,7 +45,10 @@ export class BattleInputController {
   private readonly mobileControlsOwner: "Player1" | "Player2" | undefined;
   private mobileControlsEnabled = false;
   private previousScaleAutoCenter: Phaser.Scale.CenterType | undefined;
-  private lastInput!: BattleInputState & { readonly pointerX: number; readonly pointerY: number };
+  private lastInput!: BattleInputState & {
+    readonly pointerX: number;
+    readonly pointerY: number;
+  };
   private lastP2Input: BattleInputBundle | undefined;
 
   private transitionReadyRequested = false;
@@ -39,19 +57,25 @@ export class BattleInputController {
   constructor(
     private scene: Phaser.Scene,
     sceneData: BattleSceneData,
-    private arenaBounds: ArenaBounds
+    private arenaBounds: ArenaBounds,
   ) {
     const account = settingsRepository.get().account;
     const activeProfileId = resolveActiveProfileId(sceneData);
     this.activeInputProfile = getProfile(activeProfileId);
-    this.p2InputProfile = sceneData.localSingleDevice ? getProfile(account.p2ProfileId) : undefined;
-    const requestedActiveProfile = resolveAccountBattleInput(account, sceneData);
+    this.p2InputProfile = sceneData.localSingleDevice
+      ? getProfile(account.p2ProfileId)
+      : undefined;
+    const requestedActiveProfile = resolveAccountBattleInput(
+      account,
+      sceneData,
+    );
     this.p2Profile = sceneData.localSingleDevice ? account.p2Input : undefined;
-    const requestedMobileOwner = requestedActiveProfile === "mobile"
-      ? "Player1"
-      : this.p2Profile === "mobile"
-        ? "Player2"
-        : undefined;
+    const requestedMobileOwner =
+      requestedActiveProfile === "mobile"
+        ? "Player1"
+        : this.p2Profile === "mobile"
+          ? "Player2"
+          : undefined;
 
     this.mobileControlsEnabled =
       shouldEnableMobileBattleControls(scene) &&
@@ -65,22 +89,35 @@ export class BattleInputController {
         ? hasJoystick(scene, requestedActiveProfile)
         : undefined,
     });
-    this.mobileControlsOwner = this.mobileControlsEnabled ? requestedMobileOwner : undefined;
+    this.mobileControlsOwner = this.mobileControlsEnabled
+      ? requestedMobileOwner
+      : undefined;
 
     if (this.mobileControlsEnabled) {
       this.previousScaleAutoCenter = scene.scale.autoCenter;
       scene.scale.autoCenter = Phaser.Scale.CENTER_HORIZONTALLY;
     }
 
-    this.keybinds = createBattleKeybinds(scene, this.activeInputProfile.keybinds);
+    this.keybinds = createBattleKeybinds(
+      scene,
+      this.activeInputProfile.keybinds,
+    );
     this.keys = this.keybinds.keys;
-    this.joystickControls = createJoystickController(scene, this.activeProfile, this.activeInputProfile);
+    this.joystickControls = createJoystickController(
+      scene,
+      this.activeProfile,
+      this.activeInputProfile,
+    );
     if (sceneData.localSingleDevice) {
-      this.p2Keybinds = createBattleKeybinds(scene, this.p2InputProfile?.keybinds ?? this.activeInputProfile.keybinds);
+      this.p2Keybinds = createBattleKeybinds(
+        scene,
+        this.p2InputProfile?.keybinds ?? this.activeInputProfile.keybinds,
+      );
       this.p2Keys = this.p2Keybinds.keys;
-      this.p2JoystickControls = this.p2InputProfile && this.p2Profile
-        ? createJoystickController(scene, this.p2Profile, this.p2InputProfile)
-        : undefined;
+      this.p2JoystickControls =
+        this.p2InputProfile && this.p2Profile
+          ? createJoystickController(scene, this.p2Profile, this.p2InputProfile)
+          : undefined;
     }
 
     this.scene.events.on(BattleEvents.TRANSITION_READY, () => {
@@ -92,17 +129,13 @@ export class BattleInputController {
     });
 
     // 【修复】构造阶段采样初始输入，确保 getLastInput() 不会返回 undefined
-    this.lastInput = createBattleInput(
-      scene,
-      this.keys,
-      {
-        mobileControls: this.mobileControlsFor("Player1"),
-        joystickControls: this.joystickControls,
-        keyboardEnabled: this.activeProfile === "keyboard",
-        pointerEnabled: this.activeProfile === "keyboard",
-        arenaBounds: this.arenaBounds,
-      },
-    );
+    this.lastInput = createBattleInput(scene, this.keys, {
+      mobileControls: this.mobileControlsFor("Player1"),
+      joystickControls: this.joystickControls,
+      keyboardEnabled: this.activeProfile === "keyboard",
+      pointerEnabled: this.activeProfile === "keyboard",
+      arenaBounds: this.arenaBounds,
+    });
     if (this.p2Keys) {
       this.lastP2Input = createBattleInput(
         scene,
@@ -116,7 +149,10 @@ export class BattleInputController {
     return this.keys;
   }
 
-  getLastInput(): BattleInputState & { readonly pointerX: number; readonly pointerY: number } {
+  getLastInput(): BattleInputState & {
+    readonly pointerX: number;
+    readonly pointerY: number;
+  } {
     return this.lastInput;
   }
 
@@ -131,10 +167,15 @@ export class BattleInputController {
   createMobileControls(layout: any): void {
     this.mobileControls?.destroy();
     if (this.mobileControlsEnabled) {
-      const profile = this.mobileControlsOwner === "Player2"
-        ? this.p2InputProfile ?? this.activeInputProfile
-        : this.activeInputProfile;
-      this.mobileControls = new BattleMobileControls(this.scene, layout, profile.virtualJoy);
+      const profile =
+        this.mobileControlsOwner === "Player2"
+          ? (this.p2InputProfile ?? this.activeInputProfile)
+          : this.activeInputProfile;
+      this.mobileControls = new BattleMobileControls(
+        this.scene,
+        layout,
+        profile.virtualJoy,
+      );
     }
   }
 
@@ -159,7 +200,11 @@ export class BattleInputController {
   }
 
   getPointerWorld(): { x: number; y: number } {
-    return getBattlePointerWorld(this.scene, this.mobileControlsFor("Player1"), this.arenaBounds);
+    return getBattlePointerWorld(
+      this.scene,
+      this.mobileControlsFor("Player1"),
+      this.arenaBounds,
+    );
   }
 
   generateInput(
@@ -169,23 +214,40 @@ export class BattleInputController {
     localFighterKey: "Player1" | "Player2",
     pendingShopPurchaseItemId: string | undefined,
     pendingActiveCardSwitchId: string | undefined,
-    clearPendingPurchases: () => void
-  ): BattleInputState & { readonly pointerX: number; readonly pointerY: number } {
-    let input = createBattleInput(
-      this.scene,
-      this.keys,
-      {
-        mobileControls: this.mobileControlsFor("Player1"),
-        joystickControls: this.joystickControls,
-        keyboardEnabled: this.activeProfile === "keyboard",
-        pointerEnabled: this.activeProfile === "keyboard",
-        autoReloadContext: { fighter, previousShotsFired },
-        arenaBounds: this.arenaBounds,
-      },
-    ) as BattleInputState & { readonly pointerX: number; readonly pointerY: number; transitionReadyPressed?: boolean; shopReadyPressed?: boolean; shopPurchaseItemId?: string; activeCardSwitchId?: string };
+    clearPendingPurchases: () => void,
+  ): BattleInputState & {
+    readonly pointerX: number;
+    readonly pointerY: number;
+  } {
+    let input = createBattleInput(this.scene, this.keys, {
+      mobileControls: this.mobileControlsFor("Player1"),
+      joystickControls: this.joystickControls,
+      keyboardEnabled: this.activeProfile === "keyboard",
+      pointerEnabled: this.activeProfile === "keyboard",
+      autoReloadContext: { fighter, previousShotsFired },
+      arenaBounds: this.arenaBounds,
+    }) as BattleInputState & {
+      readonly pointerX: number;
+      readonly pointerY: number;
+      transitionReadyPressed?: boolean;
+      shopReadyPressed?: boolean;
+      shopPurchaseItemId?: string;
+      activeCardSwitchId?: string;
+    };
 
-    input = this.applyCollaborateTransitionReady(input, getCollaborateExtra(), localFighterKey);
-    input = this.applyCollaborateShopInput(input, getCollaborateExtra(), localFighterKey, pendingShopPurchaseItemId, pendingActiveCardSwitchId, clearPendingPurchases);
+    input = this.applyCollaborateTransitionReady(
+      input,
+      getCollaborateExtra(),
+      localFighterKey,
+    );
+    input = this.applyCollaborateShopInput(
+      input,
+      getCollaborateExtra(),
+      localFighterKey,
+      pendingShopPurchaseItemId,
+      pendingActiveCardSwitchId,
+      clearPendingPurchases,
+    );
 
     this.lastInput = input;
     return input;
@@ -198,14 +260,10 @@ export class BattleInputController {
     if (!this.p2Keys) {
       return undefined;
     }
-    const input = createBattleInput(
-      this.scene,
-      this.p2Keys,
-      {
-        ...this.p2InputOptions(),
-        autoReloadContext: { fighter, previousShotsFired },
-      },
-    );
+    const input = createBattleInput(this.scene, this.p2Keys, {
+      ...this.p2InputOptions(),
+      autoReloadContext: { fighter, previousShotsFired },
+    });
     this.lastP2Input = input;
     return input;
   }
@@ -237,17 +295,22 @@ export class BattleInputController {
   private applyCollaborateTransitionReady<T extends BattleInputState>(
     input: T,
     extra: any,
-    localFighterKey: "Player1" | "Player2"
+    localFighterKey: "Player1" | "Player2",
   ): T {
     if (!extra || extra.state !== "transition_sync") {
       this.transitionReadyRequested = false;
       return { ...input, transitionReadyPressed: false };
     }
-    const localReady = localFighterKey === "Player1" ? extra.player1TransitionReady : extra.player2TransitionReady;
+    const localReady =
+      localFighterKey === "Player1"
+        ? extra.player1TransitionReady
+        : extra.player2TransitionReady;
     if (localReady) {
       this.transitionReadyRequested = false;
     }
-    const shouldReady = !localReady && (extra.transitionType === "auto" || this.transitionReadyRequested);
+    const shouldReady =
+      !localReady &&
+      (extra.transitionType === "auto" || this.transitionReadyRequested);
     if (shouldReady) {
       this.transitionReadyRequested = false;
     }
@@ -260,7 +323,7 @@ export class BattleInputController {
     localFighterKey: "Player1" | "Player2",
     pendingShopPurchaseItemId: string | undefined,
     pendingActiveCardSwitchId: string | undefined,
-    clearPendingPurchases: () => void
+    clearPendingPurchases: () => void,
   ): T {
     if (!extra?.shop.open) {
       this.shopReadyRequested = false;
@@ -307,13 +370,20 @@ export class BattleInputController {
     };
   }
 
-  private mobileControlsFor(player: "Player1" | "Player2"): BattleMobileControls | undefined {
-    return this.mobileControlsOwner === player ? this.mobileControls : undefined;
+  private mobileControlsFor(
+    player: "Player1" | "Player2",
+  ): BattleMobileControls | undefined {
+    return this.mobileControlsOwner === player
+      ? this.mobileControls
+      : undefined;
   }
 }
 
 function resolveActiveProfileId(sceneData: BattleSceneData): string {
-  return resolveAccountBattleProfileId(settingsRepository.get().account, sceneData);
+  return resolveAccountBattleProfileId(
+    settingsRepository.get().account,
+    sceneData,
+  );
 }
 
 function createJoystickController(

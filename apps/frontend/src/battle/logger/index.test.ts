@@ -1,27 +1,43 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { BattleOutputFrame } from "@repo/raid-logic";
+import type { BattleOutputFrame } from "@repo/types";
 import { BattleDebugLogger } from ".";
 
 describe("BattleDebugLogger", () => {
   it("exports only authoritative frame inputs", () => {
     const logger = new BattleDebugLogger();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
 
-    logger.recordStepInputs({
-      frame: 1,
-      player: input(111, 222),
-      target: input(333, 444),
-    }, true);
-    logger.recordConfirmedInputs({
-      frame: 1,
-      confirmedThrough: 1,
-      player: input(845.3833799776838, 428.8524590163934),
-      target: input(600, 360),
-    }, true);
-    logger.recordFrame(output(0), { enabled: true, localConfirmedFrame: 0, isAimConsuming: false });
-    logger.recordFrame(output(1), { enabled: true, localConfirmedFrame: 0, isAimConsuming: false });
+    logger.recordStepInputs(
+      {
+        frame: 1,
+        player: input(111, 222),
+        target: input(333, 444),
+      },
+      true,
+    );
+    logger.recordConfirmedInputs(
+      {
+        frame: 1,
+        confirmedThrough: 1,
+        player: input(845.3833799776838, 428.8524590163934),
+        target: input(600, 360),
+      },
+      true,
+    );
+    logger.recordFrame(output(0), {
+      enabled: true,
+      localConfirmedFrame: 0,
+      isAimConsuming: false,
+    });
+    logger.recordFrame(output(1), {
+      enabled: true,
+      localConfirmedFrame: 0,
+      isAimConsuming: false,
+    });
     logger.recordConfirmedFrame({
       enabled: true,
       frame: 0,
@@ -59,17 +75,23 @@ describe("BattleDebugLogger", () => {
 
     const payloadText = logSpy.mock.calls
       .map((call) => String(call[0]))
-      .find((line) => line.includes("\"frames\""));
+      .find((line) => line.includes('"frames"'));
     expect(payloadText).toBeDefined();
     const payload = JSON.parse(payloadText!) as {
-      frames: Array<{ frame: number; inputHash: string; player1Input: { aimX: number } | null }>;
+      frames: Array<{
+        frame: number;
+        inputHash: string;
+        player1Input: { aimX: number } | null;
+      }>;
       localFrames?: unknown[];
       revisions?: unknown[];
       finalGlobalHash: string | null;
       finalGlobalInputHash: string | null;
     };
     expect(payload.frames.map((frame) => frame.frame)).toEqual([0, 1]);
-    expect(payload.frames.every((frame) => typeof frame.inputHash === "string")).toBe(true);
+    expect(
+      payload.frames.every((frame) => typeof frame.inputHash === "string"),
+    ).toBe(true);
     expect(payload.frames[1]?.player1Input?.aimX).toBe(845.3833799776838);
     expect(payload.localFrames).toBeUndefined();
     expect(payload.revisions).toBeUndefined();

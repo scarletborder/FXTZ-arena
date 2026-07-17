@@ -4,8 +4,8 @@ export interface BattleSnapshot {
   readonly frame: number;
   readonly rngState: string;
   readonly players: readonly PlayerBattleState[];
-  readonly projectiles: readonly ProjectileState[];
-  readonly effects: readonly EffectState[];
+  readonly projectiles: readonly LegacyProjectileState[];
+  readonly effects: readonly LegacyEffectState[];
   readonly timers: readonly TimerState[];
   readonly stats: BattleStats;
 }
@@ -24,7 +24,7 @@ export interface PlayerBattleState {
   readonly actionLockRemainingTicks: number;
 }
 
-export interface ProjectileState {
+export interface LegacyProjectileState {
   readonly id: string;
   readonly ownerId: PlayerId;
   readonly x: number;
@@ -43,7 +43,7 @@ export interface ProjectileShape {
   readonly height: number;
 }
 
-export interface EffectState {
+export interface LegacyEffectState {
   readonly id: string;
   readonly ownerId: PlayerId;
   readonly effectId: string;

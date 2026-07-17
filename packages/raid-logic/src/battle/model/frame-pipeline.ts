@@ -1,14 +1,14 @@
 import type { BattleFrameBranchManager } from "./frame-branch-manager";
 import type {
-  BattleFrameContext,
+  BattleFramePipelineContext,
   BattleFrameInputPair,
 } from "./frame-pipeline-types";
 
-export type { BattleFrameContext, BattleFrameInputPair };
+export type { BattleFrameInputPair, BattleFramePipelineContext };
 
 export class BattleFramePipeline {
   constructor(
-    private readonly context: BattleFrameContext,
+    private readonly context: BattleFramePipelineContext,
     private readonly branchManagers: readonly BattleFrameBranchManager[],
   ) {}
 

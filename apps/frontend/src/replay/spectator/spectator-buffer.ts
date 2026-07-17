@@ -1,4 +1,4 @@
-import type { BattleInputState } from "@repo/raid-logic";
+import type { BattleInputState } from "@repo/types";
 import type { PlayerId, ServerMessage } from "@repo/types";
 
 export class SpectatorInputBuffer {
@@ -21,7 +21,8 @@ export class SpectatorInputBuffer {
       infoHeld: message.infoHeld,
       transitionReadyPressed: message.transitionReadyPressed === true,
     });
-    for (const redundant of message.UnreliableLinkExtra?.redundantInputs ?? []) {
+    for (const redundant of message.UnreliableLinkExtra?.redundantInputs ??
+      []) {
       this.inputs.get(message.playerId)?.set(redundant.frame, {
         moveX: redundant.moveX,
         moveY: redundant.moveY,
@@ -38,7 +39,9 @@ export class SpectatorInputBuffer {
     }
   }
 
-  takePair(frame: number): { player: BattleInputState; target: BattleInputState } | null {
+  takePair(
+    frame: number,
+  ): { player: BattleInputState; target: BattleInputState } | null {
     const player = this.inputs.get("Player1")?.get(frame);
     const target = this.inputs.get("Player2")?.get(frame);
     if (!player || !target) {
@@ -50,6 +53,9 @@ export class SpectatorInputBuffer {
   }
 
   hasPair(frame: number): boolean {
-    return this.inputs.get("Player1")?.has(frame) === true && this.inputs.get("Player2")?.has(frame) === true;
+    return (
+      this.inputs.get("Player1")?.has(frame) === true &&
+      this.inputs.get("Player2")?.has(frame) === true
+    );
   }
 }

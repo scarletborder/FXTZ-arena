@@ -1,5 +1,9 @@
 import Phaser from "phaser";
-import { getAllAbilityCardDefinitions, getAllCharacterDefinitions, type AbilityCardDefinition, type CharacterDefinition } from "@repo/content";
+import {
+  getAllAbilityCardDefinitions,
+  getAllCharacterDefinitions,
+} from "@repo/content";
+import type { AbilityCardDefinition, CharacterDefinition } from "@repo/types";
 import { t } from "@repo/i18n";
 
 import {
@@ -15,7 +19,14 @@ import {
   headingStyle,
 } from "./ui";
 import { queueMenuAssets } from "./assets";
-import { cardDescription, cardName, characterDescription, characterName, type CodexTab, type SceneKey } from "./shared";
+import {
+  cardDescription,
+  cardName,
+  characterDescription,
+  characterName,
+  type CodexTab,
+  type SceneKey,
+} from "./shared";
 
 export class CodexScene extends Phaser.Scene {
   private tab: CodexTab = "characters";
@@ -27,9 +38,19 @@ export class CodexScene extends Phaser.Scene {
   private detailLayer!: Phaser.GameObjects.Container;
   private listScrollOffset = 0;
   private detailScrollOffset = 0;
-  private scrollAreas: Array<{ bounds: Phaser.Geom.Rectangle; scroll: (deltaY: number) => void }> = [];
+  private scrollAreas: Array<{
+    bounds: Phaser.Geom.Rectangle;
+    scroll: (deltaY: number) => void;
+  }> = [];
   private dragScroll:
-    | { readonly pointerId: number; readonly area: { bounds: Phaser.Geom.Rectangle; scroll: (deltaY: number) => void }; lastY: number }
+    | {
+        readonly pointerId: number;
+        readonly area: {
+          bounds: Phaser.Geom.Rectangle;
+          scroll: (deltaY: number) => void;
+        };
+        lastY: number;
+      }
     | undefined;
   private readonly onWheel = (
     pointer: Phaser.Input.Pointer,
@@ -53,7 +74,11 @@ export class CodexScene extends Phaser.Scene {
     }
   };
   private readonly onPointerMove = (pointer: Phaser.Input.Pointer): void => {
-    if (!this.dragScroll || this.dragScroll.pointerId !== pointer.id || !pointer.isDown) {
+    if (
+      !this.dragScroll ||
+      this.dragScroll.pointerId !== pointer.id ||
+      !pointer.isDown
+    ) {
       return;
     }
     const deltaY = this.dragScroll.lastY - pointer.y;
@@ -82,8 +107,22 @@ export class CodexScene extends Phaser.Scene {
     createBackButton(this);
     this.add.text(90, 74, t("codex.title"), headingStyle(42));
 
-    drawPanel(this, LIST_PANEL.x, LIST_PANEL.y, LIST_PANEL.width, LIST_PANEL.height, "");
-    drawPanel(this, DETAIL_PANEL.x, DETAIL_PANEL.y, DETAIL_PANEL.width, DETAIL_PANEL.height, "");
+    drawPanel(
+      this,
+      LIST_PANEL.x,
+      LIST_PANEL.y,
+      LIST_PANEL.width,
+      LIST_PANEL.height,
+      "",
+    );
+    drawPanel(
+      this,
+      DETAIL_PANEL.x,
+      DETAIL_PANEL.y,
+      DETAIL_PANEL.width,
+      DETAIL_PANEL.height,
+      "",
+    );
     this.listLayer = this.add.container(0, 0);
     this.detailLayer = this.add.container(0, 0);
     this.input.on("wheel", this.onWheel);
@@ -118,47 +157,81 @@ export class CodexScene extends Phaser.Scene {
 
   private renderTabs(): void {
     const mainTabX = LIST_PANEL.x + 72;
-    this.listLayer.add(createSmallTab(this, mainTabX, 170, t("codex.characters"), this.tab === "characters", () => {
-      this.tab = "characters";
-      this.listScrollOffset = 0;
-      this.detailScrollOffset = 0;
-      this.render();
-    }).container);
-    this.listLayer.add(createSmallTab(this, mainTabX + 92, 170, t("codex.cards"), this.tab === "cards", () => {
-      this.tab = "cards";
-      this.listScrollOffset = 0;
-      this.detailScrollOffset = 0;
-      this.render();
-    }).container);
+    this.listLayer.add(
+      createSmallTab(
+        this,
+        mainTabX,
+        170,
+        t("codex.characters"),
+        this.tab === "characters",
+        () => {
+          this.tab = "characters";
+          this.listScrollOffset = 0;
+          this.detailScrollOffset = 0;
+          this.render();
+        },
+      ).container,
+    );
+    this.listLayer.add(
+      createSmallTab(
+        this,
+        mainTabX + 92,
+        170,
+        t("codex.cards"),
+        this.tab === "cards",
+        () => {
+          this.tab = "cards";
+          this.listScrollOffset = 0;
+          this.detailScrollOffset = 0;
+          this.render();
+        },
+      ).container,
+    );
 
-    const filters = this.tab === "characters"
-      ? [
-        ["all", t("codex.all")],
-        ["assault", t("role.assault")],
-        ["suppress", t("role.suppress")],
-        ["scout", t("role.scout")],
-        ["sniper", t("role.sniper")],
-      ] as const
-      : [
-        ["all", t("codex.all")],
-        ["active", t("codex.active")],
-        ["passive", t("codex.passive")],
-      ] as const;
+    const filters =
+      this.tab === "characters"
+        ? ([
+            ["all", t("codex.all")],
+            ["assault", t("role.assault")],
+            ["suppress", t("role.suppress")],
+            ["scout", t("role.scout")],
+            ["sniper", t("role.sniper")],
+          ] as const)
+        : ([
+            ["all", t("codex.all")],
+            ["active", t("codex.active")],
+            ["passive", t("codex.passive")],
+          ] as const);
 
     const filterGap = 4;
     const filterWidth = this.tab === "characters" ? 64 : 72;
-    const filtersWidth = filters.length * filterWidth + (filters.length - 1) * filterGap;
+    const filtersWidth =
+      filters.length * filterWidth + (filters.length - 1) * filterGap;
     const filterStartX = LIST_PANEL.x + LIST_PANEL.width - filtersWidth - 8;
     filters.forEach((filter, index) => {
-      this.listLayer.add(createSmallTab(this, filterStartX + index * (filterWidth + filterGap), 170, filter[1], this.activeFilter() === filter[0], () => {
-        if (this.tab === "characters") {
-          this.roleFilter = filter[0] as CharacterDefinition["roleClass"] | "all";
-        } else {
-          this.cardFilter = filter[0] as AbilityCardDefinition["kind"] | "all";
-        }
-        this.detailScrollOffset = 0;
-        this.render();
-      }, filterWidth).container);
+      this.listLayer.add(
+        createSmallTab(
+          this,
+          filterStartX + index * (filterWidth + filterGap),
+          170,
+          filter[1],
+          this.activeFilter() === filter[0],
+          () => {
+            if (this.tab === "characters") {
+              this.roleFilter = filter[0] as
+                | CharacterDefinition["roleClass"]
+                | "all";
+            } else {
+              this.cardFilter = filter[0] as
+                | AbilityCardDefinition["kind"]
+                | "all";
+            }
+            this.detailScrollOffset = 0;
+            this.render();
+          },
+          filterWidth,
+        ).container,
+      );
     });
   }
 
@@ -176,23 +249,36 @@ export class CodexScene extends Phaser.Scene {
     const gapX = 11;
     const gapY = 16;
     const gridWidth = columns * tileWidth + (columns - 1) * gapX;
-    const startX = LIST_PANEL.x + (LIST_PANEL.width - gridWidth) / 2 + tileWidth / 2;
+    const startX =
+      LIST_PANEL.x + (LIST_PANEL.width - gridWidth) / 2 + tileWidth / 2;
     const startY = LIST_PANEL.y + 118 + tileHeight / 2;
     const listContainer = this.add.container(0, 0);
-    const characters = getAllCharacterDefinitions()
-      .filter((character) => this.roleFilter === "all" || character.roleClass === this.roleFilter)
+    const characters = getAllCharacterDefinitions().filter(
+      (character) =>
+        this.roleFilter === "all" || character.roleClass === this.roleFilter,
+    );
     characters.forEach((character, index) => {
       const col = index % columns;
       const row = Math.floor(index / columns);
       const x = startX + col * (tileWidth + gapX);
       const y = startY + row * (tileHeight + gapY);
-      const item = createCodexTile(this, x, y, characterName(character), character.cost, roleLabel(character.roleClass), character.id === this.selectedCharacter.id, (target) => {
-        drawCharacterPreviewIcon(this, target, 82, 54, 120, 78, character);
-      }, () => {
-        this.selectedCharacter = character;
-        this.detailScrollOffset = 0;
-        this.render();
-      });
+      const item = createCodexTile(
+        this,
+        x,
+        y,
+        characterName(character),
+        character.cost,
+        roleLabel(character.roleClass),
+        character.id === this.selectedCharacter.id,
+        (target) => {
+          drawCharacterPreviewIcon(this, target, 82, 54, 120, 78, character);
+        },
+        () => {
+          this.selectedCharacter = character;
+          this.detailScrollOffset = 0;
+          this.render();
+        },
+      );
       item.container.setScale(tileScale);
       item.container.x += (baseTileWidth * (1 - tileScale)) / 2;
       item.container.y += (baseTileHeight * (1 - tileScale)) / 2;
@@ -207,14 +293,26 @@ export class CodexScene extends Phaser.Scene {
     );
     const mask = this.make.graphics({ x: 0, y: 0 });
     mask.fillStyle(0xffffff, 1);
-    mask.fillRect(listBounds.x, listBounds.y, listBounds.width, listBounds.height);
+    mask.fillRect(
+      listBounds.x,
+      listBounds.y,
+      listBounds.width,
+      listBounds.height,
+    );
     listContainer.enableFilters();
     listContainer.filters?.internal.addMask(mask);
     this.listLayer.add(listContainer);
     const rows = Math.ceil(characters.length / columns) || 1;
     const topPadding = startY - listBounds.y;
-    const contentHeight = topPadding + rows * tileHeight + (rows - 1) * gapY + 6;
-    this.registerScrollArea(listBounds, listContainer, contentHeight, listBounds.height, this.listLayer);
+    const contentHeight =
+      topPadding + rows * tileHeight + (rows - 1) * gapY + 6;
+    this.registerScrollArea(
+      listBounds,
+      listContainer,
+      contentHeight,
+      listBounds.height,
+      this.listLayer,
+    );
   }
 
   private renderCardList(): void {
@@ -227,23 +325,35 @@ export class CodexScene extends Phaser.Scene {
     const scaledWidth = tileWidth * tileScale;
     const scaledHeight = tileHeight * tileScale;
     const gridWidth = columns * scaledWidth + (columns - 1) * gapX;
-    const startX = LIST_PANEL.x + (LIST_PANEL.width - gridWidth) / 2 + scaledWidth / 2;
+    const startX =
+      LIST_PANEL.x + (LIST_PANEL.width - gridWidth) / 2 + scaledWidth / 2;
     const startY = LIST_PANEL.y + 122 + scaledHeight / 2;
     const listContainer = this.add.container(0, 0);
-    const cards = getAllAbilityCardDefinitions()
-      .filter((card) => this.cardFilter === "all" || card.kind === this.cardFilter)
+    const cards = getAllAbilityCardDefinitions().filter(
+      (card) => this.cardFilter === "all" || card.kind === this.cardFilter,
+    );
     cards.forEach((card, index) => {
       const col = index % columns;
       const row = Math.floor(index / columns);
       const x = startX + col * (scaledWidth + gapX);
       const y = startY + row * (scaledHeight + gapY);
-      const item = createCodexTile(this, x, y, cardName(card), card.cost, card.kind === "active" ? t("codex.active_use") : t("codex.passive"), card.id === this.selectedCard.id, (target) => {
-        drawCardIcon(this, target, 82, 48, card, 1.0);
-      }, () => {
-        this.selectedCard = card;
-        this.detailScrollOffset = 0;
-        this.render();
-      });
+      const item = createCodexTile(
+        this,
+        x,
+        y,
+        cardName(card),
+        card.cost,
+        card.kind === "active" ? t("codex.active_use") : t("codex.passive"),
+        card.id === this.selectedCard.id,
+        (target) => {
+          drawCardIcon(this, target, 82, 48, card, 1.0);
+        },
+        () => {
+          this.selectedCard = card;
+          this.detailScrollOffset = 0;
+          this.render();
+        },
+      );
       item.container.setScale(tileScale);
       item.container.x += (tileWidth * (1 - tileScale)) / 2;
       item.container.y += (tileHeight * (1 - tileScale)) / 2;
@@ -258,14 +368,26 @@ export class CodexScene extends Phaser.Scene {
     );
     const mask = this.make.graphics({ x: 0, y: 0 });
     mask.fillStyle(0xffffff, 1);
-    mask.fillRect(listBounds.x, listBounds.y, listBounds.width, listBounds.height);
+    mask.fillRect(
+      listBounds.x,
+      listBounds.y,
+      listBounds.width,
+      listBounds.height,
+    );
     listContainer.enableFilters();
     listContainer.filters?.internal.addMask(mask);
     this.listLayer.add(listContainer);
     const rows = Math.ceil(cards.length / columns) || 1;
     const topPadding = startY - listBounds.y;
-    const contentHeight = topPadding + rows * scaledHeight + (rows - 1) * gapY + 6;
-    this.registerScrollArea(listBounds, listContainer, contentHeight, listBounds.height, this.listLayer);
+    const contentHeight =
+      topPadding + rows * scaledHeight + (rows - 1) * gapY + 6;
+    this.registerScrollArea(
+      listBounds,
+      listContainer,
+      contentHeight,
+      listBounds.height,
+      this.listLayer,
+    );
   }
 
   private renderCharacterDetail(): void {
@@ -285,11 +407,35 @@ export class CodexScene extends Phaser.Scene {
     const rightWidth = bounds.width - leftWidth - gap;
     const cardHeight = 170;
 
-    content.add(this.createCharacterIdentityCard(bounds.x, bounds.y, leftWidth, cardHeight, character));
-    content.add(this.createCharacterStatCard(bounds.x + leftWidth + gap, bounds.y, rightWidth, cardHeight, character));
+    content.add(
+      this.createCharacterIdentityCard(
+        bounds.x,
+        bounds.y,
+        leftWidth,
+        cardHeight,
+        character,
+      ),
+    );
+    content.add(
+      this.createCharacterStatCard(
+        bounds.x + leftWidth + gap,
+        bounds.y,
+        rightWidth,
+        cardHeight,
+        character,
+      ),
+    );
 
     const descriptionY = bounds.y + cardHeight + 18;
-    const description = this.add.text(bounds.x, descriptionY, t("codex.description", { description: characterDescription(character) }), bodyStyle("#d7e3ef", 18))
+    const description = this.add
+      .text(
+        bounds.x,
+        descriptionY,
+        t("codex.description", {
+          description: characterDescription(character),
+        }),
+        bodyStyle("#d7e3ef", 18),
+      )
       .setLineSpacing(8)
       .setWordWrapWidth(bounds.width);
     content.add(description);
@@ -301,7 +447,13 @@ export class CodexScene extends Phaser.Scene {
     content.filters?.internal.addMask(mask);
 
     this.detailLayer.add(content);
-    this.registerDetailScrollArea(bounds, content, descriptionY - bounds.y + description.height, bounds.height, this.detailLayer);
+    this.registerDetailScrollArea(
+      bounds,
+      content,
+      descriptionY - bounds.y + description.height,
+      bounds.height,
+      this.detailLayer,
+    );
   }
 
   private createCharacterIdentityCard(
@@ -323,7 +475,11 @@ export class CodexScene extends Phaser.Scene {
     items.forEach((item, index) => {
       const itemY = 20 + index * 82;
       card.add(this.add.text(18, itemY, item.label, bodyStyle("#9fb4c8", 14)));
-      card.add(this.add.text(18, itemY + 28, item.value, bodyStyle("#f6f1e6", 20)).setWordWrapWidth(width - 36));
+      card.add(
+        this.add
+          .text(18, itemY + 28, item.value, bodyStyle("#f6f1e6", 20))
+          .setWordWrapWidth(width - 36),
+      );
       if (index === 0) {
         graphics.lineStyle(1, 0x273548, 0.65);
         graphics.lineBetween(18, itemY + 66, width - 20, itemY + 66);
@@ -354,11 +510,15 @@ export class CodexScene extends Phaser.Scene {
 
     stats.forEach((stat, index) => {
       const itemY = 18 + index * 40;
-      card.add(this.add.text(18, itemY, `${stat.label}:`, bodyStyle("#9fb4c8", 15)));
+      card.add(
+        this.add.text(18, itemY, `${stat.label}:`, bodyStyle("#9fb4c8", 15)),
+      );
       if ("speed" in stat) {
         card.add(this.createStatSquares(88, itemY + 4, stat.speed));
       } else {
-        card.add(this.add.text(88, itemY - 2, stat.value, bodyStyle("#f6f1e6", 18)));
+        card.add(
+          this.add.text(88, itemY - 2, stat.value, bodyStyle("#f6f1e6", 18)),
+        );
       }
     });
 
@@ -375,7 +535,10 @@ export class CodexScene extends Phaser.Scene {
     const size = 10;
     const gap = 5;
     for (let index = 0; index < 3; index += 1) {
-      graphics.fillStyle(index < count ? statColor(value) : 0x243244, index < count ? 1 : 0.92);
+      graphics.fillStyle(
+        index < count ? statColor(value) : 0x243244,
+        index < count ? 1 : 0.92,
+      );
       graphics.fillRect(x + index * (size + gap), y, size, size);
       graphics.lineStyle(1, 0x5c7185, 0.75);
       graphics.strokeRect(x + index * (size + gap), y, size, size);
@@ -385,11 +548,20 @@ export class CodexScene extends Phaser.Scene {
 
   private renderCardDetail(): void {
     const card = this.selectedCard;
-    const cooldown = card.cooldownTicks === 0 ? t("codex.none") : t("codex.seconds", { seconds: (card.cooldownTicks / 60).toFixed(1) });
+    const cooldown =
+      card.cooldownTicks === 0
+        ? t("codex.none")
+        : t("codex.seconds", { seconds: (card.cooldownTicks / 60).toFixed(1) });
     const lines = [
       t("codex.name", { name: cardName(card) }),
-      t("codex.category", { kind: card.kind === "active" ? t("codex.active_use") : t("codex.passive") }),
-      t("codex.use_limit", { limit: card.useLimit === "infinite" ? t("codex.infinite") : card.useLimit }),
+      t("codex.category", {
+        kind:
+          card.kind === "active" ? t("codex.active_use") : t("codex.passive"),
+      }),
+      t("codex.use_limit", {
+        limit:
+          card.useLimit === "infinite" ? t("codex.infinite") : card.useLimit,
+      }),
       t("codex.cooldown", { cooldown }),
       t("codex.description", { description: cardDescription(card) }),
     ];
@@ -401,7 +573,13 @@ export class CodexScene extends Phaser.Scene {
     );
     const content = this.add.container(0, 0);
     drawCardIcon(this, content, bounds.x + 58, bounds.y + 48, card, 1.28);
-    const text = this.add.text(bounds.x, bounds.y + 104, lines.join("\n"), bodyStyle("#d7e3ef", 18))
+    const text = this.add
+      .text(
+        bounds.x,
+        bounds.y + 104,
+        lines.join("\n"),
+        bodyStyle("#d7e3ef", 18),
+      )
       .setLineSpacing(10)
       .setWordWrapWidth(bounds.width);
     content.add(text);
@@ -413,7 +591,13 @@ export class CodexScene extends Phaser.Scene {
     content.filters?.internal.addMask(mask);
 
     this.detailLayer.add(content);
-    this.registerDetailScrollArea(bounds, content, text.y - bounds.y + text.height, bounds.height, this.detailLayer);
+    this.registerDetailScrollArea(
+      bounds,
+      content,
+      text.y - bounds.y + text.height,
+      bounds.height,
+      this.detailLayer,
+    );
   }
 
   private registerDetailScrollArea(
@@ -530,4 +714,3 @@ function roleLabel(role: CharacterDefinition["roleClass"]): string {
     sniper: t("role.sniper"),
   }[role];
 }
-

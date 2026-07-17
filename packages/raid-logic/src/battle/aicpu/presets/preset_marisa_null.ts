@@ -4,7 +4,7 @@ import {
   bulletSpeedRankToPixelsPerTick,
 } from "@repo/types";
 
-import type { FighterState, PointState, ProjectileState } from "@repo/content";
+import type { FighterState, PointState, ProjectileState } from "@repo/types";
 import type { DodgeIntent } from "../dodger";
 import type { NeutralMobState } from "@repo/types";
 
@@ -74,9 +74,7 @@ export class MarisaNullPreset implements CpuPreset {
 
 export const marisaNullPreset = new MarisaNullPreset();
 
-function buildStrategicMove(
-  ctx: CpuPresetMovementContext,
-): DodgeIntent {
+function buildStrategicMove(ctx: CpuPresetMovementContext): DodgeIntent {
   const { self, opponent, frame } = ctx;
   const powered = self.pointCount >= POWER_SPIKE_POINT;
   const playerProjectilePressure = countThreatsNearFighter(
@@ -188,9 +186,7 @@ function selectFarmAim(
   return undefined;
 }
 
-function farmMovement(
-  ctx: CpuPresetMovementContext,
-): DodgeIntent | undefined {
+function farmMovement(ctx: CpuPresetMovementContext): DodgeIntent | undefined {
   const point = nearestPoint(ctx.self, ctx.points, FARM_POINT_RADIUS);
   if (point) {
     return {

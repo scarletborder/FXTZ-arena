@@ -1,4 +1,13 @@
-import type { ProjectileState } from "@repo/content";
+import type { ProjectileState } from "@repo/types";
+import type {
+  ProjectileTimerSnapshot,
+  TickerManagerSnapshot,
+} from "@repo/types";
+
+export type {
+  ProjectileTimerSnapshot,
+  TickerManagerSnapshot,
+} from "@repo/types";
 
 export class FrameTimer {
   readonly id: number;
@@ -18,27 +27,6 @@ export class FrameTimer {
   getLeftFrames(currentFrame: number): number {
     return this.targetFrame - currentFrame;
   }
-}
-
-export interface TickerManagerSnapshot {
-  readonly currentFrame: number;
-  readonly nextTimerId: number;
-  readonly timers: readonly {
-    readonly id: number;
-    readonly targetIn: number;
-    readonly group: string;
-  }[];
-}
-
-export interface ProjectileTimerSnapshot {
-  readonly visibleIn: number;
-  readonly expireIn: number | undefined;
-  readonly damageFromIn: number | undefined;
-  readonly damageUntilIn: number | undefined;
-  readonly homingStartIn: number;
-  readonly homingRemaining: number;
-  readonly pausedRemaining: number;
-  readonly retargetIn: number | undefined;
 }
 
 type ProjectileTimerKey =

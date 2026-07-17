@@ -1,13 +1,18 @@
 import Phaser from "phaser";
 import {
   createRaidLogicRuntime,
-  type BattleOutputFrame,
-  type BattleOutputState,
   type RaidLogicRuntime,
 } from "@repo/raid-logic";
-import type { FighterState } from "@repo/content";
+import type {
+  BattleOutputFrame,
+  BattleOutputState,
+  FighterState,
+} from "@repo/types";
 import { FIXED_STEP_MS, GAME_WIDTH } from "@repo/constants";
-import { createBattleInput, type BattleInputBundle } from "../battle/input-controller/input";
+import {
+  createBattleInput,
+  type BattleInputBundle,
+} from "../battle/input-controller/input";
 import type { BattleKeyMap } from "../battle/input-controller";
 import type { BattleMobileControls } from "../battle/input-controller";
 import { BattleView } from "../battle/view";
@@ -55,29 +60,26 @@ function createInfoPanel(
 
   const lines: Phaser.GameObjects.Text[] = [];
   for (let i = 0; i < 6; i += 1) {
-    const t = scene.add.text(
-      padding,
-      padding + i * lineHeight,
-      "",
-      {
-        fontFamily: FONT,
-        fontSize: "13px",
-        color: "#d7e3ef",
-      },
-    );
+    const t = scene.add.text(padding, padding + i * lineHeight, "", {
+      fontFamily: FONT,
+      fontSize: "13px",
+      color: "#d7e3ef",
+    });
     container.add(t);
     lines.push(t);
   }
 
   // Interactive hit area for hover detection
-  const hoverHit = scene.add.rectangle(
-    panelWidth / 2,
-    panelHeight / 2,
-    panelWidth,
-    panelHeight,
-    0xffffff,
-    0.001,
-  ).setInteractive({ useHandCursor: false });
+  const hoverHit = scene.add
+    .rectangle(
+      panelWidth / 2,
+      panelHeight / 2,
+      panelWidth,
+      panelHeight,
+      0xffffff,
+      0.001,
+    )
+    .setInteractive({ useHandCursor: false });
   container.add(hoverHit);
 
   const state: PanelState = { container, bg, lines, hoverHit, hovered: false };
@@ -111,7 +113,9 @@ function updateInfoPanel(
   panel.lines[0].setText(playerName);
 
   // Line 1: lives & bombs
-  panel.lines[1].setText(`❤ ${Math.max(0, fighter.lives)}    \u{1F4A3} ${fighter.bombs}`);
+  panel.lines[1].setText(
+    `❤ ${Math.max(0, fighter.lives)}    \u{1F4A3} ${fighter.bombs}`,
+  );
 
   // Line 2: ammo
   panel.lines[2].setText(`Ammo: ${ammoStr}${reloadStr}`);
@@ -121,13 +125,18 @@ function updateInfoPanel(
     const uses = fighter.activeCardUses;
     const limit = fighter.activeCard.useLimit;
     const limitStr = limit === "infinite" ? "∞" : `${limit}`;
-    panel.lines[3].setText(`Card: ${cardName(fighter.activeCard)} (${uses}/${limitStr})`);
+    panel.lines[3].setText(
+      `Card: ${cardName(fighter.activeCard)} (${uses}/${limitStr})`,
+    );
   } else {
     panel.lines[3].setText("Card: ---");
   }
 
   // Line 4: cooldown
-  const remainingFrames = Math.max(0, fighter.activeCardCooldownUntil - state.frame);
+  const remainingFrames = Math.max(
+    0,
+    fighter.activeCardCooldownUntil - state.frame,
+  );
   const cooldownTotal = fighter.activeCard?.cooldownTicks ?? 0;
   if (remainingFrames > 0 && cooldownTotal > 0) {
     const remainingSec = (remainingFrames / 60).toFixed(1);
@@ -220,7 +229,11 @@ export class ReplayBattleOverride {
     );
 
     // --- Input (used for pointer position during render) ---
-    this.lastInput = createBattleInput(this.scene, deps.keys, deps.mobileControls);
+    this.lastInput = createBattleInput(
+      this.scene,
+      deps.keys,
+      deps.mobileControls,
+    );
 
     // --- Pause menu ---
     this.pauseMenu = new BattlePauseMenuController(this.scene, {
@@ -235,7 +248,9 @@ export class ReplayBattleOverride {
       onMainMenu: () => this.exitToMenu(),
       replaySpeed: this.replaySpeed,
       getReplaySpeed: () => this.replaySpeed,
-      onSpeedChange: (speed) => { this.replaySpeed = speed; },
+      onSpeedChange: (speed) => {
+        this.replaySpeed = speed;
+      },
     });
 
     // --- Info panels (top-left and top-right) ---
@@ -261,7 +276,10 @@ export class ReplayBattleOverride {
     const stepCount = Math.max(1, Math.round(this.replaySpeed));
 
     while (this.accumulator >= FIXED_STEP_MS) {
-      if (this.logicReady && this.replayCurrentFrame < this.replayFrames.length) {
+      if (
+        this.logicReady &&
+        this.replayCurrentFrame < this.replayFrames.length
+      ) {
         for (
           let s = 0;
           s < stepCount && this.replayCurrentFrame < this.replayFrames.length;
@@ -317,7 +335,16 @@ export class ReplayBattleOverride {
       replayData: {
         inputs: this.replayFrames,
         speed: this.replaySpeed,
-        loadouts: this.initialData.replayData?.loadouts ?? { player: { primaryCharacterId: "reimu", alternateCharacterId: "marisa" }, target: { primaryCharacterId: "sakuya", alternateCharacterId: "cirno" } },
+        loadouts: this.initialData.replayData?.loadouts ?? {
+          player: {
+            primaryCharacterId: "reimu",
+            alternateCharacterId: "marisa",
+          },
+          target: {
+            primaryCharacterId: "sakuya",
+            alternateCharacterId: "cirno",
+          },
+        },
         mapId: this.initialData.replayData?.mapId,
         playerInitPoint: this.initialData.replayData?.playerInitPoint,
         opponentInitPoint: this.initialData.replayData?.opponentInitPoint,
@@ -380,7 +407,11 @@ export class ReplayBattleOverride {
 
   private forceFullBulletOpacity(): void {
     this.scene.children.each((child) => {
-      if ("depth" in child && child.depth === Depth.Projectile && "setAlpha" in child) {
+      if (
+        "depth" in child &&
+        child.depth === Depth.Projectile &&
+        "setAlpha" in child
+      ) {
         (child as Phaser.GameObjects.Image).setAlpha(1);
       }
     });
