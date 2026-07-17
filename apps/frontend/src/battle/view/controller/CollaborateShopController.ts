@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { BattleEvents } from "@repo/constants";
 import { CollaborateShopPanel } from "../ui/CollaborateShopPanel";
 import { BattleKeyMap } from "../../input-controller";
+import type { BattleShopPresentationModel } from "../model";
 
 const SHOP_READY_HOLD_MS = 900;
 
@@ -13,7 +14,10 @@ export class CollaborateShopController {
   private shopReadyHoldMs = 0;
   private shopReadyHoldTriggered = false;
 
-  constructor(private scene: Phaser.Scene, private getKeys: () => BattleKeyMap) {
+  constructor(
+    private scene: Phaser.Scene,
+    private getKeys: () => BattleKeyMap,
+  ) {
     this.panel = new CollaborateShopPanel(scene, {
       onPurchase: (itemId) => {
         this.pendingShopPurchaseItemId = itemId;
@@ -40,30 +44,18 @@ export class CollaborateShopController {
     this.pendingActiveCardSwitchId = undefined;
   }
 
-  update(
-    collaborateExtra: any,
-    localFighterKey: "Player1" | "Player2",
-    players: { Player1: any; Player2: any },
-    delta: number,
-    isLocalDead: boolean
-  ): void {
-    this.panel?.update(collaborateExtra, localFighterKey, players);
-    this.updateKeyboard(collaborateExtra, localFighterKey, delta, isLocalDead);
+  update(model: BattleShopPresentationModel, delta: number): void {
+    this.panel?.update(model);
+    this.updateKeyboard(model, delta);
   }
 
-  private updateKeyboard(
-    extra: any,
-    localFighterKey: "Player1" | "Player2",
-    delta: number,
-    isLocalDead: boolean
-  ): void {
-    if (!extra?.shop.open || !this.panel) {
+  private updateKeyboard(model: BattleShopPresentationModel, delta: number): void {
+    if (!model.open || !this.panel) {
       this.resetHold();
       return;
     }
 
-    const localReady = extra.shop.readyByPlayerId[localFighterKey];
-    if (localReady || isLocalDead) {
+    if (model.localReady || model.localDead) {
       this.resetHold();
       this.panel.setReadyHoldProgress(0);
       return;
@@ -100,11 +92,11 @@ export class CollaborateShopController {
     this.panel.setReadyHoldProgress(this.shopReadyHoldMs / SHOP_READY_HOLD_MS);
   }
 
-  updateCursor(shopOpen: boolean): void {
-    if (shopOpen !== this.shopInputModeActive) {
-      this.shopInputModeActive = shopOpen;
+  updateCursor(model: BattleShopPresentationModel): void {
+    if (model.open !== this.shopInputModeActive) {
+      this.shopInputModeActive = model.open;
       this.scene.input.resetPointers();
-      if (!shopOpen) {
+      if (!model.open) {
         this.resetHold();
       }
     }

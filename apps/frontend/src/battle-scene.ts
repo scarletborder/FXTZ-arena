@@ -52,7 +52,7 @@ export class BattleScene extends Phaser.Scene {
     super("battle");
   }
 
-  preload(): void { }
+  preload(): void {}
 
   create(data: BattleSceneData = {}): void {
     this.arenaBounds = resolveArenaBounds(data.mapId ?? data.battleConfig?.mapId);
@@ -89,19 +89,14 @@ export class BattleScene extends Phaser.Scene {
       () => this.battleSession?.getRuntime().frame ?? 0,
       () => this.battleSession?.getConfirmedFrame(),
       () => this.debugCtrl?.getLiveHashEnabled() ?? false,
-      () => this.audioDirector
+      () => this.audioDirector,
     );
 
-    const networkEnabled =
-      data.mode === "online" ||
-      (data.mode === "local" && !data.localSingleDevice);
+    const networkEnabled = data.mode === "online" || (data.mode === "local" && !data.localSingleDevice);
     this.networkHost = new PhaserBattleNetworkHost(this, networkEnabled);
     this.battleSession = new BattleSession({
       sceneData: data,
-      connection:
-        data.mode === "local"
-          ? createLocalCombatConnection()
-          : connectionManager,
+      connection: data.mode === "local" ? createLocalCombatConnection() : connectionManager,
       networkHost: this.networkHost,
       output: this.rollbackFacade,
       input: {
@@ -110,18 +105,14 @@ export class BattleScene extends Phaser.Scene {
           this.inputCtrl.generateInput(
             fighter,
             previousShotsFired,
-            () =>
-              this.battleSession.getCurrentOutput()?.state?.collaborateExtra,
+            () => this.battleSession.getCurrentOutput()?.state?.collaborateExtra,
             this.battleSession?.localFighterKey() ?? "Player1",
             this.shopCtrl?.getPendingPurchaseItemId(),
             this.shopCtrl?.getPendingActiveCardSwitchId(),
-            () => this.shopCtrl?.clearPending()
+            () => this.shopCtrl?.clearPending(),
           ),
         createTarget: (fighter, previousShotsFired) => {
-          const input = this.inputCtrl.generateP2Input(
-            fighter,
-            previousShotsFired
-          );
+          const input = this.inputCtrl.generateP2Input(fighter, previousShotsFired);
           if (!input) {
             throw new Error("Second-player input is unavailable");
           }
@@ -130,19 +121,15 @@ export class BattleScene extends Phaser.Scene {
       },
       host: {
         isActive: () => this.scene.isActive(),
-        recordInputFrame: (frame, player, target) =>
-          this.events.emit(BattleEvents.RECORD_FRAME, frame, player, target),
-        shouldFinishBattle: () =>
-          Phaser.Input.Keyboard.JustDown(this.inputCtrl.getKeys().enter),
+        recordInputFrame: (frame, player, target) => this.events.emit(BattleEvents.RECORD_FRAME, frame, player, target),
+        shouldFinishBattle: () => Phaser.Input.Keyboard.JustDown(this.inputCtrl.getKeys().enter),
         finishBattle: () => this.events.emit(BattleEvents.GO_TO_RESULT),
         onRollback: () => {
           this.rollbackVisualFrames = 2;
         },
       },
     });
-    this.events.on(BattleEvents.RESET_ACCUMULATOR, () =>
-      this.battleSession.resetAccumulator()
-    );
+    this.events.on(BattleEvents.RESET_ACCUMULATOR, () => this.battleSession.resetAccumulator());
 
     // 执行物理超前赶进逻辑
     if (this.battleSession.isLogicReady() && data.battleZeroTimeMs !== undefined) {
@@ -165,13 +152,10 @@ export class BattleScene extends Phaser.Scene {
       () => this.resultHandler.isResultScheduled(),
       () => this.events.emit(BattleEvents.RESET_ACCUMULATOR),
       this.battleBgmBridge,
-      this.inputCtrl
+      this.inputCtrl,
     );
 
-    this.transitionCtrl = new CollaborateTransitionController(
-      this,
-      () => this.inputCtrl.getKeys()
-    );
+    this.transitionCtrl = new CollaborateTransitionController(this, () => this.inputCtrl.getKeys());
     this.shopCtrl = new CollaborateShopController(this, () => this.inputCtrl.getKeys());
 
     // 【核心修复 3】安全保护结果处理器依赖
@@ -182,17 +166,11 @@ export class BattleScene extends Phaser.Scene {
       () => this.battleSession?.localFighterKey() ?? "Player1",
       () => this.battleSession?.getLocalPlayerId() ?? null,
       () => this.rollbackFacade.getFinalDebugHashes(),
-      () => this.replayMgr.getRecorder()
+      () => this.replayMgr.getRecorder(),
     );
 
-    this.debugCtrl = new BattleDebugController(
-      this,
-      data,
-      this.battleSession,
-      this.view,
-      this.inputCtrl.getMobileControls(),
-      this.arenaBounds,
-      (input) => this.inputCtrl.setLastInput(input)
+    this.debugCtrl = new BattleDebugController(this, data, this.battleSession, this.view, this.inputCtrl.getMobileControls(), this.arenaBounds, (input) =>
+      this.inputCtrl.setLastInput(input),
     );
 
     // 8. 绑定跨控制器的桥接事件
@@ -239,47 +217,39 @@ export class BattleScene extends Phaser.Scene {
 
     // 准备界面更新数据
     const currentOutput = this.battleSession.getCurrentOutput();
-    const collaborateExtra = currentOutput?.state.collaborateExtra;
     const localFighterKey = this.battleSession.localFighterKey();
-    const isLocalDead = this.battleSession.localFighterState().deadUntil > 0;
+    const controllerModel = createBattleViewModel({
+      state: currentOutput.state,
+      input: this.inputCtrl.getLastInput(),
+      localFighterKey,
+      arenaBounds: this.arenaBounds,
+    });
 
     // 1. 更新商店面板逻辑输入
-    this.shopCtrl.update(
-      collaborateExtra,
-      localFighterKey,
-      {
-        Player1: currentOutput?.state.player,
-        Player2: currentOutput?.state.target
-      },
-      delta,
-      isLocalDead
-    );
+    this.shopCtrl.update(controllerModel.shop, delta);
 
     // 2. 更新核心物理步进计算
     this.battleSession.update(delta);
 
     // 3. 更新输入设备光标状态和坐标采样
-    this.shopCtrl.updateCursor(collaborateExtra?.shop.open === true);
+    this.shopCtrl.updateCursor(controllerModel.shop);
     this.inputCtrl.updateAimCoordinate();
 
     // 4. 渲染核心战斗视口
     const lastInput = this.inputCtrl.getLastInput();
-    this.view.render(
-      createBattleViewModel({
-        state: currentOutput.state,
-        input: lastInput,
-        localFighterKey,
-        arenaBounds: this.arenaBounds,
-        alpha: this.battleSession.getAccumulator() / 16.666,
-        rollbackBlend: this.rollbackVisualFrames > 0 ? 0.7 : 1,
-        secondaryInput: this.localSingleDevice
-          ? this.inputCtrl.getLastP2Input()
-          : undefined,
-      }),
-    );
+    const presentationModel = createBattleViewModel({
+      state: currentOutput.state,
+      input: lastInput,
+      localFighterKey,
+      arenaBounds: this.arenaBounds,
+      alpha: this.battleSession.getAccumulator() / 16.666,
+      rollbackBlend: this.rollbackVisualFrames > 0 ? 0.7 : 1,
+      secondaryInput: this.localSingleDevice ? this.inputCtrl.getLastP2Input() : undefined,
+    });
+    this.view.render(presentationModel);
 
     // 5. 更新 UI
-    this.transitionCtrl.update(collaborateExtra, localFighterKey, delta);
+    this.transitionCtrl.update(presentationModel.transition, delta);
 
     if (this.rollbackVisualFrames > 0) {
       this.rollbackVisualFrames -= 1;
@@ -290,11 +260,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     // 单机模式下，如果联机同步网络未跑起（Offline），当 GameOver 时延迟向结果处理器发出结算请求
-    if (
-      !this.battleSession.isSyncRunning() &&
-      this.battleSession.isGameOver() &&
-      !this.resultHandler.isResultScheduled()
-    ) {
+    if (!this.battleSession.isSyncRunning() && this.battleSession.isGameOver() && !this.resultHandler.isResultScheduled()) {
       this.time.delayedCall(900, () => this.events.emit(BattleEvents.GO_TO_RESULT));
     }
   }

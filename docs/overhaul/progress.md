@@ -119,3 +119,22 @@
 - `BattleDebugController` 改为依赖 `BattleSession`，`BattleScene` 不再把可变 runtime 与 rollback history 分别传入调试模块。
 - 游戏结束判断与调试物理读取通过会话查询接口完成，场景不再直接读取运行时状态。
 - `BattleScene` 保留模块装配、Phaser 生命周期、输入采样、会话推进和视图提交职责。
+
+## 2026-07-17：presentation model 与组合根收尾
+
+### 完成
+
+- 扩展统一 `BattleViewModel`，集中投影协作商店与手动转场的显示、就绪、交互和本地角色数据。
+- `CollaborateShopController`、`CollaborateTransitionController` 及其 UI 不再接收完整 `CollaborateExtraState`、`FighterState` 或无类型对象。
+- `BattleScene` 只负责创建 presentation model，并把商店、转场和战斗视图所需的子模型提交给对应模块。
+- `BattleSession` 增加帧、调试哈希、回滚、调试点数和物理体查询接口；`BattleDebugController` 不再穿透会话读取可变 runtime 或 rollback history。
+- 增加架构守卫，禁止 presentation consumers 重新导入完整战斗输出、协作状态或角色状态。
+
+### 验证结果
+
+- presentation model 与会话接口目标测试通过。
+- 前端类型检查通过。
+
+### 后续
+
+1. 继续收缩 `BattleSession` 暂留给回滚呈现 adapter 的 runtime/history 兼容访问，并解除 adapter 初始化顺序形成的回调环。

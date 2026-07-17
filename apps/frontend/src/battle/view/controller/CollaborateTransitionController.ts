@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { BattleEvents } from "@repo/constants";
 import { CollaborateTransitionDialog } from "../ui/CollaborateTransitionDialog";
 import { BattleKeyMap } from "../../input-controller/input";
+import type { BattleTransitionPresentationModel } from "../model";
 
 const TRANSITION_READY_HOLD_MS = 900;
 
@@ -10,19 +11,18 @@ export class CollaborateTransitionController {
   private readyHoldMs = 0;
   private readyHoldTriggered = false;
 
-  constructor(private scene: Phaser.Scene, private getKeys: () => BattleKeyMap) {
+  constructor(
+    private scene: Phaser.Scene,
+    private getKeys: () => BattleKeyMap,
+  ) {
     this.dialog = new CollaborateTransitionDialog(scene, () => {
       this.scene.events.emit(BattleEvents.TRANSITION_READY);
     });
   }
 
-  update(
-    collaborateExtra: any,
-    localFighterKey: "Player1" | "Player2",
-    delta: number,
-  ): void {
-    this.dialog?.update(collaborateExtra, localFighterKey);
-    this.updateKeyboard(collaborateExtra, localFighterKey, delta);
+  update(model: BattleTransitionPresentationModel, delta: number): void {
+    this.dialog?.update(model);
+    this.updateKeyboard(model, delta);
   }
 
   destroy(): void {
@@ -30,21 +30,13 @@ export class CollaborateTransitionController {
     this.dialog = undefined;
   }
 
-  private updateKeyboard(
-    extra: any,
-    localFighterKey: "Player1" | "Player2",
-    delta: number,
-  ): void {
-    if (!extra || extra.state !== "transition_sync" || extra.transitionType !== "manual") {
+  private updateKeyboard(model: BattleTransitionPresentationModel, delta: number): void {
+    if (!model.visible) {
       this.resetHold();
       return;
     }
 
-    const localReady =
-      localFighterKey === "Player1"
-        ? extra.player1TransitionReady
-        : extra.player2TransitionReady;
-    if (localReady) {
+    if (model.localReady) {
       this.resetHold();
       return;
     }

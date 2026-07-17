@@ -1,10 +1,9 @@
 import Phaser from "phaser";
 import { t } from "@repo/i18n";
-import type { CollaborateExtraState } from "@repo/types";
 import { GAME_HEIGHT, GAME_WIDTH } from "@repo/constants";
 
 import { Depth } from "../../../utils/depth";
-import type { BattleViewFighterKey } from "../types";
+import type { BattleTransitionPresentationModel } from "../model";
 
 export class CollaborateTransitionDialog {
   private container: Phaser.GameObjects.Container | undefined;
@@ -21,46 +20,25 @@ export class CollaborateTransitionDialog {
     private readonly onReady: () => void,
   ) {}
 
-  update(
-    extra: CollaborateExtraState | undefined,
-    localKey: BattleViewFighterKey,
-  ): void {
-    if (
-      !extra ||
-      extra.state !== "transition_sync" ||
-      extra.transitionType !== "manual"
-    ) {
+  update(model: BattleTransitionPresentationModel): void {
+    if (!model.visible) {
       this.destroy();
       return;
     }
 
     this.ensure();
-    const readyCount =
-      (extra.player1TransitionReady ? 1 : 0) +
-      (extra.player2TransitionReady ? 1 : 0);
-    const target =
-      extra.pendingTransitionTarget === "boss"
-        ? t("battle.transition_target_boss")
-        : t("battle.transition_target_elite");
-    const localReady =
-      localKey === "Player1"
-        ? extra.player1TransitionReady
-        : extra.player2TransitionReady;
+    const target = model.target === "boss" ? t("battle.transition_target_boss") : t("battle.transition_target_elite");
 
     this.label?.setText(
       t("battle.transition_ready_prompt", {
         target,
-        ready: readyCount,
+        ready: model.readyCount,
       }),
     );
-    this.buttonText?.setText(
-      localReady
-        ? t("battle.transition_ready_done")
-        : t("battle.transition_ready_button"),
-    );
-    this.buttonBg?.setFillStyle(localReady ? 0x50606a : 0xe33d44, 1);
-    this.button?.setAlpha(localReady ? 0.55 : 1);
-    this.renderReadyProgress(localReady);
+    this.buttonText?.setText(model.localReady ? t("battle.transition_ready_done") : t("battle.transition_ready_button"));
+    this.buttonBg?.setFillStyle(model.localReady ? 0x50606a : 0xe33d44, 1);
+    this.button?.setAlpha(model.localReady ? 0.55 : 1);
+    this.renderReadyProgress(model.localReady);
     this.container?.setVisible(true);
   }
 
@@ -97,9 +75,7 @@ export class CollaborateTransitionDialog {
       duration: 360,
       ease: "Cubic.easeOut",
     });
-    const bg = this.scene.add
-      .rectangle(0, 0, 420, 170, 0x101820, 0.92)
-      .setStrokeStyle(2, 0xffcf6e, 0.95);
+    const bg = this.scene.add.rectangle(0, 0, 420, 170, 0x101820, 0.92).setStrokeStyle(2, 0xffcf6e, 0.95);
     const label = this.scene.add
       .text(0, -38, "", {
         fontFamily: "Arial",
@@ -109,9 +85,7 @@ export class CollaborateTransitionDialog {
       })
       .setOrigin(0.5);
     const button = this.scene.add.container(0, 42);
-    const buttonBg = this.scene.add
-      .rectangle(0, 0, 132, 44, 0xe33d44, 1)
-      .setStrokeStyle(1, 0xffffff, 0.55);
+    const buttonBg = this.scene.add.rectangle(0, 0, 132, 44, 0xe33d44, 1).setStrokeStyle(1, 0xffffff, 0.55);
     const buttonText = this.scene.add
       .text(0, 0, "", {
         fontFamily: "Arial",
@@ -120,19 +94,11 @@ export class CollaborateTransitionDialog {
         color: "#ffffff",
       })
       .setOrigin(0.5);
-    const readyProgressBg = this.scene.add
-      .rectangle(0, 69, 132, 5, 0x071018, 0.95)
-      .setOrigin(0.5)
-      .setStrokeStyle(1, 0xffffff, 0.18);
-    const readyProgressFill = this.scene.add
-      .rectangle(-66, 69, 0, 5, 0xffcf6e, 1)
-      .setOrigin(0, 0.5);
+    const readyProgressBg = this.scene.add.rectangle(0, 69, 132, 5, 0x071018, 0.95).setOrigin(0.5).setStrokeStyle(1, 0xffffff, 0.18);
+    const readyProgressFill = this.scene.add.rectangle(-66, 69, 0, 5, 0xffcf6e, 1).setOrigin(0, 0.5);
     button.add([buttonBg, buttonText]);
     button.setSize(132, 44);
-    button.setInteractive(
-      new Phaser.Geom.Rectangle(-66, -22, 132, 44),
-      Phaser.Geom.Rectangle.Contains,
-    );
+    button.setInteractive(new Phaser.Geom.Rectangle(-66, -22, 132, 44), Phaser.Geom.Rectangle.Contains);
     button.on("pointerdown", () => this.onReady());
     container.add([bg, label, button, readyProgressBg, readyProgressFill]);
 

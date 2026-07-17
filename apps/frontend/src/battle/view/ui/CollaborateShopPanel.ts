@@ -2,17 +2,13 @@ import Phaser from "phaser";
 import { getAbilityCardDefinition } from "@repo/content";
 import { GAME_HEIGHT, GAME_WIDTH } from "@repo/constants";
 import { t } from "@repo/i18n";
-import type {
-  AbilityCardId,
-  CollaborateExtraState,
-  CollaborateShopItemState,
-} from "@repo/types";
-import type { AbilityCardDefinition, FighterState } from "@repo/content";
+import type { AbilityCardId, CollaborateShopItemState } from "@repo/types";
+import type { AbilityCardDefinition } from "@repo/content";
 
 import { abilityCardIconTextureKey } from "../../../ability-card-assets";
 import { Depth } from "../../../utils/depth";
 import { settingsRepository } from "../../../store/settings";
-import type { BattleViewFighterKey } from "../types";
+import type { BattleShopPresentationModel } from "../model";
 import { cardDescription, cardName } from "../../../menu/shared";
 
 interface ShopPanelCallbacks {
@@ -83,53 +79,33 @@ export class CollaborateShopPanel {
     private readonly callbacks: ShopPanelCallbacks,
   ) {}
 
-  update(
-    extra: CollaborateExtraState | undefined,
-    localKey: BattleViewFighterKey,
-    fighters: Readonly<Record<BattleViewFighterKey, FighterState>>,
-  ): void {
-    const previewOpening =
-      extra?.state === "transition_sync" &&
-      extra.pendingTransitionTarget === "shop";
-    if (!extra?.shop.open && !previewOpening) {
+  update(model: BattleShopPresentationModel): void {
+    if (!model.visible) {
       this.destroy();
       return;
     }
 
     this.ensure();
-    const shop = extra.shop;
-    this.interactionDisabled = !shop.open;
-    const localGoods = shop.goodsByPlayerId[localKey] ?? shop.goods;
-    const localMoney = extra.moneyByPlayerId[localKey];
-    const localReady = shop.readyByPlayerId[localKey];
-    const localRevived = shop.revivedByPlayerId[localKey];
+    this.interactionDisabled = !model.open;
 
-    this.syncGoods(localGoods);
-    this.syncActiveCards(fighters[localKey]);
+    this.syncGoods(model.goods);
+    this.syncActiveCards(model.activeCards);
     const hoverItem = this.orderedGoods.find((item) => item.id === this.hoverItemId);
 
-    this.title?.setText(t("battle.shop_title", { index: shop.open ? shop.shopIndex : shop.shopIndex + 1 }));
-    this.money?.setText(formatMoneyDisplay({ extra, localKey, hoverItem }));
-    this.money?.setColor(
-      !hoverItem || hoverItem.kind === "sold_out"
-        ? "#f7e5aa"
-        : localMoney >= hoverItem.price
-          ? "#92e6a7"
-          : "#ff6b6b",
-    );
-    this.p1Check?.setText(checkText("Player1", shop.readyByPlayerId.Player1));
-    this.p2Check?.setText(checkText("Player2", shop.readyByPlayerId.Player2));
+    this.title?.setText(t("battle.shop_title", { index: model.displayIndex }));
+    this.money?.setText(formatMoneyDisplay({ model, hoverItem }));
+    this.money?.setColor(!hoverItem || hoverItem.kind === "sold_out" ? "#f7e5aa" : model.localMoney >= hoverItem.price ? "#92e6a7" : "#ff6b6b");
+    this.p1Check?.setText(checkText("Player1", model.readyByFighter.Player1));
+    this.p2Check?.setText(checkText("Player2", model.readyByFighter.Player2));
 
-    this.renderGoods(extra, localKey, this.interactionDisabled || localReady || localRevived);
-    this.renderPreview(hoverItem, localRevived);
-    this.renderBagDialog(fighters[localKey]);
-    this.readyButtonText?.setText(
-      localReady || localRevived ? t("battle.shop_ready_done") : t("battle.shop_ready"),
-    );
-    this.readyButtonBg?.setFillStyle(localReady || localRevived ? 0x50606a : 0xd94b4b, 1);
-    this.readyButton?.setAlpha(localReady || localRevived ? 0.65 : 1);
+    this.renderGoods(model.purchasedItemIds, this.interactionDisabled || model.localReady || model.localRevived);
+    this.renderPreview(hoverItem, model.localRevived);
+    this.renderBagDialog(model.activeCardId);
+    this.readyButtonText?.setText(model.localReady || model.localRevived ? t("battle.shop_ready_done") : t("battle.shop_ready"));
+    this.readyButtonBg?.setFillStyle(model.localReady || model.localRevived ? 0x50606a : 0xd94b4b, 1);
+    this.readyButton?.setAlpha(model.localReady || model.localRevived ? 0.65 : 1);
     this.bagButtonBg?.setFillStyle(this.bagDialog?.visible ? 0x31424c : 0x182834, 1);
-    this.renderReadyProgress(localReady || localRevived);
+    this.renderReadyProgress(model.localReady || model.localRevived);
     this.container?.setVisible(true);
   }
 
@@ -206,7 +182,10 @@ export class CollaborateShopPanel {
       .container(GAME_WIDTH / 2, GAME_HEIGHT / 2)
       .setScrollFactor(0)
       .setDepth(Depth.OnlineStatus + 2);
-    container.setAlpha(0).setY(GAME_HEIGHT / 2 + 28).setScale(0.97);
+    container
+      .setAlpha(0)
+      .setY(GAME_HEIGHT / 2 + 28)
+      .setScale(0.97);
     this.scene.tweens.add({
       targets: container,
       alpha: 1,
@@ -215,9 +194,7 @@ export class CollaborateShopPanel {
       duration: 420,
       ease: "Cubic.easeOut",
     });
-    const bg = this.scene.add
-      .rectangle(0, 0, 920, 500, 0x101820, 0.95)
-      .setStrokeStyle(2, 0xffcf6e, 0.95);
+    const bg = this.scene.add.rectangle(0, 0, 920, 500, 0x101820, 0.95).setStrokeStyle(2, 0xffcf6e, 0.95);
     const title = this.scene.add
       .text(0, -212, "", {
         fontFamily: "Arial",
@@ -236,9 +213,7 @@ export class CollaborateShopPanel {
       .setOrigin(1, 0.5);
 
     const bagButton = this.scene.add.container(-282, 204);
-    const bagButtonBg = this.scene.add
-      .rectangle(0, 0, 170, 40, 0x182834, 1)
-      .setStrokeStyle(1, 0xffcf6e, 0.8);
+    const bagButtonBg = this.scene.add.rectangle(0, 0, 170, 40, 0x182834, 1).setStrokeStyle(1, 0xffcf6e, 0.8);
     const bagText = this.scene.add
       .text(0, 0, t("battle.shop_bag"), {
         fontFamily: "Arial",
@@ -249,10 +224,7 @@ export class CollaborateShopPanel {
       .setOrigin(0.5);
     bagButton.add([bagButtonBg, bagText]);
     bagButton.setSize(170, 40);
-    bagButton.setInteractive(
-      new Phaser.Geom.Rectangle(-85, -20, 170, 40),
-      Phaser.Geom.Rectangle.Contains,
-    );
+    bagButton.setInteractive(new Phaser.Geom.Rectangle(-85, -20, 170, 40), Phaser.Geom.Rectangle.Contains);
     bagButton.on("pointerdown", () => {
       this.ensureBagDialog();
       this.bagDialog?.setVisible(!this.bagDialog.visible);
@@ -274,9 +246,7 @@ export class CollaborateShopPanel {
       })
       .setOrigin(0, 0.5);
     const readyButton = this.scene.add.container(72, 0);
-    const readyButtonBg = this.scene.add
-      .rectangle(0, 0, 120, 40, 0xd94b4b, 1)
-      .setStrokeStyle(1, 0xffffff, 0.45);
+    const readyButtonBg = this.scene.add.rectangle(0, 0, 120, 40, 0xd94b4b, 1).setStrokeStyle(1, 0xffffff, 0.45);
     const readyButtonText = this.scene.add
       .text(0, 0, "", {
         fontFamily: "Arial",
@@ -285,19 +255,11 @@ export class CollaborateShopPanel {
         color: "#ffffff",
       })
       .setOrigin(0.5);
-    const readyProgressBg = this.scene.add
-      .rectangle(72, 25, 120, 5, 0x071018, 0.95)
-      .setOrigin(0.5)
-      .setStrokeStyle(1, 0xffffff, 0.18);
-    const readyProgressFill = this.scene.add
-      .rectangle(12, 25, 0, 5, 0xffcf6e, 1)
-      .setOrigin(0, 0.5);
+    const readyProgressBg = this.scene.add.rectangle(72, 25, 120, 5, 0x071018, 0.95).setOrigin(0.5).setStrokeStyle(1, 0xffffff, 0.18);
+    const readyProgressFill = this.scene.add.rectangle(12, 25, 0, 5, 0xffcf6e, 1).setOrigin(0, 0.5);
     readyButton.add([readyButtonBg, readyButtonText]);
     readyButton.setSize(120, 40);
-    readyButton.setInteractive(
-      new Phaser.Geom.Rectangle(-60, -20, 120, 40),
-      Phaser.Geom.Rectangle.Contains,
-    );
+    readyButton.setInteractive(new Phaser.Geom.Rectangle(-60, -20, 120, 40), Phaser.Geom.Rectangle.Contains);
     readyButton.on("pointerdown", () => {
       if (!this.interactionDisabled) this.callbacks.onReady();
     });
@@ -327,19 +289,14 @@ export class CollaborateShopPanel {
     this.hoverItemId = this.orderedGoods[this.selectedItemIndex]?.id;
   }
 
-  private syncActiveCards(fighter: FighterState): void {
-    const cards = fighter.abilityCards.filter((card) => card.kind === "active");
+  private syncActiveCards(cards: readonly AbilityCardDefinition[]): void {
     this.activeCards.splice(0, this.activeCards.length, ...cards);
     if (this.selectedBagCardIndex >= this.activeCards.length) {
       this.selectedBagCardIndex = Math.max(0, this.activeCards.length - 1);
     }
   }
 
-  private renderGoods(
-    extra: CollaborateExtraState,
-    localKey: BattleViewFighterKey,
-    disabled: boolean,
-  ): void {
+  private renderGoods(purchasedItemIds: readonly string[], disabled: boolean): void {
     const baseCount = this.orderedGoods.filter((item) => BASE_ITEM_KINDS.has(item.kind)).length;
     const cardCount = this.orderedGoods.length - baseCount;
     this.ensureItemVisuals(this.orderedGoods.length);
@@ -354,17 +311,14 @@ export class CollaborateShopPanel {
       const rowIndex = row === 0 ? index : index - baseCount;
       const rowCount = row === 0 ? baseCount : cardCount;
       const startX = SHOP_GOODS_CENTER_X - ((rowCount - 1) * SHOP_ITEM_STEP) / 2;
-      const bought = extra.shop.purchasesByPlayerId[localKey].includes(item.id);
+      const bought = purchasedItemIds.includes(item.id);
       const soldOut = item.kind === "sold_out";
       const selected = this.keyboardSurface === "goods" && index === this.selectedItemIndex;
 
       visual.itemId = item.id;
       visual.container.setPosition(startX + rowIndex * SHOP_ITEM_STEP, row === 0 ? -96 : 54);
       visual.container.setVisible(true);
-      visual.bg.setFillStyle(
-        selected ? 0x2f3f24 : bought ? 0x000000 : soldOut ? 0x31424c : 0x182834,
-        1,
-      );
+      visual.bg.setFillStyle(selected ? 0x2f3f24 : bought ? 0x000000 : soldOut ? 0x31424c : 0x182834, 1);
       visual.bg.setStrokeStyle(
         selected ? 3 : 2,
         selected ? 0xf9f871 : bought ? 0x92e6a7 : soldOut ? 0x70808a : 0xffcf6e,
@@ -383,12 +337,8 @@ export class CollaborateShopPanel {
     if (!this.container) return;
     while (this.itemVisuals.length < count) {
       const container = this.scene.add.container(0, 0);
-      const bg = this.scene.add
-        .rectangle(0, 0, SHOP_ITEM_WIDTH, 124, 0x182834, 1)
-        .setStrokeStyle(2, 0xffcf6e, 0.95);
-      const iconBg = this.scene.add
-        .rectangle(0, -30, 42, 42, 0x263845, 1)
-        .setStrokeStyle(1, 0xffffff, 0.2);
+      const bg = this.scene.add.rectangle(0, 0, SHOP_ITEM_WIDTH, 124, 0x182834, 1).setStrokeStyle(2, 0xffcf6e, 0.95);
+      const iconBg = this.scene.add.rectangle(0, -30, 42, 42, 0x263845, 1).setStrokeStyle(1, 0xffffff, 0.2);
       const iconText = this.scene.add
         .text(0, -30, "", {
           fontFamily: "Arial",
@@ -416,9 +366,7 @@ export class CollaborateShopPanel {
           color: "#ffcf6e",
         })
         .setOrigin(0.5);
-      const soldOutOverlay = this.scene.add
-        .rectangle(0, 0, SHOP_ITEM_WIDTH, 124, 0x000000, 0.92)
-        .setVisible(false);
+      const soldOutOverlay = this.scene.add.rectangle(0, 0, SHOP_ITEM_WIDTH, 124, 0x000000, 0.92).setVisible(false);
       const soldOutText = this.scene.add
         .text(0, 0, "", {
           fontFamily: "Arial",
@@ -432,10 +380,7 @@ export class CollaborateShopPanel {
         .setVisible(false);
       container.add([bg, iconBg, iconText, iconImage, name, price, soldOutOverlay, soldOutText]);
       container.setSize(SHOP_ITEM_WIDTH, 124);
-      container.setInteractive(
-        new Phaser.Geom.Rectangle(-SHOP_ITEM_WIDTH / 2, -62, SHOP_ITEM_WIDTH, 124),
-        Phaser.Geom.Rectangle.Contains,
-      );
+      container.setInteractive(new Phaser.Geom.Rectangle(-SHOP_ITEM_WIDTH / 2, -62, SHOP_ITEM_WIDTH, 124), Phaser.Geom.Rectangle.Contains);
       container.on("pointerover", () => {
         const visual = this.itemVisuals.find((item) => item.container === container);
         this.hoverItemId = visual?.itemId;
@@ -488,9 +433,7 @@ export class CollaborateShopPanel {
   private ensurePreview(): void {
     if (this.preview || !this.container) return;
     const preview = this.scene.add.container(324, -6);
-    const bg = this.scene.add
-      .rectangle(0, 0, 250, 324, 0x071018, 0.96)
-      .setStrokeStyle(1, 0xffcf6e, 0.75);
+    const bg = this.scene.add.rectangle(0, 0, 250, 324, 0x071018, 0.96).setStrokeStyle(1, 0xffcf6e, 0.75);
     const text = this.scene.add
       .text(-108, -142, "", {
         fontFamily: "Arial",
@@ -519,9 +462,7 @@ export class CollaborateShopPanel {
     if (this.bagDialog || !this.container) return;
     const dialog = this.scene.add.container(0, 0).setVisible(false);
     const dim = this.scene.add.rectangle(0, 0, 760, 500, 0x000000, 0.34);
-    const bg = this.scene.add
-      .rectangle(0, 0, 520, 300, 0x101820, 0.98)
-      .setStrokeStyle(2, 0x92e6a7, 0.9);
+    const bg = this.scene.add.rectangle(0, 0, 520, 300, 0x101820, 0.98).setStrokeStyle(2, 0x92e6a7, 0.9);
     const title = this.scene.add
       .text(0, -120, t("battle.shop_bag_title"), {
         fontFamily: "Arial",
@@ -531,9 +472,7 @@ export class CollaborateShopPanel {
       })
       .setOrigin(0.5);
     const close = this.scene.add.container(222, -120);
-    const closeBg = this.scene.add
-      .rectangle(0, 0, 34, 30, 0x263845, 1)
-      .setStrokeStyle(1, 0xffffff, 0.3);
+    const closeBg = this.scene.add.rectangle(0, 0, 34, 30, 0x263845, 1).setStrokeStyle(1, 0xffffff, 0.3);
     const closeText = this.scene.add
       .text(0, 0, "X", {
         fontFamily: "Arial",
@@ -544,10 +483,7 @@ export class CollaborateShopPanel {
       .setOrigin(0.5);
     close.add([closeBg, closeText]);
     close.setSize(34, 30);
-    close.setInteractive(
-      new Phaser.Geom.Rectangle(-17, -15, 34, 30),
-      Phaser.Geom.Rectangle.Contains,
-    );
+    close.setInteractive(new Phaser.Geom.Rectangle(-17, -15, 34, 30), Phaser.Geom.Rectangle.Contains);
     close.on("pointerdown", () => dialog.setVisible(false));
     dialog.add([dim, bg, title, close]);
     this.container.add(dialog);
@@ -555,10 +491,9 @@ export class CollaborateShopPanel {
     this.bagTitle = title;
   }
 
-  private renderBagDialog(fighter: FighterState): void {
+  private renderBagDialog(activeCardId: string | undefined): void {
     if (!this.bagDialog?.visible) return;
     this.bagTitle?.setText(t("battle.shop_bag_title"));
-    this.syncActiveCards(fighter);
     this.ensureBagCardVisuals(this.activeCards.length || 1);
     if (this.activeCards.length === 0) {
       const visual = this.bagCardVisuals[0];
@@ -578,16 +513,12 @@ export class CollaborateShopPanel {
         visual.container.setVisible(false);
         continue;
       }
-      const active = fighter.activeCard?.id === card.id;
+      const active = activeCardId === card.id;
       const selected = this.keyboardSurface === "bag" && index === this.selectedBagCardIndex;
       visual.container.setVisible(true);
       visual.container.setPosition(-180 + index * 120, 18);
       visual.bg.setFillStyle(selected ? 0x2f3f24 : active ? 0x274634 : 0x182834, 1);
-      visual.bg.setStrokeStyle(
-        selected ? 3 : 2,
-        selected ? 0xf9f871 : active ? 0x92e6a7 : 0xffcf6e,
-        selected ? 1 : active ? 0.95 : 0.75,
-      );
+      visual.bg.setStrokeStyle(selected ? 3 : 2, selected ? 0xf9f871 : active ? 0x92e6a7 : 0xffcf6e, selected ? 1 : active ? 0.95 : 0.75);
       visual.icon.setTexture(abilityCardIconTextureKey(card.id)).setVisible(true);
       visual.name.setText(cardName(card));
       visual.activeMark.setText(active ? t("battle.shop_bag_active") : "");
@@ -599,9 +530,7 @@ export class CollaborateShopPanel {
     if (!this.bagDialog) return;
     while (this.bagCardVisuals.length < count) {
       const container = this.scene.add.container(0, 0);
-      const bg = this.scene.add
-        .rectangle(0, 0, 96, 132, 0x182834, 1)
-        .setStrokeStyle(2, 0xffcf6e, 0.75);
+      const bg = this.scene.add.rectangle(0, 0, 96, 132, 0x182834, 1).setStrokeStyle(2, 0xffcf6e, 0.75);
       const icon = this.scene.add.image(0, -30, "").setDisplaySize(48, 48);
       const name = this.scene.add
         .text(0, 25, "", {
@@ -622,16 +551,20 @@ export class CollaborateShopPanel {
         .setOrigin(0.5);
       container.add([bg, icon, name, activeMark]);
       container.setSize(96, 132);
-      container.setInteractive(
-        new Phaser.Geom.Rectangle(-48, -66, 96, 132),
-        Phaser.Geom.Rectangle.Contains,
-      );
+      container.setInteractive(new Phaser.Geom.Rectangle(-48, -66, 96, 132), Phaser.Geom.Rectangle.Contains);
       container.on("pointerdown", () => {
         const visual = this.bagCardVisuals.find((item) => item.container === container);
         if (visual?.cardId) this.callbacks.onSwitchActiveCard(visual.cardId);
       });
       this.bagDialog.add(container);
-      this.bagCardVisuals.push({ container, bg, icon, name, activeMark, cardId: undefined });
+      this.bagCardVisuals.push({
+        container,
+        bg,
+        icon,
+        name,
+        activeMark,
+        cardId: undefined,
+      });
     }
   }
 
@@ -659,11 +592,7 @@ function wrapIndex(index: number, count: number): number {
   return (index + count) % count;
 }
 
-function moveGoodsRow(
-  goods: readonly CollaborateShopItemState[],
-  selectedIndex: number,
-  dy: -1 | 1,
-): number {
+function moveGoodsRow(goods: readonly CollaborateShopItemState[], selectedIndex: number, dy: -1 | 1): number {
   const baseCount = goods.filter((item) => BASE_ITEM_KINDS.has(item.kind)).length;
   const cardCount = goods.length - baseCount;
   if (baseCount === 0 || cardCount === 0) {
@@ -688,9 +617,7 @@ function checkText(player: "Player1" | "Player2", checked: boolean): string {
 
 function setItemIcon(visual: ShopItemVisual, item: CollaborateShopItemState): void {
   if (item.kind === "ability_card" && item.abilityCardId) {
-    visual.iconImage
-      .setTexture(abilityCardIconTextureKey(item.abilityCardId as AbilityCardId))
-      .setVisible(true);
+    visual.iconImage.setTexture(abilityCardIconTextureKey(item.abilityCardId as AbilityCardId)).setVisible(true);
     visual.iconText.setVisible(false);
     return;
   }
@@ -749,8 +676,7 @@ function itemDescription(item: CollaborateShopItemState): string {
 
 function itemPreview(item: CollaborateShopItemState, activeKeyName: string): string {
   const card = abilityCard(item);
-  const rarity =
-    card?.collaborateShop?.rarity === "rare" ? "rare" : "common";
+  const rarity = card?.collaborateShop?.rarity === "rare" ? "rare" : "common";
   const category =
     item.kind === "ability_card" && card?.kind === "active"
       ? t("battle.shop_category_active_card")
@@ -762,9 +688,7 @@ function itemPreview(item: CollaborateShopItemState, activeKeyName: string): str
       name: itemName(item),
       rarity,
     }),
-    item.kind === "sold_out"
-      ? t("battle.shop_price_sold_out")
-      : t("battle.shop_price", { price: item.price }),
+    item.kind === "sold_out" ? t("battle.shop_price_sold_out") : t("battle.shop_price", { price: item.price }),
     t("battle.shop_preview_category", { category }),
   ];
 
@@ -783,12 +707,8 @@ function itemPreview(item: CollaborateShopItemState, activeKeyName: string): str
   return lines.join("\n");
 }
 
-function abilityCard(
-  item: CollaborateShopItemState,
-): AbilityCardDefinition | undefined {
-  return item.abilityCardId
-    ? getAbilityCardDefinition(item.abilityCardId as AbilityCardId)
-    : undefined;
+function abilityCard(item: CollaborateShopItemState): AbilityCardDefinition | undefined {
+  return item.abilityCardId ? getAbilityCardDefinition(item.abilityCardId as AbilityCardId) : undefined;
 }
 
 function formatCooldown(ticks: number): string {
@@ -812,25 +732,14 @@ function getKeyDisplayName(value: string | number): string {
   return String(value);
 }
 
-function formatMoneyDisplay(params: {
-  readonly extra: CollaborateExtraState;
-  readonly localKey: BattleViewFighterKey;
-  readonly hoverItem: CollaborateShopItemState | undefined;
-}): string {
-  const p1 = params.extra.moneyByPlayerId.Player1;
-  const p2 = params.extra.moneyByPlayerId.Player2;
-  const local = params.extra.moneyByPlayerId[params.localKey];
-  const suffix =
-    params.hoverItem && params.hoverItem.kind !== "sold_out"
-      ? `(-${params.hoverItem.price})`
-      : "";
+function formatMoneyDisplay(params: { readonly model: BattleShopPresentationModel; readonly hoverItem: CollaborateShopItemState | undefined }): string {
+  const p1 = params.model.player1Money;
+  const p2 = params.model.player2Money;
+  const local = params.model.localMoney;
+  const suffix = params.hoverItem && params.hoverItem.kind !== "sold_out" ? `(-${params.hoverItem.price})` : "";
   const p1Text =
-    params.localKey === "Player1"
-      ? t("battle.shop_money_local", { value: `${local}${suffix}` })
-      : t("battle.shop_money_peer", { value: p1 });
+    params.model.localFighterKey === "Player1" ? t("battle.shop_money_local", { value: `${local}${suffix}` }) : t("battle.shop_money_peer", { value: p1 });
   const p2Text =
-    params.localKey === "Player2"
-      ? t("battle.shop_money_local", { value: `${local}${suffix}` })
-      : t("battle.shop_money_peer", { value: p2 });
+    params.model.localFighterKey === "Player2" ? t("battle.shop_money_local", { value: `${local}${suffix}` }) : t("battle.shop_money_peer", { value: p2 });
   return t("battle.shop_money_pair", { p1: p1Text, p2: p2Text });
 }

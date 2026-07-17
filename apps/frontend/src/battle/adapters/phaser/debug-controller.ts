@@ -48,10 +48,7 @@ export function describePresetScriptAction(offset: number): string {
   if (
     offset > 150 &&
     offset < 390 &&
-    (isPresetAlternateHeld(offset) ||
-      isPresetShootFrame(offset) ||
-      isPresetReloadFrame(offset) ||
-      isPresetBombFrame(offset))
+    (isPresetAlternateHeld(offset) || isPresetShootFrame(offset) || isPresetReloadFrame(offset) || isPresetBombFrame(offset))
   ) {
     actions.push("duringMarisaBombLock");
   }
@@ -91,14 +88,8 @@ function isPresetBombFrame(offset: number): boolean {
 }
 
 function isPresetAlternateHeld(offset: number): boolean {
-  return (
-    (offset >= 72 && offset < 122) ||
-    (offset >= 144 && offset < 248) ||
-    (offset >= 255 && offset < 305) ||
-    (offset >= 350 && offset < 382)
-  );
+  return (offset >= 72 && offset < 122) || (offset >= 144 && offset < 248) || (offset >= 255 && offset < 305) || (offset >= 350 && offset < 382);
 }
-
 
 export class BattleDebugController {
   private debugLiveHashEnabled = false;
@@ -120,15 +111,15 @@ export class BattleDebugController {
   }
 
   getFrame(): number {
-    return this.session.getRuntime().frame;
+    return this.session.getFrame();
   }
 
   getRecentHashes(count = 50): DebugHashRow[] {
-    return this.session.getRollbackHistory().getRecentDebugHashes(count);
+    return this.session.getRecentDebugHashes(count);
   }
 
   getHash(frame: number): DebugHashRow | null {
-    return this.session.getRollbackHistory().getDebugHash(frame);
+    return this.session.getDebugHash(frame);
   }
 
   getLiveHashEnabled(): boolean {
@@ -141,16 +132,7 @@ export class BattleDebugController {
   }
 
   rollbackToFrame(frame: number): boolean {
-    const history = this.session.getRollbackHistory();
-    const snapshot = history.getSnapshot(frame);
-    if (!snapshot) {
-      return false;
-    }
-    this.session.getRuntime().deserialize(snapshot);
-    this.scene.events.emit(BattleEvents.RESET_ACCUMULATOR);
-    history.pruneAfter(frame);
-    this.session.recordOutputFrame();
-    return true;
+    return this.session.rollbackToFrame(frame);
   }
 
   runPresetScript(): DebugHashRow[] | null {
@@ -173,7 +155,7 @@ export class BattleDebugController {
         };
         this.setLastInput(lastInput);
         this.session.stepRuntimeWithInput(input);
-        const row = this.getHash(this.session.getRuntime().frame);
+        const row = this.getHash(this.session.getFrame());
         if (row) {
           rows.push({ ...row, action: describePresetScriptAction(offset) });
         }
@@ -189,12 +171,11 @@ export class BattleDebugController {
       return false;
     }
     const pointer = getBattlePointerWorld(this.scene, this.mobileControls, this.arenaBounds);
-    this.session.getRuntime().debugSpawnPoint({
+    this.session.spawnDebugPoint({
       rewardSize: pointRewardSizeForDebugSize(size),
       x: pointer.x,
       y: pointer.y,
     });
-    this.session.recordOutputFrame();
     return true;
   }
 
@@ -202,8 +183,7 @@ export class BattleDebugController {
     if (this.sceneData.mode === "online" || this.sceneData.mode === "local") {
       return false;
     }
-    this.session.getRuntime().debugSetPoint(pointCount);
-    this.session.recordOutputFrame();
+    this.session.setDebugPoint(pointCount);
     return true;
   }
 
@@ -218,9 +198,9 @@ export class BattleDebugController {
   setDebugPhysicsEnabled(enabled: boolean): void {
     this.debugPhysicsEnabled = enabled;
     this.view.setDebugPhysics(enabled);
-    const runtime = this.session.getRuntime();
-    if (enabled && runtime.physicsReady) {
-      this.view.renderDebugBodies(runtime.readDebugBodies());
+    const bodies = this.session.readDebugBodies();
+    if (enabled && bodies) {
+      this.view.renderDebugBodies(bodies);
     }
   }
 

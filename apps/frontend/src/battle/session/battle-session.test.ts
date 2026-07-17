@@ -58,10 +58,14 @@ describe("BattleSession", () => {
 
     session.update(FIXED_STEP_MS);
 
-    expect(session.getRuntime().frame).toBe(1);
+    expect(session.getFrame()).toBe(1);
     expect(session.getCurrentOutput().frame).toBe(1);
     expect(session.getRollbackHistory().getSnapshot(1)).not.toBeNull();
     expect(recordInputFrame).toHaveBeenCalledTimes(1);
+
+    expect(session.rollbackToFrame(0)).toBe(true);
+    expect(session.getFrame()).toBe(0);
+    expect(session.rollbackToFrame(99)).toBe(false);
   });
 
   it("owns online synchronization cleanup", async () => {

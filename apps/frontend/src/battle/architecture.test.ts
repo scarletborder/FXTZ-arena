@@ -27,6 +27,16 @@ describe("battle architecture boundaries", () => {
       ]),
     ).toEqual([]);
   });
+
+  it("keeps presentation consumers on projected battle models", () => {
+    expect(
+      ["./view/controller", "./view/ui"].flatMap((directory) =>
+        findForbiddenImports(directory, [
+          /import[^;]*(?:BattleOutputState|CollaborateExtraState|FighterState)[^;]*from/,
+        ]),
+      ),
+    ).toEqual([]);
+  });
 });
 
 function findForbiddenImports(
