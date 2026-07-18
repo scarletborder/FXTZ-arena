@@ -9,7 +9,9 @@ import {
   TARGET_SPAWN,
 } from "@repo/constants";
 import { createSampleStage } from "@repo/stage-schema";
+import type { StageDocument } from "@repo/stage-schema";
 import type { MapDefinition } from "./types";
+import { BUNDLED_STAGE_DOCS } from "../../data/stages";
 
 const STANDARD_SPAWN_POINTS = [
   { id: "left", x: PLAYER_SPAWN.x, y: PLAYER_SPAWN.y, facingAngleTicks: 0 },
@@ -146,7 +148,10 @@ export const DEFAULT_MAPS: readonly MapDefinition[] = [
 export function getCombatMapDefinition(
   mapId: string,
 ): MapDefinition | undefined {
-  return DEFAULT_MAPS.find((map) => map.id === mapId);
+  return (
+    DEFAULT_MAPS.find((map) => map.id === mapId) ??
+    AUTO_COLLABORATE_MAPS.find((map) => map.id === mapId)
+  );
 }
 
 export function getAvailableCombatMaps(): readonly MapDefinition[] {
@@ -163,8 +168,52 @@ export function getAvailableVersusMaps(): readonly MapDefinition[] {
   );
 }
 
+/**
+ * Auto-generated collaborate maps from bundled JSON stage documents in
+ * `data/stages/`. Generated once at module load.
+ */
+const AUTO_COLLABORATE_MAPS: readonly MapDefinition[] = BUNDLED_STAGE_DOCS.filter(
+  (doc) => doc.compatibleModes.includes("collaborate"),
+).map((doc) => stageDocToCollaborateMap(doc));
+
 export function getAvailableCollaborateMaps(): readonly MapDefinition[] {
-  return [COLLABORATE_TEST_ARENA, COLLABORATE_TEST_ARENA_2, SAMPLE_JSON_STAGE_MAP];
+  return [
+    COLLABORATE_TEST_ARENA,
+    COLLABORATE_TEST_ARENA_2,
+    SAMPLE_JSON_STAGE_MAP,
+    ...AUTO_COLLABORATE_MAPS,
+  ];
+}
+
+/**
+ * Generates a collaborate `MapDefinition` from a JSON stage document.
+ * The stage's arena dimensions, background, and bgm settings are used
+ * directly; spawn points default to the bottom-center of the arena.
+ */
+function stageDocToCollaborateMap(doc: StageDocument): MapDefinition {
+  const bg = doc.settings?.background;
+  const w = doc.arena.width;
+  const h = doc.arena.height;
+  const spawnX = Math.round(w / 2);
+  const spawnY = Math.round(h * 0.85);
+  return {
+    id: `json_stage_${doc.id}`,
+    name: doc.name,
+    width: w,
+    height: h,
+    viewportWidth: doc.arena.viewportWidth,
+    viewportHeight: doc.arena.viewportHeight,
+    background: {
+      textureKey: bg?.textureKey ?? "map-bg-hakurei-shrine",
+      assetPath: bg?.assetPath ?? "assets/bg/arena_standard.jpg",
+    },
+    bgmKey: bg?.bgmKey,
+    spawnPoints: [
+      { id: "left", x: spawnX, y: spawnY, facingAngleTicks: 0 },
+      { id: "right", x: spawnX, y: spawnY, facingAngleTicks: 30000 },
+    ],
+    mobSpawnerId: `json:${doc.id}`,
+  };
 }
 
 export const get_available_combat_maps = getAvailableCombatMaps;

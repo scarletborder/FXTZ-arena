@@ -27,6 +27,7 @@ import type { NeutralMobSpawner } from "./base";
 import { createSampleStage } from "@repo/stage-schema";
 import { getRegisteredStage, registerJsonStage } from "./json/registry";
 import { JsonMobSpawner } from "./json/json-spawner";
+import { BUNDLED_STAGE_DOCS } from "../../data/stages";
 
 /**
  * Resolve a NeutralMobSpawner by its ID string.
@@ -57,3 +58,9 @@ export function resolveMobSpawner(
 // Register the bundled sample stage so it is immediately usable as
 // `json:sample-stage` (e.g. via the map `sample_json_stage`).
 registerJsonStage(createSampleStage());
+
+// Auto-register every JSON stage document from `data/stages/`. Each becomes
+// resolvable as `json:<id>` and is exposed as a collaborate map.
+for (const doc of BUNDLED_STAGE_DOCS) {
+  registerJsonStage(doc);
+}

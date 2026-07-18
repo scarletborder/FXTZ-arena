@@ -144,6 +144,7 @@ export class JsonMob extends NeutralMob<JsonMobState, BattleBulletSpawnParams, B
       id: init.id,
       key: "Neutral",
       kind: def.id,
+      class: def.class,
       textureKey: def.textureKey,
       x: spawn.x,
       y: spawn.y,

@@ -1,6 +1,7 @@
 import {
   EXAMPLE_COLLABORATE_NODES,
   getCombatMapDefinition,
+  getRegisteredStage,
 } from "@repo/content";
 import { DEFAULT_BOMBS, DEFAULT_COST_LIMIT, TICK_RATE } from "@repo/constants";
 import type {
@@ -43,7 +44,7 @@ export function getDebugCooperateEliteOptions(
     .filter(
       ({ node }) =>
         node.kind === "wave" &&
-        node.members.some((member) => member.class === "elite"),
+        (node.members?.some((member) => member.class === "elite") ?? false),
     )
     .map(({ node, nodeIndex }, index) => ({
       id: String(index),
@@ -75,7 +76,7 @@ export function resolveDebugCooperateRuntimeJump(
   const bossIndex = nodes.findIndex(
     (node) =>
       node.kind === "wave" &&
-      node.members.some((member) => member.class === "boss"),
+      (node.members?.some((member) => member.class === "boss") ?? false),
   );
   if (bossIndex < 0) return undefined;
   return {
@@ -148,10 +149,21 @@ export function debugCooperateBotLoadout(): FighterLoadout {
   });
 }
 
-function debugCooperateNodesForMap(mapId: MapId) {
+interface DebugCooperateNodeInfo {
+  readonly id: string;
+  readonly kind: string;
+  readonly members?: readonly { readonly class: string }[];
+}
+
+function debugCooperateNodesForMap(mapId: MapId): readonly DebugCooperateNodeInfo[] {
   const map = getCombatMapDefinition(mapId);
-  if (map?.mobSpawnerId === "example-collaborate-mob-spawner") {
+  if (!map?.mobSpawnerId) return [];
+  if (map.mobSpawnerId === "example-collaborate-mob-spawner") {
     return EXAMPLE_COLLABORATE_NODES;
+  }
+  if (map.mobSpawnerId.startsWith("json:")) {
+    const doc = getRegisteredStage(map.mobSpawnerId.slice("json:".length));
+    if (doc) return doc.nodes;
   }
   return [];
 }

@@ -412,8 +412,9 @@ export class BattleModel {
       return;
     }
     const nodeIndex = Math.max(0, Math.trunc(jump.nodeIndex));
+    const currentSpawnerState = this.neutralMobManager.mobSpawnerState();
     this.neutralMobManager.restoreSpawner({
-      spawnerId: "example-collaborate-mob-spawner",
+      spawnerId: currentSpawnerState?.spawnerId ?? "unknown",
       nodeIndex,
       phase: jump.transitionTarget ? "transition_sync" : "running",
       shopIndex: 0,

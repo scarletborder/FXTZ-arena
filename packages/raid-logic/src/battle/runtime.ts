@@ -19,7 +19,7 @@ import {
   type PointRewardSize,
 } from "@repo/constants";
 import type { BattleOutputState, MapDefinition } from "@repo/types";
-import { DEFAULT_MAPS, resolveMobSpawner } from "@repo/content";
+import { getCombatMapDefinition, resolveMobSpawner } from "@repo/content";
 import type { NeutralMobSpawner } from "@repo/content";
 
 export type RaidLogicMode = "training" | "ai" | "online";
@@ -292,7 +292,7 @@ function resolveSpawner(
 
 function resolveMap(mapId: string | undefined): MapDefinition | undefined {
   if (!mapId) return undefined;
-  return DEFAULT_MAPS.find((m) => m.id === mapId);
+  return getCombatMapDefinition(mapId);
 }
 
 function arenaBoundsForMap(map: MapDefinition | undefined): ArenaBounds {

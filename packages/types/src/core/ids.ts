@@ -38,6 +38,7 @@ export type MapId =
   | "collaborate_test_arena"
   | "collaborate_test_arena_2"
   | "shoot_range"
-  | "sample_json_stage";
+  | "sample_json_stage"
+  | `json_stage_${string}`;
 export type BattlePlayerId = "Player1" | "Player2" | "Neutral";
 export type PlayerId = BattlePlayerId;

@@ -1,0 +1,921 @@
+{
+  "schemaVersion": 1,
+  "id": "new-test-arena",
+  "name": "新测试竞技场",
+  "description": "基于东方妖妖梦 Stage 1 (th07_web) ECL 时间线转换的合作模式竞技场。结构：双波妖精→商店→冰晶精英(道中)→双波光点扫荡→商店→冰之女王Boss。生成坐标由 TH07 原始 384×448 弹幕场缩放至 1200×720 竞技场。",
+  "author": "maker-cli",
+  "arena": {
+    "width": 1200,
+    "height": 720
+  },
+  "compatibleModes": [
+    "collaborate"
+  ],
+  "enemyDefs": {
+    "fairy": {
+      "id": "fairy",
+      "displayName": "妖精",
+      "textureKey": "enemy_type_1",
+      "class": "minion",
+      "maxHealth": 120,
+      "hitRadius": 28,
+      "rewards": {
+        "drops": [
+          {
+            "type": "point",
+            "size": "small",
+            "count": 2
+          },
+          {
+            "type": "money",
+            "size": "small",
+            "count": 1
+          }
+        ]
+      },
+      "spawn": {
+        "x": 600,
+        "y": -40
+      },
+      "movement": {
+        "type": "phases",
+        "phases": [
+          {
+            "startSeconds": 0,
+            "durationSeconds": 2,
+            "path": {
+              "kind": "line",
+              "from": {
+                "x": 600,
+                "y": -40
+              },
+              "to": {
+                "x": 600,
+                "y": 400
+              },
+              "ease": "easeOut"
+            }
+          },
+          {
+            "startSeconds": 2,
+            "durationSeconds": 4,
+            "loop": true,
+            "path": {
+              "kind": "drift",
+              "vx": 30,
+              "vy": 20
+            }
+          }
+        ]
+      },
+      "fire": [
+        {
+          "id": "aimed",
+          "startSeconds": 1.5,
+          "intervalSeconds": 1.5,
+          "pattern": {
+            "type": "aimed",
+            "target": "both",
+            "count": 1,
+            "bullet": {
+              "kind": "orb",
+              "speedRank": "medium",
+              "width": 10,
+              "height": 10,
+              "damage": 1,
+              "color": "#ff5d8f"
+            }
+          }
+        }
+      ]
+    },
+    "fairy_side": {
+      "id": "fairy_side",
+      "displayName": "侧翼妖精",
+      "textureKey": "enemy_type_1",
+      "class": "minion",
+      "maxHealth": 120,
+      "hitRadius": 28,
+      "rewards": {
+        "drops": [
+          {
+            "type": "point",
+            "size": "small",
+            "count": 1
+          },
+          {
+            "type": "money",
+            "size": "small",
+            "count": 1
+          }
+        ]
+      },
+      "spawn": {
+        "x": -40,
+        "y": 300
+      },
+      "movement": {
+        "type": "phases",
+        "phases": [
+          {
+            "startSeconds": 0,
+            "durationSeconds": 3,
+            "path": {
+              "kind": "line",
+              "from": {
+                "x": -40,
+                "y": 300
+              },
+              "to": {
+                "x": 400,
+                "y": 300
+              },
+              "ease": "easeOut"
+            }
+          },
+          {
+            "startSeconds": 3,
+            "durationSeconds": 4,
+            "loop": true,
+            "path": {
+              "kind": "drift",
+              "vx": 40,
+              "vy": 0
+            }
+          }
+        ]
+      },
+      "fire": [
+        {
+          "id": "aimed",
+          "startSeconds": 1,
+          "intervalSeconds": 1.8,
+          "pattern": {
+            "type": "aimed",
+            "target": "both",
+            "count": 2,
+            "spreadDegrees": 12,
+            "bullet": {
+              "kind": "orb",
+              "speedRank": "medium",
+              "width": 10,
+              "height": 10,
+              "damage": 1,
+              "color": "#7fd1ff"
+            }
+          }
+        }
+      ]
+    },
+    "sprite": {
+      "id": "sprite",
+      "displayName": "光点",
+      "textureKey": "enemy_type_2",
+      "class": "minion",
+      "maxHealth": 40,
+      "hitRadius": 20,
+      "rewards": {
+        "drops": [
+          {
+            "type": "point",
+            "size": "small",
+            "count": 1
+          }
+        ]
+      },
+      "spawn": {
+        "x": 600,
+        "y": -32
+      },
+      "movement": {
+        "type": "phases",
+        "phases": [
+          {
+            "startSeconds": 0,
+            "durationSeconds": 3,
+            "path": {
+              "kind": "line",
+              "from": {
+                "x": 600,
+                "y": -32
+              },
+              "to": {
+                "x": 600,
+                "y": 520
+              },
+              "ease": "linear"
+            }
+          }
+        ]
+      },
+      "fire": []
+    },
+    "elite": {
+      "id": "elite",
+      "displayName": "冰晶精英",
+      "textureKey": "enemy_type_3",
+      "class": "elite",
+      "maxHealth": 6000,
+      "hitRadius": 44,
+      "rewards": {
+        "drops": [
+          {
+            "type": "point",
+            "size": "large",
+            "count": 3
+          },
+          {
+            "type": "money",
+            "size": "large",
+            "count": 2
+          },
+          {
+            "type": "power",
+            "size": "medium",
+            "count": 1
+          }
+        ]
+      },
+      "spawn": {
+        "x": 600,
+        "y": 160
+      },
+      "movement": {
+        "type": "phases",
+        "phases": [
+          {
+            "startSeconds": 0,
+            "durationSeconds": 3,
+            "path": {
+              "kind": "line",
+              "from": {
+                "x": 600,
+                "y": -60
+              },
+              "to": {
+                "x": 600,
+                "y": 200
+              },
+              "ease": "easeOut"
+            }
+          },
+          {
+            "startSeconds": 3,
+            "durationSeconds": 8,
+            "loop": true,
+            "path": {
+              "kind": "circle",
+              "center": {
+                "x": 600,
+                "y": 280
+              },
+              "radius": 140,
+              "startAngleDegrees": 0,
+              "clockwise": true
+            }
+          }
+        ]
+      },
+      "fire": [
+        {
+          "id": "ring",
+          "startSeconds": 2,
+          "intervalSeconds": 2,
+          "pattern": {
+            "type": "ring",
+            "count": 16,
+            "startAngleDegrees": 0,
+            "rotationDegreesPerShot": 11.25,
+            "bullet": {
+              "kind": "orb",
+              "speedRank": "medium",
+              "width": 12,
+              "height": 12,
+              "damage": 1,
+              "color": "#7fd1ff"
+            }
+          }
+        },
+        {
+          "id": "aimed",
+          "startSeconds": 1,
+          "intervalSeconds": 1.5,
+          "pattern": {
+            "type": "aimed",
+            "target": "both",
+            "count": 3,
+            "spreadDegrees": 15,
+            "bullet": {
+              "kind": "knife",
+              "speedRank": "high",
+              "width": 10,
+              "height": 10,
+              "damage": 1,
+              "color": "#ff5d8f"
+            }
+          }
+        }
+      ],
+      "forms": [
+        {
+          "when": "healthBelow",
+          "threshold": 0.5,
+          "form": "elite_enraged"
+        }
+      ]
+    },
+    "boss": {
+      "id": "boss",
+      "displayName": "冰之女王",
+      "textureKey": "enemy_type_boss",
+      "class": "boss",
+      "maxHealth": 12000,
+      "hitRadius": 60,
+      "rewards": {
+        "drops": [
+          {
+            "type": "point",
+            "size": "large",
+            "count": 8
+          },
+          {
+            "type": "money",
+            "size": "large",
+            "count": 4
+          },
+          {
+            "type": "power",
+            "size": "large",
+            "count": 2
+          }
+        ]
+      },
+      "spawn": {
+        "x": 600,
+        "y": 160
+      },
+      "movement": {
+        "type": "phases",
+        "phases": [
+          {
+            "startSeconds": 0,
+            "durationSeconds": 4,
+            "path": {
+              "kind": "line",
+              "from": {
+                "x": 600,
+                "y": -80
+              },
+              "to": {
+                "x": 600,
+                "y": 200
+              },
+              "ease": "easeOut"
+            }
+          },
+          {
+            "startSeconds": 4,
+            "durationSeconds": 10,
+            "loop": true,
+            "path": {
+              "kind": "circle",
+              "center": {
+                "x": 600,
+                "y": 300
+              },
+              "radius": 120,
+              "startAngleDegrees": 0
+            }
+          }
+        ]
+      },
+      "spellCard": {
+        "phases": [
+          {
+            "name": "符卡「冰晶散华」",
+            "maxHealth": 5000,
+            "durationSeconds": 35,
+            "fire": [
+              {
+                "id": "boss-ring",
+                "startSeconds": 0,
+                "intervalSeconds": 1.4,
+                "phase": 0,
+                "pattern": {
+                  "type": "ring",
+                  "count": 24,
+                  "startAngleDegrees": 0,
+                  "rotationDegreesPerSecond": 7,
+                  "bullet": {
+                    "kind": "orb",
+                    "speedRank": "medium",
+                    "width": 14,
+                    "height": 14,
+                    "damage": 2,
+                    "color": "#c77dff"
+                  }
+                }
+              },
+              {
+                "id": "boss-aimed",
+                "startSeconds": 0.7,
+                "intervalSeconds": 1.4,
+                "phase": 0,
+                "pattern": {
+                  "type": "aimed",
+                  "target": "both",
+                  "count": 5,
+                  "spreadDegrees": 10,
+                  "bullet": {
+                    "kind": "knife",
+                    "speedRank": "high",
+                    "width": 12,
+                    "height": 12,
+                    "damage": 2,
+                    "color": "#ff70a6"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "符卡「永冬之环」",
+            "maxHealth": 7000,
+            "durationSeconds": 45,
+            "fire": [
+              {
+                "id": "boss-spiral",
+                "startSeconds": 0,
+                "intervalSeconds": 0.4,
+                "phase": 1,
+                "pattern": {
+                  "type": "spiral",
+                  "arms": 6,
+                  "count": 1,
+                  "angularSpeedDegreesPerSecond": 130,
+                  "startAngleDegrees": 0,
+                  "bullet": {
+                    "kind": "orb",
+                    "speedRank": "high",
+                    "width": 16,
+                    "height": 16,
+                    "damage": 2,
+                    "color": "#ffd166"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "forms": [
+        {
+          "when": "always",
+          "form": "boss"
+        }
+      ]
+    }
+  },
+  "nodes": [
+    {
+      "kind": "wave",
+      "id": "wave-1",
+      "minNextWaveSeconds": 6,
+      "maxNextWaveSeconds": 12,
+      "members": [
+        {
+          "key": "a",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 0,
+          "spawn": {
+            "x": 1044,
+            "y": -16
+          }
+        },
+        {
+          "key": "b",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 0.13,
+          "spawn": {
+            "x": 919,
+            "y": -16
+          }
+        },
+        {
+          "key": "c",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 0.27,
+          "spawn": {
+            "x": 1075,
+            "y": -32
+          }
+        },
+        {
+          "key": "d",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 0.4,
+          "spawn": {
+            "x": 950,
+            "y": -32
+          }
+        },
+        {
+          "key": "e",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 0.53,
+          "spawn": {
+            "x": 1106,
+            "y": -48
+          }
+        },
+        {
+          "key": "f",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 0.67,
+          "spawn": {
+            "x": 981,
+            "y": -48
+          }
+        },
+        {
+          "key": "g",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 2.93,
+          "spawn": {
+            "x": 156,
+            "y": -16
+          }
+        },
+        {
+          "key": "h",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 3.07,
+          "spawn": {
+            "x": 281,
+            "y": -16
+          }
+        },
+        {
+          "key": "i",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 3.2,
+          "spawn": {
+            "x": 125,
+            "y": -32
+          }
+        },
+        {
+          "key": "j",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 3.33,
+          "spawn": {
+            "x": 250,
+            "y": -32
+          }
+        },
+        {
+          "key": "k",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 3.47,
+          "spawn": {
+            "x": 94,
+            "y": -48
+          }
+        },
+        {
+          "key": "l",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 3.6,
+          "spawn": {
+            "x": 219,
+            "y": -48
+          }
+        }
+      ]
+    },
+    {
+      "kind": "wave",
+      "id": "wave-2",
+      "minNextWaveSeconds": 8,
+      "maxNextWaveSeconds": 16,
+      "members": [
+        {
+          "key": "a",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 0,
+          "spawn": {
+            "x": 919,
+            "y": -16
+          }
+        },
+        {
+          "key": "b",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 1.2,
+          "spawn": {
+            "x": 1044,
+            "y": -16
+          }
+        },
+        {
+          "key": "c",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 1.9,
+          "spawn": {
+            "x": 981,
+            "y": -48
+          }
+        },
+        {
+          "key": "d",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 2.9,
+          "spawn": {
+            "x": 94,
+            "y": -48
+          }
+        },
+        {
+          "key": "e",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 4,
+          "spawn": {
+            "x": 250,
+            "y": -32
+          }
+        },
+        {
+          "key": "f",
+          "enemyDefId": "fairy_side",
+          "class": "minion",
+          "spawnAtSeconds": 6,
+          "spawn": {
+            "x": -40,
+            "y": 205
+          }
+        },
+        {
+          "key": "g",
+          "enemyDefId": "fairy_side",
+          "class": "minion",
+          "spawnAtSeconds": 8,
+          "spawn": {
+            "x": -40,
+            "y": 205
+          }
+        },
+        {
+          "key": "h",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 10,
+          "spawn": {
+            "x": 175,
+            "y": -32
+          }
+        },
+        {
+          "key": "i",
+          "enemyDefId": "fairy",
+          "class": "minion",
+          "spawnAtSeconds": 10.5,
+          "spawn": {
+            "x": 838,
+            "y": -16
+          }
+        },
+        {
+          "key": "j",
+          "enemyDefId": "fairy_side",
+          "class": "minion",
+          "spawnAtSeconds": 12,
+          "spawn": {
+            "x": -40,
+            "y": 205
+          }
+        }
+      ]
+    },
+    {
+      "kind": "shop",
+      "id": "shop-1",
+      "x": 600,
+      "y": 420,
+      "rarityPulls": {
+        "common": 4,
+        "rare": 1
+      },
+      "presetId": "default_shop"
+    },
+    {
+      "kind": "wave",
+      "id": "wave-elite",
+      "minNextWaveSeconds": 4,
+      "maxNextWaveSeconds": 999,
+      "maxDurationSeconds": 60,
+      "clearOnTimeout": true,
+      "members": [
+        {
+          "key": "elite",
+          "enemyDefId": "elite",
+          "class": "elite",
+          "spawnAtSeconds": 0
+        }
+      ]
+    },
+    {
+      "kind": "wave",
+      "id": "wave-3",
+      "minNextWaveSeconds": 6,
+      "maxNextWaveSeconds": 12,
+      "members": [
+        {
+          "key": "a",
+          "enemyDefId": "sprite",
+          "class": "minion",
+          "spawnAtSeconds": 0,
+          "spawn": {
+            "x": 200,
+            "y": -32
+          }
+        },
+        {
+          "key": "b",
+          "enemyDefId": "sprite",
+          "class": "minion",
+          "spawnAtSeconds": 1.5,
+          "spawn": {
+            "x": 600,
+            "y": -32
+          }
+        },
+        {
+          "key": "c",
+          "enemyDefId": "sprite",
+          "class": "minion",
+          "spawnAtSeconds": 3,
+          "spawn": {
+            "x": 700,
+            "y": -32
+          }
+        },
+        {
+          "key": "d",
+          "enemyDefId": "sprite",
+          "class": "minion",
+          "spawnAtSeconds": 4.5,
+          "spawn": {
+            "x": 400,
+            "y": -32
+          }
+        },
+        {
+          "key": "e",
+          "enemyDefId": "sprite",
+          "class": "minion",
+          "spawnAtSeconds": 6,
+          "spawn": {
+            "x": 900,
+            "y": -32
+          }
+        },
+        {
+          "key": "f",
+          "enemyDefId": "sprite",
+          "class": "minion",
+          "spawnAtSeconds": 7.5,
+          "spawn": {
+            "x": 200,
+            "y": -32
+          }
+        },
+        {
+          "key": "g",
+          "enemyDefId": "sprite",
+          "class": "minion",
+          "spawnAtSeconds": 9,
+          "spawn": {
+            "x": 1100,
+            "y": -32
+          }
+        }
+      ]
+    },
+    {
+      "kind": "wave",
+      "id": "wave-4",
+      "minNextWaveSeconds": 6,
+      "maxNextWaveSeconds": 12,
+      "members": [
+        {
+          "key": "a",
+          "enemyDefId": "sprite",
+          "class": "minion",
+          "spawnAtSeconds": 0,
+          "spawn": {
+            "x": 200,
+            "y": -32
+          }
+        },
+        {
+          "key": "b",
+          "enemyDefId": "sprite",
+          "class": "minion",
+          "spawnAtSeconds": 1.5,
+          "spawn": {
+            "x": 900,
+            "y": -32
+          }
+        },
+        {
+          "key": "c",
+          "enemyDefId": "sprite",
+          "class": "minion",
+          "spawnAtSeconds": 3,
+          "spawn": {
+            "x": 400,
+            "y": -32
+          }
+        },
+        {
+          "key": "d",
+          "enemyDefId": "sprite",
+          "class": "minion",
+          "spawnAtSeconds": 4.5,
+          "spawn": {
+            "x": 700,
+            "y": -32
+          }
+        },
+        {
+          "key": "e",
+          "enemyDefId": "sprite",
+          "class": "minion",
+          "spawnAtSeconds": 6,
+          "spawn": {
+            "x": 600,
+            "y": -32
+          }
+        }
+      ]
+    },
+    {
+      "kind": "shop",
+      "id": "shop-2",
+      "x": 600,
+      "y": 420,
+      "rarityPulls": {
+        "common": 4,
+        "rare": 2
+      },
+      "presetId": "default_shop"
+    },
+    {
+      "kind": "wave",
+      "id": "wave-boss",
+      "minNextWaveSeconds": 1,
+      "maxNextWaveSeconds": 999,
+      "members": [
+        {
+          "key": "boss",
+          "enemyDefId": "boss",
+          "class": "boss",
+          "spawnAtSeconds": 0
+        }
+      ]
+    }
+  ],
+  "shopPresets": {
+    "default_shop": {
+      "id": "default_shop",
+      "name": "补给商店",
+      "rarityPulls": {
+        "common": 4,
+        "rare": 1
+      }
+    }
+  },
+  "settings": {
+    "background": {
+      "textureKey": "map-bg-hakurei-shrine",
+      "bgmKey": "bgm_hakurei-shrine"
+    }
+  }
+}
