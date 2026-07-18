@@ -48,6 +48,16 @@ export abstract class WaveMobSpawner<
     this.spawnDueMembers(ctx, node);
     this.syncCollaborateWave(ctx, node);
 
+    if (this.isWaveTimedOut(ctx, node)) {
+      if (node.clearOnTimeout) {
+        for (const mob of ctx.neutralMobs) {
+          mob.state.active = false;
+        }
+      }
+      this.advanceToNextNode(ctx);
+      return;
+    }
+
     if (this.hasSpecialMobAlive(ctx)) {
       return;
     }
@@ -231,6 +241,21 @@ export abstract class WaveMobSpawner<
         rarityPulls: node?.kind === "shop" ? node.rarityPulls : {},
       },
     }));
+  }
+
+  private isWaveTimedOut(
+    ctx: NeutralMobSpawnerContext,
+    wave: WaveDefinition,
+  ): boolean {
+    if (wave.maxDurationSeconds === undefined) {
+      return false;
+    }
+    if (this.waveStartFrame === 0) {
+      return false;
+    }
+    const timeoutFrame =
+      this.waveStartFrame + secondsToTicks(wave.maxDurationSeconds);
+    return ctx.frame >= timeoutFrame;
   }
 
   private isAwaitingTransition(ctx: NeutralMobSpawnerContext): boolean {

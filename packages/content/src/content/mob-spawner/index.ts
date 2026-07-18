@@ -15,12 +15,18 @@ export * from "./collaborate/collaborate-test-arena-2/waves";
 export * from "./collaborate/collaborate-test-arena-2/mobs/test-arena-2-fairy";
 export * from "./collaborate/collaborate-test-arena-2/elites/test-arena-2-cirno-elite";
 export * from "./collaborate/collaborate-test-arena-2/boss/test-arena-2-ellen-boss";
+export * from "./json/registry";
+export * from "./json/json-spawner";
+export * from "./json/json-mob";
 
 import { DefaultMobSpawnerA } from "./default-a";
 import { ExampleCollaborateMobSpawner } from "./collaborate/example-collaborate-mob-spawner/waves";
 import { CollaborateTestArena2MobSpawner } from "./collaborate/collaborate-test-arena-2/waves";
 import { ShootingRangeSpawn } from "./shooting-range-spawn";
 import type { NeutralMobSpawner } from "./base";
+import { createSampleStage } from "@repo/stage-schema";
+import { getRegisteredStage, registerJsonStage } from "./json/registry";
+import { JsonMobSpawner } from "./json/json-spawner";
 
 /**
  * Resolve a NeutralMobSpawner by its ID string.
@@ -29,6 +35,11 @@ import type { NeutralMobSpawner } from "./base";
 export function resolveMobSpawner(
   spawnerId: string,
 ): NeutralMobSpawner | undefined {
+  if (spawnerId.startsWith("json:")) {
+    const doc = getRegisteredStage(spawnerId.slice("json:".length));
+    if (doc) return new JsonMobSpawner(doc);
+    return undefined;
+  }
   switch (spawnerId) {
     case "default-a":
       return new DefaultMobSpawnerA();
@@ -42,3 +53,7 @@ export function resolveMobSpawner(
       return undefined;
   }
 }
+
+// Register the bundled sample stage so it is immediately usable as
+// `json:sample-stage` (e.g. via the map `sample_json_stage`).
+registerJsonStage(createSampleStage());

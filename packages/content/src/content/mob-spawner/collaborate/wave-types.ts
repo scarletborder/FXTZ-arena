@@ -23,6 +23,16 @@ export interface WaveDefinition {
   readonly members: readonly WaveMemberDefinition[];
   readonly minNextWaveSeconds: number;
   readonly maxNextWaveSeconds: number;
+  /**
+   * Optional hard cap on the wave duration (seconds). When set and reached, the
+   * spawner advances to the next node even if special mobs (elite/boss) remain.
+   */
+  readonly maxDurationSeconds?: number;
+  /**
+   * When the wave times out via `maxDurationSeconds`, also deactivate every
+   * remaining neutral mob before advancing.
+   */
+  readonly clearOnTimeout?: boolean;
 }
 
 export interface ShopDefinition {

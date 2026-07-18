@@ -8,6 +8,7 @@ import {
   PLAYER_SPAWN,
   TARGET_SPAWN,
 } from "@repo/constants";
+import { createSampleStage } from "@repo/stage-schema";
 import type { MapDefinition } from "./types";
 
 const STANDARD_SPAWN_POINTS = [
@@ -70,6 +71,23 @@ const COLLABORATE_TEST_ARENA_2: MapDefinition = {
   mobSpawnerId: "collaborate-test-arena-2-mob-spawner",
 };
 
+const SAMPLE_JSON_STAGE_MAP: MapDefinition = {
+  id: "sample_json_stage",
+  name: "content.maps.sample_json_stage.name",
+  width: ARENA_WIDTH,
+  height: ARENA_HEIGHT,
+  background: {
+    textureKey: "map-bg-hakurei-shrine",
+    assetPath: "assets/bg/arena_standard.jpg",
+  },
+  bgmKey: "bgm_hakurei-shrine",
+  spawnPoints: [
+    { id: "left", x: PLAYER_SPAWN.x, y: PLAYER_SPAWN.y, facingAngleTicks: 0 },
+    { id: "right", x: TARGET_SPAWN.x, y: TARGET_SPAWN.y, facingAngleTicks: 30000 },
+  ],
+  mobSpawnerId: "json:sample-stage",
+};
+
 export const DEFAULT_MAPS: readonly MapDefinition[] = [
   HAKUREI_SHRINE,
   {
@@ -122,6 +140,7 @@ export const DEFAULT_MAPS: readonly MapDefinition[] = [
   },
   COLLABORATE_TEST_ARENA,
   COLLABORATE_TEST_ARENA_2,
+  SAMPLE_JSON_STAGE_MAP,
 ];
 
 export function getCombatMapDefinition(
@@ -139,12 +158,13 @@ export function getAvailableVersusMaps(): readonly MapDefinition[] {
     (map) =>
       map.id !== "shoot_range" &&
       map.id !== "collaborate_test_arena" &&
-      map.id !== "collaborate_test_arena_2",
+      map.id !== "collaborate_test_arena_2" &&
+      map.id !== "sample_json_stage",
   );
 }
 
 export function getAvailableCollaborateMaps(): readonly MapDefinition[] {
-  return [COLLABORATE_TEST_ARENA, COLLABORATE_TEST_ARENA_2];
+  return [COLLABORATE_TEST_ARENA, COLLABORATE_TEST_ARENA_2, SAMPLE_JSON_STAGE_MAP];
 }
 
 export const get_available_combat_maps = getAvailableCombatMaps;
