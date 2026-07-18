@@ -24,7 +24,7 @@ const manifestFiles = [];
 for (const file of files.sort((a, b) => a.key.localeCompare(b.key))) {
   const outputPath = path.join(outputRoot, file.relativePath);
   await mkdir(path.dirname(outputPath), { recursive: true });
-  await cp(file.sourcePath, outputPath, { force: true });
+  await copyFileWithRetry(file.sourcePath, outputPath);
 
   const data = await readFile(file.sourcePath);
   const hash = createHash("sha256").update(data).digest("hex");
@@ -69,9 +69,70 @@ async function deleteDirectoryWithRetry(dirPath, maxRetries = 5, delayMs = 100) 
       return;
     } catch (error) {
       if (attempt === maxRetries) {
-        throw new Error(`Failed to delete directory after ${maxRetries} attempts: ${error.message}`);
+        // Last attempt: try deleting files individually
+        console.warn(`Full directory deletion failed after ${maxRetries} attempts, trying per-file deletion...`);
+        await deleteFilesIndividually(dirPath);
+        // Try final rm on the (mostly empty) directory
+        try {
+          await rm(dirPath, { recursive: true, force: true });
+        } catch (finalError) {
+          console.warn(`Could not fully delete ${dirPath}: ${finalError.message}. Some files are locked by another process. Continuing anyway...`);
+        }
+        return;
       }
       // Wait before retrying with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, delayMs * Math.pow(2, attempt - 1)));
+    }
+  }
+}
+
+async function deleteFilesIndividually(dirPath) {
+  try {
+    const entries = await readdir(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const entryPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        await deleteFilesIndividually(entryPath);
+        try {
+          await rm(entryPath, { recursive: true, force: true });
+        } catch {
+          // Skip directories that can't be deleted
+        }
+      } else {
+        await deleteFileWithRetry(entryPath);
+      }
+    }
+  } catch {
+    // Directory can't be read, skip
+  }
+}
+
+async function deleteFileWithRetry(filePath, maxRetries = 3, delayMs = 50) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await rm(filePath, { force: true });
+      return;
+    } catch (error) {
+      if (attempt === maxRetries) {
+        console.warn(`Could not delete ${filePath}: ${error.message}. Skipping.`);
+        return;
+      }
+      await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
+    }
+  }
+}
+
+async function copyFileWithRetry(sourcePath, outputPath, maxRetries = 5, delayMs = 100) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // Try to remove the destination first in case it's stale/locked
+      await deleteFileWithRetry(outputPath, 2, 50);
+      await cp(sourcePath, outputPath);
+      return;
+    } catch (error) {
+      if (attempt === maxRetries) {
+        throw new Error(`Failed to copy ${sourcePath} after ${maxRetries} attempts: ${error.message}`);
+      }
       await new Promise(resolve => setTimeout(resolve, delayMs * Math.pow(2, attempt - 1)));
     }
   }
