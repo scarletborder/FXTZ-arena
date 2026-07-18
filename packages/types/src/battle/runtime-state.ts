@@ -221,7 +221,8 @@ export interface EffectState {
   x: number;
   y: number;
   readonly tint: number;
-  readonly scale: number;
+  scale: number;
+  readonly scalePerTick?: number;
   readonly expireAt: number;
   readonly text?: string;
   readonly width?: number;

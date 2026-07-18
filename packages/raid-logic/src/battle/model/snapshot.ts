@@ -341,6 +341,7 @@ function serializeEffect(effect: EffectState, frame: number): EffectSnapshot {
     y: effect.y,
     tint: effect.tint,
     scale: effect.scale,
+    scalePerTick: effect.scalePerTick,
     expireIn: effect.expireAt - frame,
     text: effect.text,
     width: effect.width,

@@ -453,6 +453,7 @@ function writeEffects(
     writeFixed(hasher, effect.y);
     hasher.writeNumber(effect.tint);
     writeFixed(hasher, effect.scale);
+    writeFixed(hasher, effect.scalePerTick ?? 0);
     hasher.writeNumber(effect.expireAt);
     hasher.writeString(effect.text ?? "");
     writeFixed(hasher, effect.width ?? 0);

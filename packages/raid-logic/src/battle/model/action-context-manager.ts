@@ -193,6 +193,18 @@ export class BattleActionContextManager {
           params.duration,
         );
       },
+      spawnEffectRing: (params) => {
+        this.context.effectSystem.spawnRing(
+          this.context.effects,
+          this.context.getFrame(),
+          params.x,
+          params.y,
+          params.tint,
+          params.scale,
+          params.duration,
+          params.scalePerTick,
+        );
+      },
       pauseProjectileTimeline: (projectile, ticks) => {
         this.context.ticker.pauseProjectileTimeline(projectile, ticks);
       },

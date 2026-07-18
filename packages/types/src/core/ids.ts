@@ -11,6 +11,7 @@ export type CharacterId =
   | "yukari"
   | "flandre"
   | "iku"
+  | "yuka"
   | "shinki";
 export type AbilityCardId =
   | "extra_life"

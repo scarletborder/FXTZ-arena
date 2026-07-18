@@ -325,6 +325,10 @@
         "name": "Marisa",
         "description": "· An ordinary magician from the roadside\n· A sniper-like unit built around high-speed lasers with heavy damage\n· Bomb can fire an oversized master spark"
       },
+      "yuka": {
+        "name": "Yuka",
+        "description": "· A fast-moving sniper character\n· Her familiar warns before firing a large laser toward the crosshair\n· Higher tiers add twin familiars and fast flanking barrages\n· Bomb creates a shrinking ring at the crosshair with alternating tangent volleys"
+      },
       "shinki": {
         "name": "Shinki",
         "description": "· Goddess of Makai\n· A suppression character whose many familiars fire crossing barrages\n· At higher tiers, familiars add lasers and high-speed large orbs\n· Bomb pours bullets along ten firing lines\n· Normal shots reload one round at a time"

@@ -68,6 +68,14 @@ type BattleModelContextBindings = {
     readonly tint: number;
     readonly duration: number;
   }): void;
+  spawnEffectRing(params: {
+    readonly x: number;
+    readonly y: number;
+    readonly tint: number;
+    readonly scale: number;
+    readonly scalePerTick?: number;
+    readonly duration: number;
+  }): void;
   pauseProjectileTimeline(projectile: ProjectileState, ticks: number): void;
   consumeAim(): void;
 };
@@ -101,11 +109,7 @@ export function createCharacterActionContext(
     clearProjectilesAround: (params) => bindings.clearProjectilesAround(params),
     spawnClearRingEntity: (params) => bindings.spawnClearRingEntity(params),
     spawnClearRing: (params) => bindings.spawnClearRing(params),
-    spawnEffectRing: (params) =>
-      bindings.spawnClearRing({
-        ...params,
-        radius: params.scale * 100,
-      }),
+    spawnEffectRing: (params) => bindings.spawnEffectRing(params),
     pauseProjectileTimeline: (projectile, ticks) =>
       bindings.pauseProjectileTimeline(projectile, ticks),
   };

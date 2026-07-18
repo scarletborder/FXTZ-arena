@@ -30,10 +30,7 @@ describe("ProjectileCommandScheduler", () => {
       new BulletCmd(bulletParams()).after(2).repeat(3, 5),
       10,
     );
-    original.scheduleLaser(
-      new LaserCmd(laserParams()).burst(2, 4),
-      10,
-    );
+    original.scheduleLaser(new LaserCmd(laserParams()).burst(2, 4), 10);
 
     const firstBullets = vi.fn();
     const firstLasers = vi.fn();
@@ -51,12 +48,41 @@ describe("ProjectileCommandScheduler", () => {
       restored.step(frame, bullets, lasers);
     }
 
-    expect(firstBullets.mock.calls.map(([params]) => params.frame)).toEqual([12]);
+    expect(firstBullets.mock.calls.map(([params]) => params.frame)).toEqual([
+      12,
+    ]);
     expect(firstLasers.mock.calls.map(([params]) => params.frame)).toEqual([
       10, 14,
     ]);
-    expect(bullets.mock.calls.map(([params]) => params.frame)).toEqual([17, 22]);
+    expect(bullets.mock.calls.map(([params]) => params.frame)).toEqual([
+      17, 22,
+    ]);
     expect(lasers).not.toHaveBeenCalled();
+  });
+
+  it("offsets a compact burst along its firing angle", () => {
+    const scheduler = new ProjectileCommandScheduler();
+    const spawnBullet = vi.fn();
+
+    scheduler.scheduleBullet(
+      new BulletCmd(bulletParams()).burstLine(3, 2, 5),
+      20,
+    );
+    for (let frame = 20; frame <= 24; frame += 1) {
+      scheduler.step(frame, spawnBullet, vi.fn());
+    }
+
+    expect(
+      spawnBullet.mock.calls.map(([params]) => [
+        params.frame,
+        params.x,
+        params.y,
+      ]),
+    ).toEqual([
+      [20, 1, 2],
+      [22, 6, 2],
+      [24, 11, 2],
+    ]);
   });
 });
 

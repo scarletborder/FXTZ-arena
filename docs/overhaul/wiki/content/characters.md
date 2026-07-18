@@ -18,6 +18,7 @@
 | --------- | ------------ | ----------------------- |
 | `reimu`   | 博丽灵梦     | `characters/reimu.ts`   |
 | `marisa`  | 雾雨魔理沙   | `characters/marisa.ts`  |
+| `yuka`    | 幽香         | `characters/yuka.ts`    |
 | `sakuya`  | 十六夜咲夜   | `characters/sakuya.ts`  |
 | `cirno`   | 琪露诺       | `characters/cirno.ts`   |
 | `youmu`   | 魂魄妖梦     | `characters/youmu.ts`   |

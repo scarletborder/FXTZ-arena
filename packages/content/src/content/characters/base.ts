@@ -135,6 +135,9 @@ export interface ProjectileCommandSchedule {
   readonly burstInterval: number;
   readonly repeatCount: number;
   readonly repeatInterval: number;
+  readonly forwardStep: number;
+  readonly sideStep: number;
+  readonly angleStep: number;
 }
 
 const IMMEDIATE_COMMAND_SCHEDULE: ProjectileCommandSchedule = {
@@ -143,6 +146,9 @@ const IMMEDIATE_COMMAND_SCHEDULE: ProjectileCommandSchedule = {
   burstInterval: 0,
   repeatCount: 1,
   repeatInterval: 0,
+  forwardStep: 0,
+  sideStep: 0,
+  angleStep: 0,
 };
 
 abstract class ProjectileCmd<TParams> {
@@ -178,6 +184,23 @@ abstract class ProjectileCmd<TParams> {
       repeatCount: positiveInteger(count),
       repeatInterval: nonNegativeInteger(intervalTicks),
     }) as this;
+  }
+
+  progress(params: {
+    readonly forwardStep?: number;
+    readonly sideStep?: number;
+    readonly angleStep?: number;
+  }): this {
+    return this.copy({
+      ...this.schedule,
+      forwardStep: params.forwardStep ?? 0,
+      sideStep: params.sideStep ?? 0,
+      angleStep: params.angleStep ?? 0,
+    }) as this;
+  }
+
+  burstLine(count: number, intervalTicks: number, spacing: number): this {
+    return this.burst(count, intervalTicks).progress({ forwardStep: spacing });
   }
 }
 

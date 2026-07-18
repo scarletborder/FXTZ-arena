@@ -54,6 +54,9 @@ export interface ProjectileCommandSnapshot {
   readonly burstInterval: number;
   readonly repeatCount: number;
   readonly repeatInterval: number;
+  readonly forwardStep: number;
+  readonly sideStep: number;
+  readonly angleStep: number;
   readonly burstIndex: number;
   readonly repeatIndex: number;
 }

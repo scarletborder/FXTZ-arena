@@ -9,6 +9,7 @@ export interface SpawnRingEffectParams {
   readonly y: number;
   readonly tint: number;
   readonly scale: number;
+  readonly scalePerTick?: number;
   readonly duration: number;
 }
 

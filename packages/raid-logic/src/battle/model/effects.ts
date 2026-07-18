@@ -28,6 +28,7 @@ export class EffectSystem {
     tint: number,
     scale: number,
     duration: number,
+    scalePerTick?: number,
   ): void {
     effects.push({
       id: this.nextEffectId++,
@@ -36,11 +37,15 @@ export class EffectSystem {
       y,
       tint,
       scale,
+      scalePerTick,
       expireAt: frame + duration,
     });
   }
 
   stepEffects(effects: EffectState[], frame: number): void {
+    for (const effect of effects) {
+      effect.scale += effect.scalePerTick ?? 0;
+    }
     effects.splice(
       0,
       effects.length,

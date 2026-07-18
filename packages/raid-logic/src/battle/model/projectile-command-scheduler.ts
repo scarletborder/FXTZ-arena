@@ -18,6 +18,9 @@ interface ScheduledCommand<TKind extends "bullet" | "laser", TParams> {
   readonly burstInterval: number;
   readonly repeatCount: number;
   readonly repeatInterval: number;
+  readonly forwardStep: number;
+  readonly sideStep: number;
+  readonly angleStep: number;
   burstIndex: number;
   repeatIndex: number;
 }
@@ -47,9 +50,9 @@ export class ProjectileCommandScheduler {
     for (const command of this.commands) {
       while (this.nextFrame(command) <= frame) {
         if (command.kind === "bullet") {
-          spawnBullet({ ...command.params, frame });
+          spawnBullet({ ...this.paramsAtCursor(command), frame });
         } else {
-          spawnLaser({ ...command.params, frame });
+          spawnLaser({ ...this.paramsAtCursor(command), frame });
         }
         this.advance(command);
         if (command.repeatIndex >= command.repeatCount) break;
@@ -69,6 +72,9 @@ export class ProjectileCommandScheduler {
       burstInterval: command.burstInterval,
       repeatCount: command.repeatCount,
       repeatInterval: command.repeatInterval,
+      forwardStep: command.forwardStep,
+      sideStep: command.sideStep,
+      angleStep: command.angleStep,
       burstIndex: command.burstIndex,
       repeatIndex: command.repeatIndex,
     }));
@@ -90,6 +96,9 @@ export class ProjectileCommandScheduler {
       burstInterval: snapshot.burstInterval,
       repeatCount: snapshot.repeatCount,
       repeatInterval: snapshot.repeatInterval,
+      forwardStep: snapshot.forwardStep ?? 0,
+      sideStep: snapshot.sideStep ?? 0,
+      angleStep: snapshot.angleStep ?? 0,
       burstIndex: snapshot.burstIndex,
       repeatIndex: snapshot.repeatIndex,
     })) as ScheduledProjectileCommand[];
@@ -135,6 +144,9 @@ export class ProjectileCommandScheduler {
       burstInterval: schedule.burstInterval,
       repeatCount: schedule.repeatCount,
       repeatInterval: schedule.repeatInterval,
+      forwardStep: schedule.forwardStep,
+      sideStep: schedule.sideStep,
+      angleStep: schedule.angleStep,
       burstIndex: 0,
       repeatIndex: 0,
     } as ScheduledProjectileCommand);
@@ -154,5 +166,20 @@ export class ProjectileCommandScheduler {
       command.burstIndex = 0;
       command.repeatIndex += 1;
     }
+  }
+
+  private paramsAtCursor<T extends ScheduledProjectileCommand>(
+    command: T,
+  ): T["params"] {
+    const step = command.burstIndex;
+    const angle = command.params.angle + command.angleStep * step;
+    const distance = command.forwardStep * step;
+    const side = command.sideStep * step;
+    return {
+      ...command.params,
+      x: command.params.x + Math.cos(angle) * distance - Math.sin(angle) * side,
+      y: command.params.y + Math.sin(angle) * distance + Math.cos(angle) * side,
+      angle,
+    } as T["params"];
   }
 }

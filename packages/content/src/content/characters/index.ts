@@ -10,6 +10,7 @@ export type { CharacterActionContext } from "./base";
 // Side-effect imports trigger @Vanilla.RegisterCharacter decorators
 import "./reimu";
 import "./marisa";
+import "./yuka";
 import "./shinki";
 import "./sakuya";
 import "./cirno";
