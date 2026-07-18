@@ -5,7 +5,11 @@ import type {
   EnemyDefinition,
   FireSpec,
   BulletPattern,
+  FirePattern,
+  SpellCardConfig,
+  SpellPhase,
 } from "./types";
+import { COLLABORATE_STAGE_ARENA } from "./types";
 
 export interface ValidationIssue {
   path: string;
@@ -16,6 +20,7 @@ export interface ValidationIssue {
 const BULLET_KINDS = ["orb", "knife", "diamond", "spark"];
 const SPEED_RANKS = ["low", "medium", "high"];
 const MOB_CLASSES = ["minion", "elite", "boss"];
+const SPELL_PHASE_KINDS = ["nonspell", "spell"];
 
 export function validateStageDocument(doc: unknown): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
@@ -35,6 +40,32 @@ export function validateStageDocument(doc: unknown): ValidationIssue[] {
   }
   if (!stage.arena || typeof stage.arena.width !== "number" || typeof stage.arena.height !== "number") {
     issues.push({ path: "arena", message: "arena 需要 width/height", severity: "error" });
+  } else if (
+    Array.isArray(stage.compatibleModes) &&
+    stage.compatibleModes.includes("collaborate")
+  ) {
+    // Collaborate stages must use the fixed collaborate-arena size.
+    const a = stage.arena;
+    if (
+      a.width !== COLLABORATE_STAGE_ARENA.width ||
+      a.height !== COLLABORATE_STAGE_ARENA.height
+    ) {
+      issues.push({
+        path: "arena",
+        message: `合作模式地图大小必须固定为 ${COLLABORATE_STAGE_ARENA.width}×${COLLABORATE_STAGE_ARENA.height}（与"合作测试竞技场"一致），当前为 ${a.width}×${a.height}`,
+        severity: "error",
+      });
+    }
+    if (
+      a.viewportWidth !== undefined &&
+      a.viewportWidth !== COLLABORATE_STAGE_ARENA.viewportWidth
+    ) {
+      issues.push({
+        path: "arena.viewportWidth",
+        message: `合作模式视窗宽度应为 ${COLLABORATE_STAGE_ARENA.viewportWidth}`,
+        severity: "warning",
+      });
+    }
   }
   if (!Array.isArray(stage.compatibleModes) || stage.compatibleModes.length === 0) {
     issues.push({ path: "compatibleModes", message: "至少需要一个兼容模式", severity: "error" });
@@ -70,6 +101,53 @@ function validateEnemy(defId: string, def: EnemyDefinition, issues: ValidationIs
     issues.push({ path: `${p}.hitRadius`, message: "hitRadius 必须为正数", severity: "error" });
   }
   (def.fire ?? []).forEach((f, i) => validateFire(`${p}.fire[${i}]`, f as FireSpec, issues));
+
+  if (def.spellCard) {
+    validateSpellCard(`${p}.spellCard`, def.spellCard, issues);
+    // Elite/boss with a spell-card arrangement should keep all movement and
+    // fire inside the spell-card phases (nonspell/spell), not at the top level.
+    if (def.class === "elite" || def.class === "boss") {
+      if (def.movement) {
+        issues.push({
+          path: `${p}.movement`,
+          message: `${def.class} 已启用符卡编排，应将移动放入各符卡阶段（非符/符卡）中，顶层 movement 不会生效`,
+          severity: "warning",
+        });
+      }
+      if (def.fire && def.fire.length > 0) {
+        issues.push({
+          path: `${p}.fire`,
+          message: `${def.class} 已启用符卡编排，应将开火放入各符卡阶段（非符/符卡）中，顶层 fire 不会生效`,
+          severity: "warning",
+        });
+      }
+    }
+  }
+}
+
+function validateSpellCard(p: string, sc: SpellCardConfig, issues: ValidationIssue[]): void {
+  if (!Array.isArray(sc.phases) || sc.phases.length === 0) {
+    issues.push({ path: `${p}.phases`, message: "spellCard 至少需要一个阶段", severity: "error" });
+    return;
+  }
+  sc.phases.forEach((phase, i) => validateSpellPhase(`${p}.phases[${i}]`, phase as SpellPhase, issues));
+}
+
+function validateSpellPhase(p: string, phase: SpellPhase, issues: ValidationIssue[]): void {
+  if (!SPELL_PHASE_KINDS.includes(phase.kind)) {
+    issues.push({
+      path: `${p}.kind`,
+      message: `kind 必须是 ${SPELL_PHASE_KINDS.join("/")}（非符/符卡）`,
+      severity: "error",
+    });
+  }
+  if (typeof phase.maxHealth !== "number" || phase.maxHealth <= 0) {
+    issues.push({ path: `${p}.maxHealth`, message: "maxHealth 必须为正数", severity: "error" });
+  }
+  if (typeof phase.durationSeconds !== "number" || phase.durationSeconds <= 0) {
+    issues.push({ path: `${p}.durationSeconds`, message: "durationSeconds 必须为正数", severity: "error" });
+  }
+  (phase.fire ?? []).forEach((f, i) => validateFire(`${p}.fire[${i}]`, f as FireSpec, issues));
 }
 
 function validateFire(p: string, f: FireSpec, issues: ValidationIssue[]): void {
@@ -82,7 +160,7 @@ function validateFire(p: string, f: FireSpec, issues: ValidationIssue[]): void {
   validateBulletPattern(`${p}.pattern`, f.pattern, issues);
 }
 
-function validateBulletPattern(p: string, pattern: BulletPattern, issues: ValidationIssue[]): void {
+function validateBulletPattern(p: string, pattern: FirePattern, issues: ValidationIssue[]): void {
   const kind = (pattern as { type?: string }).type;
   if (kind === "laser") return;
   const bp = pattern as BulletPattern & { bullet?: unknown };
@@ -90,7 +168,7 @@ function validateBulletPattern(p: string, pattern: BulletPattern, issues: Valida
     issues.push({ path: `${p}.bullet`, message: "缺少 bullet 参数", severity: "error" });
     return;
   }
-  const bullet = bp.bullet as Record<string, unknown>;
+  const bullet = bp.bullet as unknown as Record<string, unknown>;
   if (!BULLET_KINDS.includes(bullet.kind as string)) {
     issues.push({ path: `${p}.bullet.kind`, message: `kind 必须是 ${BULLET_KINDS.join("/")}`, severity: "error" });
   }

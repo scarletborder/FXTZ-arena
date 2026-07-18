@@ -24,6 +24,11 @@ import type { BattleNeutralMob } from "../base";
 
 const TICK_RATE = 60;
 
+/** Maps a schema `SpellPhase.kind` to the runtime `NeutralMobSpellPhase`. */
+function spellPhaseKindToRuntime(kind: string | undefined): "non_spell" | "spell_card" {
+  return kind === "nonspell" ? "non_spell" : "spell_card";
+}
+
 export interface JsonMobState extends NeutralMobState {
   readonly kind: string;
   spellPhase: number;
@@ -119,7 +124,7 @@ export class JsonMob extends NeutralMob<JsonMobState, BattleBulletSpawnParams, B
     const drops = resolveRewardDrops(def.rewards);
     const spellCard = def.spellCard
       ? {
-          phase: "spell_card" as const,
+          phase: spellPhaseKindToRuntime(def.spellCard.phases[0]?.kind),
           spellCardIndex: 0,
           totalSpellCards: def.spellCard.phases.length,
           remainingSpellCards: def.spellCard.phases.length,
@@ -495,11 +500,13 @@ export class JsonMob extends NeutralMob<JsonMobState, BattleBulletSpawnParams, B
       if (active !== this.state.spellPhase) {
         this.state.spellPhase = active;
         if (this.state.spellCard) {
+          const nextPhase = this.def.spellCard.phases[active]!;
           this.state.spellCard = {
             ...this.state.spellCard,
             spellCardIndex: active,
-            activeSpellCardName: this.def.spellCard.phases[active]!.name,
-            remainingTicks: secondsToTicks(this.def.spellCard.phases[active]!.durationSeconds),
+            activeSpellCardName: nextPhase.name,
+            remainingTicks: secondsToTicks(nextPhase.durationSeconds),
+            phase: spellPhaseKindToRuntime(nextPhase.kind),
           };
         }
       }

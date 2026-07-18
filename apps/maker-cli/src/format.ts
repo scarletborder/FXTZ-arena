@@ -296,7 +296,8 @@ function describeSpellCard(sc: SpellCardConfig | undefined): string {
 }
 
 function describeSpellPhase(p: SpellPhase): string {
-  const lines = [`"${p.name}" HP=${p.maxHealth} dur=${p.durationSeconds}s`];
+  const kindLabel = p.kind === "nonspell" ? "非符" : "符卡";
+  const lines = [`[${kindLabel}] "${p.name}" HP=${p.maxHealth} dur=${p.durationSeconds}s`];
   if (p.movement) lines.push(`    movement: ${describeMovement(p.movement).replace(/\n/g, "\n    ")}`);
   if (p.fire && p.fire.length) {
     p.fire.forEach((f, i) => lines.push(`    fire ${i + 1}. ${describeFireSpec(f)}`));

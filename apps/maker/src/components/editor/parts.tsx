@@ -127,6 +127,11 @@ export const MOVEMENT_TYPE_OPTS = [
   { value: "single", label: "单阶段" },
 ] as const;
 
+export const SPELL_PHASE_KIND_OPTS = [
+  { value: "nonspell", label: "非符 nonspell" },
+  { value: "spell", label: "符卡 spell" },
+] as const;
+
 // ───────────────────────── small selects ─────────────────────────
 
 export function RewardSelect({
@@ -209,7 +214,7 @@ export function defaultPath(): PathSpec {
   return { kind: "point", x: 0, y: 0 };
 }
 export function defaultPhase(): MovementPhase {
-  return { startSeconds: 0, durationSeconds: 3, path: { kind: "point", x: 600, y: 400 } };
+  return { startSeconds: 0, durationSeconds: 3, path: { kind: "point", x: 1200, y: 800 } };
 }
 export function defaultPattern(): FirePattern {
   return { type: "ring", count: 12, startAngleDegrees: 0, bullet: defaultBulletParams() };
@@ -221,7 +226,7 @@ export function defaultFormRule(): FormRule {
   return { when: "healthBelow", threshold: 0.5, form: "phase2" };
 }
 export function defaultSpellPhase(): SpellPhase {
-  return { name: "符卡阶段", maxHealth: 2000, durationSeconds: 30, fire: [defaultFireSpec()] };
+  return { kind: "spell", name: "符卡阶段", maxHealth: 2000, durationSeconds: 30, fire: [defaultFireSpec()] };
 }
 
 // ───────────────────────── bullet params ─────────────────────────
@@ -284,22 +289,22 @@ export function PathEditor({
   const changeKind = (kind: PathSpec["kind"]) => {
     switch (kind) {
       case "point":
-        onChange({ kind: "point", x: 600, y: 400 });
+        onChange({ kind: "point", x: 1200, y: 800 });
         break;
       case "line":
-        onChange({ kind: "line", from: { x: 600, y: -40 }, to: { x: 600, y: 500 }, ease: "easeOut" });
+        onChange({ kind: "line", from: { x: 1200, y: -80 }, to: { x: 1200, y: 1000 }, ease: "easeOut" });
         break;
       case "bezier":
-        onChange({ kind: "bezier", from: { x: 600, y: -40 }, control: { x: 1000, y: 300 }, to: { x: 600, y: 600 } });
+        onChange({ kind: "bezier", from: { x: 1200, y: -80 }, control: { x: 2000, y: 600 }, to: { x: 1200, y: 1200 } });
         break;
       case "circle":
-        onChange({ kind: "circle", center: { x: 600, y: 400 }, radius: 160, startAngleDegrees: 0, clockwise: true });
+        onChange({ kind: "circle", center: { x: 1200, y: 800 }, radius: 320, startAngleDegrees: 0, clockwise: true });
         break;
       case "follow":
-        onChange({ kind: "follow", target: "player", offsetX: 0, offsetY: 0, speed: 120 });
+        onChange({ kind: "follow", target: "player", offsetX: 0, offsetY: 0, speed: 240 });
         break;
       case "drift":
-        onChange({ kind: "drift", vx: 0, vy: 60 });
+        onChange({ kind: "drift", vx: 0, vy: 120 });
         break;
     }
   };
@@ -415,7 +420,7 @@ export function MovementEditor({
   const currentType: "static" | "phases" | "single" = isStatic ? "static" : isPhases ? "phases" : "single";
 
   const changeType = (t: "static" | "phases" | "single") => {
-    if (t === "static") onChange({ type: "static", x: 600, y: 400 });
+    if (t === "static") onChange({ type: "static", x: 1200, y: 800 });
     else if (t === "phases") onChange({ type: "phases", phases: [defaultPhase()] });
     else onChange(defaultPhase());
   };

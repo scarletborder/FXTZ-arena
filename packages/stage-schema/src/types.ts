@@ -32,6 +32,19 @@ export interface ArenaConfig {
   viewportHeight?: number;
 }
 
+/**
+ * Fixed arena size for collaborate-mode stages. Collaborate stages must use a
+ * 2400×1440 world with a 1200×720 viewport (matching the built-in
+ * "合作测试竞技场" map). The validator enforces this for any stage whose
+ * `compatibleModes` includes `"collaborate"`.
+ */
+export const COLLABORATE_STAGE_ARENA: ArenaConfig = {
+  width: 2400,
+  height: 1440,
+  viewportWidth: 1200,
+  viewportHeight: 720,
+};
+
 export interface StageDocument {
   schemaVersion: 1;
   /** Stable id; the game registers it as mobSpawnerId `json:<id>`. */
@@ -338,7 +351,16 @@ export interface SpellCardConfig {
   phases: SpellPhase[];
 }
 
+/**
+ * Whether a spell-card phase is a "非符" (nonspell) or a "符卡" (spell card).
+ * Elite/boss timelines interleave nonspells and spell cards; each phase carries
+ * its own movement and fire, so the top-level `movement`/`fire` are not used
+ * for elite/boss once a `spellCard` is present.
+ */
+export type SpellPhaseKind = "nonspell" | "spell";
+
 export interface SpellPhase {
+  kind: SpellPhaseKind;
   name: string;
   maxHealth: number;
   durationSeconds: number;

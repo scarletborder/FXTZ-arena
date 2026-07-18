@@ -26,6 +26,7 @@ import {
   defaultFormRule,
   defaultSpellPhase,
   RewardDropsEditor,
+  SPELL_PHASE_KIND_OPTS,
 } from "./parts";
 
 export function EnemyEditor({ id }: { id: string }) {
@@ -40,6 +41,7 @@ export function EnemyEditor({ id }: { id: string }) {
 
   const forms = def.forms ?? [];
   const spell = def.spellCard;
+  const usesSpellCard = !!spell && (def.class === "elite" || def.class === "boss");
 
   return (
     <div className="editor-scroll">
@@ -52,7 +54,7 @@ export function EnemyEditor({ id }: { id: string }) {
         <Row label="命中半径"><NumberField value={def.hitRadius} onChange={(v) => update((d) => { d.hitRadius = v; })} /></Row>
         <Row label="命中宽"><NumberField value={def.hitWidth ?? 0} onChange={(v) => update((d) => { d.hitWidth = v || undefined; })} /></Row>
         <Row label="命中高"><NumberField value={def.hitHeight ?? 0} onChange={(v) => update((d) => { d.hitHeight = v || undefined; })} /></Row>
-        <Row label="出生点"><VecField value={def.spawn ?? { x: 600, y: -40 }} onChange={(v) => update((d) => { d.spawn = v; })} /></Row>
+        <Row label="出生点"><VecField value={def.spawn ?? { x: 1200, y: -80 }} onChange={(v) => update((d) => { d.spawn = v; })} /></Row>
         <Row label="染色">
           <ColorField value={numToHex(def.tint ?? 0x9b8cff)} onChange={(v) => update((d) => { d.tint = hexToNum(v); })} />
         </Row>
@@ -66,9 +68,19 @@ export function EnemyEditor({ id }: { id: string }) {
       </Section>
 
       <Section title="移动">
+        {usesSpellCard && (
+          <div className="muted small" style={{ marginBottom: 8 }}>
+            已启用符卡编排：精英/Boss 的移动应在各符卡阶段（非符/符卡）中编辑，此处的顶层移动不会生效。
+          </div>
+        )}
         <MovementEditor value={def.movement} onChange={(v) => update((d) => { d.movement = v; })} />
       </Section>
 
+      {usesSpellCard && (
+        <div className="muted small" style={{ margin: "8px 0" }}>
+          已启用符卡编排：精英/Boss 的开火应在各符卡阶段（非符/符卡）中编辑，此处的顶层开火不会生效。
+        </div>
+      )}
       <FireListEditor value={def.fire ?? []} onChange={(f) => update((d) => { d.fire = f; })} label="开火规则" />
 
       <Section title="形态切换" actions={<Button variant="ghost" onClick={() => update((d) => { d.forms = [...(d.forms ?? []), defaultFormRule()]; })}>+ 添加</Button>}>
@@ -147,6 +159,9 @@ function SpellCardEditor({
             <span>符卡阶段 {i + 1}</span>
             <button className="btn ghost tiny" onClick={() => onChange({ phases: phases.filter((_, k) => k !== i) })}>✕</button>
           </div>
+          <Row label="类型">
+            <SelectField value={phase.kind} options={SPELL_PHASE_KIND_OPTS} onChange={(v) => updatePhase(i, (p) => { p.kind = v; })} />
+          </Row>
           <Row label="名称"><TextField value={phase.name} onChange={(v) => updatePhase(i, (p) => { p.name = v; })} /></Row>
           <Row label="血量"><NumberField value={phase.maxHealth} onChange={(v) => updatePhase(i, (p) => { p.maxHealth = v; })} /></Row>
           <Row label="持续秒"><NumberField value={phase.durationSeconds} onChange={(v) => updatePhase(i, (p) => { p.durationSeconds = v; })} /></Row>

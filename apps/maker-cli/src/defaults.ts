@@ -36,7 +36,7 @@ export function defaultEnemy(id: string, arena: { width: number; height: number 
     class: "minion",
     maxHealth: 100,
     hitRadius: 28,
-    spawn: { x: Math.round(arena.width / 2), y: -40 },
+    spawn: { x: Math.round(arena.width / 2), y: -80 },
     rewards: { drops: [] },
   };
 }

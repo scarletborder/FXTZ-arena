@@ -236,7 +236,8 @@ export class Simulator {
       const maxHealth = def.spellCard
         ? def.spellCard.phases.reduce((s, p) => s + p.maxHealth, 0) * scaleHealth
         : Math.max(1, Math.round(def.maxHealth * scaleHealth));
-      const fireState: FireRuntime[] = (def.fire ?? []).map(() => ({
+      const initFire = def.spellCard?.phases[0]?.fire ?? def.fire ?? [];
+      const fireState: FireRuntime[] = initFire.map(() => ({
         nextShotAt: 0,
         shots: 0,
       }));
@@ -269,10 +270,20 @@ export class Simulator {
       return;
     }
     mob.ageSeconds += dt;
+    // Active movement/fire come from the current spell-card phase when present
+    // (elite/boss), falling back to the top-level fields (minion/legacy).
+    const sc = def.spellCard;
+    const activePhase = sc && sc.phases.length > 0 ? sc.phases[mob.spellPhase] : undefined;
+    const movement = activePhase?.movement ?? def.movement;
+    const specs = activePhase?.fire ?? def.fire ?? [];
+    // Reset fire timing state whenever the active fire list changes length
+    // (e.g. on spell-card phase handoff).
+    if (mob.fireState.length !== specs.length) {
+      mob.fireState = specs.map(() => ({ nextShotAt: 0, shots: 0 }));
+    }
     // movement (phase-aware, with smooth blending across phase handoffs)
-    this.applyMovement(mob, def.movement, dt);
+    this.applyMovement(mob, movement, dt);
     // fire
-    const specs = def.fire ?? [];
     specs.forEach((spec, idx) => {
       if (spec.enabled === false) return;
       const fs = mob.fireState[idx]!;
@@ -324,12 +335,25 @@ export class Simulator {
     }
     // death
     const death = def.death;
+    const offscreen = death?.leaveScreen ? this.isMobOffscreen(mob) : false;
     if (death?.invincible) {
       if (death.maxAgeSeconds !== undefined && mob.ageSeconds >= death.maxAgeSeconds) mob.dead = true;
+      if (offscreen) mob.dead = true;
     } else {
       if ((death?.onHealthZero ?? true) && mob.currentHealth <= 0) mob.dead = true;
       if (death?.maxAgeSeconds !== undefined && mob.ageSeconds >= death.maxAgeSeconds) mob.dead = true;
+      if (offscreen) mob.dead = true;
     }
+  }
+
+  private isMobOffscreen(mob: SimMob): boolean {
+    const pad = this.width * 0.25;
+    return (
+      mob.x < -pad ||
+      mob.x > this.width + pad ||
+      mob.y < -pad ||
+      mob.y > this.height + pad
+    );
   }
 
   private applyMovement(mob: SimMob, movement: MovementSpec | undefined, dt: number): void {

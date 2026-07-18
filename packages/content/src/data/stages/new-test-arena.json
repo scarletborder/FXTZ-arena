@@ -2,11 +2,13 @@
   "schemaVersion": 1,
   "id": "new-test-arena",
   "name": "新测试竞技场",
-  "description": "基于东方妖妖梦 Stage 1 (th07_web) ECL 时间线转换的合作模式竞技场。结构：双波妖精→商店→冰晶精英(道中)→双波光点扫荡→商店→冰之女王Boss。生成坐标由 TH07 原始 384×448 弹幕场缩放至 1200×720 竞技场。",
+  "description": "基于东方妖妖梦 Stage 1 (th07_web) ECL 时间线转换的合作模式竞技场。结构：双波妖精→商店→冰晶精英(道中)→双波光点扫荡→商店→冰之女王Boss。坐标已适配 2400×1440 合作竞技场（视窗 1200×720），杂兵会移动至画面之外并离场消除；精英/Boss 仅使用符卡编排（非符→符卡），移动与开火均在各符卡阶段中处理。",
   "author": "maker-cli",
   "arena": {
-    "width": 1200,
-    "height": 720
+    "width": 2400,
+    "height": 1440,
+    "viewportWidth": 1200,
+    "viewportHeight": 720
   },
   "compatibleModes": [
     "collaborate"
@@ -34,8 +36,8 @@
         ]
       },
       "spawn": {
-        "x": 600,
-        "y": -40
+        "x": 1200,
+        "y": -80
       },
       "movement": {
         "type": "phases",
@@ -46,12 +48,12 @@
             "path": {
               "kind": "line",
               "from": {
-                "x": 600,
-                "y": -40
+                "x": 1200,
+                "y": -80
               },
               "to": {
-                "x": 600,
-                "y": 400
+                "x": 1200,
+                "y": 800
               },
               "ease": "easeOut"
             }
@@ -62,8 +64,8 @@
             "loop": true,
             "path": {
               "kind": "drift",
-              "vx": 30,
-              "vy": 20
+              "vx": 60,
+              "vy": 40
             }
           }
         ]
@@ -87,7 +89,10 @@
             }
           }
         }
-      ]
+      ],
+      "death": {
+        "leaveScreen": true
+      }
     },
     "fairy_side": {
       "id": "fairy_side",
@@ -111,8 +116,8 @@
         ]
       },
       "spawn": {
-        "x": -40,
-        "y": 300
+        "x": -80,
+        "y": 600
       },
       "movement": {
         "type": "phases",
@@ -123,12 +128,12 @@
             "path": {
               "kind": "line",
               "from": {
-                "x": -40,
-                "y": 300
+                "x": -80,
+                "y": 600
               },
               "to": {
-                "x": 400,
-                "y": 300
+                "x": 800,
+                "y": 600
               },
               "ease": "easeOut"
             }
@@ -139,7 +144,7 @@
             "loop": true,
             "path": {
               "kind": "drift",
-              "vx": 40,
+              "vx": 80,
               "vy": 0
             }
           }
@@ -165,7 +170,10 @@
             }
           }
         }
-      ]
+      ],
+      "death": {
+        "leaveScreen": true
+      }
     },
     "sprite": {
       "id": "sprite",
@@ -184,31 +192,34 @@
         ]
       },
       "spawn": {
-        "x": 600,
-        "y": -32
+        "x": 1200,
+        "y": -64
       },
       "movement": {
         "type": "phases",
         "phases": [
           {
             "startSeconds": 0,
-            "durationSeconds": 3,
+            "durationSeconds": 4,
             "path": {
               "kind": "line",
               "from": {
-                "x": 600,
-                "y": -32
+                "x": 1200,
+                "y": -64
               },
               "to": {
-                "x": 600,
-                "y": 520
+                "x": 1200,
+                "y": 1760
               },
               "ease": "linear"
             }
           }
         ]
       },
-      "fire": []
+      "fire": [],
+      "death": {
+        "leaveScreen": true
+      }
     },
     "elite": {
       "id": "elite",
@@ -237,85 +248,123 @@
         ]
       },
       "spawn": {
-        "x": 600,
-        "y": 160
+        "x": 1200,
+        "y": 320
       },
-      "movement": {
-        "type": "phases",
+      "spellCard": {
         "phases": [
           {
-            "startSeconds": 0,
-            "durationSeconds": 3,
-            "path": {
-              "kind": "line",
-              "from": {
-                "x": 600,
-                "y": -60
-              },
-              "to": {
-                "x": 600,
-                "y": 200
-              },
-              "ease": "easeOut"
-            }
+            "kind": "nonspell",
+            "name": "非符「冰晶旋舞」",
+            "maxHealth": 2500,
+            "durationSeconds": 30,
+            "movement": {
+              "type": "phases",
+              "phases": [
+                {
+                  "startSeconds": 0,
+                  "durationSeconds": 3,
+                  "path": {
+                    "kind": "line",
+                    "from": {
+                      "x": 1200,
+                      "y": -120
+                    },
+                    "to": {
+                      "x": 1200,
+                      "y": 400
+                    },
+                    "ease": "easeOut"
+                  }
+                },
+                {
+                  "startSeconds": 3,
+                  "durationSeconds": 8,
+                  "loop": true,
+                  "path": {
+                    "kind": "circle",
+                    "center": {
+                      "x": 1200,
+                      "y": 560
+                    },
+                    "radius": 280,
+                    "startAngleDegrees": 0,
+                    "clockwise": true
+                  }
+                }
+              ]
+            },
+            "fire": [
+              {
+                "id": "ring",
+                "startSeconds": 2,
+                "intervalSeconds": 2,
+                "pattern": {
+                  "type": "ring",
+                  "count": 16,
+                  "startAngleDegrees": 0,
+                  "rotationDegreesPerShot": 11.25,
+                  "bullet": {
+                    "kind": "orb",
+                    "speedRank": "medium",
+                    "width": 12,
+                    "height": 12,
+                    "damage": 1,
+                    "color": "#7fd1ff"
+                  }
+                }
+              }
+            ]
           },
           {
-            "startSeconds": 3,
-            "durationSeconds": 8,
-            "loop": true,
-            "path": {
-              "kind": "circle",
-              "center": {
-                "x": 600,
-                "y": 280
-              },
-              "radius": 140,
-              "startAngleDegrees": 0,
-              "clockwise": true
-            }
+            "kind": "spell",
+            "name": "符卡「冰晶华绽」",
+            "maxHealth": 3500,
+            "durationSeconds": 40,
+            "movement": {
+              "type": "phases",
+              "phases": [
+                {
+                  "startSeconds": 0,
+                  "durationSeconds": 8,
+                  "loop": true,
+                  "path": {
+                    "kind": "circle",
+                    "center": {
+                      "x": 1200,
+                      "y": 560
+                    },
+                    "radius": 280,
+                    "startAngleDegrees": 0,
+                    "clockwise": true
+                  }
+                }
+              ]
+            },
+            "fire": [
+              {
+                "id": "aimed",
+                "startSeconds": 1,
+                "intervalSeconds": 1.5,
+                "pattern": {
+                  "type": "aimed",
+                  "target": "both",
+                  "count": 3,
+                  "spreadDegrees": 15,
+                  "bullet": {
+                    "kind": "knife",
+                    "speedRank": "high",
+                    "width": 10,
+                    "height": 10,
+                    "damage": 1,
+                    "color": "#ff5d8f"
+                  }
+                }
+              }
+            ]
           }
         ]
       },
-      "fire": [
-        {
-          "id": "ring",
-          "startSeconds": 2,
-          "intervalSeconds": 2,
-          "pattern": {
-            "type": "ring",
-            "count": 16,
-            "startAngleDegrees": 0,
-            "rotationDegreesPerShot": 11.25,
-            "bullet": {
-              "kind": "orb",
-              "speedRank": "medium",
-              "width": 12,
-              "height": 12,
-              "damage": 1,
-              "color": "#7fd1ff"
-            }
-          }
-        },
-        {
-          "id": "aimed",
-          "startSeconds": 1,
-          "intervalSeconds": 1.5,
-          "pattern": {
-            "type": "aimed",
-            "target": "both",
-            "count": 3,
-            "spreadDegrees": 15,
-            "bullet": {
-              "kind": "knife",
-              "speedRank": "high",
-              "width": 10,
-              "height": 10,
-              "damage": 1,
-              "color": "#ff5d8f"
-            }
-          }
-        }
-      ],
       "forms": [
         {
           "when": "healthBelow",
@@ -351,56 +400,102 @@
         ]
       },
       "spawn": {
-        "x": 600,
-        "y": 160
-      },
-      "movement": {
-        "type": "phases",
-        "phases": [
-          {
-            "startSeconds": 0,
-            "durationSeconds": 4,
-            "path": {
-              "kind": "line",
-              "from": {
-                "x": 600,
-                "y": -80
-              },
-              "to": {
-                "x": 600,
-                "y": 200
-              },
-              "ease": "easeOut"
-            }
-          },
-          {
-            "startSeconds": 4,
-            "durationSeconds": 10,
-            "loop": true,
-            "path": {
-              "kind": "circle",
-              "center": {
-                "x": 600,
-                "y": 300
-              },
-              "radius": 120,
-              "startAngleDegrees": 0
-            }
-          }
-        ]
+        "x": 1200,
+        "y": 320
       },
       "spellCard": {
         "phases": [
           {
-            "name": "符卡「冰晶散华」",
-            "maxHealth": 5000,
-            "durationSeconds": 35,
+            "kind": "nonspell",
+            "name": "非符「冰晶流转」",
+            "maxHealth": 3000,
+            "durationSeconds": 30,
+            "movement": {
+              "type": "phases",
+              "phases": [
+                {
+                  "startSeconds": 0,
+                  "durationSeconds": 4,
+                  "path": {
+                    "kind": "line",
+                    "from": {
+                      "x": 1200,
+                      "y": -160
+                    },
+                    "to": {
+                      "x": 1200,
+                      "y": 400
+                    },
+                    "ease": "easeOut"
+                  }
+                },
+                {
+                  "startSeconds": 4,
+                  "durationSeconds": 10,
+                  "loop": true,
+                  "path": {
+                    "kind": "circle",
+                    "center": {
+                      "x": 1200,
+                      "y": 600
+                    },
+                    "radius": 240,
+                    "startAngleDegrees": 0
+                  }
+                }
+              ]
+            },
             "fire": [
               {
                 "id": "boss-ring",
                 "startSeconds": 0,
                 "intervalSeconds": 1.4,
-                "phase": 0,
+                "pattern": {
+                  "type": "ring",
+                  "count": 24,
+                  "startAngleDegrees": 0,
+                  "rotationDegreesPerSecond": 7,
+                  "bullet": {
+                    "kind": "orb",
+                    "speedRank": "medium",
+                    "width": 14,
+                    "height": 14,
+                    "damage": 2,
+                    "color": "#c77dff"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "kind": "spell",
+            "name": "符卡「冰晶散华」",
+            "maxHealth": 5000,
+            "durationSeconds": 35,
+            "movement": {
+              "type": "phases",
+              "phases": [
+                {
+                  "startSeconds": 0,
+                  "durationSeconds": 10,
+                  "loop": true,
+                  "path": {
+                    "kind": "circle",
+                    "center": {
+                      "x": 1200,
+                      "y": 600
+                    },
+                    "radius": 240,
+                    "startAngleDegrees": 0
+                  }
+                }
+              ]
+            },
+            "fire": [
+              {
+                "id": "boss-ring",
+                "startSeconds": 0,
+                "intervalSeconds": 1.4,
                 "pattern": {
                   "type": "ring",
                   "count": 24,
@@ -420,7 +515,6 @@
                 "id": "boss-aimed",
                 "startSeconds": 0.7,
                 "intervalSeconds": 1.4,
-                "phase": 0,
                 "pattern": {
                   "type": "aimed",
                   "target": "both",
@@ -439,15 +533,34 @@
             ]
           },
           {
+            "kind": "spell",
             "name": "符卡「永冬之环」",
-            "maxHealth": 7000,
+            "maxHealth": 4000,
             "durationSeconds": 45,
+            "movement": {
+              "type": "phases",
+              "phases": [
+                {
+                  "startSeconds": 0,
+                  "durationSeconds": 10,
+                  "loop": true,
+                  "path": {
+                    "kind": "circle",
+                    "center": {
+                      "x": 1200,
+                      "y": 600
+                    },
+                    "radius": 320,
+                    "startAngleDegrees": 0
+                  }
+                }
+              ]
+            },
             "fire": [
               {
                 "id": "boss-spiral",
                 "startSeconds": 0,
                 "intervalSeconds": 0.4,
-                "phase": 1,
                 "pattern": {
                   "type": "spiral",
                   "arms": 6,
@@ -489,8 +602,8 @@
           "class": "minion",
           "spawnAtSeconds": 0,
           "spawn": {
-            "x": 1044,
-            "y": -16
+            "x": 2088,
+            "y": -32
           }
         },
         {
@@ -499,8 +612,8 @@
           "class": "minion",
           "spawnAtSeconds": 0.13,
           "spawn": {
-            "x": 919,
-            "y": -16
+            "x": 1838,
+            "y": -32
           }
         },
         {
@@ -509,8 +622,8 @@
           "class": "minion",
           "spawnAtSeconds": 0.27,
           "spawn": {
-            "x": 1075,
-            "y": -32
+            "x": 2150,
+            "y": -64
           }
         },
         {
@@ -519,8 +632,8 @@
           "class": "minion",
           "spawnAtSeconds": 0.4,
           "spawn": {
-            "x": 950,
-            "y": -32
+            "x": 1900,
+            "y": -64
           }
         },
         {
@@ -529,8 +642,8 @@
           "class": "minion",
           "spawnAtSeconds": 0.53,
           "spawn": {
-            "x": 1106,
-            "y": -48
+            "x": 2212,
+            "y": -96
           }
         },
         {
@@ -539,8 +652,8 @@
           "class": "minion",
           "spawnAtSeconds": 0.67,
           "spawn": {
-            "x": 981,
-            "y": -48
+            "x": 1962,
+            "y": -96
           }
         },
         {
@@ -549,8 +662,8 @@
           "class": "minion",
           "spawnAtSeconds": 2.93,
           "spawn": {
-            "x": 156,
-            "y": -16
+            "x": 312,
+            "y": -32
           }
         },
         {
@@ -559,8 +672,8 @@
           "class": "minion",
           "spawnAtSeconds": 3.07,
           "spawn": {
-            "x": 281,
-            "y": -16
+            "x": 562,
+            "y": -32
           }
         },
         {
@@ -569,8 +682,8 @@
           "class": "minion",
           "spawnAtSeconds": 3.2,
           "spawn": {
-            "x": 125,
-            "y": -32
+            "x": 250,
+            "y": -64
           }
         },
         {
@@ -579,8 +692,8 @@
           "class": "minion",
           "spawnAtSeconds": 3.33,
           "spawn": {
-            "x": 250,
-            "y": -32
+            "x": 500,
+            "y": -64
           }
         },
         {
@@ -589,8 +702,8 @@
           "class": "minion",
           "spawnAtSeconds": 3.47,
           "spawn": {
-            "x": 94,
-            "y": -48
+            "x": 188,
+            "y": -96
           }
         },
         {
@@ -599,8 +712,8 @@
           "class": "minion",
           "spawnAtSeconds": 3.6,
           "spawn": {
-            "x": 219,
-            "y": -48
+            "x": 438,
+            "y": -96
           }
         }
       ]
@@ -617,8 +730,8 @@
           "class": "minion",
           "spawnAtSeconds": 0,
           "spawn": {
-            "x": 919,
-            "y": -16
+            "x": 1838,
+            "y": -32
           }
         },
         {
@@ -627,8 +740,8 @@
           "class": "minion",
           "spawnAtSeconds": 1.2,
           "spawn": {
-            "x": 1044,
-            "y": -16
+            "x": 2088,
+            "y": -32
           }
         },
         {
@@ -637,8 +750,8 @@
           "class": "minion",
           "spawnAtSeconds": 1.9,
           "spawn": {
-            "x": 981,
-            "y": -48
+            "x": 1962,
+            "y": -96
           }
         },
         {
@@ -647,8 +760,8 @@
           "class": "minion",
           "spawnAtSeconds": 2.9,
           "spawn": {
-            "x": 94,
-            "y": -48
+            "x": 188,
+            "y": -96
           }
         },
         {
@@ -657,8 +770,8 @@
           "class": "minion",
           "spawnAtSeconds": 4,
           "spawn": {
-            "x": 250,
-            "y": -32
+            "x": 500,
+            "y": -64
           }
         },
         {
@@ -667,8 +780,8 @@
           "class": "minion",
           "spawnAtSeconds": 6,
           "spawn": {
-            "x": -40,
-            "y": 205
+            "x": -80,
+            "y": 410
           }
         },
         {
@@ -677,8 +790,8 @@
           "class": "minion",
           "spawnAtSeconds": 8,
           "spawn": {
-            "x": -40,
-            "y": 205
+            "x": -80,
+            "y": 410
           }
         },
         {
@@ -687,8 +800,8 @@
           "class": "minion",
           "spawnAtSeconds": 10,
           "spawn": {
-            "x": 175,
-            "y": -32
+            "x": 350,
+            "y": -64
           }
         },
         {
@@ -697,8 +810,8 @@
           "class": "minion",
           "spawnAtSeconds": 10.5,
           "spawn": {
-            "x": 838,
-            "y": -16
+            "x": 1676,
+            "y": -32
           }
         },
         {
@@ -707,8 +820,8 @@
           "class": "minion",
           "spawnAtSeconds": 12,
           "spawn": {
-            "x": -40,
-            "y": 205
+            "x": -80,
+            "y": 410
           }
         }
       ]
@@ -716,8 +829,8 @@
     {
       "kind": "shop",
       "id": "shop-1",
-      "x": 600,
-      "y": 420,
+      "x": 1200,
+      "y": 840,
       "rarityPulls": {
         "common": 4,
         "rare": 1
@@ -752,8 +865,8 @@
           "class": "minion",
           "spawnAtSeconds": 0,
           "spawn": {
-            "x": 200,
-            "y": -32
+            "x": 400,
+            "y": -64
           }
         },
         {
@@ -762,8 +875,8 @@
           "class": "minion",
           "spawnAtSeconds": 1.5,
           "spawn": {
-            "x": 600,
-            "y": -32
+            "x": 1200,
+            "y": -64
           }
         },
         {
@@ -772,8 +885,8 @@
           "class": "minion",
           "spawnAtSeconds": 3,
           "spawn": {
-            "x": 700,
-            "y": -32
+            "x": 1400,
+            "y": -64
           }
         },
         {
@@ -782,8 +895,8 @@
           "class": "minion",
           "spawnAtSeconds": 4.5,
           "spawn": {
-            "x": 400,
-            "y": -32
+            "x": 800,
+            "y": -64
           }
         },
         {
@@ -792,8 +905,8 @@
           "class": "minion",
           "spawnAtSeconds": 6,
           "spawn": {
-            "x": 900,
-            "y": -32
+            "x": 1800,
+            "y": -64
           }
         },
         {
@@ -802,8 +915,8 @@
           "class": "minion",
           "spawnAtSeconds": 7.5,
           "spawn": {
-            "x": 200,
-            "y": -32
+            "x": 400,
+            "y": -64
           }
         },
         {
@@ -812,8 +925,8 @@
           "class": "minion",
           "spawnAtSeconds": 9,
           "spawn": {
-            "x": 1100,
-            "y": -32
+            "x": 2200,
+            "y": -64
           }
         }
       ]
@@ -830,8 +943,8 @@
           "class": "minion",
           "spawnAtSeconds": 0,
           "spawn": {
-            "x": 200,
-            "y": -32
+            "x": 400,
+            "y": -64
           }
         },
         {
@@ -840,8 +953,8 @@
           "class": "minion",
           "spawnAtSeconds": 1.5,
           "spawn": {
-            "x": 900,
-            "y": -32
+            "x": 1800,
+            "y": -64
           }
         },
         {
@@ -850,8 +963,8 @@
           "class": "minion",
           "spawnAtSeconds": 3,
           "spawn": {
-            "x": 400,
-            "y": -32
+            "x": 800,
+            "y": -64
           }
         },
         {
@@ -860,8 +973,8 @@
           "class": "minion",
           "spawnAtSeconds": 4.5,
           "spawn": {
-            "x": 700,
-            "y": -32
+            "x": 1400,
+            "y": -64
           }
         },
         {
@@ -870,8 +983,8 @@
           "class": "minion",
           "spawnAtSeconds": 6,
           "spawn": {
-            "x": 600,
-            "y": -32
+            "x": 1200,
+            "y": -64
           }
         }
       ]
@@ -879,8 +992,8 @@
     {
       "kind": "shop",
       "id": "shop-2",
-      "x": 600,
-      "y": 420,
+      "x": 1200,
+      "y": 840,
       "rarityPulls": {
         "common": 4,
         "rare": 2
