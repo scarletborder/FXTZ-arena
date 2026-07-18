@@ -1,12 +1,14 @@
-import type { FighterState, ProjectileState } from "@repo/types";
+import type { BattleRoomMode, FighterState, ProjectileState } from "@repo/types";
 
 import { bulletFrameKey } from "./frames";
 import type {
   BulletFrame,
   CharacterId,
+  FighterKey,
   ProjectileFighters,
   ProjectileSpec,
 } from "./types";
+import type { ProjectileAlphaOptions } from "./display";
 
 export function projectileSpec(
   projectile: ProjectileState,
@@ -17,6 +19,13 @@ export function projectileSpec(
   const fixed = textureKeyProjectileFrame(projectile, frames);
   if (fixed) {
     return fixed;
+  }
+  // Handle th06-style lasers generically, regardless of character.
+  // Previously this was only reachable via marisaProjectileFrame(),
+  // which meant characters like Yuka and Shinki fell through to fallback.
+  const th06 = th06ProjectileFrame(projectile, frame, frames);
+  if (th06) {
+    return th06;
   }
   const mapped = mappedProjectileFrame(
     projectile,
@@ -79,10 +88,22 @@ export function projectileOwnerCharacter(
     : fighters.target.activeCharacter.id;
 }
 
-export function projectileTint(projectile: ProjectileState): number {
+export function projectileTint(
+  projectile: ProjectileState,
+  localFighterKey?: FighterKey,
+  battleMode?: BattleRoomMode,
+  options?: ProjectileAlphaOptions,
+): number {
+  const treatBothAsOpponents = options?.localSingleDevice === true;
+  const isFriendly =
+    localFighterKey != null
+      ? (!treatBothAsOpponents && projectile.owner === localFighterKey) ||
+        (battleMode === "collaborate" &&
+          (projectile.owner === "Player1" || projectile.owner === "Player2"))
+      : projectile.owner === "Player1";
   if (
     (projectile.kind === "laser" || projectile.kind === "spark") &&
-    projectile.owner === "Player1" &&
+    isFriendly &&
     projectile.damage === 0
   ) {
     return 0x64b7ff;
@@ -97,6 +118,17 @@ export function projectileTint(projectile: ProjectileState): number {
     return projectile.owner === "Player1" ? 0xffead4 : 0xffc0c0;
   }
   return projectile.owner === "Player1" ? 0xdff0ff : 0xffe0e0;
+}
+
+function th06ProjectileFrame(
+  projectile: ProjectileState,
+  frame: number,
+  frames: ReadonlyMap<string, BulletFrame>,
+): ProjectileSpec | undefined {
+  if (projectile.kind !== "laser") return undefined;
+  if (projectile.damage === 0) return undefined;
+  if (projectile.laserVisualStyle !== "th06") return undefined;
+  return th06LaserSpec(projectile, frame, frames);
 }
 
 function mappedProjectileFrame(
@@ -122,6 +154,10 @@ function mappedProjectileFrame(
       return flandreProjectileFrame(projectile);
     case "yuyuko":
       return yuyukoProjectileFrame(projectile, frames);
+    case "yuka":
+      return yukaProjectileFrame(projectile, frames);
+    case "shinki":
+      return shinkiProjectileFrame(projectile, frames);
     default:
       return undefined;
   }
@@ -260,6 +296,24 @@ function yuyukoProjectileFrame(
 ): ProjectileSpec | undefined {
   if (projectile.kind !== "orb") return undefined;
   return imageSpec(frames, "bullet_type_19", projectile.id % 8);
+}
+
+function yukaProjectileFrame(
+  _projectile: ProjectileState,
+  _frames: ReadonlyMap<string, BulletFrame>,
+): ProjectileSpec | undefined {
+  // Yuka's rendering is fully handled by textureKeyProjectileFrame (orbs)
+  // and th06ProjectileFrame (lasers). No additional mapping needed.
+  return undefined;
+}
+
+function shinkiProjectileFrame(
+  _projectile: ProjectileState,
+  _frames: ReadonlyMap<string, BulletFrame>,
+): ProjectileSpec | undefined {
+  // Shinki's rendering is fully handled by textureKeyProjectileFrame (orbs)
+  // and th06ProjectileFrame (lasers). No additional mapping needed.
+  return undefined;
 }
 
 function imageSpec(

@@ -153,10 +153,16 @@ export class ProjectileView {
     options: ProjectileAlphaOptions,
   ): void {
     const display = projectileDisplay(projectile, alpha);
+    const color = projectileTint(
+      projectile,
+      localFighterKey,
+      battleMode,
+      options,
+    );
     let preview = this.previewLines.get(projectile.id);
     if (!preview) {
       preview = createMasterSparkPreviewSfx(this.scene, {
-        color: projectileTint(projectile),
+        color,
         x: projectile.x,
         y: projectile.y,
         angle: projectile.angle,
@@ -166,7 +172,7 @@ export class ProjectileView {
       this.previewLines.set(projectile.id, preview);
     }
     renderMasterSparkPreviewSfx(preview, {
-      color: projectileTint(projectile),
+      color,
       x: projectile.x,
       y: projectile.y,
       angle: projectile.angle,
