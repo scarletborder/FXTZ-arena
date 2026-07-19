@@ -40,13 +40,18 @@ COMMANDS
         edit s.json node wave-1 maxDurationSeconds 30
         edit s.json enemy fairy rewards.drops '[{"type":"point","size":"large","count":3}]'
 
-  append <file> <section> <id> [--kind wave|shop] [--from <srcId>] [--json '<json>']
+  append <file> <section> <id> [--kind wave|shop] [--from <srcId>] [--symmetry mirror|axis] [--json '<json>']
       Append a new item to a section.
       - append <file> node <id> [--kind wave|shop]   (default kind: wave)
       - append <file> enemy <id>
       - append <file> bullet <id>
       - append <file> shop <id>
       --from <srcId> clones an existing item as a template.
+      --symmetry mirror|axis (requires --from, node/enemy only) reflects every
+        coordinate of the clone so it occupies the mirrored half of the arena:
+        "mirror" flips across the vertical center axis (x = width/2), "axis"
+        flips across the horizontal center axis (y = height/2). Useful for the
+        two-player cooperate layout.
       --json '<json>' appends a fully-specified item (its id is forced to <id>).
       Without --from/--json a minimal valid default item is created.
 

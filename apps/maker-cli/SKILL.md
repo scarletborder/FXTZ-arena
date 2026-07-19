@@ -42,7 +42,7 @@ create   <file> [--sample] [--id <id>] [--name <name>]
 overview <file>
 view     <file> <section> <id> [--json]
 edit     <file> <section> <id> <field> <value>
-append   <file> <section> <id> [--kind wave|shop] [--from <srcId>] [--json '<json>']
+append   <file> <section> <id> [--kind wave|shop] [--from <srcId>] [--symmetry mirror|axis] [--json '<json>']
 help
 ```
 
@@ -70,6 +70,14 @@ help
 
 - Default — a minimal valid item (minion enemy, wave node, etc.).
 - `--from <srcId>` — clone an existing item as a template (id forced to `<id>`).
+- `--symmetry mirror|axis` — (requires `--from`, `node`/`enemy` sections only)
+  reflect every coordinate of the clone so it occupies the mirrored half of the
+  arena. `mirror` flips across the vertical center axis (`x' = width - x`),
+  `axis` flips across the horizontal center axis (`y' = height - y`). Circle
+  paths also flip `clockwise` and rotate `startAngleDegrees`; `drift`/`follow`
+  negate the reflected velocity/offset component. Fire patterns are angle-based
+  and left untouched. Ideal for building two-player cooperate waves that should
+  look symmetric on both halves.
 - `--json '<json>'` — append a fully-specified item (id forced to `<id>`).
 - `--kind wave|shop` — node only (default `wave`).
 
@@ -112,6 +120,18 @@ help
   ```
 - **Remove an optional field:** `edit <f> enemy fairy textureKey null`.
 - **Read raw JSON** of one item (no prose): `view <f> enemy fairy --json`.
+- **Clone a wave mirrored for the two-player layout** (full coordinate reflection):
+  ```
+  append <f> node wave-1-mirror --from wave-1 --symmetry mirror
+  ```
+- **Make a single wave member spawn on both halves** (runtime reflection of the
+  spawn position only — cheap, no movement mirroring):
+  ```
+  edit <f> node wave-1 members.0.symmetry mirror
+  ```
+  The spawner then emits the original instance plus a reflected copy, so one
+  entry covers both players. Prefer this for straight-descents / centered
+  patterns; use `append --from --symmetry` when the motion itself must mirror.
 
 ## Rules & gotchas
 

@@ -21,6 +21,7 @@ const BULLET_KINDS = ["orb", "knife", "diamond", "spark"];
 const SPEED_RANKS = ["low", "medium", "high"];
 const MOB_CLASSES = ["minion", "elite", "boss"];
 const SPELL_PHASE_KINDS = ["nonspell", "spell"];
+const SYMMETRY_KINDS = ["mirror", "axis"];
 
 export function validateStageDocument(doc: unknown): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
@@ -219,6 +220,13 @@ function validateMember(
   }
   if (!MOB_CLASSES.includes(m.class)) {
     issues.push({ path: `${p}.class`, message: `class 必须是 ${MOB_CLASSES.join("/")}`, severity: "error" });
+  }
+  if (m.symmetry !== undefined && !SYMMETRY_KINDS.includes(m.symmetry)) {
+    issues.push({
+      path: `${p}.symmetry`,
+      message: `symmetry 必须是 ${SYMMETRY_KINDS.join("/")}（镜像/轴对称）`,
+      severity: "error",
+    });
   }
 }
 

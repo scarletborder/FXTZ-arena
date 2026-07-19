@@ -11,6 +11,7 @@ import type {
   Vec2,
   MobClass,
 } from "@repo/stage-schema";
+import { transformVec2 } from "@repo/stage-schema";
 
 /** Seconds over which a movement-phase change is blended for smooth handoff. */
 const PHASE_BLEND_SECONDS = 0.4;
@@ -203,6 +204,15 @@ export class Simulator {
       if (elapsed >= at) {
         this.spawned.add(key);
         this.spawnMember(member.enemyDefId, member.class, member.spawn, member.count, member.scaleHealth);
+        // Cooperate symmetry: also spawn a reflected copy of this member.
+        if (member.symmetry && member.spawn) {
+          const mirrored = transformVec2(member.spawn, {
+            kind: member.symmetry,
+            width: this.width,
+            height: this.height,
+          });
+          this.spawnMember(member.enemyDefId, member.class, mirrored, member.count, member.scaleHealth);
+        }
       }
     }
     const allSpawned = node.members.every((m) => this.spawned.has(`${node.id}:${m.key}`));

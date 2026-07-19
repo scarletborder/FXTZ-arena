@@ -95,6 +95,7 @@ export function formatNode(node: StageNode, index: number): string {
           if (m.formation) parts.push(`formation=${m.formation.type}`);
         }
         if (m.scaleHealth && m.scaleHealth !== 1) parts.push(`scaleHP=${m.scaleHealth}`);
+        if (m.symmetry) parts.push(`symmetry=${m.symmetry}`);
         lines.push(`  ${i + 1}. ${parts.join(", ")}`);
       });
     }

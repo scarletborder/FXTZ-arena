@@ -7,6 +7,7 @@ import type {
   Vec2,
   FormationSpec,
 } from "@repo/stage-schema";
+import { transformVec2 } from "@repo/stage-schema";
 import {
   type CollaborateSpawnerNode,
   type WaveMemberDefinition,
@@ -78,6 +79,14 @@ export class JsonMobSpawner extends WaveMobSpawner<JsonMobSpawnerState> {
       spawnAtSeconds: member.spawnAtSeconds,
       spawn: (ctx: NeutralMobSpawnerContext, params) => {
         const positions = computeSpawnPositions(member, def);
+        const symmetry = member.symmetry;
+        const opts = symmetry
+          ? {
+              kind: symmetry,
+              width: this.doc.arena.width,
+              height: this.doc.arena.height,
+            }
+          : undefined;
         positions.forEach((pos, k) => {
           const id = ctx.allocateMobId({
             waveId: params.waveId,
@@ -90,6 +99,22 @@ export class JsonMobSpawner extends WaveMobSpawner<JsonMobSpawnerState> {
             scaleHealth: member.scaleHealth,
           });
           ctx.spawnMob(mob);
+          // For the cooperate two-player layout, also emit a reflected copy
+          // so a single member covers both halves of the arena.
+          if (opts) {
+            const mirroredPos = transformVec2(pos, opts);
+            const mirroredId = ctx.allocateMobId({
+              waveId: params.waveId,
+              waveMemberIndex: params.memberIndex * 100 + 50 + k,
+            });
+            const mirroredMob = new JsonMob(this.doc, def, {
+              id: mirroredId,
+              waveId: params.waveId,
+              spawn: mirroredPos,
+              scaleHealth: member.scaleHealth,
+            });
+            ctx.spawnMob(mirroredMob);
+          }
         });
       },
     };

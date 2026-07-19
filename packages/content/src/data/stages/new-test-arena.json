@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "new-test-arena",
   "name": "新测试竞技场",
-  "description": "基于东方妖妖梦 Stage 1 (th07_web) ECL 时间线转换的合作模式竞技场。结构：双波妖精→商店→冰晶精英(道中)→双波光点扫荡→商店→冰之女王Boss。坐标已适配 2400×1440 合作竞技场（视窗 1200×720），杂兵会移动至画面之外并离场消除；精英/Boss 仅使用符卡编排（非符→符卡），移动与开火均在各符卡阶段中处理。",
+  "description": "基于东方妖妖梦 Stage 1 (th07_web) ECL 时间线转换的合作模式竞技场。结构：双波妖精→商店→冰晶精英(道中)→双波光点扫荡→商店→冰之女王Boss。坐标已适配 2400×1440 合作竞技场（视窗 1200×720）；为双人合作，侧翼妖精使用镜像克隆 fairy_side_m 实现左右对称入场，光点扫荡波使用 symmetry:mirror 使单个条目在左右半场同时生成。杂兵会移动至画面之外并离场消除；精英/Boss 仅使用符卡编排（非符→符卡），移动与开火均在各符卡阶段中处理。",
   "author": "maker-cli",
   "arena": {
     "width": 2400,
@@ -175,6 +175,87 @@
         "leaveScreen": true
       }
     },
+    "fairy_side_m": {
+      "id": "fairy_side_m",
+      "displayName": "侧翼妖精(右)",
+      "textureKey": "enemy_type_1",
+      "class": "minion",
+      "maxHealth": 120,
+      "hitRadius": 28,
+      "rewards": {
+        "drops": [
+          {
+            "type": "point",
+            "size": "small",
+            "count": 1
+          },
+          {
+            "type": "money",
+            "size": "small",
+            "count": 1
+          }
+        ]
+      },
+      "spawn": {
+        "x": 2480,
+        "y": 600
+      },
+      "movement": {
+        "type": "phases",
+        "phases": [
+          {
+            "startSeconds": 0,
+            "durationSeconds": 3,
+            "path": {
+              "kind": "line",
+              "from": {
+                "x": 2480,
+                "y": 600
+              },
+              "to": {
+                "x": 1600,
+                "y": 600
+              },
+              "ease": "easeOut"
+            }
+          },
+          {
+            "startSeconds": 3,
+            "durationSeconds": 4,
+            "loop": true,
+            "path": {
+              "kind": "drift",
+              "vx": -80,
+              "vy": 0
+            }
+          }
+        ]
+      },
+      "fire": [
+        {
+          "id": "aimed",
+          "startSeconds": 1,
+          "intervalSeconds": 1.8,
+          "pattern": {
+            "type": "aimed",
+            "target": "both",
+            "count": 2,
+            "spreadDegrees": 12,
+            "bullet": {
+              "kind": "orb",
+              "speedRank": "medium",
+              "width": 10,
+              "height": 10,
+              "damage": 1,
+              "color": "#7fd1ff"
+            }
+          }
+        }
+      ],
+      "death": {
+        "leaveScreen": true
+      }
+    },
     "sprite": {
       "id": "sprite",
       "displayName": "光点",
@@ -200,18 +281,11 @@
         "phases": [
           {
             "startSeconds": 0,
-            "durationSeconds": 4,
+            "durationSeconds": 8,
             "path": {
-              "kind": "line",
-              "from": {
-                "x": 1200,
-                "y": -64
-              },
-              "to": {
-                "x": 1200,
-                "y": 1760
-              },
-              "ease": "linear"
+              "kind": "drift",
+              "vx": 0,
+              "vy": 240
             }
           }
         ]
@@ -785,12 +859,32 @@
           }
         },
         {
+          "key": "fm",
+          "enemyDefId": "fairy_side_m",
+          "class": "minion",
+          "spawnAtSeconds": 6,
+          "spawn": {
+            "x": 2480,
+            "y": 410
+          }
+        },
+        {
           "key": "g",
           "enemyDefId": "fairy_side",
           "class": "minion",
           "spawnAtSeconds": 8,
           "spawn": {
             "x": -80,
+            "y": 410
+          }
+        },
+        {
+          "key": "gm",
+          "enemyDefId": "fairy_side_m",
+          "class": "minion",
+          "spawnAtSeconds": 8,
+          "spawn": {
+            "x": 2480,
             "y": 410
           }
         },
@@ -821,6 +915,16 @@
           "spawnAtSeconds": 12,
           "spawn": {
             "x": -80,
+            "y": 410
+          }
+        },
+        {
+          "key": "jm",
+          "enemyDefId": "fairy_side_m",
+          "class": "minion",
+          "spawnAtSeconds": 12,
+          "spawn": {
+            "x": 2480,
             "y": 410
           }
         }
@@ -865,9 +969,10 @@
           "class": "minion",
           "spawnAtSeconds": 0,
           "spawn": {
-            "x": 400,
+            "x": 1400,
             "y": -64
-          }
+          },
+          "symmetry": "mirror"
         },
         {
           "key": "b",
@@ -875,9 +980,10 @@
           "class": "minion",
           "spawnAtSeconds": 1.5,
           "spawn": {
-            "x": 1200,
+            "x": 2200,
             "y": -64
-          }
+          },
+          "symmetry": "mirror"
         },
         {
           "key": "c",
@@ -885,7 +991,7 @@
           "class": "minion",
           "spawnAtSeconds": 3,
           "spawn": {
-            "x": 1400,
+            "x": 1200,
             "y": -64
           }
         },
@@ -895,9 +1001,10 @@
           "class": "minion",
           "spawnAtSeconds": 4.5,
           "spawn": {
-            "x": 800,
+            "x": 1800,
             "y": -64
-          }
+          },
+          "symmetry": "mirror"
         },
         {
           "key": "e",
@@ -905,29 +1012,10 @@
           "class": "minion",
           "spawnAtSeconds": 6,
           "spawn": {
-            "x": 1800,
+            "x": 1600,
             "y": -64
-          }
-        },
-        {
-          "key": "f",
-          "enemyDefId": "sprite",
-          "class": "minion",
-          "spawnAtSeconds": 7.5,
-          "spawn": {
-            "x": 400,
-            "y": -64
-          }
-        },
-        {
-          "key": "g",
-          "enemyDefId": "sprite",
-          "class": "minion",
-          "spawnAtSeconds": 9,
-          "spawn": {
-            "x": 2200,
-            "y": -64
-          }
+          },
+          "symmetry": "mirror"
         }
       ]
     },
@@ -943,9 +1031,10 @@
           "class": "minion",
           "spawnAtSeconds": 0,
           "spawn": {
-            "x": 400,
+            "x": 1400,
             "y": -64
-          }
+          },
+          "symmetry": "mirror"
         },
         {
           "key": "b",
@@ -953,9 +1042,10 @@
           "class": "minion",
           "spawnAtSeconds": 1.5,
           "spawn": {
-            "x": 1800,
+            "x": 2200,
             "y": -64
-          }
+          },
+          "symmetry": "mirror"
         },
         {
           "key": "c",
@@ -963,7 +1053,7 @@
           "class": "minion",
           "spawnAtSeconds": 3,
           "spawn": {
-            "x": 800,
+            "x": 1200,
             "y": -64
           }
         },
@@ -973,19 +1063,10 @@
           "class": "minion",
           "spawnAtSeconds": 4.5,
           "spawn": {
-            "x": 1400,
+            "x": 1800,
             "y": -64
-          }
-        },
-        {
-          "key": "e",
-          "enemyDefId": "sprite",
-          "class": "minion",
-          "spawnAtSeconds": 6,
-          "spawn": {
-            "x": 1200,
-            "y": -64
-          }
+          },
+          "symmetry": "mirror"
         }
       ]
     },

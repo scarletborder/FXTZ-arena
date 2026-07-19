@@ -1,11 +1,14 @@
 import {
   createEmptyStage,
   createSampleStage,
+  transformStageNode,
+  transformEnemyDef,
   type StageDocument,
   type StageNode,
   type EnemyDefinition,
   type BulletPreset,
   type ShopConfig,
+  type SymmetryKind,
 } from "@repo/stage-schema";
 import {
   readStage,
@@ -166,17 +169,33 @@ export function cmdEdit(args: { positionals: string[] }): void {
 export function cmdAppend(args: { positionals: string[]; flags: Record<string, string | boolean> }): void {
   const [file, section, id] = args.positionals;
   if (!file || !section || !id) {
-    fail("Usage: append <file> <section> <id> [--kind wave|shop] [--from <srcId>] [--json '<json>']");
+    fail("Usage: append <file> <section> <id> [--kind wave|shop] [--from <srcId>] [--symmetry mirror|axis] [--json '<json>']");
   }
   sectionRequiresId(section as Section);
   const doc = readStage(file);
   const fromId = typeof args.flags.from === "string" ? args.flags.from : undefined;
   const jsonSpec = typeof args.flags.json === "string" ? args.flags.json : undefined;
 
+  // --symmetry mirrors/reflects a cloned item's coordinates (requires --from).
+  const symmetryRaw = typeof args.flags.symmetry === "string" ? args.flags.symmetry : undefined;
+  let symmetry: SymmetryKind | undefined;
+  if (symmetryRaw !== undefined) {
+    if (symmetryRaw !== "mirror" && symmetryRaw !== "axis") {
+      fail(`--symmetry must be "mirror" or "axis" (got "${symmetryRaw}").`);
+    }
+    symmetry = symmetryRaw;
+    if (!fromId) {
+      fail("--symmetry requires --from <srcId> (it transforms a cloned item).");
+    }
+    if (section !== "node" && section !== "enemy") {
+      fail(`--symmetry is only supported for node and enemy sections (got "${section}").`);
+    }
+  }
+
   if (section === "node") {
-    appendNode(doc, id, args.flags, fromId, jsonSpec);
+    appendNode(doc, id, args.flags, fromId, jsonSpec, symmetry);
   } else if (section === "enemy") {
-    appendEnemy(doc, id, fromId, jsonSpec);
+    appendEnemy(doc, id, fromId, jsonSpec, symmetry);
   } else if (section === "bullet") {
     appendBullet(doc, id, fromId, jsonSpec);
   } else {
@@ -192,6 +211,7 @@ function appendNode(
   flags: Record<string, string | boolean>,
   fromId?: string,
   jsonSpec?: string,
+  symmetry?: SymmetryKind,
 ): void {
   if (resolveNodeIndex(doc.nodes, id) !== undefined && resolveNodeIndex(doc.nodes, id)! >= 0) {
     fail(`A node with id "${id}" already exists.`);
@@ -203,6 +223,13 @@ function appendNode(
   } else if (fromId) {
     const src = locateNode(doc, fromId).node;
     node = clone(src);
+    if (symmetry) {
+      node = transformStageNode(node, {
+        kind: symmetry,
+        width: doc.arena.width,
+        height: doc.arena.height,
+      });
+    }
     node.id = id;
   } else {
     const kind = typeof flags.kind === "string" ? flags.kind : "wave";
@@ -212,6 +239,7 @@ function appendNode(
   }
   doc.nodes.push(node);
   process.stdout.write(`Appended node #${doc.nodes.length} [${node.kind}] "${node.id}".\n`);
+  if (symmetry) process.stdout.write(`  Applied ${symmetry} symmetry to cloned coordinates.\n`);
 }
 
 function appendEnemy(
@@ -219,6 +247,7 @@ function appendEnemy(
   id: string,
   fromId?: string,
   jsonSpec?: string,
+  symmetry?: SymmetryKind,
 ): void {
   if (doc.enemyDefs[id]) fail(`An enemy definition with id "${id}" already exists.`);
   let def: EnemyDefinition;
@@ -227,12 +256,20 @@ function appendEnemy(
     def.id = id;
   } else if (fromId) {
     def = clone(locateEnemy(doc, fromId));
+    if (symmetry) {
+      def = transformEnemyDef(def, {
+        kind: symmetry,
+        width: doc.arena.width,
+        height: doc.arena.height,
+      });
+    }
     def.id = id;
   } else {
     def = defaultEnemy(id, doc.arena);
   }
   doc.enemyDefs[id] = def;
   process.stdout.write(`Appended enemy definition "${id}".\n`);
+  if (symmetry) process.stdout.write(`  Applied ${symmetry} symmetry to cloned coordinates.\n`);
 }
 
 function appendBullet(

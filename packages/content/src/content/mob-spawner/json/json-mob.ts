@@ -112,6 +112,8 @@ export class JsonMob extends NeutralMob<JsonMobState, BattleBulletSpawnParams, B
   private readonly def: EnemyDefinition;
   private readonly doc: StageDocument;
   private readonly scaleHealth: number;
+  /** Effective spawn position (member spawn override ?? def spawn). */
+  private readonly effectiveSpawn: Vec2;
 
   constructor(doc: StageDocument, def: EnemyDefinition, init: SpawnInit) {
     super();
@@ -121,6 +123,7 @@ export class JsonMob extends NeutralMob<JsonMobState, BattleBulletSpawnParams, B
 
     const maxHealth = this.computeMaxHealth();
     const spawn = init.spawn ?? def.spawn ?? { x: 0, y: 0 };
+    this.effectiveSpawn = spawn;
     const drops = resolveRewardDrops(def.rewards);
     const spellCard = def.spellCard
       ? {
@@ -199,11 +202,10 @@ export class JsonMob extends NeutralMob<JsonMobState, BattleBulletSpawnParams, B
   move(ctx: NeutralMobActionContext<BattleBulletSpawnParams, BattleLaserSpawnParams>): void {
     const movement = this.activeMovement();
     if (!movement) {
-      const spawn = this.def.spawn;
-      if (spawn) {
-        this.state.x = spawn.x;
-        this.state.y = spawn.y;
-      }
+      // Pin to the effective spawn (respects member spawn overrides, which the
+      // def-level spawn would ignore — important for mirrored members).
+      this.state.x = this.effectiveSpawn.x;
+      this.state.y = this.effectiveSpawn.y;
       return;
     }
     const ageSeconds = this.state.ageTicks / TICK_RATE;

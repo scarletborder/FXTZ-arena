@@ -9,6 +9,17 @@
 
 export type StageMode = "versus" | "collaborate";
 export type MobClass = "minion" | "elite" | "boss";
+
+/**
+ * Symmetry hint used to duplicate a wave member for the two-player cooperate
+ * layout. `"mirror"` reflects across the vertical center axis (x = width/2),
+ * `"axis"` reflects across the horizontal center axis (y = height/2). When set
+ * on a `WaveMemberSpec`, the spawner emits the original instance plus a
+ * reflected copy (reflected spawn position). Movement/fire are shared with the
+ * original enemy definition, so prefer this for patterns whose motion is
+ * symmetric or position-agnostic (straight descents, centered bosses, etc.).
+ */
+export type SymmetryKind = "mirror" | "axis";
 export type RewardSize = "small" | "medium" | "large";
 export type BulletKind = "orb" | "knife" | "diamond" | "spark";
 export type SpeedRank = "low" | "medium" | "high";
@@ -111,6 +122,12 @@ export interface WaveMemberSpec {
   formation?: FormationSpec;
   /** Multiplies the enemy's max health. */
   scaleHealth?: number;
+  /**
+   * When set, the spawner also emits a reflected copy of this member (reflected
+   * spawn position), so a single entry covers both halves of the cooperate
+   * arena. See {@link SymmetryKind}.
+   */
+  symmetry?: SymmetryKind;
 }
 
 export interface FormationSpec {
