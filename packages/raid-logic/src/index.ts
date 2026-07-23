@@ -13,6 +13,7 @@ export * from "./game";
 export * from "./sync/hash";
 export * from "./input";
 export * from "./physics-world";
+export * from "./sync/frame-snapshot-ring";
 export * from "./sync/rollback";
 export * from "./sync/state";
 export * from "./battle/loadout";

@@ -1,4 +1,7 @@
-import { ConfirmedFrameHashAccumulator } from "@repo/raid-logic";
+import {
+  ConfirmedFrameHashAccumulator,
+  FrameSnapshotRing,
+} from "@repo/raid-logic";
 import type {
   BattleInputState,
   BattleModelSnapshot,
@@ -13,6 +16,15 @@ import type {
 } from "../../network/combat";
 
 const DEBUG_HISTORY_LIMIT = 3600;
+/**
+ * Snapshot ring depth for online rollback restores (~17 s at 60 Hz).
+ * Restores deeper than this cannot happen in practice: the confirmed
+ * frame prune keeps the required window far smaller, and a peer that
+ * stalls longer than a second pauses / ends the battle.
+ */
+const ROLLBACK_RING_FRAMES = 1024;
+/** Initial per-slot byte budget; the ring grows (x2) if a snapshot is larger. */
+const ROLLBACK_RING_SLOT_BYTES = 16 * 1024;
 
 interface DebugFrameRecord {
   readonly frame: number;
@@ -103,7 +115,16 @@ export class BattleRollbackHistory {
   private sceneData: BattleSceneData = {};
   private logger!: BattleRollbackLogger;
   private enabled = false;
-  private readonly rollbackHistory = new Map<number, DebugFrameRecord>();
+  /**
+   * Rollback restore snapshots live in a lite-rollback binary ring:
+   * one preallocated buffer, save = commit (memcpy), prune = slot discard.
+   */
+  private readonly snapshotRing = new FrameSnapshotRing({
+    limit: ROLLBACK_RING_FRAMES,
+    initialDataBytes: ROLLBACK_RING_SLOT_BYTES,
+  });
+  private readonly snapshotEncoder = new TextEncoder();
+  private readonly snapshotDecoder = new TextDecoder();
   private debugConfirmedHash: ConfirmedFrameHashAccumulator | undefined;
   private debugConfirmedInputHash: ConfirmedFrameHashAccumulator | undefined;
   private debugHashBacklog: Map<number, string> | undefined;
@@ -117,7 +138,7 @@ export class BattleRollbackHistory {
   reset(config: BattleRollbackHistoryConfig): void {
     this.sceneData = config.sceneData;
     this.logger = config.logger;
-    this.rollbackHistory.clear();
+    this.snapshotRing.clear();
     this.disableDebugState();
     this.setDebugEnabled(config.debug);
   }
@@ -144,18 +165,17 @@ export class BattleRollbackHistory {
   }
 
   recordRollbackSnapshot(frame: number, snapshot: BattleModelSnapshot): void {
-    this.rollbackHistory.set(frame, {
+    this.snapshotRing.save(
       frame,
-      hash: "",
-      snapshot,
-    });
+      this.snapshotEncoder.encode(JSON.stringify(snapshot)),
+    );
   }
 
   getRollbackRecord(
     frame: number,
   ): { readonly frame: number; readonly snapshot: BattleModelSnapshot } | null {
-    const record = this.rollbackHistory.get(frame);
-    return record ? { frame: record.frame, snapshot: record.snapshot } : null;
+    const snapshot = this.getSnapshot(frame);
+    return snapshot ? { frame, snapshot } : null;
   }
 
   recordStepInputs(record: {
@@ -238,7 +258,13 @@ export class BattleRollbackHistory {
   }
 
   getSnapshot(frame: number): BattleModelSnapshot | null {
-    return this.rollbackHistory.get(frame)?.snapshot ?? null;
+    const record = this.snapshotRing.get(frame);
+    if (!record) {
+      return null;
+    }
+    return JSON.parse(
+      this.snapshotDecoder.decode(record.bytes),
+    ) as BattleModelSnapshot;
   }
 
   pruneAfter(frame: number): void {
@@ -253,18 +279,15 @@ export class BattleRollbackHistory {
       }
     };
 
-    pruneMap(this.rollbackHistory);
+    this.snapshotRing.pruneAfter(frame);
     pruneMap(this.debugHashBacklog);
     pruneMap(this.debugHistory);
     this.debugLogger?.pruneAfter(frame);
   }
 
   pruneBefore(frame: number): void {
-    for (const key of this.rollbackHistory.keys()) {
-      if (key < frame) {
-        this.rollbackHistory.delete(key);
-      }
-    }
+    // Snapshot ring retention is bounded by its capacity; confirmed
+    // frames simply age out as newer commits overwrite the slots.
     const history = this.debugHistory;
     if (!this.enabled || !history) {
       return;
@@ -279,11 +302,6 @@ export class BattleRollbackHistory {
 
   pruneOldHistory(currentFrame: number): void {
     const rollbackMinFrame = currentFrame - DEBUG_HISTORY_LIMIT;
-    for (const key of this.rollbackHistory.keys()) {
-      if (key < rollbackMinFrame) {
-        this.rollbackHistory.delete(key);
-      }
-    }
     const history = this.debugHistory;
     if (!this.enabled || !history) {
       return;
@@ -351,6 +369,7 @@ export class BattleRollbackHistory {
   }
 
   clear(): void {
+    this.snapshotRing.clear();
     this.disableDebugState();
   }
 

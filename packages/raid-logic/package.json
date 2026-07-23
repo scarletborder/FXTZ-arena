@@ -31,10 +31,11 @@
   "dependencies": {
     "@dimforge/rapier2d-deterministic-compat": "^0.19.3",
     "@noble/hashes": "^2.2.0",
-    "@repo/content": "workspace:*",
     "@repo/constants": "workspace:*",
+    "@repo/content": "workspace:*",
     "@repo/types": "workspace:*",
-    "@shaisrc/fixed-point": "^0.1.0"
+    "@shaisrc/fixed-point": "^0.1.0",
+    "@zakkster/lite-rollback": "^1.0.2"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

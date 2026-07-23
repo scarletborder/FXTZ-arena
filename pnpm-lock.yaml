@@ -139,6 +139,9 @@ importers:
       '@tauri-apps/plugin-process':
         specifier: ^2.0.0
         version: 2.3.1
+      '@zakkster/lite-rollback':
+        specifier: ^1.0.2
+        version: 1.0.2
       phaser:
         specifier: ^4.1.0
         version: 4.1.0
@@ -362,6 +365,9 @@ importers:
       '@shaisrc/fixed-point':
         specifier: ^0.1.0
         version: 0.1.0
+      '@zakkster/lite-rollback':
+        specifier: ^1.0.2
+        version: 1.0.2
     devDependencies:
       '@repo/eslint-config':
         specifier: workspace:*
@@ -2625,6 +2631,11 @@ packages:
       loupe: 3.2.1
       tinyrainbow: 2.0.0
     dev: true
+
+  /@zakkster/lite-rollback@1.0.2:
+    resolution: {integrity: sha512-BWGV8tq8I0UhJXiKRvKE4Ccb566s7Cu+FWvYmY+OxfVkF3I717Scg/WYb/flB8noyoEfaRaO0uB6kSpJHh3yVg==}
+    engines: {node: '>=18'}
+    dev: false
 
   /acorn-jsx@5.3.2(acorn@8.15.0):
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}

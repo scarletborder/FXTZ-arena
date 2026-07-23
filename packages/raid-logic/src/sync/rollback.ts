@@ -1,6 +1,12 @@
 import { DEFAULT_SNAPSHOT_HISTORY } from "@repo/types";
 import type { RaidFrameInput } from "../input";
-import { RaidState, type RaidStateSerialized } from "./state";
+import { FrameSnapshotRing } from "./frame-snapshot-ring";
+import {
+  deserializeStateFromBytes,
+  RaidState,
+  serializeStateToBytes,
+  type RaidStateSerialized,
+} from "./state";
 
 export interface RaidSnapshot {
   readonly frame: number;
@@ -8,30 +14,40 @@ export interface RaidSnapshot {
   readonly hash: number;
 }
 
+/**
+ * Frame-indexed snapshot history backed by @zakkster/lite-rollback's binary
+ * ring buffer. Snapshots are stored as serialized bytes in one preallocated
+ * ArrayBuffer; `save` is a ring commit, eviction is implicit in the ring.
+ */
 export class SnapshotHistory {
-  private readonly snapshots = new Map<number, RaidSnapshot>();
+  private readonly ring: FrameSnapshotRing;
 
-  constructor(private readonly limit = DEFAULT_SNAPSHOT_HISTORY) { }
+  constructor(limit = DEFAULT_SNAPSHOT_HISTORY) {
+    this.ring = new FrameSnapshotRing({ limit });
+  }
 
   save(snapshot: RaidSnapshot): void {
-    this.snapshots.set(snapshot.frame, snapshot);
-    const frames = Array.from(this.snapshots.keys()).sort(
-      (left, right) => left - right,
+    this.ring.save(
+      snapshot.frame,
+      serializeStateToBytes(snapshot.state),
+      snapshot.hash,
     );
-    while (frames.length > this.limit) {
-      const frame = frames.shift();
-      if (frame !== undefined) {
-        this.snapshots.delete(frame);
-      }
-    }
   }
 
   get(frame: number): RaidSnapshot | undefined {
-    return this.snapshots.get(frame);
+    const record = this.ring.get(frame);
+    if (!record) {
+      return undefined;
+    }
+    return {
+      frame,
+      state: deserializeStateFromBytes(record.bytes),
+      hash: record.meta,
+    };
   }
 
   clear(): void {
-    this.snapshots.clear();
+    this.ring.clear();
   }
 }
 

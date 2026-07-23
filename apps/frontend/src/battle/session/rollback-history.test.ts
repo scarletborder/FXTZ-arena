@@ -20,7 +20,7 @@ describe("BattleRollbackHistory", () => {
     history.recordRollbackSnapshot(2, second);
     history.pruneAfter(1);
 
-    expect(history.getSnapshot(1)).toBe(first);
+    expect(history.getSnapshot(1)).toEqual(first);
     expect(history.getSnapshot(2)).toBeNull();
   });
 });
