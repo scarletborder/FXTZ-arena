@@ -10,6 +10,7 @@
 - [Rollback 同步排查经验](./rollback-sync-lessons.md)：权威帧 hash、snapshot 隐藏状态、消弹碰撞与回归测试清单。
 - [Scene 与 UI 规格](./scenes-and-ui.md)：首页、设置、图鉴、战斗入口、选择、加载、战局、结算。
 - [内容数据规格](./content-data.md)：角色、能力卡、地图、房间等共享数据建模建议。
+- [资源包离线与差量更新](./resource-pack-offline-and-delta-update.md)：resource-pack 清单机制、差量下载、构建 workflow 与 Service Worker 脱机扩展方案。
 
 ## 核心原则
 
